@@ -908,6 +908,19 @@ input[type="number"].field-input {
   font-size: 13px;
 }
 
+/* Hint + botón Cargar en panel Pedido (modo expo nuevo cliente) */
+.expo-cargar-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 24px;
+  color: var(--text2);
+  font-size: 14px;
+}
+.expo-cargar-hint p { margin: 0; }
+.expo-cargar-hint .btn-primary { min-width: 120px; }
+
 /* Card cotizador inline en modal expo nuevo cliente */
 .cp-card-expo {
   border: none;

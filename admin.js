@@ -1814,14 +1814,10 @@ function _editClienteActivarTab(tab) {
 document.getElementById("editTabDatos").addEventListener("click", function () {
   _editClienteActivarTab("datos");
 });
-document.getElementById("editTabPedido").addEventListener("click", async function () {
-  // En modo nuevo cliente: auto-guardar antes de mostrar el cotizador
-  if (!document.getElementById("editClienteId").value) {
-    var saved = await _expoAutoSave();
-    if (!saved) return;
-  }
+document.getElementById("editTabPedido").addEventListener("click", function () {
   _editClienteActivarTab("pedido");
-  _expoInitCard();
+  // Si ya tiene cliente guardado, mostrar cotizador directo
+  if (_expoSavedCustomer) _expoInitCard();
 });
 
 // ---- EXPO: auto-guardar nuevo cliente silenciosamente al cambiar al tab Pedido ----
@@ -1907,6 +1903,18 @@ async function _expoAutoSave() {
     return false;
   }
 }
+
+// ---- EXPO: botón "Cargar" en panel Pedido ----
+window.expoCargar = async function () {
+  var btn = document.getElementById("btnExpoCargar");
+  if (btn) { btn.disabled = true; btn.textContent = "Cargando..."; }
+  var saved = await _expoAutoSave();
+  if (!saved) {
+    if (btn) { btn.disabled = false; btn.textContent = "Cargar"; }
+    return;
+  }
+  _expoInitCard();
+};
 
 // ---- EXPO: inicializar card cotizador inline en panel Pedido ----
 function _expoInitCard() {
@@ -2005,8 +2013,12 @@ document.getElementById("newClienteBtn").addEventListener("click", function () {
   // Mostrar tabs y resetear al panel Datos
   document.getElementById("editClienteTabs").style.display = "flex";
   _editClienteActivarTab("datos");
-  // Resetear panel Pedido (vacío; se llena al switchear a la pestaña)
-  document.getElementById("editPedidoContenido").innerHTML = "";
+  // Resetear panel Pedido: mostrar botón Cargar
+  document.getElementById("editPedidoContenido").innerHTML =
+    '<div class="expo-cargar-hint">' +
+    '<p>Completá los datos del cliente y hacé clic en <strong>Cargar</strong> para continuar.</p>' +
+    '<button class="btn-primary" id="btnExpoCargar" onclick="expoCargar()">Cargar</button>' +
+    '</div>';
   document.getElementById("saveEditCliente").textContent = "Guardar Cambios";
   document.getElementById("editClienteModal").style.display = "flex";
 });
