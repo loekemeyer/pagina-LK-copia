@@ -387,6 +387,10 @@ function generatePassword30() {
   return result;
 }
 
+// Estado del modal expo — persiste mientras el modal está abierto para un nuevo cliente
+var _expoCard = null;          // card cotizador inline (idx=99)
+var _expoSavedCustomer = null; // { id, cod_cliente, business_name, dto_vol, vend }
+
 // Genera CUIT sintetico para vendedores: '99' + 9 digitos random.
 // Verifica unicidad contra customers.cuit con reintentos.
 async function generateSyntheticVendorCuit() {
@@ -1457,8 +1461,21 @@ document
           await linkCustomerToVendor(payload.vend, id);
         }
         toast("Cliente actualizado");
+        // Modo expo: si hay cliente expo activo, actualizar estado y mostrar pedido
+        if (_expoSavedCustomer) {
+          _expoSavedCustomer = Object.assign(_expoSavedCustomer, {
+            cod_cliente: payload.cod_cliente,
+            business_name: payload.business_name,
+            dto_vol: parseFloat(payload.dto_vol) || 0,
+            vend: payload.vend || "",
+          });
+          _editClienteActivarTab("pedido");
+          _expoInitCard();
+          loadClientes();
+          return; // no cerrar modal en modo expo
+        }
       } else {
-        // Usar la contraseña de 30 chars generada (si está visible), o generar nueva
+        // Nuevo cliente — modo expo: crear y quedar en el modal
         var pwd30El = document.getElementById("editPassword");
         payload.pin = (pwd30El && pwd30El.value.length >= 20)
           ? pwd30El.value
@@ -1466,35 +1483,23 @@ document
         var authId = await createAuthUser(payload.cuit, payload.pin);
         if (authId) payload.auth_user_id = authId;
         var insertedEdit = await sbInsert(TABLE_CUSTOMERS, payload);
-        if (payload.vend && insertedEdit.length) {
+        if (!insertedEdit.length) throw new Error("No se pudo crear el cliente");
+        if (payload.vend) {
           await linkCustomerToVendor(payload.vend, insertedEdit[0].id);
         }
+        document.getElementById("editClienteId").value = insertedEdit[0].id;
+        _expoSavedCustomer = {
+          id: insertedEdit[0].id,
+          cod_cliente: payload.cod_cliente,
+          business_name: payload.business_name,
+          dto_vol: parseFloat(payload.dto_vol) || 0,
+          vend: payload.vend || "",
+        };
         toast("Cliente creado");
-        // Mostrar panel Pedido con botón de acceso rápido
-        var cod = payload.cod_cliente;
-        var nom = payload.business_name;
-        document.getElementById("editPedidoContenido").innerHTML =
-          '<p class="edit-pedido-cliente">' + cpEscHTML(nom) + '</p>' +
-          '<p class="edit-pedido-hint">Código: <strong>' + cpEscHTML(cod) + '</strong></p>' +
-          '<button class="btn-primary" id="irCargaPedidosBtn" style="margin-top:4px">Ir a Carga de Pedidos →</button>';
-        document.getElementById("irCargaPedidosBtn").addEventListener("click", function () {
-          document.getElementById("editClienteModal").style.display = "none";
-          // Navegar a la sección carga-pedidos
-          var navBtn = document.querySelector('.nav-item[data-page="carga-pedidos"]');
-          if (navBtn) navBtn.click();
-          // Pre-cargar búsqueda del cliente en la primera card
-          setTimeout(function () {
-            var firstSearch = document.querySelector(".cp-search-cod");
-            var firstSearchBtn = document.querySelector(".cp-search-btn");
-            if (firstSearch && firstSearchBtn) {
-              firstSearch.value = cod;
-              firstSearchBtn.click();
-            }
-          }, 350);
-        });
         _editClienteActivarTab("pedido");
+        _expoInitCard();
         loadClientes();
-        return; // no cerrar el modal, el usuario decide desde el tab Pedido
+        return; // no cerrar el modal
       }
       document.getElementById("editClienteModal").style.display = "none";
       loadClientes();
@@ -1809,9 +1814,139 @@ function _editClienteActivarTab(tab) {
 document.getElementById("editTabDatos").addEventListener("click", function () {
   _editClienteActivarTab("datos");
 });
-document.getElementById("editTabPedido").addEventListener("click", function () {
+document.getElementById("editTabPedido").addEventListener("click", async function () {
+  // En modo nuevo cliente: auto-guardar antes de mostrar el cotizador
+  if (!document.getElementById("editClienteId").value) {
+    var saved = await _expoAutoSave();
+    if (!saved) return;
+  }
   _editClienteActivarTab("pedido");
+  _expoInitCard();
 });
+
+// ---- EXPO: auto-guardar nuevo cliente silenciosamente al cambiar al tab Pedido ----
+async function _expoAutoSave() {
+  var cod = document.getElementById("editCod").value.trim();
+  var razon = document.getElementById("editRazon").value.trim();
+  if (!cod || !razon) {
+    toast("Ingresá el código y la razón social primero", "warning");
+    return false;
+  }
+  var id = document.getElementById("editClienteId").value;
+  if (id && _expoSavedCustomer) {
+    // Ya guardado: actualizar silenciosamente
+    var updatePayload = {
+      cod_cliente: cod,
+      business_name: razon,
+      cuit: document.getElementById("editCuit").value.trim() || null,
+      email: document.getElementById("editMail").value.trim() || null,
+      vend: document.getElementById("editVend").value.trim() || null,
+      dto_vol: parseFloat(document.getElementById("editDto").value) || 0,
+      username: document.getElementById("editUsername").value.trim() || null,
+    };
+    try {
+      await sbUpdate(TABLE_CUSTOMERS, id, "id", updatePayload);
+      _expoSavedCustomer = Object.assign(_expoSavedCustomer, {
+        cod_cliente: cod,
+        business_name: razon,
+        dto_vol: parseFloat(updatePayload.dto_vol) || 0,
+        vend: updatePayload.vend || "",
+      });
+    } catch (e) { /* silencioso — el usuario puede seguir cargando el pedido */ }
+    return true;
+  }
+  // Primer guardado: INSERT
+  var pwd30El = document.getElementById("editPassword");
+  var pin = (pwd30El && pwd30El.value.length >= 20) ? pwd30El.value : generatePassword30();
+  document.getElementById("editPassword").value = pin;
+  var cuit = document.getElementById("editCuit").value.trim();
+  var payload = {
+    cod_cliente: cod,
+    business_name: razon,
+    cuit: cuit || null,
+    email: document.getElementById("editMail").value.trim() || null,
+    vend: document.getElementById("editVend").value.trim() || null,
+    dto_vol: parseFloat(document.getElementById("editDto").value) || 0,
+    username: document.getElementById("editUsername").value.trim() || null,
+    pin: pin,
+  };
+  try {
+    var authId = await createAuthUser(cuit, pin);
+    if (authId) payload.auth_user_id = authId;
+    var inserted = await sbInsert(TABLE_CUSTOMERS, payload);
+    if (!inserted.length) throw new Error("insert vacío");
+    document.getElementById("editClienteId").value = inserted[0].id;
+    _expoSavedCustomer = {
+      id: inserted[0].id,
+      cod_cliente: cod,
+      business_name: razon,
+      dto_vol: parseFloat(payload.dto_vol) || 0,
+      vend: payload.vend || "",
+    };
+    if (payload.vend) await linkCustomerToVendor(payload.vend, inserted[0].id);
+    loadClientes();
+    return true;
+  } catch (e) {
+    toast("Error al guardar: " + e.message, "error");
+    return false;
+  }
+}
+
+// ---- EXPO: inicializar card cotizador inline en panel Pedido ----
+function _expoInitCard() {
+  if (!_expoSavedCustomer) return;
+  // Si ya hay card para el mismo cliente, no reinicializar (preservar carrito)
+  if (
+    _expoCard &&
+    _expoCard.customer &&
+    _expoCard.customer.id === _expoSavedCustomer.id
+  ) return;
+  var contenido = document.getElementById("editPedidoContenido");
+  contenido.innerHTML = "";
+  var root = document.createElement("div");
+  root.className = "cp-card cp-card-expo";
+  root.dataset.idx = "99";
+  root.innerHTML = cpBuildCardHTML(99);
+  contenido.appendChild(root);
+  _expoCard = {
+    idx: 99,
+    root: root,
+    customer: null,
+    history: { web: [], sales: [] },
+    pendingFileData: null,
+    pendingFileIsPdf: false,
+    parsed: [],
+    invalid: [],
+    payment: null,
+    delivery: "",
+    flyers: [],
+    upsellMsg: "",
+    submitted: false,
+    orderId: null,
+    historyLoading: false,
+    historyMode: false,
+    deliveryAddresses: [],
+    deliveryLoading: false,
+    selectedDeliveryIdx: null,
+    finalDelivery: "",
+    pdfPaymentRaw: "",
+    searchCod: root.querySelector(".cp-search-cod"),
+    searchBtn: root.querySelector(".cp-search-btn"),
+    suggestEl: root.querySelector(".cp-suggest"),
+    suggestTimer: null,
+    customerWrap: root.querySelector(".cp-card-customer-wrap"),
+    dropZone: root.querySelector(".cp-dropzone"),
+    fileInput: root.querySelector(".cp-file-input"),
+    resetBtn: root.querySelector(".cp-card-reset"),
+    status: root.querySelector(".cp-card-status"),
+    summaryWrap: root.querySelector(".cp-card-summary-wrap"),
+    msgWrap: root.querySelector(".cp-card-msg-wrap"),
+    flyersWrap: root.querySelector(".cp-card-flyers-wrap"),
+    actionsWrap: root.querySelector(".cp-card-actions-wrap"),
+  };
+  cpWireCard(_expoCard);
+  cpCardSelectCustomer(_expoCard, _expoSavedCustomer);
+}
 
 // Botón copiar contraseña
 document.getElementById("copyPasswordBtn").addEventListener("click", function () {
@@ -1831,6 +1966,9 @@ document.getElementById("copyPasswordBtn").addEventListener("click", function ()
 
 // ---- NUEVO CLIENTE ----
 document.getElementById("newClienteBtn").addEventListener("click", function () {
+  // Resetear estado expo
+  _expoCard = null;
+  _expoSavedCustomer = null;
   document.getElementById("editClienteId").value = "";
   document.getElementById("editModalTitle").textContent = "Nuevo Cliente";
   [
@@ -1851,9 +1989,8 @@ document.getElementById("newClienteBtn").addEventListener("click", function () {
   // Mostrar tabs y resetear al panel Datos
   document.getElementById("editClienteTabs").style.display = "flex";
   _editClienteActivarTab("datos");
-  // Resetear panel Pedido
-  document.getElementById("editPedidoContenido").innerHTML =
-    '<p class="edit-pedido-hint">Guardá primero los datos del cliente.</p>';
+  // Resetear panel Pedido (vacío; se llena al switchear a la pestaña)
+  document.getElementById("editPedidoContenido").innerHTML = "";
   document.getElementById("saveEditCliente").textContent = "Guardar Cambios";
   document.getElementById("editClienteModal").style.display = "flex";
 });

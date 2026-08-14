@@ -908,6 +908,19 @@ input[type="number"].field-input {
   font-size: 13px;
 }
 
+/* Card cotizador inline en modal expo nuevo cliente */
+.cp-card-expo {
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+}
+#editPanelPedido {
+  overflow-y: auto;
+  max-height: calc(100vh - 220px);
+}
+
 .toast-wrap {
   position: fixed;
   bottom: 24px;
