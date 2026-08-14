@@ -851,6 +851,63 @@ input[type="number"].field-input {
   justify-content: flex-end;
 }
 
+/* Tabs dentro del modal de nuevo cliente */
+.modal-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border);
+  background: var(--bg3);
+}
+.modal-tab {
+  flex: 1;
+  padding: 11px 16px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text2);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.modal-tab:hover {
+  color: var(--text);
+}
+.modal-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
+}
+/* Campo de contraseña generada */
+.edit-pwd-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.edit-pwd-row .field-input {
+  flex: 1;
+  font-family: monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+}
+/* Panel Pedido dentro del modal */
+.edit-pedido-panel {
+  text-align: center;
+  padding: 28px 0 16px;
+  color: var(--text2);
+  font-size: 14px;
+}
+.edit-pedido-panel .edit-pedido-cliente {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.edit-pedido-panel .edit-pedido-hint {
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
 .toast-wrap {
   position: fixed;
   bottom: 24px;

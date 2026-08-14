@@ -376,6 +376,17 @@ function generatePin() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+// Genera contraseña aleatoria de 30 caracteres alfanuméricos.
+// Excluye 0, O, 1, I, l para evitar confusiones al leer.
+function generatePassword30() {
+  var chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  var result = "";
+  for (var i = 0; i < 30; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 // Genera CUIT sintetico para vendedores: '99' + 9 digitos random.
 // Verifica unicidad contra customers.cuit con reintentos.
 async function generateSyntheticVendorCuit() {
@@ -1383,6 +1394,12 @@ window.openEditModal = function (clienteId) {
   document.getElementById("editClienteId").value = c.id;
   document.getElementById("editModalTitle").textContent =
     c.business_name || "Editar Cliente";
+  // En modo edición: ocultar tabs y contraseña
+  document.getElementById("editClienteTabs").style.display = "none";
+  document.getElementById("editPasswordRow").style.display = "none";
+  document.getElementById("editPanelDatos").style.display = "";
+  document.getElementById("editPanelPedido").style.display = "none";
+  document.getElementById("saveEditCliente").textContent = "Guardar Cambios";
   document.getElementById("editCod").value = c.cod_cliente || "";
   document.getElementById("editCuit").value = c.cuit || "";
   document.getElementById("editRazon").value = c.business_name || "";
@@ -1441,7 +1458,11 @@ document
         }
         toast("Cliente actualizado");
       } else {
-        payload.pin = generatePin();
+        // Usar la contraseña de 30 chars generada (si está visible), o generar nueva
+        var pwd30El = document.getElementById("editPassword");
+        payload.pin = (pwd30El && pwd30El.value.length >= 20)
+          ? pwd30El.value
+          : generatePassword30();
         var authId = await createAuthUser(payload.cuit, payload.pin);
         if (authId) payload.auth_user_id = authId;
         var insertedEdit = await sbInsert(TABLE_CUSTOMERS, payload);
@@ -1449,6 +1470,31 @@ document
           await linkCustomerToVendor(payload.vend, insertedEdit[0].id);
         }
         toast("Cliente creado");
+        // Mostrar panel Pedido con botón de acceso rápido
+        var cod = payload.cod_cliente;
+        var nom = payload.business_name;
+        document.getElementById("editPedidoContenido").innerHTML =
+          '<p class="edit-pedido-cliente">' + cpEscHTML(nom) + '</p>' +
+          '<p class="edit-pedido-hint">Código: <strong>' + cpEscHTML(cod) + '</strong></p>' +
+          '<button class="btn-primary" id="irCargaPedidosBtn" style="margin-top:4px">Ir a Carga de Pedidos →</button>';
+        document.getElementById("irCargaPedidosBtn").addEventListener("click", function () {
+          document.getElementById("editClienteModal").style.display = "none";
+          // Navegar a la sección carga-pedidos
+          var navBtn = document.querySelector('.nav-item[data-page="carga-pedidos"]');
+          if (navBtn) navBtn.click();
+          // Pre-cargar búsqueda del cliente en la primera card
+          setTimeout(function () {
+            var firstSearch = document.querySelector(".cp-search-cod");
+            var firstSearchBtn = document.querySelector(".cp-search-btn");
+            if (firstSearch && firstSearchBtn) {
+              firstSearch.value = cod;
+              firstSearchBtn.click();
+            }
+          }, 350);
+        });
+        _editClienteActivarTab("pedido");
+        loadClientes();
+        return; // no cerrar el modal, el usuario decide desde el tab Pedido
       }
       document.getElementById("editClienteModal").style.display = "none";
       loadClientes();
@@ -1743,6 +1789,46 @@ document
     }
   });
 
+// ---- MODAL CLIENTE: helpers de tabs ----
+function _editClienteActivarTab(tab) {
+  var isDatos = tab === "datos";
+  document.getElementById("editPanelDatos").style.display = isDatos ? "" : "none";
+  document.getElementById("editPanelPedido").style.display = isDatos ? "none" : "";
+  document.getElementById("editTabDatos").classList.toggle("active", isDatos);
+  document.getElementById("editTabPedido").classList.toggle("active", !isDatos);
+  // Cambiar texto del botón guardar según el tab activo
+  var saveBtn = document.getElementById("saveEditCliente");
+  if (isDatos) {
+    saveBtn.style.display = "";
+  } else {
+    // En el tab Pedido el cliente ya fue creado; no tiene sentido "Guardar"
+    saveBtn.style.display = "none";
+  }
+}
+
+document.getElementById("editTabDatos").addEventListener("click", function () {
+  _editClienteActivarTab("datos");
+});
+document.getElementById("editTabPedido").addEventListener("click", function () {
+  _editClienteActivarTab("pedido");
+});
+
+// Botón copiar contraseña
+document.getElementById("copyPasswordBtn").addEventListener("click", function () {
+  var pwd = document.getElementById("editPassword").value;
+  if (!pwd) return;
+  (navigator.clipboard && navigator.clipboard.writeText
+    ? navigator.clipboard.writeText(pwd)
+    : Promise.reject(new Error("no-clipboard"))
+  ).then(function () {
+    toast("Contraseña copiada");
+  }).catch(function () {
+    // Fallback selección manual
+    document.getElementById("editPassword").select();
+    toast("Seleccioná y copiá la contraseña manualmente", "warning");
+  });
+});
+
 // ---- NUEVO CLIENTE ----
 document.getElementById("newClienteBtn").addEventListener("click", function () {
   document.getElementById("editClienteId").value = "";
@@ -1758,6 +1844,17 @@ document.getElementById("newClienteBtn").addEventListener("click", function () {
   ].forEach(function (id) {
     document.getElementById(id).value = "";
   });
+  // Generar contraseña de 30 caracteres y mostrarla
+  var pwd = generatePassword30();
+  document.getElementById("editPassword").value = pwd;
+  document.getElementById("editPasswordRow").style.display = "block";
+  // Mostrar tabs y resetear al panel Datos
+  document.getElementById("editClienteTabs").style.display = "flex";
+  _editClienteActivarTab("datos");
+  // Resetear panel Pedido
+  document.getElementById("editPedidoContenido").innerHTML =
+    '<p class="edit-pedido-hint">Guardá primero los datos del cliente.</p>';
+  document.getElementById("saveEditCliente").textContent = "Guardar Cambios";
   document.getElementById("editClienteModal").style.display = "flex";
 });
 
