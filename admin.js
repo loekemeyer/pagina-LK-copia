@@ -1826,19 +1826,20 @@ document.getElementById("editTabPedido").addEventListener("click", async functio
 
 // ---- EXPO: auto-guardar nuevo cliente silenciosamente al cambiar al tab Pedido ----
 async function _expoAutoSave() {
-  var cod = document.getElementById("editCod").value.trim();
+  var cuit = document.getElementById("editCuit").value.trim();
   var razon = document.getElementById("editRazon").value.trim();
-  if (!cod || !razon) {
-    toast("Ingresá el código y la razón social primero", "warning");
+  if (!cuit || !razon) {
+    toast("Ingresá la razón social y el CUIT primero", "warning");
     return false;
   }
+  var cod = document.getElementById("editCod").value.trim();
   var id = document.getElementById("editClienteId").value;
   if (id && _expoSavedCustomer) {
     // Ya guardado: actualizar silenciosamente
     var updatePayload = {
       cod_cliente: cod,
       business_name: razon,
-      cuit: document.getElementById("editCuit").value.trim() || null,
+      cuit: cuit || null,
       email: document.getElementById("editMail").value.trim() || null,
       vend: document.getElementById("editVend").value.trim() || null,
       dto_vol: parseFloat(document.getElementById("editDto").value) || 0,
@@ -1859,7 +1860,6 @@ async function _expoAutoSave() {
   var pwd30El = document.getElementById("editPassword");
   var pin = (pwd30El && pwd30El.value.length >= 20) ? pwd30El.value : generatePassword30();
   document.getElementById("editPassword").value = pin;
-  var cuit = document.getElementById("editCuit").value.trim();
   var payload = {
     cod_cliente: cod,
     business_name: razon,
