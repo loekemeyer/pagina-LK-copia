@@ -1855,6 +1855,24 @@ async function _expoAutoSave() {
     } catch (e) { /* silencioso — el usuario puede seguir cargando el pedido */ }
     return true;
   }
+  // Buscar si ya existe un cliente con ese CUIT
+  try {
+    var existing = await sb.from(TABLE_CUSTOMERS).select("id,cod_cliente,business_name,dto_vol,vend").eq("cuit", cuit).maybeSingle();
+    if (existing.data) {
+      var ex = existing.data;
+      document.getElementById("editClienteId").value = ex.id;
+      _expoSavedCustomer = {
+        id: ex.id,
+        cod_cliente: ex.cod_cliente,
+        business_name: ex.business_name || razon,
+        dto_vol: ex.dto_vol || 0,
+        vend: ex.vend || "",
+      };
+      toast("Cliente ya existente vinculado", "info");
+      return true;
+    }
+  } catch (e) { /* ignorar, seguir con INSERT */ }
+
   // Primer guardado: INSERT
   var pwd30El = document.getElementById("editPassword");
   var pin = (pwd30El && pwd30El.value.length >= 20) ? pwd30El.value : generatePassword30();
