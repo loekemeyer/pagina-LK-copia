@@ -1,0 +1,902 @@
+﻿<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Loekemeyer Hnos S.R.L.</title>
+    <link rel="icon" type="image/png" href="./img/favicon.jpg" />
+
+    <link rel="stylesheet" href="./css/styles.index.css" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Loekemeyer Hnos S.R.L.",
+        "legalName": "LOEKEMEYER HNOS S.R.L.",
+        "url": "https://loekemeyer.com/",
+        "logo": "https://loekemeyer.com/img/logo.png",
+        "foundingDate": "1950",
+        "taxID": "30-51584245-0",
+        "duns": "972011928",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Cervantes 2868",
+          "addressLocality": "Ciudad Autónoma de Buenos Aires",
+          "postalCode": "C1417CBT",
+          "addressCountry": "AR"
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "sales",
+          "email": "ventas@loekemeyer.com",
+          "telephone": "+54-9-11-3118-1021"
+        },
+        "sameAs": ["https://www.instagram.com/loekemeyer"]
+      }
+    </script>
+  </head>
+
+  <body>
+    <!-- ================= HOME PUBLICA ================= -->
+    <section class="hero">
+      <div class="hero-video" aria-hidden="true">
+        <div class="hero-video">
+          <video
+            autoplay
+            loop
+            muted
+            playsinline
+            preload="metadata"
+            poster="./img/img_landing_poster.webp"
+            class="bg-video"
+          >
+            <!-- Mobile (hasta 600px) -->
+            <source
+              src="./img/video_mobile.mp4"
+              type="video/mp4"
+              media="(max-width: 600px)"
+            />
+
+            <!-- Tablet (601 a 1024px) -->
+            <source
+              src="./img/video_tablet.mp4"
+              type="video/mp4"
+              media="(min-width: 601px) and (max-width: 1024px)"
+            />
+
+            <!-- Desktop (default) -->
+            <source src="./img/video_web.mp4" type="video/mp4" />
+          </video>
+        </div>
+      </div>
+
+      <div class="hero-overlay"></div>
+
+      <div class="hero-center">
+        <h1>Desde 1950 acompañandote en tu cocina</h1>
+        <a href="mayorista.html" class="btn-outline">PEDIDO MAYORISTA</a>
+      </div>
+    </section>
+
+    <!-- SOBRE NOSOTROS -->
+    <section id="nosotros" class="section">
+      <div class="container">
+        <div class="about">
+          <div class="img">
+            <img
+              src="img/img_landing.webp"
+              alt="Cocina de Loekemeyer con utensilios de cocina argentinos desde 1950"
+              width="1536"
+              height="1024"
+              fetchpriority="high"
+            />
+          </div>
+
+          <div class="about-text">
+            <h2>Sobre Nosotros...</h2>
+            <p>
+              Somos cuarta generación de fabricantes de utensilios de cocina. Te
+              acompañamos a vos y a todos tus familiares desde 1950.
+            </p>
+            <p>
+              Nuestra historia se construye sobre tradición, oficio, mejora
+              constante y calidad, manteniendo siempre la esencia familiar y el
+              compromiso con la excelencia.
+            </p>
+            <p>
+              Fabricamos utensilios pensados para durar, acompañar generaciones
+              y formar parte de la vida cotidiana de miles de hogares
+              argentinos.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= VER CATALOGO ================= -->
+    <section class="catalogo-section">
+      <div class="container catalogo-box">
+        <h2>Conocé nuestra línea completa de productos</h2>
+        <p>Mirá el catálogo online o descargá la versión en PDF.</p>
+
+        <div class="catalogo-actions">
+          <a href="/productos/" class="btn-catalogo">VER PRODUCTOS ONLINE</a>
+
+          <!-- ⚠️ Reemplazar más adelante por ./pdf/catalogo.pdf -->
+          <a href="./pdf/catalogo.pdf" target="_blank" class="btn-catalogo btn-catalogo--alt">
+            DESCARGAR PDF
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= REDES SOCIALES ================= -->
+    <section class="social-section" id="redes">
+      <div class="container">
+        <h2 class="section-title">Seguinos en Instagram</h2>
+
+        <div class="ig-widget-wrap">
+          <div class="ig-feed-header">
+            <a
+              class="ig-feed-avatar"
+              href="https://www.instagram.com/loekemeyer"
+              target="_blank"
+              rel="noopener"
+              aria-label="Ir al perfil de @loekemeyer"
+            >
+              <img src="./img/logo.png" alt="Logo Loekemeyer" />
+            </a>
+            <div class="ig-feed-info">
+              <a
+                class="ig-feed-handle"
+                href="https://www.instagram.com/loekemeyer"
+                target="_blank"
+                rel="noopener"
+                >@loekemeyer</a
+              >
+              <div class="ig-feed-sub">Utensilios de cocina · Desde 1950</div>
+            </div>
+            <a
+              class="ig-feed-cta"
+              href="https://www.instagram.com/loekemeyer"
+              target="_blank"
+              rel="noopener"
+            >
+              <svg
+                class="ig-feed-cta-icon"
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+              <span>Seguir</span>
+            </a>
+          </div>
+
+          <div id="igFeed" class="ig-feed" aria-live="polite" aria-busy="true">
+            <div class="ig-feed-loading">Cargando feed de Instagram…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <script>
+      (function () {
+        var FEED_URL =
+          "https://kwkclwhmoygunqmlegrg.functions.supabase.co/ig-feed";
+        var PROFILE_URL = "https://www.instagram.com/loekemeyer";
+        var MAX_ITEMS = 8;
+
+        var root = document.getElementById("igFeed");
+        if (!root) return;
+
+        function esc(s) {
+          return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+        }
+
+        function thumb(it) {
+          if (it.media_type === "VIDEO")
+            return it.thumbnail_url || it.media_url || "";
+          return it.media_url || it.thumbnail_url || "";
+        }
+
+        function applyProfile(p) {
+          if (!p) return;
+          if (p.profile_picture_url) {
+            document
+              .querySelectorAll(".ig-feed-avatar img")
+              .forEach(function (img) {
+                img.src = p.profile_picture_url;
+              });
+          }
+          if (p.username) {
+            var url = "https://www.instagram.com/" + p.username;
+            document
+              .querySelectorAll(".ig-feed-handle")
+              .forEach(function (a) {
+                a.textContent = "@" + p.username;
+                a.href = url;
+              });
+            document
+              .querySelectorAll(".ig-feed-avatar, .ig-feed-cta")
+              .forEach(function (a) {
+                a.href = url;
+              });
+          }
+        }
+
+        function renderFallback() {
+          root.innerHTML =
+            '<a class="ig-feed-fallback" href="' +
+            PROFILE_URL +
+            '" target="_blank" rel="noopener">Ver nuestro feed en Instagram →</a>';
+          root.setAttribute("aria-busy", "false");
+        }
+
+        function render(items) {
+          if (!items || !items.length) return renderFallback();
+          var html = items
+            .slice(0, MAX_ITEMS)
+            .map(function (it) {
+              var src = thumb(it);
+              if (!src) return "";
+              var alt = (it.caption || "Publicación de @loekemeyer").slice(0, 120);
+              var badge =
+                it.media_type === "VIDEO"
+                  ? '<span class="ig-feed-badge" aria-hidden="true">▶</span>'
+                  : it.media_type === "CAROUSEL_ALBUM"
+                    ? '<span class="ig-feed-badge" aria-hidden="true">⧉</span>'
+                    : "";
+              return (
+                '<a class="ig-feed-item" href="' +
+                esc(it.permalink || PROFILE_URL) +
+                '" target="_blank" rel="noopener" aria-label="Ver en Instagram">' +
+                '<img loading="lazy" decoding="async" src="' +
+                esc(src) +
+                '" alt="' +
+                esc(alt) +
+                '">' +
+                badge +
+                "</a>"
+              );
+            })
+            .join("");
+          if (!html) return renderFallback();
+          root.innerHTML = html;
+          root.setAttribute("aria-busy", "false");
+        }
+
+        fetch(FEED_URL, { method: "GET" })
+          .then(function (r) {
+            return r.ok ? r.json() : Promise.reject(r.status);
+          })
+          .then(function (j) {
+            if (j && j.profile) applyProfile(j.profile);
+            if (j && j.ok && Array.isArray(j.data)) render(j.data);
+            else renderFallback();
+          })
+          .catch(function () {
+            renderFallback();
+          });
+      })();
+    </script>
+
+    <!-- ================= CLIENTES PRINCIPALES ================= -->
+
+    <section class="clientes-section" id="clientes">
+      <div class="container">
+        <h2 class="section-title">Empresas que confían en nosotros</h2>
+
+        <div class="clientes-carousel">
+          <div class="clientes-track">
+            <a href="https://www.jumbo.com.ar/" target="_blank" rel="noopener">
+              <img
+                src="./img/jumbo_logo.png"
+                alt="Jumbo"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.laanonima.com.ar/"
+              target="_blank"
+              rel="noopener"
+            >
+              <img
+                src="./img/laanonima_logo.png"
+                alt="La Anónima"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.msanchezycia.com.ar/"
+              target="_blank"
+              rel="noopener"
+            >
+              <img
+                src="./img/msanchez_logo.png"
+                alt="M Sanchez"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://mullerymullersrl.com/"
+              target="_blank"
+              rel="noopener"
+            >
+              <img
+                src="./img/mullerymuller_logo.png"
+                alt="Muller y Muller"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.bazarnoblex.com/"
+              target="_blank"
+              rel="noopener"
+            >
+              <img
+                src="./img/noblex_logo.png"
+                alt="Bazar Noblex"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.osadistribuidora.com.ar/"
+              target="_blank"
+              rel="noopener"
+            >
+              <img
+                src="./img/osa_logo.png"
+                alt="Osa Distribuidora"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a href="https://torresyliva.com/" target="_blank" rel="noopener">
+              <img
+                src="./img/torresyliva_logo.png"
+                alt="Torres y Liva"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a href="https://bazarchef.com.ar/" target="_blank" rel="noopener">
+              <img
+                src="./img/bazarchef_logo.png"
+                alt="Bazar Chef"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.masonline.com.ar/"
+              target="_blank"
+              rel="noopener"
+            >
+              <img
+                src="./img/changomas_logo.png"
+                alt="ChangoMas"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a href="https://www.coto.com.ar/" target="_blank" rel="noopener">
+              <img
+                src="./img/coto_logo.png"
+                alt="Coto"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a href="https://diacorporate.com/" target="_blank" rel="noopener">
+              <img
+                src="./img/dia_logo.png"
+                alt="DIA"
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.jumbo.com.ar/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/jumbo_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.laanonima.com.ar/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/laanonima_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.msanchezycia.com.ar/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/msanchez_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://mullerymullersrl.com/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/mullerymuller_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.bazarnoblex.com/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/noblex_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.osadistribuidora.com.ar/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/osa_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://torresyliva.com/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/torresyliva_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://bazarchef.com.ar/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/bazarchef_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.masonline.com.ar/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/changomas_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://www.coto.com.ar/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/coto_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+
+            <a
+              href="https://diacorporate.com/"
+              target="_blank"
+              rel="noopener"
+              aria-hidden="true"
+              tabindex="-1"
+            >
+              <img
+                src="./img/dia_logo.png"
+                alt=""
+                width="150"
+                height="80"
+                loading="lazy"
+              />
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER / CONTACTO -->
+    <!-- ================= CONTACTO (TABS) ================= -->
+    <section id="contacto" class="contact-tabs">
+      <div class="container">
+        <h2 class="contact-title">Contacto</h2>
+
+        <div class="contact-cards">
+          <article class="contact-card">
+            <div class="contact-icon" aria-hidden="true">
+              <!-- carrito -->
+              <svg
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <circle cx="9" cy="20" r="1"></circle>
+                <circle cx="17" cy="20" r="1"></circle>
+                <path
+                  d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.6L22 8H6"
+                ></path>
+              </svg>
+            </div>
+            <h3>Ventas</h3>
+            <p>
+              Envío de cotizadores, fecha de entrega de pedidos, corrección de
+              direcciones, dirección de entrega.
+            </p>
+            <a
+              class="contact-link"
+              target="_blank"
+              rel="noopener"
+              href="https://wa.me/5491131181021?text=Hola%20Loekemeyer%2C%20quiero%20hablar%20con%20Ventas."
+            >
+              WhatsApp Ventas
+            </a>
+          </article>
+
+          <article class="contact-card">
+            <div class="contact-icon" aria-hidden="true">
+              <!-- recibo -->
+              <svg
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M7 3h10v18l-2-1-3 1-3-1-2 1V3z"></path>
+                <path d="M9 7h6"></path>
+                <path d="M9 11h6"></path>
+                <path d="M9 15h4"></path>
+              </svg>
+            </div>
+            <h3>Cobranzas</h3>
+            <p>
+              Consulta CBU, envío de comprobantes de pago, envío de ECHEQs, solicitud
+               de nota de crédito.
+            </p>
+            <a
+              class="contact-link"
+              target="_blank"
+              rel="noopener"
+              href="https://wa.me/5491165574113?text=Hola%20Loekemeyer%2C%20tengo%20una%20consulta%20sobre%20facturación%20o%20pagos."
+            >
+              WhatsApp Cobranzas
+            </a>
+          </article>
+
+          <article class="contact-card">
+            <div class="contact-icon" aria-hidden="true">
+              <!-- ícono: maletín -->
+              <svg
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1"></path>
+                <rect x="3" y="6" width="18" height="14" rx="2"></rect>
+                <path d="M3 12h18"></path>
+                <path d="M9 12v2"></path>
+                <path d="M15 12v2"></path>
+              </svg>
+            </div>
+
+            <h3>Clientes</h3>
+            <p>Quiero ser cliente mayorista.</p>
+
+            <!-- ⚠️ Reemplazá NUMERO_A_DEFINIR por el número final en formato 54911xxxxxxx -->
+            <a
+              class="contact-link"
+              target="_blank"
+              rel="noopener"
+              href="https://wa.me/541131181021?text=Hola%20Loekemeyer.%20Quiero%20ser%20cliente"
+            >
+              WhatsApp Mayoristas
+            </a>
+          </article>
+
+          <article class="contact-card">
+            <div class="contact-icon" aria-hidden="true">
+              <!-- usuarios -->
+              <svg
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z"
+                ></path>
+                <path d="M9 12l2 2 4-4"></path>
+              </svg>
+            </div>
+            <h3>Atención Post-Venta</h3>
+            <p>Garantías, reclamos, reposiciones.</p>
+            <a
+              class="contact-link"
+              target="_blank"
+              rel="noopener"
+              href="https://wa.me/5491131181021?text=Hola%20Loekemeyer%2C%20quiero%20realizar%20una%20devoluci%C3%B3n."
+            >
+              WhatsApp Post-Venta
+            </a>
+          </article>
+
+          <article class="contact-card">
+            <div class="contact-icon" aria-hidden="true">
+              <!-- ícono: usuario -->
+              <svg
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M20 21a8 8 0 0 0-16 0"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+
+            <h3>RRHH</h3>
+            <p>Trabajos, envíos de CV, búsquedas laborales</p>
+
+            <a
+              class="contact-link"
+              target="_blank"
+              rel="noopener"
+              href="https://wa.me/5491126259898?text=Hola%20Loekemeyer%2C%20quiero%20postularme%20para%20trabajar%20en%20la%20empresa."
+            >
+              WhatsApp RRHH
+            </a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <footer class="main-footer">
+      <div class="container footer-grid">
+        <!-- Logo -->
+        <div class="footer-brand">
+          <img src="./img/logo.png" alt="Loekemeyer" class="footer-logo" />
+          <p>Cuarta generación de fabricantes de utensilios desde 1950.</p>
+        </div>
+
+        <!-- Contacto -->
+        <div class="footer-contact">
+          <div class="footer-item">
+            <!-- Teléfono SVG blanco -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="white"
+                d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3 5.18 2 2 0 0 1 5 3h3a2 2 0 0 1 2 1.72c.12.81.3 1.6.54 2.36a2 2 0 0 1-.45 2.11L9 10a16 16 0 0 0 5 5l.81-.09a2 2 0 0 1 2.11.45c.76.24 1.55.42 2.36.54A2 2 0 0 1 22 16.92z"
+              />
+            </svg>
+            <span>+54 9 11 3118 1021</span>
+          </div>
+
+          <div class="footer-item">
+            <!-- Mail SVG blanco -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="white"
+                d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2l8 6 8-6"
+              />
+            </svg>
+            <span>ventas@loekemeyer.com</span>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div class="container footer-bottom-row">
+          <span
+            >© 2026 Loekemeyer Hnos S.R.L. — Todos los derechos reservados.
+            <span
+              data-app-version
+              style="font-size: 11px; color: #9a9a9a; margin-left: 6px"
+            ></span
+          ></span>
+
+          <div class="footer-links">
+            <a href="/productos/" class="footer-link">Productos</a>
+            <a href="#" class="footer-link" data-modal="privacy"
+              >Política de privacidad</a
+            >
+            <a href="#" class="footer-link" data-modal="terms"
+              >Términos y condiciones</a
+            >
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- ================= INSTAGRAM FLOAT ================= -->
+    <a
+      class="ig"
+      href="https://www.instagram.com/loekemeyer"
+      target="_blank"
+      aria-label="Instagram"
+      rel="noopener"
+    >
+      <svg
+        height="2500"
+        viewBox="265.19 265.19 1479.62 1479.62"
+        width="2500"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <g fill="#fff">
+          <path
+            d="m1324.41 1744.81h-638.82c-56.72 0-111.79-11.12-163.66-33.06-50.07-21.18-95.02-51.48-133.61-90.07s-68.89-83.54-90.07-133.61c-21.94-51.87-33.06-106.93-33.06-163.66v-638.82c0-56.72 11.12-111.79 33.06-163.66 21.18-50.07 51.48-95.02 90.07-133.61s83.54-68.89 133.61-90.07c51.87-21.94 106.93-33.06 163.66-33.06h638.82c56.72 0 111.79 11.12 163.66 33.06 50.07 21.18 95.02 51.48 133.61 90.07s68.89 83.54 90.07 133.61c21.94 51.87 33.06 106.93 33.06 163.66v638.82c0 56.72-11.12 111.79-33.06 163.66-21.18 50.07-51.48 95.02-90.07 133.61s-83.54 68.89-133.61 90.07c-51.87 21.94-106.93 33.06-163.66 33.06zm-638.82-1349.24c-159.92 0-290.02 130.1-290.02 290.02v638.82c0 159.91 130.1 290.02 290.02 290.02h638.82c159.91 0 290.02-130.1 290.02-290.02v-638.82c0-159.92-130.1-290.02-290.02-290.02z"
+          />
+          <path
+            d="m1005 1388.19c-51.7 0-101.89-10.14-149.18-30.14-45.64-19.3-86.61-46.92-121.78-82.09s-62.79-76.14-82.09-121.78c-20-47.28-30.14-97.47-30.14-149.18s10.14-101.89 30.14-149.18c19.3-45.64 46.92-86.61 82.09-121.78s76.14-62.79 121.78-82.09c47.28-20 97.47-30.14 149.18-30.14s101.89 10.14 149.18 30.14c45.64 19.3 86.61 46.92 121.78 82.09s62.79 76.14 82.09 121.78c20 47.28 30.14 97.47 30.14 149.18s-10.14 101.89-30.14 149.18c-19.3 45.64-46.92 86.61-82.09 121.78s-76.14 62.79-121.78 82.09c-47.28 20-97.47 30.14-149.18 30.14zm0-636c-139.4 0-252.81 113.41-252.81 252.81s113.41 252.81 252.81 252.81 252.81-113.41 252.81-252.81-113.41-252.81-252.81-252.81z"
+          />
+          <circle cx="1408.81" cy="605.22" r="89.82" />
+        </g>
+      </svg>
+    </a>
+
+    <!-- ================= WHATSAPP FLOAT ================= -->
+    <a
+      class="wa"
+      href="https://wa.me/5491131181021"
+      target="_blank"
+      aria-label="WhatsApp"
+      rel="noopener"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 737.509 740.824">
+        <path
+          fill="white"
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+          d="M630.056 107.658C560.727 38.271 468.525.039 370.294 0 167.891 0 3.16 164.668 3.079 367.072c-.027 64.699 16.883 127.855 49.016 183.523L0 740.824l194.666-51.047c53.634 29.244 114.022 44.656 175.481 44.682h.151c202.382 0 367.128-164.689 367.21-367.094.039-98.088-38.121-190.32-107.452-259.707m-259.758 564.8h-.125c-54.766-.021-108.483-14.729-155.343-42.529l-11.146-6.613-115.516 30.293 30.834-112.592-7.258-11.543c-30.552-48.58-46.689-104.729-46.665-162.379C65.146 198.865 202.065 62 370.419 62c81.521.031 158.154 31.81 215.779 89.482s89.342 134.332 89.311 215.859c-.07 168.242-136.987 305.117-305.211 305.117m167.415-228.514c-9.176-4.591-54.286-26.782-62.697-29.843-8.41-3.061-14.526-4.591-20.644 4.592-6.116 9.182-23.7 29.843-29.054 35.964-5.351 6.122-10.703 6.888-19.879 2.296-9.175-4.591-38.739-14.276-73.786-45.526-27.275-24.32-45.691-54.36-51.043-63.542-5.352-9.183-.569-14.148 4.024-18.72 4.127-4.11 9.175-10.713 13.763-16.07 4.587-5.356 6.116-9.182 9.174-15.303 3.059-6.122 1.53-11.479-.764-16.07-2.294-4.591-20.643-49.739-28.29-68.104-7.447-17.886-15.012-15.466-20.644-15.746-5.346-.266-11.469-.323-17.585-.323-6.117 0-16.057 2.296-24.468 11.478-8.41 9.183-32.112 31.374-32.112 76.521s32.877 88.763 37.465 94.885c4.587 6.122 64.699 98.771 156.741 138.502 21.891 9.45 38.982 15.093 52.307 19.323 21.981 6.979 41.983 5.994 57.793 3.633 17.628-2.633 54.285-22.19 61.932-43.616 7.646-21.426 7.646-39.791 5.352-43.617-2.293-3.826-8.41-6.122-17.585-10.714"
+        />
+      </svg>
+    </a>
+
+    <script src="./version.js?v=23176"></script>
+    <script src="script.index.js?v=23176"></script>
+
+    <!-- ================= MODAL LEGAL ================= -->
+    <div class="modal-backdrop" id="legalModal" aria-hidden="true">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="legalTitle"
+      >
+        <button class="modal-close" type="button" aria-label="Cerrar">✕</button>
+        <h3 id="legalTitle">Título</h3>
+        <div class="modal-content" id="legalContent">test</div>
+      </div>
+    </div>
+  </body>
+</html>

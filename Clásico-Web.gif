@@ -1,0 +1,384 @@
+*{
+  box-sizing:border-box;
+}
+
+body{
+  font-family: system-ui, -apple-system, Roboto, sans-serif;
+  background:#f4f4f4;
+  margin:0;
+  padding:30px;
+}
+
+.card{
+  background:#fff;
+  padding:25px;
+  border-radius:12px;
+  max-width:1200px;
+  margin:auto;
+  box-shadow:0 0 10px rgba(0,0,0,.08);
+}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+h1{
+  margin:0;
+  font-size:22px;
+}
+
+.muted{
+  color:#666;
+  font-size:13px;
+  margin-top:4px;
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+button{
+  padding:8px 14px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  background:#111;
+  color:#fff;
+  cursor:pointer;
+  font-size:14px;
+}
+
+button.subtle{
+  background:#fff;
+  color:#111;
+}
+
+button.hidden{
+  display:none;
+}
+
+.tableWrap{
+  margin-top:15px;
+  border:1px solid #ddd;
+  border-radius:10px;
+  overflow:auto;
+  max-height:70vh;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+}
+
+th{
+  background:#111827;
+  color:#fff;
+  padding:10px;
+  font-size:14px;
+  position:sticky;
+  top:0;
+}
+
+td{
+  padding:8px;
+  border-bottom:1px solid #eee;
+  text-align:center;
+  font-size:16px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+td.desc{
+  text-align:left;
+  white-space:normal;
+}
+
+td.msg{
+  text-align:left;
+  white-space:normal;
+}
+
+.moreWrap{
+  display:flex;
+  justify-content:center;
+  gap:8px;
+  margin-top:12px;
+}
+
+@media (max-width: 720px){
+  .header{
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions{
+    order: -1;              /* acciones arriba */
+    justify-content: flex-start;
+  }
+
+  .actions button{
+    width: 100%;
+  }
+}
+
+.imgcell { width:120px; }
+
+.sug-img{
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  background: #fff;
+  display: block;
+  margin: 0 auto;
+}
+
+/* ====== STEPPER COMPACTO ====== */
+
+/* ====== COLUMNA PEDIDO ====== */
+td:last-child{
+  text-align:center;
+  vertical-align:middle;
+}
+
+/* contenedor interno */
+.sug-action{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+
+/* ====== STEPPER ====== */
+.sug-stepper{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  width:120px;
+}
+
+.sug-step-btn{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+  border:1px solid #ddd;
+  background:#f6f6f6;
+  cursor:pointer;
+  font-size:16px;
+  font-weight:400; /* regular */
+  color:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1;
+}
+
+.sug-step-btn:hover{
+  background:#ececec;
+}
+
+/* ===== INPUT CANTIDAD ===== */
+
+.sug-step-in{
+  width:50px;
+  height:30px;
+  border-radius:8px;
+  border:1px solid #ddd;
+  text-align:center;
+  font-weight:400;
+  font-size:14px;
+  outline:none;
+
+  /* 🔥 Compatibilidad completa */
+  appearance: textfield;
+  -webkit-appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* Eliminar flechas en Chrome / Edge / Safari */
+.sug-step-in::-webkit-outer-spin-button,
+.sug-step-in::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ====== BOTÓN AGREGAR ====== */
+
+.sug-add-btn{
+  width:140px;
+  border:1px solid #111;
+  background:#111;
+  color:#fff;
+  border-radius:8px;
+  padding:7px 8px;
+  cursor:pointer;
+  font-weight:400; /* regular */
+  font-size:13px;
+  transition:all .15s ease;
+}
+
+.sug-add-btn:hover{
+  opacity:.9;
+}
+
+.sug-add-btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+td:last-child{
+  text-align:center;
+  vertical-align:middle;
+}
+
+.sug-action{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+
+.sug-stepper{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  width:120px;
+}
+
+.sug-add-btn{
+  width:120px; /* mismo ancho que el stepper */
+}
+
+.page-loader {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.page-loader img {
+  width: 80px;
+  height: auto;
+}
+
+.page-loader {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loader-content {
+  text-align: center;
+}
+
+.page-loader img {
+  width: 80px;
+  margin-bottom: 18px;
+}
+
+.loader-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111;
+  letter-spacing: 0.5px;
+}
+
+@keyframes dots {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
+}
+
+.dots {
+  animation: dots 1.2s infinite;
+}
+
+.vermas-btn{
+  margin-top: 14px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #111;
+  background: #fff;
+  color: #111;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vermas-btn:hover{
+  background:#111;
+  color:#fff;
+}
+
+.vermas-btn{
+  margin-bottom: 6px;
+}
+
+.sug-info-box{
+  margin-top: 24px;
+  padding: 14px 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  background: #f8f8f8;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  color: #444;
+  text-align: center;
+}
+
+.sug-tabs{
+  display:flex;
+  gap:10px;
+  margin: 0 0 14px 0;
+}
+
+.sug-tab{
+  padding:10px 14px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  background:#fff;
+  cursor:pointer;
+  font-weight:600;
+  color: #000;
+}
+
+.sug-tab.active{
+  background:#111;
+  color:#fff;
+  border-color:#111;
+}
+
+.back-btn {
+  background: #000000;
+  border: 1px solid #e2e2e2;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 12px;
+  color: #ffffff;
+}
+
+.back-btn:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}

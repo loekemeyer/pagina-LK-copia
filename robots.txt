@@ -1,0 +1,79 @@
+# robots.txt de loekemeyer.com
+# Actualizado: abril 2026
+
+# ============================================
+# BOTS DE IA - PERMITIDOS EXPLICITAMENTE
+# ============================================
+
+# ChatGPT / OpenAI
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+# Claude / Anthropic
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Gemini / Google AI
+User-agent: Google-Extended
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+# Meta AI
+User-agent: FacebookBot
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+# Bing / Copilot
+User-agent: bingbot
+Allow: /
+
+# Common Crawl
+User-agent: CCBot
+Allow: /
+
+# Yandex
+User-agent: YandexBot
+Allow: /
+
+# Apple AI
+User-agent: Applebot-Extended
+Allow: /
+
+# Amazon
+User-agent: Amazonbot
+Allow: /
+
+# ============================================
+# TODOS LOS DEMAS BOTS - PERMITIDOS
+# ============================================
+User-agent: *
+Allow: /
+
+# Bloquear carpetas internas
+Disallow: /logs/
+Disallow: /backup/
+Disallow: /tmp/
+# Herramienta privada del cliente OSA (no es contenido público)
+Disallow: /osa/
+
+# ============================================
+# SITEMAP
+# ============================================
+Sitemap: https://loekemeyer.com/sitemap.xml

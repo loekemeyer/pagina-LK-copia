@@ -1,0 +1,434 @@
+:root {
+  --bg: #f6f7fb;
+  --card: #fff;
+  --border: #e7e7ee;
+  --text: #111;
+  --muted: #555;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    Roboto,
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.titlewrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.title {
+  font-weight: 800;
+  font-size: 16px;
+}
+.subtitle {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.container {
+  max-width: 1100px;
+  margin: 18px auto;
+  padding: 0 14px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.tab {
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 9px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.tab.active {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.status {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.hidden {
+  display: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 10px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.btn:hover {
+  background: #f2f2f7;
+}
+
+.btn.subtle {
+  font-weight: 700;
+}
+
+.back {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.tablewrap {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th,
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #fafafe;
+  z-index: 1;
+  font-weight: 900;
+}
+
+.empty {
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  background: #fbfbff;
+}
+
+.card {
+  overflow-x: auto;
+}
+table {
+  min-width: 100%;
+}
+
+.back-btn {
+  background: #f5f5f5;
+  border: 1px solid #e2e2e2;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 12px;
+}
+
+.back-btn:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+  padding: 30px;
+  margin: 0;
+}
+
+.card {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  max-width: 1200px;
+  margin: auto;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+  margin: 0 0 10px;
+}
+
+#status {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #666;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+th {
+  background: #111827;
+  color: white;
+  padding: 10px;
+  font-size: 14px;
+}
+
+td {
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+  text-align: center;
+}
+
+td.desc {
+  text-align: left;
+}
+
+/* ===== Tabla: tipografía más grande ===== */
+#tabla th { font-size: 15px; }
+#tabla td { font-size: 15px; }
+
+/* ===== Columna imagen ===== */
+#tabla th:first-child { width: 120px; }
+#tabla td.imgcell { width: 120px; text-align:center; }
+
+.h-img{
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  background: #fff;
+  display:block;
+  margin: 0 auto;
+}
+
+/* ===== Stepper IGUAL a sugerencias (compacto, regular) ===== */
+.pedido-td{
+  text-align:center;
+  vertical-align:middle;
+}
+
+.h-action{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+
+.h-stepper{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  width:120px;
+}
+
+.h-step-btn{
+  width:30px;
+  height:30px;
+  border-radius:8px;
+  border:1px solid #ddd;
+  background:#f6f6f6;
+  cursor:pointer;
+  font-size:16px;
+  font-weight:400;
+  color:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1;
+}
+
+.h-step-btn:hover{ background:#ececec; }
+
+.h-step-in{
+  width:50px;
+  height:30px;
+  border-radius:8px;
+  border:1px solid #ddd;
+  text-align:center;
+  font-weight:400;
+  font-size:14px;
+  outline:none;
+
+  appearance: textfield;
+  -webkit-appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.h-step-in::-webkit-outer-spin-button,
+.h-step-in::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
+
+.h-add-btn{
+  width:120px; /* mismo ancho que el stepper */
+  border:1px solid #111;
+  background:#111;
+  color:#fff;
+  border-radius:8px;
+  padding:7px 8px;
+  cursor:pointer;
+  font-weight:400;
+  font-size:13px;
+}
+
+.h-add-btn:disabled{ opacity:.45; cursor:not-allowed; }
+.h-add-btn:hover{ opacity:.9; }
+
+/* ===== Alineación de filas ===== */
+
+/* Centrado vertical en toda la tabla */
+#tabla td,
+#tabla th {
+  vertical-align: middle;
+}
+
+/* Centrar todo */
+#tabla td {
+  text-align: center;
+}
+
+/* Excepto descripción */
+#tabla td.desc {
+  text-align: left;
+}
+
+/* ===== Header más compacto ===== */
+#tabla th {
+  padding: 6px 10px;   /* antes era más alto */
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+/* También compactamos filas */
+#tabla td {
+  padding: 6px 8px;
+}
+
+/* Ajuste leve de altura de fila */
+#tabla tr {
+  height: 95px;
+}
+
+/* Centrar específicamente la columna Pedido */
+
+/* El 5to th (Img, Código, Descripción, Total, Pedido) */
+#tabla th:nth-child(4),
+#tabla td:nth-child(4) {
+  text-align: center;
+} 
+
+/* Alineación general historial */
+
+#tabla th,
+#tabla td {
+  vertical-align: middle;
+}
+
+/* Código */
+#tabla th:nth-child(1),
+#tabla td:nth-child(1) {
+  text-align: center;
+}
+
+/* Descripción */
+#tabla th:nth-child(2),
+#tabla td:nth-child(2) {
+  text-align: left;
+}
+
+/* Total */
+#tabla th:nth-child(3),
+#tabla td:nth-child(3) {
+  text-align: center;
+}
+
+/* Pedido (stepper) */
+#tabla th:nth-child(4),
+#tabla td:nth-child(4) {
+  text-align: center;
+}
+
+/* Meses */
+#tabla th:nth-child(n+5),
+#tabla td:nth-child(n+5) {
+  text-align: center;
+}
+
+.page-loader {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.page-loader img {
+  width: 80px;
+  height: auto;
+}

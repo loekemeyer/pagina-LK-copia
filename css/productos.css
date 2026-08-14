@@ -1,0 +1,380 @@
+/* ================================================================
+   productos.css — capa pública /productos/
+   Complementa styles.index.css (container, footer, btn-catalogo, modal,
+   floats). Acá solo lo propio de la grilla de catálogo público.
+   Sin precios: estas páginas no muestran valores.
+   ================================================================ */
+
+.prod-page {
+  background: #fff;
+}
+
+/* ================= TOPBAR ================= */
+/* Fondo oscuro igual al header real de mayorista (#212122): el logo es
+   crema y no contrasta sobre blanco. */
+.prod-topbar {
+  background: #212122;
+  border-bottom: 1px solid #2f2f2f;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.prod-topbar-row {
+  max-width: 1200px;
+  margin: auto;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.prod-topbar-brand {
+  display: flex;
+  align-items: center;
+}
+
+.prod-topbar .logo-img {
+  height: 46px;
+  width: auto;
+  display: block;
+}
+
+.prod-topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.prod-topbar-nav a {
+  color: #e9e6dd;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  transition: color 0.2s ease;
+}
+
+.prod-topbar-nav a:hover {
+  color: #fff;
+}
+
+.prod-topbar-cta {
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 40px;
+  padding: 8px 20px;
+}
+
+.prod-topbar-cta:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #fff;
+}
+
+/* ================= LAYOUT ================= */
+.prod-main {
+  padding: 28px 0 80px;
+}
+
+/* ================= BREADCRUMB ================= */
+.prod-breadcrumb {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.prod-breadcrumb a {
+  color: var(--muted);
+  border-bottom: 1px solid transparent;
+}
+
+.prod-breadcrumb a:hover {
+  color: #8b1e1e;
+  border-bottom-color: #8b1e1e;
+}
+
+.prod-breadcrumb [aria-current="page"] {
+  color: #111;
+  font-weight: 700;
+}
+
+/* ================= HEAD ================= */
+.prod-head {
+  margin-bottom: 30px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.prod-head h1 {
+  font-size: 34px;
+  margin: 0 0 12px;
+  letter-spacing: -0.5px;
+}
+
+.prod-intro {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 72ch;
+}
+
+/* ================= SUBNAV (Utensilios) ================= */
+.prod-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 34px;
+}
+
+.prod-subnav a {
+  border: 1px solid var(--border);
+  border-radius: 40px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #444;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.prod-subnav a:hover {
+  background: #8b1e1e;
+  border-color: #8b1e1e;
+  color: #fff;
+}
+
+/* ================= SUBSECTION ================= */
+.prod-subsection {
+  margin-bottom: 46px;
+  scroll-margin-top: 90px;
+}
+
+.prod-subtitle {
+  font-size: 20px;
+  margin: 0 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.prod-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  background: #f4f4f4;
+  border-radius: 40px;
+  padding: 3px 10px;
+}
+
+/* ================= GRILLA PRODUCTOS ================= */
+.prod-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.prod-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  scroll-margin-top: 90px;
+}
+
+.prod-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.1);
+}
+
+.prod-thumb {
+  position: relative;
+  background: #f7f7f8;
+  aspect-ratio: 1 / 1;
+}
+
+.prod-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 12px;
+}
+
+/* ================= BADGES ================= */
+.prod-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  color: #fff;
+  border-radius: 40px;
+  padding: 5px 12px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+}
+
+.prod-badge--nuevo {
+  background: #8b1e1e;
+}
+
+.prod-badge--prox {
+  background: #2f343a;
+}
+
+/* ================= BODY CARD ================= */
+.prod-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 16px 16px 14px;
+}
+
+.prod-name {
+  font-size: 15px;
+  line-height: 1.35;
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+.prod-meta {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 0 0 3px;
+}
+
+.prod-cta {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #f1f1f1;
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #8b1e1e;
+  transition: color 0.2s ease;
+}
+
+.prod-cta:hover {
+  color: #6f1717;
+}
+
+/* ================= GRILLA CATEGORIAS (index) ================= */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.cat-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.cat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.12);
+}
+
+.cat-thumb {
+  background: #f7f7f8;
+  aspect-ratio: 4 / 3;
+}
+
+.cat-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 14px;
+}
+
+.cat-body {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.cat-name {
+  font-size: 17px;
+  margin: 0 0 6px;
+}
+
+.cat-count {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* ================= CTA BLOCK ================= */
+.prod-cta-block {
+  margin-top: 60px;
+  background: #f4f4f4;
+  border-radius: var(--radius);
+  padding: 54px 20px;
+  text-align: center;
+}
+
+.prod-cta-block h2 {
+  font-size: 26px;
+  margin: 0 0 10px;
+}
+
+.prod-cta-block p {
+  color: #555;
+  margin: 0 0 28px;
+  font-size: 15px;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 1024px) {
+  .prod-grid,
+  .cat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .prod-grid,
+  .cat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .prod-head h1 {
+    font-size: 26px;
+  }
+
+  .prod-topbar .logo-img {
+    height: 38px;
+  }
+
+  .prod-topbar-nav {
+    gap: 12px;
+  }
+
+  .prod-topbar-nav a {
+    font-size: 12.5px;
+  }
+
+  .prod-topbar-cta {
+    padding: 7px 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .prod-grid,
+  .cat-grid {
+    grid-template-columns: 1fr;
+  }
+}

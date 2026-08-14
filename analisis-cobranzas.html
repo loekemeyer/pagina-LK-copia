@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Análisis de Cobranzas - Loekemeyer</title>
+    <link rel="icon" type="image/jpeg" href="img/favicon.jpg?v=2" />
+    <link rel="stylesheet" href="css/analisis-cobranzas.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo-mark">LK</div>
+        <div class="brand-text">
+          <strong>Análisis de Cobranzas</strong>
+          <span>Loekemeyer Hnos S.R.L.</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn-ghost" id="btnReset" type="button">Limpiar todo</button>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- ============= STEP 1: CARGAR ARCHIVOS ============= -->
+      <section class="card">
+        <div class="card-header">
+          <h2>1. Cargar archivos</h2>
+          <p class="muted">Arrastrá los archivos o hacé click para seleccionar</p>
+        </div>
+        <div class="grid-3">
+          <div class="dropzone" id="dzDeuda" data-kind="deuda">
+            <div class="dz-icon">📄</div>
+            <div class="dz-title">Deuda Clientes</div>
+            <div class="dz-sub">XLSX export Isis (CL + CH)</div>
+            <div class="dz-status" id="statusDeuda">Sin cargar</div>
+            <input type="file" id="fileDeuda" accept=".xlsx,.xls" hidden multiple />
+          </div>
+
+          <div class="dropzone" id="dzCredi" data-kind="credi">
+            <div class="dz-icon">🏦</div>
+            <div class="dz-title">Conciliación Credicoop</div>
+            <div class="dz-sub">Auto desde Z:\AAA Bancos y Cajas\...</div>
+            <div class="dz-status" id="statusCredi">—</div>
+            <button type="button" class="btn-ghost" id="btnReloadCredi" style="margin-top:10px;color:var(--text);border-color:var(--border2)">Recargar archivo</button>
+            <input type="file" id="fileCredi" accept=".xlsx,.xls" hidden />
+          </div>
+
+          <div class="dropzone" id="dzComp" data-kind="comp">
+            <div class="dz-icon">🧾</div>
+            <div class="dz-title">Comprobantes</div>
+            <div class="dz-sub">Auto desde Z:\AAA COBRANZAS\A Depositos a Imprimir</div>
+            <div class="dz-status" id="statusComp">—</div>
+            <button type="button" class="btn-ghost" id="btnReloadComp" style="margin-top:10px;color:var(--text);border-color:var(--border2)">Recargar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============= STEP 2: FILTROS ============= -->
+      <section class="card">
+        <div class="card-header">
+          <h2>2. Período de análisis</h2>
+          <p class="muted">Pagos dentro de este rango se consideran cobrados</p>
+        </div>
+        <div class="filters-row">
+          <label>
+            <span>Desde</span>
+            <input type="date" id="fechaDesde" />
+          </label>
+          <label>
+            <span>Hasta</span>
+            <input type="date" id="fechaHasta" />
+          </label>
+          <label>
+            <span>Sub-total dto. permitidos</span>
+            <select id="modeDto">
+              <option value="standard" selected>Estándar (25/20/15/10/5)</option>
+              <option value="megashop">Megashop (-23.5%)</option>
+            </select>
+          </label>
+          <button class="btn-primary" id="btnAnalizar" type="button">Analizar</button>
+        </div>
+      </section>
+
+      <!-- ============= STEP 3: RESUMEN ============= -->
+      <section class="card" id="cardResumen" hidden>
+        <div class="card-header">
+          <h2>Resumen</h2>
+        </div>
+        <div class="kpi-row" id="kpiRow"></div>
+      </section>
+
+      <!-- ============= STEP 4: TABLA ============= -->
+      <section class="card" id="cardTabla" hidden>
+        <div class="card-header">
+          <h2>Detalle por cliente</h2>
+          <div class="header-actions">
+            <input
+              type="search"
+              id="searchInput"
+              placeholder="Buscar cliente / razón social..."
+            />
+            <label class="chk">
+              <input type="checkbox" id="onlyAnom" />
+              <span>Solo anomalías</span>
+            </label>
+            <button class="btn-ghost" id="btnExport" type="button">Exportar XLSX</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="results">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Razón social</th>
+                <th class="num">Facturas</th>
+                <th class="num">Pagado</th>
+                <th class="num">Saldo</th>
+                <th class="num">Días pond.</th>
+                <th class="num">Dto. tomado</th>
+                <th class="num">Dto. permitido</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyResults"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============= STEP 5: ANOMALIAS ============= -->
+      <section class="card" id="cardAnom" hidden>
+        <div class="card-header">
+          <h2>⚠️ Anomalías (clientes que tomaron más descuento del permitido)</h2>
+        </div>
+        <div id="anomList"></div>
+      </section>
+
+      <!-- ============= STEP 6: COMPROBANTES ============= -->
+      <section class="card" id="cardComp" hidden>
+        <div class="card-header">
+          <h2>Comprobantes adjuntos</h2>
+          <p class="muted">Galería de referencia (sin OCR)</p>
+        </div>
+        <div class="comp-gallery" id="compGallery"></div>
+      </section>
+    </main>
+
+    <!-- ============= MODAL DETALLE CLIENTE ============= -->
+    <div class="modal-overlay" id="detalleModal" hidden>
+      <div class="modal">
+        <header class="modal-header">
+          <h3 id="detalleTitle">Detalle</h3>
+          <button class="modal-close" id="detalleClose" type="button">&times;</button>
+        </header>
+        <div class="modal-body" id="detalleBody"></div>
+      </div>
+    </div>
+
+    <!-- ============= MODAL EMAIL ============= -->
+    <div class="modal-overlay" id="emailModal" hidden>
+      <div class="modal">
+        <header class="modal-header">
+          <h3>Email de aviso al cliente</h3>
+          <button class="modal-close" id="emailClose" type="button">&times;</button>
+        </header>
+        <div class="modal-body">
+          <textarea id="emailText" rows="14"></textarea>
+          <div class="modal-actions">
+            <button class="btn-ghost" id="btnCopyEmail" type="button">Copiar al portapapeles</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="analisis-cobranzas.js?v=23176"></script>
+  </body>
+</html>

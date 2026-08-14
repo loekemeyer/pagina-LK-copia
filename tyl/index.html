@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pedido Automático · Torres y Liva</title>
+  <meta name="description" content="Gestión de stock rotativo / consignación: entregas, ventas y pedidos automáticos de reposición." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23b00020'/%3E%3Cpath d='M28 36l22-12 22 12-22 12z' fill='white' opacity='.95'/%3E%3Cpath d='M28 36v28l22 12V48z' fill='white' opacity='.7'/%3E%3Cpath d='M72 36v28L50 76V48z' fill='white' opacity='.5'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="../osa/css/styles.css?v=23176" />
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg viewBox="0 0 100 100" width="30" height="30">
+            <path d="M28 36l22-12 22 12-22 12z" fill="currentColor" opacity=".95"/>
+            <path d="M28 36v28l22 12V48z" fill="currentColor" opacity=".65"/>
+            <path d="M72 36v28L50 76V48z" fill="currentColor" opacity=".45"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <strong>Pedido Automático</strong>
+          <span id="brandEmpresa">Mi Empresa</span>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <a class="nav__item" data-view="stocks" href="#/stocks">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5zm0 2.3L18.5 8 12 11.7 5.5 8 12 4.3zM5 9.7l6 3.4v6.6l-6-3.3V9.7zm14 0v6.7l-6 3.3V13l6-3.3z"/></svg>
+          <span>Stocks</span>
+          <span class="nav__badge" id="navBadge" hidden>0</span>
+        </a>
+        <a class="nav__item" data-view="movimientos" href="#/movimientos">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l4 4 4-4H6a7 7 0 1 1 2 4.9l-1.4 1.5A9 9 0 1 0 13 3zm-1 4v6l5 3 .8-1.3-4.3-2.5V7H12z"/></svg>
+          <span>Movimientos</span>
+        </a>
+        <a class="nav__item" data-view="puntopedido" href="#/puntopedido">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M9 2h6a1 1 0 0 1 1 1v1h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V3a1 1 0 0 1 1-1zm0 4h6V4H9v2zm2 6H8v2h3v3h2v-3h3v-2h-3V9h-2v3z"/></svg>
+          <span>Máximos por Código</span>
+        </a>
+        <a class="nav__item" data-view="entregas" href="#/entregas">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M3 6a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v3h2.5l2.5 3.2V17a1 1 0 0 1-1 1h-1.18a2.5 2.5 0 0 1-4.64 0H9.32a2.5 2.5 0 0 1-4.64 0H4a1 1 0 0 1-1-1V6zm13 5h3l-1.8-2H16v2zM6.5 16.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm10 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>
+          <span>Entregas Loeke</span>
+        </a>
+        <a class="nav__item" data-view="ventas" href="#/ventas">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 18zm10 0a2 2 0 1 0 .001 4.001A2 2 0 0 0 17 18zM6.2 4l.94 2H20a1 1 0 0 1 .96 1.27l-2.4 8.3A2 2 0 0 1 16.64 17H8.53a2 2 0 0 1-1.94-1.5L4.27 6.5 3.6 4H6.2z"/></svg>
+          <span>Ventas</span>
+        </a>
+        <a class="nav__item" data-view="cargas" href="#/cargas">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M7 2v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm12 7v10H5V9h14zM7 11v2h2v-2H7zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2z"/></svg>
+          <span>Cargas</span>
+        </a>
+      </nav>
+
+      <div class="sidebar__foot">
+        <a class="nav__item" data-view="config" href="#/config">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M19.4 13a7.8 7.8 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.7 7.7 0 0 0-1.7-1l-.4-2.6H10.1l-.4 2.6a7.7 7.7 0 0 0-1.7 1l-2.4-1-2 3.4L3.6 11a7.8 7.8 0 0 0 0 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.7 1.7 1l.4 2.6h3.8l.4-2.6c.6-.3 1.2-.6 1.7-1l2.4 1 2-3.4-2-1.6zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
+          <span>Configuración</span>
+        </a>
+        <a class="nav__item" href="../mayorista.html" title="Volver al formato regular de la página">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/></svg>
+          <span>Volver a la página</span>
+        </a>
+        <div class="sidebar__version" id="appVersion"></div>
+      </div>
+    </aside>
+
+    <div class="sidebar-scrim" id="scrim"></div>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <button class="iconbtn only-mobile" id="menuBtn" aria-label="Menú">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+        </button>
+        <div class="topbar__title">
+          <h1 id="viewTitle">Panel</h1>
+          <p id="viewSubtitle">Resumen general de tu stock</p>
+        </div>
+        <div class="topbar__actions" id="topbarActions"></div>
+        <div class="unit-toggle" id="unitToggle"></div>
+      </header>
+
+      <section class="view" id="view"></section>
+    </main>
+  </div>
+
+  <!-- Modal root -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__card" role="dialog" aria-modal="true">
+      <div class="modal__head">
+        <h2 id="modalTitle">Título</h2>
+        <button class="iconbtn" data-close aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7l1.4-1.4 6.3 6.3 6.3-6.3z"/></svg>
+        </button>
+      </div>
+      <div class="modal__body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <!-- Config del formato para Torres y Liva (cod 288). Catálogo y máximos
+       precargados, stock inicial y movimientos en 0 (seedInicial:false). -->
+  <script>
+    window.__formatoCfg = {
+      prefix: 'tyl',
+      codCliente: 288,
+      empresa: 'Loekemeyer',
+      cliente: 'Torres y Liva',
+      seedInicial: false,
+      // El catálogo de TyL se siembra server-side (su surtido de compras 18m),
+      // no desde el catálogo de OSA.
+      clientSeed: false
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../version.js?v=23176"></script>
+  <script src="../osa/js/store.js?v=23176"></script>
+  <script src="../osa/js/app.js?v=23176"></script>
+</body>
+</html>

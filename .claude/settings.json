@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "command": "echo '🪨 CAVEMAN ACTIVO. Tu próxima respuesta al usuario: MÁXIMO 3 líneas. Sin resúmenes, sin listas, sin recaps. Decí lo esencial y cortá. Si terminaste una tarea: \"Listo.\" o \"Hecho, pusheado.\" BASTA. Cada palabra de más es una falla.'"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "command": "echo '🪨 CAVEMAN: ¿vas a escribirle al usuario? MÁXIMO 3 líneas. Nada de bullet points ni resúmenes de lo que hiciste. \"Listo\" alcanza.'"
+      }
+    ]
+  }
+}

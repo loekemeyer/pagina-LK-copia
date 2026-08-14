@@ -1,0 +1,3327 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Loekemeyer</title>
+    <link rel="icon" type="image/jpeg" href="img/favicon.jpg?v=2" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23179" />
+    <link rel="stylesheet" href="css/admin.css?v=23179" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- xlsx-js-style: fork de SheetJS con soporte para estilos (colores, bordes, bold) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  </head>
+  <body>
+    <!-- ===================== LOADING ===================== -->
+    <div class="login-overlay" id="loadingScreen">
+      <div class="login-box">
+        <div class="login-logo">
+          <div
+            class="logo-mark"
+                    style="
+                      width: 52px;
+                    height: 52px;
+              font-size: 18px;
+              border-radius: 14px;
+              margin: 0 auto;
+            "
+          >
+            LK
+          </div>
+        </div>
+        <h2 class="login-title">Panel Administrador</h2>
+        <p class="login-sub" id="authStatus">Verificando sesion...</p>
+      </div>
+    </div>
+
+    <!-- ===================== EMAIL OTP (2FA) ===================== -->
+    <div class="login-overlay mfa-overlay" id="emailOtpOverlay" style="display: none">
+      <div class="login-box mfa-box">
+        <div class="login-logo">
+          <div
+            class="logo-mark"
+            style="
+              width: 52px;
+              height: 52px;
+              font-size: 18px;
+              border-radius: 14px;
+              margin: 0 auto;
+            "
+          >
+            LK
+          </div>
+        </div>
+        <h2 class="login-title">Verificación en 2 pasos</h2>
+
+        <div id="emailOtpStep1">
+          <p class="login-sub">
+            Vamos a enviar un código de 6 dígitos a
+            <strong id="emailOtpRecipient">loekemeyer.n8n@gmail.com</strong>.
+          </p>
+          <button id="emailOtpSendBtn" class="mfa-primary-btn">Enviar código</button>
+          <p id="emailOtpSendError" class="mfa-error"></p>
+        </div>
+
+        <div id="emailOtpStep2" style="display: none">
+          <p class="login-sub">
+            Revisá <strong id="emailOtpRecipient2">loekemeyer.n8n@gmail.com</strong>.
+            Ingresá el código de 6 dígitos.
+          </p>
+          <input
+            id="emailOtpCode"
+            class="mfa-code-input"
+            type="text"
+            inputmode="numeric"
+            pattern="\d{6}"
+            maxlength="6"
+            placeholder="000000"
+            autocomplete="one-time-code"
+          />
+          <button id="emailOtpVerifyBtn" class="mfa-primary-btn">Verificar</button>
+          <p id="emailOtpVerifyError" class="mfa-error"></p>
+          <button id="emailOtpResendBtn" class="mfa-link-btn">Reenviar código</button>
+        </div>
+
+        <button id="emailOtpLogout" class="mfa-link-btn" style="margin-top: 14px">
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+
+    <!-- ===================== APP SHELL ===================== -->
+    <div class="app-shell" id="appShell" style="display: none">
+      <aside class="sidebar">
+        <div class="sidebar-logo">
+          <div class="logo-mark">LK</div>
+          <span class="logo-text">Admin<br /><em>Panel</em></span>
+        </div>
+        <nav class="sidebar-nav">
+          <!-- ===== Grupo: ABM Clientes ===== -->
+          <div class="nav-group" data-group="abm-clientes">
+            <button class="nav-group-toggle" type="button">
+              <span class="nav-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                >
+                  <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 00-3-3.87" />
+                  <path d="M16 3.13a4 4 0 010 7.75" />
+                </svg>
+              </span>
+              <span class="nav-label">ABM Clientes</span>
+              <span class="nav-chevron" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </span>
+            </button>
+            <div class="nav-submenu">
+              <button class="nav-item active" data-page="cargar-cliente">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </span>
+                <span>Cargar Cliente</span>
+              </button>
+              <button class="nav-item" data-page="cargar-sucursal">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                </span>
+                <span>Cargar Sucursal</span>
+              </button>
+              <button class="nav-item" data-page="ver-clientes">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <line x1="3" y1="9" x2="21" y2="9" />
+                    <line x1="9" y1="21" x2="9" y2="3" />
+                  </svg>
+                </span>
+                <span>Modificar Clientes</span>
+              </button>
+              <button class="nav-item" id="navDeudaBtn" data-page="reporte-deuda">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <line x1="12" y1="1" x2="12" y2="23" />
+                    <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+                  </svg>
+                </span>
+                <span>Condiciones clientes (act. semanal)</span>
+              </button>
+              <button
+                class="nav-item"
+                id="navSucursalesPendBtn"
+                data-page="sucursales-pendientes"
+              >
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                </span>
+                <span
+                  >Sucursales pendientes ISIS
+                  <span
+                    id="badgeSucursalesPend"
+                    style="
+                      display: none;
+                      margin-left: 6px;
+                      background: #d63333;
+                      color: #fff;
+                      border-radius: 10px;
+                      padding: 1px 8px;
+                      font-size: 11px;
+                      font-weight: 700;
+                    "
+                  ></span
+                ></span>
+              </button>
+              <button class="nav-item" data-page="estadistica-clientes">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <path d="M3 3v18h18" />
+                    <path d="M7 14l4-4 4 4 5-7" />
+                  </svg>
+                </span>
+                <span>Estadística Clientes</span>
+              </button>
+              <button class="nav-item" data-page="ranking-clientes">
+                <span class="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M4 20h4v-6H4z" />
+                    <path d="M10 20h4V8h-4z" />
+                    <path d="M16 20h4v-9h-4z" />
+                    <path d="M4 4l16 0" />
+                  </svg>
+                </span>
+                <span>Ranking Clientes</span>
+              </button>
+              <button class="nav-item" data-page="grupos-clientes">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <circle cx="7" cy="8" r="3" />
+                    <circle cx="17" cy="8" r="3" />
+                    <path d="M10 8h4" />
+                    <path d="M2 20v-1a4 4 0 014-4h2a4 4 0 014 4v1" />
+                    <path d="M12 20v-1a4 4 0 014-4h2a4 4 0 014 4v1" />
+                  </svg>
+                </span>
+                <span>Clientes agrupados</span>
+              </button>
+              <button class="nav-item" data-page="historial-cliente">
+                <span class="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                </span>
+                <span>Historial de Cliente</span>
+              </button>
+              <button class="nav-item" data-page="sugerencias-cliente">
+                <span class="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M9 21h6"/>
+                    <path d="M12 17c-4 0-7-3-7-7a7 7 0 0 1 14 0c0 4-3 7-7 7z"/>
+                    <path d="M10 17v2"/>
+                    <path d="M14 17v2"/>
+                  </svg>
+                </span>
+                <span>Sugerencias x IA</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ===== Grupo: Carga Pedidos ===== -->
+          <div class="nav-group" data-group="carga-pedidos">
+            <button class="nav-group-toggle" type="button">
+              <span class="nav-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                >
+                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <path d="M16 10a4 4 0 01-8 0" />
+                </svg>
+              </span>
+              <span class="nav-label">Carga Pedidos</span>
+              <span class="nav-chevron" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </span>
+            </button>
+            <div class="nav-submenu">
+              <button class="nav-item" data-page="carga-pedidos">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <path
+                      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
+                    />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                </span>
+                <span>Cargar Cotizadores</span>
+              </button>
+              <button class="nav-item" data-page="cotizadores-super">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <path
+                      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
+                    />
+                    <polyline points="14 2 14 8 20 8" />
+                    <polyline points="9 13 12 16 15 13" />
+                    <line x1="12" y1="10" x2="12" y2="16" />
+                  </svg>
+                </span>
+                <span>PDF Krikos</span>
+              </button>
+              <button class="nav-item" data-page="excel-krikos">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <path
+                      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
+                    />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="8" y1="13" x2="16" y2="13" />
+                    <line x1="8" y1="17" x2="16" y2="17" />
+                    <line x1="10" y1="9" x2="14" y2="9" />
+                  </svg>
+                </span>
+                <span>Excel Fmto Cltes</span>
+              </button>
+              <button class="nav-item" data-page="origen-pedidos">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 3" />
+                  </svg>
+                </span>
+                <span>Origen de Pedidos</span>
+              </button>
+              <button class="nav-item" data-page="uso-modulos">
+                <span class="nav-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <path d="M3 3v18h18" />
+                    <rect x="7" y="12" width="3" height="6" />
+                    <rect x="12" y="8" width="3" height="10" />
+                    <rect x="17" y="5" width="3" height="13" />
+                  </svg>
+                </span>
+                <span>Uso de Módulos</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="nav-group" data-group="osa">
+            <button class="nav-group-toggle" type="button">
+              <span class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M3 6a1 1 0 011-1h11a1 1 0 011 1v3h2.5l2.5 3.2V17a1 1 0 01-1 1h-1.2" />
+                  <circle cx="6.5" cy="17.5" r="1.7" /><circle cx="16.5" cy="17.5" r="1.7" />
+                </svg>
+              </span>
+              <span class="nav-label">OSA</span>
+              <span class="nav-chevron" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </span>
+            </button>
+            <div class="nav-submenu">
+              <button class="nav-item" data-page="osa-entregas">
+                <span class="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <rect x="3" y="7" width="13" height="10" rx="1" />
+                    <path d="M16 10h3l2 3v4h-5z" />
+                    <circle cx="7" cy="18" r="1.5" /><circle cx="17" cy="18" r="1.5" />
+                  </svg>
+                </span>
+                <span>Entregas</span>
+              </button>
+              <button class="nav-item" data-page="osa-ventas">
+                <span class="nav-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M6 2h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" />
+                    <path d="M9 13l2 2 4-4" />
+                  </svg>
+                </span>
+                <span>Ventas</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ===== Items sueltos ===== -->
+          <button class="nav-item" data-page="analisis-venta-cliente">
+            <span class="nav-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <line x1="3" y1="20" x2="21" y2="20" />
+                <line x1="6" y1="20" x2="6" y2="13" />
+                <line x1="11" y1="20" x2="11" y2="9" />
+                <line x1="16" y1="20" x2="16" y2="15" />
+                <line x1="21" y1="20" x2="21" y2="6" />
+              </svg>
+            </span>
+            <span>Análisis Venta Cliente</span>
+          </button>
+          <button class="nav-item" data-page="estadistica-madre">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+              </svg>
+            </span>
+            <span>Estadística Madre</span>
+          </button>
+          <button class="nav-item" data-page="registro-envios">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </span>
+            <span>Registro Envíos Correo</span>
+          </button>
+          <button class="nav-item" data-page="gerente-ventas">
+            <span class="nav-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <path d="M12 2l2.4 5.4 5.6.6-4.2 4 1.2 5.8L12 15l-5 2.8 1.2-5.8-4.2-4 5.6-.6z" />
+              </svg>
+            </span>
+            <span>Gerente de ventas</span>
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <a class="config-btn" href="mayorista.html">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              width="18"
+              height="18"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Volver a Mayorista
+          </a>
+          <span
+            data-app-version
+            style="
+              font-size: 11px;
+              color: #9a9a9a;
+              text-align: center;
+              margin-top: 4px;
+            "
+          ></span>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <!-- PAGE: CARGAR CLIENTE -->
+        <section class="page active" id="cargar-cliente">
+          <div class="page-header">
+            <div>
+              <h1>Cargar Clientes</h1>
+              <p class="page-sub">
+                Importa desde Excel o carga un cliente manualmente
+              </p>
+            </div>
+          </div>
+
+          <!-- CARGA MANUAL -->
+          <div class="card">
+            <h3 class="section-title">Carga Manual</h3>
+            <p class="section-sub" style="margin-bottom: 16px">
+              Completa los datos en la tabla y presiona Guardar
+            </p>
+            <label
+              style="
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 12px;
+                cursor: pointer;
+                user-select: none;
+                font-size: 14px;
+              "
+            >
+              <input type="checkbox" id="manualIsVendor" />
+              <span>Es vendedor (sin CUIT, login por usuario)</span>
+            </label>
+            <div class="table-wrap">
+              <table class="data-table" id="manualTable">
+                <thead>
+                  <tr>
+                    <th>COD *</th>
+                    <th>RAZON SOCIAL *</th>
+                    <th>CUIT</th>
+                    <th>VENDEDOR</th>
+                    <th>DESC %</th>
+                    <th>MAIL</th>
+                    <th>USUARIO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <input
+                        class="manual-cell"
+                        id="manualCod"
+                        placeholder="4214"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        class="manual-cell"
+                        id="manualRazon"
+                        placeholder="Empresa SRL"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        class="manual-cell"
+                        id="manualCuit"
+                        placeholder="30-12345678-9"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        class="manual-cell"
+                        id="manualVend"
+                        placeholder="7"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        class="manual-cell"
+                        id="manualDto"
+                        type="number"
+                        placeholder="8"
+                        min="0"
+                        max="100"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        class="manual-cell"
+                        id="manualMail"
+                        placeholder="mail@ejemplo.com"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        class="manual-cell"
+                        id="manualUsername"
+                        placeholder="juan123"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div
+              style="
+                display: flex;
+                gap: 10px;
+                margin-top: 16px;
+                justify-content: flex-end;
+              "
+            >
+              <button class="btn-ghost" id="clearManualBtn">Limpiar</button>
+              <button class="btn-primary" id="saveManualBtn">
+                Guardar Cliente
+              </button>
+            </div>
+          </div>
+
+          <!-- IMPORTAR EXCEL -->
+          <div class="card">
+            <h3 class="section-title">Importar desde Excel</h3>
+            <p class="format-desc">
+              El archivo debe ser <strong>.xlsx</strong>,
+              <strong>.xls</strong> o <strong>.csv</strong> con columnas: COD,
+              RAZON SOCIAL, CUIT, VENDEDOR, DESC, MAIL
+            </p>
+            <div class="upload-zone" id="dropZone" style="margin-top: 12px">
+              <div class="upload-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  width="36"
+                  height="36"
+                >
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </div>
+              <p class="upload-title">Arrastra tu Excel aqui</p>
+              <p class="upload-sub">o</p>
+              <label class="btn-primary" for="fileInput"
+                >Seleccionar archivo</label
+              >
+              <input
+                type="file"
+                id="fileInput"
+                accept=".xlsx,.xls,.csv"
+                hidden
+              />
+            </div>
+          </div>
+
+          <div class="card" id="previewSection" style="display: none">
+            <div class="preview-header">
+              <div>
+                <h2 class="section-title">Vista Previa</h2>
+                <p class="section-sub" id="previewCount">0 filas detectadas</p>
+              </div>
+              <div class="preview-actions">
+                <button class="btn-ghost" id="clearImport">Limpiar</button>
+                <button class="btn-primary" id="importBtn">
+                  Importar a Supabase
+                </button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr id="previewHead"></tr>
+                </thead>
+                <tbody id="previewBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- PAGE: CARGAR SUCURSAL -->
+        <section class="page" id="cargar-sucursal">
+          <div class="page-header">
+            <div>
+              <h1>Cargar Sucursal</h1>
+              <p class="page-sub">Busca un cliente y gestiona sus sucursales</p>
+            </div>
+          </div>
+          <div class="card">
+            <label class="field-label">Codigo de Cliente</label>
+            <div class="search-row">
+              <input
+                class="field-input"
+                id="sucCodInput"
+                type="number"
+                placeholder="Ej: 4214"
+              />
+              <button class="btn-primary" id="buscarClienteBtn">Buscar</button>
+            </div>
+            <div
+              id="clienteInfo"
+              style="display: none"
+              class="cliente-info-card"
+            >
+              <div class="cliente-info-grid">
+                <div>
+                  <span class="info-label">Razon Social</span
+                  ><span class="info-val" id="ci-razon"></span>
+                </div>
+                <div>
+                  <span class="info-label">CUIT</span
+                  ><span class="info-val" id="ci-cuit"></span>
+                </div>
+                <div>
+                  <span class="info-label">Vendedor</span
+                  ><span class="info-val" id="ci-vend"></span>
+                </div>
+                <div>
+                  <span class="info-label">Mail</span
+                  ><span class="info-val" id="ci-mail"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card" id="sucursalesSection" style="display: none">
+            <div class="preview-header">
+              <div>
+                <h2 class="section-title">Sucursales</h2>
+                <p class="section-sub" id="sucCount">0 sucursales</p>
+              </div>
+              <button class="btn-primary" id="addSucBtn">Nueva Sucursal</button>
+            </div>
+            <div id="addSucForm" style="display: none" class="suc-form">
+              <div class="form-row">
+                <div class="form-field">
+                  <label class="field-label"
+                    >Direccion del cliente (label)</label
+                  ><input
+                    class="field-input"
+                    id="newSucLabel"
+                    placeholder="Ej: Av. Corrientes 1234 - CABA"
+                  />
+                </div>
+                <div class="form-field" style="flex: 0 0 120px">
+                  <label class="field-label">Slot</label
+                  ><input
+                    class="field-input"
+                    id="newSucSlot"
+                    type="number"
+                    value="1"
+                    min="1"
+                  />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-field">
+                  <label class="field-label">Direccion real de entrega</label
+                  ><input
+                    class="field-input"
+                    id="newSucDirEntrega"
+                    placeholder="Ej: Pergamino 3751 (donde entregamos nosotros)"
+                  />
+                </div>
+                <div class="form-field" style="flex: 0 0 200px">
+                  <label class="field-label">Zona Expreso</label
+                  ><input
+                    class="field-input"
+                    id="newSucZona"
+                    placeholder="Ej: Soldati"
+                  />
+                </div>
+              </div>
+              <div class="form-actions">
+                <button class="btn-ghost" id="cancelSucBtn">Cancelar</button>
+                <button class="btn-primary" id="saveSucBtn">
+                  Guardar Sucursal
+                </button>
+              </div>
+            </div>
+            <div id="sucList" class="suc-list"></div>
+          </div>
+        </section>
+
+        <!-- PAGE: MODIFICAR CLIENTES -->
+        <section class="page" id="ver-clientes">
+          <div class="page-header">
+            <div>
+              <h1>Modificar Clientes</h1>
+              <p class="page-sub">
+                Consulta, edita y elimina clientes con sus sucursales
+              </p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap">
+              <button class="btn-ghost" id="newClienteBtn">
+                Nuevo Cliente
+              </button>
+              <button class="btn-primary" id="refreshClientesBtn">
+                Actualizar
+              </button>
+              <button
+                class="btn-ghost"
+                id="repairAuthBtn"
+                style="color: #e67e22; border-color: #e67e22"
+              >
+                Reparar Auth
+              </button>
+              <button
+                class="btn-ghost"
+                id="verifyPinsBtn"
+                style="color: #e67e22; border-color: #e67e22"
+              >
+                Verificar PINes
+              </button>
+            </div>
+          </div>
+          <div class="card filter-card">
+            <div class="filters-row">
+              <div class="filter-field">
+                <input
+                  class="field-input filter-input"
+                  id="filterCod"
+                  type="number"
+                  placeholder="Filtrar por COD"
+                />
+              </div>
+              <div class="filter-field">
+                <input
+                  class="field-input filter-input"
+                  id="filterCuit"
+                  placeholder="Filtrar por CUIT"
+                />
+              </div>
+              <div class="filter-field">
+                <input
+                  class="field-input filter-input"
+                  id="filterRazon"
+                  placeholder="Filtrar por Razon Social"
+                />
+              </div>
+              <button class="btn-ghost" id="clearFilters">Limpiar</button>
+            </div>
+          </div>
+          <div id="clientesList" class="clientes-grid"></div>
+
+          <!-- Panel de verificación de PINes (sweep) -->
+          <div
+            class="card"
+            id="verifyPinsPanel"
+            style="display: none; margin-top: 20px"
+          >
+            <div class="preview-header">
+              <div>
+                <h2 class="section-title">Verificación de PINes</h2>
+                <p class="section-sub" id="verifyPinsSummary">Preparando...</p>
+              </div>
+              <button class="btn-ghost" id="verifyPinsCloseBtn">Cerrar</button>
+            </div>
+            <div
+              style="
+                height: 6px;
+                background: #eee;
+                border-radius: 3px;
+                overflow: hidden;
+                margin: 6px 0 16px;
+              "
+            >
+              <div
+                id="verifyPinsProgress"
+                style="
+                  height: 100%;
+                  width: 0;
+                  background: #e67e22;
+                  transition: width 0.2s;
+                "
+              ></div>
+            </div>
+            <div
+              id="verifyPinsList"
+              style="display: flex; flex-direction: column; gap: 8px"
+            ></div>
+          </div>
+        </section>
+
+        <!-- PAGE: ESTADO DE PEDIDOS -->
+        <!-- PAGE: CARGA DE PEDIDOS -->
+        <section class="page" id="carga-pedidos">
+          <div class="page-header">
+            <div>
+              <h1>Cargar Cotizadores</h1>
+              <p class="page-sub">Subí hasta 3 cotizadores en paralelo.</p>
+            </div>
+          </div>
+
+          <div class="cp-cards-grid" id="cpCardsGrid">
+            <!-- 3 cards se generan por JS en cpInitCards() -->
+          </div>
+        </section>
+
+        <!-- Confirm submit modal (compartido) -->
+        <div class="modal-overlay" id="cpConfirmModal" style="display: none">
+          <div class="modal-box" style="max-width: 560px">
+            <div class="modal-header">
+              <h3>Confirmar subida de pedido</h3>
+              <button class="modal-close" id="cpConfirmClose">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div id="cpConfirmBody"></div>
+
+              <div
+                style="
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+                  padding-top: 12px;
+                  border-top: 1px solid var(--border);
+                "
+              >
+                <label class="field-label" for="cpDeliverySelect"
+                  >Sucursal de entrega</label
+                >
+                <select class="field-input" id="cpDeliverySelect"></select>
+                <div
+                  id="cpDeliveryFromExcel"
+                  style="font-size: 12px; color: var(--text3)"
+                ></div>
+
+                <div
+                  id="cpDeliveryNewForm"
+                  style="
+                    display: none;
+                    flex-direction: column;
+                    gap: 6px;
+                    padding: 10px;
+                    border: 1px dashed var(--border);
+                    border-radius: 6px;
+                    background: var(--bg2);
+                  "
+                >
+                  <div
+                    style="
+                      font-size: 11px;
+                      color: var(--text3);
+                      text-transform: uppercase;
+                      letter-spacing: 0.5px;
+                      font-weight: 700;
+                    "
+                  >
+                    Nueva sucursal para este cliente
+                  </div>
+                  <input
+                    type="text"
+                    class="field-input"
+                    id="cpNewSucLabel"
+                    placeholder="Nombre / label (ej: Sucursal Centro)"
+                  />
+                  <input
+                    type="text"
+                    class="field-input"
+                    id="cpNewSucDir"
+                    placeholder="Direccion real de entrega"
+                  />
+                  <input
+                    type="text"
+                    class="field-input"
+                    id="cpNewSucZona"
+                    placeholder="Zona expreso"
+                  />
+                  <div
+                    style="display: flex; gap: 6px; justify-content: flex-end"
+                  >
+                    <button
+                      type="button"
+                      class="btn-ghost"
+                      id="cpNewSucCancel"
+                      style="padding: 6px 12px; font-size: 12px"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-primary"
+                      id="cpNewSucSave"
+                      style="padding: 6px 12px; font-size: 12px"
+                    >
+                      Guardar sucursal
+                    </button>
+                  </div>
+                  <div
+                    id="cpNewSucError"
+                    style="
+                      display: none;
+                      color: var(--danger);
+                      font-size: 12px;
+                      font-weight: 600;
+                    "
+                  ></div>
+                </div>
+
+                <div
+                  id="cpDeliveryError"
+                  style="
+                    display: none;
+                    color: var(--danger);
+                    font-size: 12px;
+                    font-weight: 600;
+                  "
+                ></div>
+              </div>
+
+              <p style="color: var(--text3); font-size: 13px; margin-top: 14px">
+                Esto graba el pedido en la base y lo envía a Google Sheets. La
+                acción no se puede deshacer.
+              </p>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-ghost" id="cpConfirmCancel">Cancelar</button>
+              <button class="btn-primary" id="cpConfirmOk">Subir pedido</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PAGE: COTIZADORES SUPER -->
+        <section class="page" id="cotizadores-super">
+          <div class="page-header">
+            <div>
+              <h1>PDF Krikos</h1>
+              <p class="page-sub">
+                Subí un PDF de orden de compra y se auto-detecta la cadena
+              </p>
+            </div>
+          </div>
+          <div id="superCotMount"></div>
+        </section>
+
+        <!-- PAGE: EXCEL PEDIDOS -->
+        <section class="page" id="excel-krikos">
+          <div class="page-header">
+            <div>
+              <h1>Excel Fmto Cltes</h1>
+              <p class="page-sub">
+                Subí un Excel de orden de compra (.xlsx o .xls) y se matchea
+                contra el catálogo LK
+              </p>
+            </div>
+          </div>
+          <div id="excelKrikosMount"></div>
+        </section>
+
+        <section class="page" id="estado-pedidos">
+          <div class="page-header">
+            <div>
+              <h1>Cargar PPP</h1>
+              <p class="page-sub">
+                Subi el Excel de programacion para actualizar el estado de los
+                pedidos
+              </p>
+            </div>
+          </div>
+
+          <!-- Cruce PPP <-> Web (desplegable, ARRIBA de Cargar PPP) -->
+          <details class="card cruce-details" id="cruceDetails">
+            <summary class="cruce-summary">
+              <span class="cruce-summary-text"
+                >Cruce PPP &harr; Pedidos Web</span
+              >
+              <span class="cruce-summary-hint"
+                >Vincula cada pedido web con su NP de ISIS &mdash; click para
+                abrir</span
+              >
+            </summary>
+
+            <div class="cruce-content">
+              <!-- Stats -->
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(4, 1fr);
+                  gap: 12px;
+                  margin-bottom: 14px;
+                "
+              >
+                <div class="stat-box stat-ok">
+                  <div class="stat-num" id="cruceMatched">-</div>
+                  <div class="stat-label">Cuadran (matched)</div>
+                </div>
+                <div class="stat-box stat-warn">
+                  <div class="stat-num" id="cruceMismatch">-</div>
+                  <div class="stat-label">m&sup3; no cuadra</div>
+                </div>
+                <div class="stat-box stat-warn">
+                  <div class="stat-num" id="cruceMissing">-</div>
+                  <div class="stat-label">Codigos sin m&sup3; en sheet</div>
+                </div>
+                <div class="stat-box stat-neutral">
+                  <div class="stat-num" id="cruceTotal">-</div>
+                  <div class="stat-label">Pedidos web evaluados</div>
+                </div>
+              </div>
+
+              <div
+                style="
+                  display: flex;
+                  gap: 8px;
+                  margin-bottom: 16px;
+                  align-items: center;
+                "
+              >
+                <button class="btn-primary" id="cruceRunBtn">
+                  Ejecutar cruce ahora
+                </button>
+                <button class="btn-ghost" id="cruceRefreshBtn">
+                  Actualizar
+                </button>
+                <span
+                  id="cruceLastRun"
+                  style="margin-left: auto; font-size: 12px; color: var(--text3)"
+                ></span>
+              </div>
+
+              <!-- Codigos faltantes en el sheet -->
+              <div class="preview-header">
+                <div>
+                  <h3 class="section-title">
+                    Codigos faltantes en el sheet de m&sup3;
+                  </h3>
+                  <p class="section-sub" id="cruceMissingSub">
+                    Cargar al sheet "Volumen articulos" en Drive para que el
+                    cruce mejore.
+                  </p>
+                </div>
+                <a
+                  class="btn-ghost"
+                  href="https://docs.google.com/spreadsheets/d/1-16YXe0xq6x9i-Yhk5cm5V3VqvQ0PWZtcDbm8OeeKW0/edit?gid=1874063661"
+                  target="_blank"
+                  rel="noopener"
+                  >Abrir sheet</a
+                >
+              </div>
+              <div class="table-wrap" style="margin-bottom: 16px">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Codigo</th>
+                      <th>Pedidos web afectados</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cruceMissingBody"></tbody>
+                </table>
+              </div>
+
+              <!-- Tabla cruces -->
+              <div class="preview-header">
+                <div>
+                  <h3 class="section-title">Pedidos cruzados</h3>
+                  <p class="section-sub" id="cruceListSub">0 registros</p>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center">
+                  <select
+                    id="cruceFilterStatus"
+                    class="manual-cell"
+                    style="min-width: 180px"
+                  >
+                    <option value="all">Todos los estados</option>
+                    <option value="mismatch_m3" selected>
+                      m&sup3; no cuadra
+                    </option>
+                    <option value="missing_codes">Codigos faltantes</option>
+                    <option value="matched">Cuadran</option>
+                  </select>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Web</th>
+                      <th>Cliente</th>
+                      <th>Fecha web</th>
+                      <th>m&sup3; web</th>
+                      <th>NP ISIS</th>
+                      <th>m&sup3; ISIS</th>
+                      <th>Dif</th>
+                      <th>Codigos faltantes</th>
+                      <th>Estado</th>
+                      <th>Notif.</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cruceListBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+
+          <div class="card">
+            <h3 class="section-title">Subir Excel de Programacion</h3>
+            <p class="format-desc">
+              Archivo <strong>AAA PPP Vigente</strong>. Se lee la hoja
+              <strong>Programacion Diaria</strong> (A Programar + Programados) y
+              la hoja <strong>Pedidos Entregados</strong> (Enviados /
+              Retirados).
+            </p>
+            <div
+              class="upload-zone"
+              id="trackingDropZone"
+              style="margin-top: 12px"
+            >
+              <div class="upload-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  width="36"
+                  height="36"
+                >
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </div>
+              <p class="upload-title">Arrastra el Excel aqui</p>
+              <p class="upload-sub">o</p>
+              <label class="btn-primary" for="trackingFileInput"
+                >Seleccionar archivo</label
+              >
+              <input
+                type="file"
+                id="trackingFileInput"
+                accept=".xlsx,.xls"
+                hidden
+              />
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="card" id="trackingPreview" style="display: none">
+            <div class="preview-header">
+              <div>
+                <h2 class="section-title">Vista Previa</h2>
+                <p class="section-sub" id="trackingPreviewCount">0 registros</p>
+              </div>
+              <div class="preview-actions">
+                <button class="btn-ghost" id="trackingClearBtn">Limpiar</button>
+                <button class="btn-primary" id="trackingUploadBtn">
+                  Subir a Supabase
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabs for sections -->
+            <div class="tracking-tabs">
+              <button
+                class="tracking-tab active"
+                data-tracking-tab="a_programar"
+              >
+                A Programar
+                <span class="tracking-tab-count" id="countAProgramar">0</span>
+              </button>
+              <button class="tracking-tab" data-tracking-tab="programado">
+                Programados
+                <span class="tracking-tab-count" id="countProgramado">0</span>
+              </button>
+              <button class="tracking-tab" data-tracking-tab="enviado">
+                Enviados / Retirados
+                <span class="tracking-tab-count" id="countEnviado">0</span>
+              </button>
+            </div>
+
+            <div class="table-wrap" id="trackingTableWrap">
+              <table class="data-table">
+                <thead>
+                  <tr id="trackingHead"></tr>
+                </thead>
+                <tbody id="trackingBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Current status in DB -->
+          <div class="card">
+            <div class="preview-header">
+              <div>
+                <h2 class="section-title">Estado Actual en Base de Datos</h2>
+                <p class="section-sub" id="trackingDbCount">Cargando...</p>
+              </div>
+              <div style="display: flex; gap: 8px">
+                <button
+                  class="btn-ghost"
+                  id="trackingDeleteAllBtn"
+                  style="color: #c0392b; border-color: #c0392b"
+                >
+                  Eliminar Todo
+                </button>
+                <button class="btn-ghost" id="trackingRefreshDb">
+                  Actualizar
+                </button>
+              </div>
+            </div>
+            <div id="trackingDbList" class="tracking-db-list"></div>
+          </div>
+        </section>
+
+        <!-- PAGE: ORIGEN DE PEDIDOS (cliente / vendedor / admin) -->
+        <section class="page" id="origen-pedidos">
+          <div class="page-header">
+            <div>
+              <h1>Origen de Pedidos</h1>
+              <p class="page-sub">
+                Quién cargó cada pedido: el cliente en persona, un vendedor
+                usando "Pedir para", o un admin desde el panel. Solo cuenta
+                pedidos cargados desde que se activó este tracking.
+              </p>
+            </div>
+            <button class="btn-ghost" id="origenPedidosRefreshBtn">
+              Actualizar
+            </button>
+          </div>
+
+          <div
+            style="
+              display: flex;
+              align-items: flex-end;
+              gap: 12px;
+              margin-bottom: 16px;
+              flex-wrap: wrap;
+            "
+          >
+            <div>
+              <label class="field-label" for="origenPedidosDesde">Desde</label>
+              <input type="date" class="field-input" id="origenPedidosDesde" />
+            </div>
+            <div>
+              <label class="field-label" for="origenPedidosHasta">Hasta</label>
+              <input type="date" class="field-input" id="origenPedidosHasta" />
+            </div>
+            <button class="btn-ghost" id="origenPedidosLimpiarBtn">
+              Limpiar filtro
+            </button>
+          </div>
+
+          <div
+            id="origenPedidosStats"
+            style="
+              display: grid;
+              grid-template-columns: repeat(5, 1fr);
+              gap: 12px;
+              margin-bottom: 16px;
+            "
+          >
+            <div class="stat-box stat-ok">
+              <div class="stat-num" id="origenPedidosCliente">–</div>
+              <div class="stat-label">Cliente</div>
+            </div>
+            <div class="stat-box stat-neutral">
+              <div class="stat-num" id="origenPedidosVendedor">–</div>
+              <div class="stat-label">Vendedor</div>
+            </div>
+            <div class="stat-box stat-neutral">
+              <div class="stat-num" id="origenPedidosAdmin">–</div>
+              <div class="stat-label">Admin</div>
+            </div>
+            <!-- Desconocido = posterior al tracking y aun así sin registrar:
+                 es una anomalía, no un dato viejo. Por eso va en stat-warn. -->
+            <div class="stat-box stat-warn">
+              <div class="stat-num" id="origenPedidosDesconocido">–</div>
+              <div class="stat-label" title="Pedidos posteriores al inicio del tracking que igual no registraron quién los cargó. Si este número crece, alguna vía de carga dejó de guardar el origen.">Desconocido</div>
+            </div>
+            <div class="stat-box stat-neutral">
+              <div class="stat-num" id="origenPedidosPrevioTracking">–</div>
+              <div class="stat-label" title="Pedidos anteriores al 15/07/2026, cuando el sistema todavía no registraba el origen. Es esperable.">Previo al tracking</div>
+            </div>
+          </div>
+
+          <!-- Desglose por herramienta dentro de cada origen -->
+          <div class="est-table-wrap" style="max-width: 780px; margin-bottom: 14px">
+            <table class="est-table" id="origenPedidosDetalleTable">
+              <colgroup>
+                <col style="width: 165px">
+                <col>
+                <col style="width: 90px">
+                <col style="width: 135px">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Origen</th>
+                  <th>Herramienta</th>
+                  <th>Pedidos</th>
+                  <th title="Pedidos de los clientes internos: 3878 Tierra Nativa SA y 1 Loekemeyer SRL. Están incluidos en la columna Pedidos.">Pedidos de prueba</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div id="origenPedidosStatus" style="color: var(--text3); font-size: 13px;"></div>
+        </section>
+
+        <!-- PAGE: USO DE MÓDULOS (Novedades, Sugerencias, Historial, etc) -->
+        <section class="page" id="uso-modulos">
+          <div class="page-header">
+            <div>
+              <h1>Uso de Módulos</h1>
+              <p class="page-sub">
+                Desde qué módulo se agregan productos: Novedades, "no te
+                falta esto de tu surtido", popup de upsell, línea Loke,
+                Sugerir productos (vendedor), página de Sugerencias, e
+                Historial. Solo cuenta desde que se activó este tracking.
+              </p>
+            </div>
+            <button class="btn-ghost" id="usoModulosRefreshBtn">
+              Actualizar
+            </button>
+          </div>
+
+          <div
+            style="
+              display: flex;
+              align-items: flex-end;
+              gap: 12px;
+              margin-bottom: 16px;
+              flex-wrap: wrap;
+            "
+          >
+            <div>
+              <label class="field-label" for="usoModulosDesde">Desde</label>
+              <input type="date" class="field-input" id="usoModulosDesde" />
+            </div>
+            <div>
+              <label class="field-label" for="usoModulosHasta">Hasta</label>
+              <input type="date" class="field-input" id="usoModulosHasta" />
+            </div>
+            <button class="btn-ghost" id="usoModulosLimpiarBtn">
+              Limpiar filtro
+            </button>
+          </div>
+
+          <h3 class="section-title">Novedades: vistas vs. agregados</h3>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 12px;
+              margin-bottom: 20px;
+            "
+          >
+            <div class="stat-box stat-neutral">
+              <div class="stat-num" id="usoModulosNovVistas">–</div>
+              <div class="stat-label">Vistas del carrusel</div>
+            </div>
+            <div class="stat-box stat-ok">
+              <div class="stat-num" id="usoModulosNovAgregados">–</div>
+              <div class="stat-label">Agregados desde Novedades</div>
+            </div>
+            <div class="stat-box stat-neutral">
+              <div class="stat-num" id="usoModulosNovConversion">–</div>
+              <div class="stat-label">% Conversión vista → agregado</div>
+            </div>
+          </div>
+
+          <h3 class="section-title">Agregados y ventas por módulo</h3>
+          <table class="data-table" id="usoModulosTable">
+            <thead>
+              <tr>
+                <th>Módulo</th>
+                <th>Clics "Agregar"</th>
+                <th>Líneas en pedidos confirmados</th>
+              </tr>
+            </thead>
+            <tbody id="usoModulosTableBody"></tbody>
+          </table>
+
+          <div id="usoModulosStatus" style="color: var(--text3); font-size: 13px; margin-top: 10px;"></div>
+        </section>
+
+        <!-- PAGE: CONDICIONES CLIENTES (LC / PP / DEUDA) -->
+        <section class="page" id="reporte-deuda">
+          <div class="page-header">
+            <div>
+              <h1>Condiciones clientes (act. semanal)</h1>
+              <p class="page-sub">
+                Importa Límite de Crédito, Plazo de Pago y Reporte de Deuda
+              </p>
+            </div>
+          </div>
+
+          <!-- UPLOADS 3-COLS GRID -->
+          <div
+            style="
+              display: grid;
+              grid-template-columns: 1fr 1fr 1fr;
+              gap: 20px;
+              margin-bottom: 20px;
+            "
+          >
+            <!-- CARD 1: LIMITE DE CREDITO -->
+            <div class="card">
+              <h3 class="section-title">1. Importar Límite de Crédito</h3>
+              <p class="format-desc">
+                Archivo con columnas: COD, RAZON SOCIAL, LIMITE (monto)
+              </p>
+              <div class="upload-zone" id="lcDropZone" style="margin-top: 12px">
+                <div class="upload-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    width="36"
+                    height="36"
+                  >
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+                <p class="upload-title">Arrastra el archivo aqui</p>
+                <p class="upload-sub">o</p>
+                <label class="btn-primary" for="lcFileInput"
+                  >Seleccionar archivo</label
+                >
+                <input
+                  type="file"
+                  id="lcFileInput"
+                  accept=".xls,.xlsx,.csv"
+                  hidden
+                />
+                <div class="upload-progress" id="lcUploadProgress" style="display: none; margin-top: 16px;">
+                  <div class="progress-text" id="lcProgressText">0/0</div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" id="lcProgressFill"></div>
+                  </div>
+                  <div class="progress-message" id="lcProgressMsg">Procesando...</div>
+                </div>
+              </div>
+              <p style="font-size: 14px; color: #7f8c8d; margin: 12px 0 0 0; font-weight: 500">
+                Última importación: <span id="lcLastImport">-</span>
+              </p>
+            </div>
+
+            <div class="card" id="lcPreview" style="display: none">
+              <div class="preview-header">
+                <div>
+                  <h2 class="section-title">Vista Previa - Límite Crédito</h2>
+                  <p class="section-sub" id="lcPreviewCount">0 registros</p>
+                </div>
+                <div class="preview-actions">
+                  <button class="btn-ghost" id="lcClearBtn">Limpiar</button>
+                  <button class="btn-primary" id="lcUploadBtn">
+                    Subir a Supabase
+                  </button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>COD</th>
+                      <th>Razon Social</th>
+                      <th style="text-align: right">Límite Crédito</th>
+                    </tr>
+                  </thead>
+                  <tbody id="lcPreviewBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- CARD 2: PLAZO DE PAGO -->
+            <div class="card">
+              <h3 class="section-title">2. Importar Plazo de Pago</h3>
+              <p class="format-desc">
+                Archivo con columnas: COD, RAZON SOCIAL, PLAZO (días)
+              </p>
+              <div class="upload-zone" id="ppDropZone" style="margin-top: 12px">
+                <div class="upload-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    width="36"
+                    height="36"
+                  >
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+                <p class="upload-title">Arrastra el archivo aqui</p>
+                <p class="upload-sub">o</p>
+                <label class="btn-primary" for="ppFileInput"
+                  >Seleccionar archivo</label
+                >
+                <input
+                  type="file"
+                  id="ppFileInput"
+                  accept=".xls,.xlsx,.csv"
+                  hidden
+                />
+                <div class="upload-progress" id="ppUploadProgress" style="display: none; margin-top: 16px;">
+                  <div class="progress-text" id="ppProgressText">0/0</div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" id="ppProgressFill"></div>
+                  </div>
+                  <div class="progress-message" id="ppProgressMsg">Procesando...</div>
+                </div>
+              </div>
+              <p style="font-size: 14px; color: #7f8c8d; margin: 12px 0 0 0; font-weight: 500">
+                Última importación: <span id="ppLastImport">-</span>
+              </p>
+            </div>
+
+            <div class="card" id="ppPreview" style="display: none">
+              <div class="preview-header">
+                <div>
+                  <h2 class="section-title">Vista Previa - Plazo Pago</h2>
+                  <p class="section-sub" id="ppPreviewCount">0 registros</p>
+                </div>
+                <div class="preview-actions">
+                  <button class="btn-ghost" id="ppClearBtn">Limpiar</button>
+                  <button class="btn-primary" id="ppUploadBtn">
+                    Subir a Supabase
+                  </button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>COD</th>
+                      <th>Razon Social</th>
+                      <th style="text-align: right">Plazo (días)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ppPreviewBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- CARD 3: REPORTE DEUDA -->
+            <div class="card">
+              <h3 class="section-title">3. Importar Reporte de Deuda</h3>
+              <p class="format-desc">
+                Se parsea por bloques: header <em>[cod][razon_social]</em>,
+                luego lineas de facturas con Pendiente (col L), y fila de
+                subtotal.
+              </p>
+              <div
+                class="upload-zone"
+                id="deudaDropZone"
+                style="margin-top: 12px"
+              >
+                <div class="upload-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    width="36"
+                    height="36"
+                  >
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+                <p class="upload-title">Arrastra el reporte aqui</p>
+                <p class="upload-sub">o</p>
+                <label class="btn-primary" for="deudaFileInput"
+                  >Seleccionar archivo</label
+                >
+                <input
+                  type="file"
+                  id="deudaFileInput"
+                  accept=".xls,.xlsx"
+                  hidden
+                />
+                <div class="upload-progress" id="deudaUploadProgress" style="display: none; margin-top: 16px;">
+                  <div class="progress-text" id="deudaProgressText">0/0</div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" id="deudaProgressFill"></div>
+                  </div>
+                  <div class="progress-message" id="deudaProgressMsg">Procesando...</div>
+                </div>
+              </div>
+              <p style="font-size: 14px; color: #7f8c8d; margin: 12px 0 0 0; font-weight: 500">
+                Última importación: <span id="deudaLastImport">-</span>
+              </p>
+            </div>
+          </div>
+          <!-- FIN GRID 3-COLS -->
+
+          <!-- PREVIEW DEUDA (debajo del grid) -->
+          <div
+            class="card"
+            id="deudaPreview"
+            style="display: none; margin-top: 20px"
+          >
+            <div class="preview-header" style="padding: 12px 0">
+              <div style="margin-bottom: 0">
+                <h2
+                  class="section-title"
+                  style="margin: 0 0 4px 0; font-size: 16px"
+                >
+                  Vista Previa - Deuda
+                </h2>
+                <p
+                  class="section-sub"
+                  id="deudaPreviewCount"
+                  style="margin: 0; font-size: 12px"
+                >
+                  0 clientes con deuda
+                </p>
+              </div>
+              <div class="preview-actions">
+                <button class="btn-ghost" id="deudaClearBtn">Limpiar</button>
+                <button class="btn-primary" id="deudaUploadBtn">
+                  Subir a Supabase
+                </button>
+              </div>
+            </div>
+            <div class="table-wrap" style="margin: 0">
+              <table class="data-table" style="font-size: 13px">
+                <thead>
+                  <tr style="height: 32px">
+                    <th>COD</th>
+                    <th>Razon Social</th>
+                    <th style="text-align: right">Deuda</th>
+                  </tr>
+                </thead>
+                <tbody id="deudaPreviewBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- VISTA ACTUAL EN BASE DE DATOS -->
+          <div class="card">
+            <div class="preview-header">
+              <div>
+                <h2 class="section-title">Estado Actual en Base de Datos</h2>
+                <p class="section-sub" id="condicionesDbCount">Cargando...</p>
+              </div>
+              <div style="display: flex; gap: 8px">
+                <button
+                  class="btn-ghost"
+                  id="condicionesResetAllBtn"
+                  style="color: #c0392b; border-color: #c0392b"
+                >
+                  Resetear Todo
+                </button>
+                <button class="btn-ghost" id="condicionesRefreshDb">
+                  Actualizar
+                </button>
+              </div>
+            </div>
+            <div style="padding: 0 0 10px 0">
+              <input
+                class="field-input"
+                id="condicionesFilter"
+                placeholder="Filtrar por COD o razon social..."
+              />
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>COD</th>
+                    <th>Razon Social</th>
+                    <th style="text-align: right">LC</th>
+                    <th style="text-align: right">PP</th>
+                    <th style="text-align: right">Deuda</th>
+                  </tr>
+                </thead>
+                <tbody id="condicionesDbBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- PAGE: SUCURSALES PENDIENTES ISIS -->
+        <section class="page" id="sucursales-pendientes">
+          <div class="page-header">
+            <div>
+              <h1>Sucursales pendientes ISIS</h1>
+              <p class="page-sub">
+                Sucursales que los clientes cargaron desde el carrito y todavía
+                no fueron dadas de alta en ISIS.
+              </p>
+            </div>
+            <button
+              type="button"
+              id="btnRefreshSucursalesPend"
+              class="btn-primary"
+              onclick="cargarSucursalesPendientes()"
+            >
+              Actualizar
+            </button>
+          </div>
+
+          <div class="card">
+            <div id="sucursalesPendStatus" style="margin-bottom: 12px"></div>
+            <div id="sucursalesPendList"></div>
+          </div>
+        </section>
+
+        <!-- PAGE: ESTADÍSTICA CLIENTES -->
+        <section class="page" id="estadistica-clientes">
+          <div class="page-header">
+            <div>
+              <h1>Estadística Clientes</h1>
+              <p class="page-sub">
+                Listado de clientes próximos a comprar según su frecuencia
+                histórica, y ranking de inactivos por su valor histórico.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="btn-primary"
+              onclick="cargarEstadisticaClientes()"
+            >
+              Actualizar
+            </button>
+          </div>
+
+          <div id="estClientesStatus" style="margin-bottom: 12px"></div>
+
+          <!-- Tarjeta 1: Próximos a comprar -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head collapsed" onclick="toggleEstCard('estCardProximosBody', this)">
+              <span class="est-card-caret">▸</span>
+              <h2 style="margin: 0; font-size: 18px">
+                Próximos a comprar
+                <span
+                  id="estProximosCount"
+                  style="
+                    margin-left: 6px;
+                    background: #1f7a3a;
+                    color: #fff;
+                    border-radius: 999px;
+                    padding: 2px 10px;
+                    font-size: 12px;
+                    font-weight: 700;
+                  "
+                >0</span>
+              </h2>
+              <span style="color: #666; font-size: 13px">
+                Clientes con 3+ pedidos. Ordenados de más atrasados a esperados.
+              </span>
+            </div>
+            <div class="est-card-body" id="estCardProximosBody" style="display: none">
+              <div class="est-filter-row">
+                <button type="button" class="est-filter-chip active" data-filter="all">Todos <span class="est-chip-count" id="estCntAll">0</span></button>
+                <button type="button" class="est-filter-chip danger" data-filter="atrasado">Atrasados <span class="est-chip-count" id="estCntAtrasado">0</span></button>
+                <button type="button" class="est-filter-chip warn" data-filter="1-20">1 a 20 días <span class="est-chip-count" id="estCnt120">0</span></button>
+                <button type="button" class="est-filter-chip good" data-filter="+20">+ 20 días <span class="est-chip-count" id="estCntMas20">0</span></button>
+              </div>
+              <div class="est-table-wrap">
+                <table class="est-table" id="estProximosTable">
+                  <colgroup>
+                    <col style="width: 55px">
+                    <col>
+                    <col style="width: 95px">
+                    <col style="width: 90px">
+                    <col style="width: 150px">
+                    <col style="width: 95px">
+                    <col style="width: 115px">
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>Cod</th>
+                      <th>Razón social</th>
+                      <th>Último pedido</th>
+                      <th>Frecuencia (meses)</th>
+                      <th>Próximo esperado</th>
+                      <th>Meses desde el último</th>
+                      <th>Escribir por Whatsapp</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjeta 2: Ranking Inactivos -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head collapsed" onclick="toggleEstCard('estCardRankingBody', this)">
+              <span class="est-card-caret">▸</span>
+              <!-- La aclaración del IVA va en el (?) y NO en el texto del
+                   título: el h2 se lee de un vistazo y sumarle la salvedad lo
+                   ensucia. El (?) usa tooltip propio (.est-help, ver admin.css)
+                   en vez de title= nativo, que tarda ~1s en aparecer y es fácil
+                   no verlo. stopPropagation para que hacer click en el (?) no
+                   colapse la tarjeta. -->
+              <h2 style="margin: 0; font-size: 18px">
+                Ranking Inactivos
+                <span id="rankingInactivosCount" style="margin-left: 6px; background: #3498db; color: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700;">0</span>
+                <span class="est-help"
+                      onclick="event.stopPropagation()"
+                      data-tip="Todos los importes de este módulo son SIN IVA. Están netos del descuento por volumen del cliente y del 2% por pedido web, y solo se valorizan los artículos vigentes.">?</span>
+              </h2>
+              <span style="color: #666; font-size: 13px">
+                Ranking de clientes inactivos por su valor histórico neto a precios de hoy (con descuento del cliente + 2% web)
+              </span>
+              <!-- stopPropagation: el botón está dentro del head colapsable. -->
+              <button type="button" class="btn-primary" onclick="event.stopPropagation(); descargarRankingInactivosExcel()" title="Descargar el ranking completo del período seleccionado, con el desglose por año en columnas">
+                ⬇ Descargar como .xlsx
+              </button>
+            </div>
+            <div class="est-card-body" id="estCardRankingBody" style="display: none">
+              <div class="est-filter-row">
+                <label style="font-size: 13px; color: #666;">Seleccionar período de inactividad:</label>
+                <!-- El período NO se aplica solo al elegirlo: se elige y después
+                     se confirma con el botón, que va pegado al menú para que se
+                     lean como un solo control. onInputPeriodoRanking marca el
+                     botón como pendiente mientras la tabla muestre otro período,
+                     así no se queda leyendo datos viejos sin darse cuenta. -->
+                <div class="rank-periodo">
+                  <select id="rankingInactivosPeriod" onchange="onCambioPeriodoRanking()">
+                    <option value="3">Últimos 3 meses</option>
+                    <option value="4">Últimos 4 meses</option>
+                    <option value="6">Últimos 6 meses</option>
+                    <option value="9">Últimos 9 meses</option>
+                    <option value="12" selected>Últimos 12 meses</option>
+                    <option value="15">Últimos 15 meses</option>
+                    <option value="18">Últimos 18 meses</option>
+                    <option value="24">Últimos 24 meses</option>
+                    <option value="36">Últimos 36 meses</option>
+                  </select>
+                  <button type="button" id="rankingPeriodoBtn"
+                          onclick="cargarRankingInactivosDesdeCero()">
+                    Cargar período
+                  </button>
+                </div>
+                <label class="est-switch-wrap"
+                       title="Off: el ranking normal. On: solo los clientes que se sacaron a mano.">
+                  <span class="est-switch">
+                    <input type="checkbox" id="rankingInactivosOcultosSwitch"
+                           onchange="toggleRankingInactivosOcultos()">
+                    <span class="est-switch-slider"></span>
+                  </span>
+                  <span class="est-switch-label">
+                    Ver ocultos
+                    <span class="est-chip-count" id="rankingInactivosOcultosCount">0</span>
+                  </span>
+                  <span class="est-switch-state" id="rankingInactivosOcultosEstado">Off</span>
+                </label>
+
+                <!-- Buscador. Filtra server-side (p_q de la RPC): la tabla está
+                     paginada de a 25 sobre 532, así que un filtro en el
+                     navegador solo miraría las 25 visibles. -->
+                <div class="rank-buscar">
+                  <input type="text" id="rankingInactivosBuscar" class="rank-buscar-input"
+                         placeholder="Buscar código, razón social o CUIT…"
+                         autocomplete="off"
+                         oninput="onInputBuscarRanking(this)">
+                  <button type="button" class="rank-buscar-x"
+                          onclick="limpiarBusquedaRanking()" title="Limpiar búsqueda">✕</button>
+                </div>
+              </div>
+
+              <div id="rankingInactivosStatus" class="cliente-lookup-status"></div>
+
+              <!-- Desglose por año es la columna más ancha a propósito (420px):
+                   lleva los 7 años en grilla de 3 columnas, así entra en 3
+                   líneas en vez de 7 y la fila no se estira. -->
+              <div class="est-table-wrap" style="max-width: 1200px">
+                <table class="est-table" id="rankingInactivosTable">
+                  <colgroup>
+                    <col style="width: 48px">
+                    <col style="width: 52px">
+                    <col>
+                    <col style="width: 108px">
+                    <col style="width: 118px">
+                    <col style="width: 105px">
+                    <col style="width: 82px">
+                    <col style="width: 88px">
+                    <col style="width: 420px">
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Cód. LK</th>
+                      <th>Razón social</th>
+                      <!-- Filtro por vendedor. El menú vive en el encabezado y
+                           filtra server-side, igual que el buscador: la tabla
+                           está paginada de a 25 sobre 368. -->
+                      <th>
+                        <button type="button" class="rank-vend-btn"
+                                id="rankVendBtn"
+                                onclick="toggleMenuVendedores(event)">
+                          Vendedor
+                          <span class="rank-vend-chip" id="rankVendChip"></span>
+                          <span class="rank-vend-caret">▾</span>
+                        </button>
+                        <div class="rank-vend-menu" id="rankVendMenu"></div>
+                      </th>
+                      <th>Valor histórico total (neto, precios hoy)</th>
+                      <th>Valor último pedido (neto)</th>
+                      <th>Último pedido</th>
+                      <th>Ocultar</th>
+                      <th>Desglose por año</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+
+              <!-- Paginador: hojas de 100 filas sobre el total de inactivos -->
+              <div class="est-pager" id="rankingInactivosPager"></div>
+            </div>
+          </div>
+
+          <!-- ESTADO DE ACTIVIDAD DE CLIENTES
+               Dos fuentes independientes, con caminos distintos:
+                 ARCA (estado fiscal)  -> lo trae un worker externo a
+                                          arca_padron; el panel solo lee.
+                                          Sin worker todavía: "Sin consultar".
+                 BCRA (Central de      -> API pública con CORS: la consulta el
+                 Deudores)                propio navegador y la cachea.
+               Los ids internos dicen "arca" por razones históricas: el módulo
+               nació con esa única fuente. -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head collapsed" onclick="toggleEstCard('estCardArcaBody', this)">
+              <span class="est-card-caret">▸</span>
+              <h2 style="margin: 0; font-size: 18px">
+                Estado de actividad de clientes
+                <span id="arcaCount" style="margin-left: 6px; background: #7c3aed; color: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700;">0</span>
+                <span class="est-help"
+                      onclick="event.stopPropagation()"
+                      data-tip="El padrón de ARCA dice el estado FISCAL del CUIT, no si el negocio está operando. Por eso el estado bueno se llama 'posiblemente activo': un cliente puede estar impecable en ARCA y no comprar hace tres años.">?</span>
+              </h2>
+              <span style="color: #666; font-size: 13px">
+                Baja, fallecimiento y situación crediticia de cada cliente, según ARCA y el BCRA
+              </span>
+            </div>
+            <div class="est-card-body" id="estCardArcaBody" style="display: none">
+              <div id="arcaResumen" class="arca-resumen"></div>
+
+              <div class="est-filter-row">
+                <div class="rank-buscar">
+                  <input type="text" id="arcaBuscar" class="rank-buscar-input"
+                         placeholder="Buscar código, razón social o CUIT…"
+                         autocomplete="off"
+                         oninput="onInputBuscarArca(this)">
+                  <button type="button" class="rank-buscar-x"
+                          onclick="limpiarBusquedaArca()" title="Limpiar búsqueda">✕</button>
+                </div>
+                <button type="button" class="btn-primary" onclick="cargarArcaEstado()">
+                  ⟳ Actualizar
+                </button>
+                <!-- La tabla solo consulta al BCRA los CUITs de la hoja visible,
+                     así que llenar los 1.229 a fuerza de paginar son 50
+                     pantallas. Este botón los recorre todos de una. -->
+                <button type="button" class="btn-primary" id="bcraTodosBtn"
+                        onclick="bcraConsultarTodos()"
+                        title="Consulta al BCRA todos los clientes que no tengan dato fresco. Hay que dejar la pestaña abierta.">
+                  ⇊ Consultar todos en el BCRA
+                </button>
+              </div>
+
+              <div id="arcaStatus" class="cliente-lookup-status"></div>
+
+              <div class="est-table-wrap" style="max-width: 1100px">
+                <table class="est-table" id="arcaTable">
+                  <colgroup>
+                    <col style="width: 62px">
+                    <col>
+                    <col style="width: 118px">
+                    <col style="width: 132px">
+                    <col style="width: 150px">
+                    <col style="width: 108px">
+                    <col style="width: 92px">
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>Cód. LK</th>
+                      <th>Razón social</th>
+                      <th>CUIT</th>
+                      <!-- Los dos filtros van en menús colgados del encabezado,
+                           mismo patrón que Vendedor en Ranking Inactivos. Son
+                           independientes y se combinan con Y: se puede pedir
+                           "fallecidos que además estén en situación 5". -->
+                      <th>
+                        <button type="button" class="filtro-btn" id="arcaEstadoBtn"
+                                onclick="toggleFiltroMenu('arcaEstadoMenu', event)">
+                          Estado
+                          <span class="filtro-chip" id="arcaEstadoChip"></span>
+                          <span class="filtro-caret">▾</span>
+                        </button>
+                        <div class="filtro-menu" id="arcaEstadoMenu"></div>
+                      </th>
+                      <!-- title nativo y NO el tooltip .est-help: su burbuja es
+                           absolute y se dibuja por encima del ícono, o sea
+                           fuera del th, y la recortaría el overflow de
+                           .est-table-wrap. -->
+                      <th title="Central de Deudores del BCRA: la PEOR situación entre las entidades financieras que informaron. Es deuda BANCARIA, no comercial — un cliente puede estar en 1 y deberle plata a Loekemeyer. El dato es mensual y se publica con rezago.">
+                        <button type="button" class="filtro-btn" id="arcaBcraBtn"
+                                onclick="toggleFiltroMenu('arcaBcraMenu', event)">
+                          Situación BCRA
+                          <span class="filtro-chip" id="arcaBcraChip"></span>
+                          <span class="filtro-caret">▾</span>
+                        </button>
+                        <div class="filtro-menu" id="arcaBcraMenu"></div>
+                      </th>
+                      <th>Última consulta</th>
+                      <th>Revisar</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+
+              <div class="est-pager" id="arcaPager"></div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- PAGE: CLIENTES AGRUPADOS
+             "Estos códigos, con razones sociales distintas, son la misma
+             persona o empresa." Se elige una principal y se le vinculan las
+             demás, estén activas o no. La principal absorbe el histórico en
+             Ranking Inactivos.
+             SOLO clientes de Loekemeyer: los códigos que únicamente operan en
+             Chef quedan fuera del buscador y de las sugerencias.
+             El id de la sección queda como grupos-clientes: es lo que usa el
+             deep-link por hash y renombrarlo rompería los enlaces guardados. -->
+        <!-- Ranking de clientes ACTIVOS por facturación en el período. Es el
+             opuesto de "Ranking Inactivos" (que muestra los que dejaron de
+             comprar). Consume get_ranking_clientes que espeja el mismo motor.
+             Fase 2 etapa 2 — pedido explícito del user: "otra cosa que hay
+             que desarrollar en paginalk es un modulo de ranking de clientes". -->
+        <section class="page" id="ranking-clientes">
+          <div class="page-header">
+            <div>
+              <h1>Ranking Clientes</h1>
+              <p class="page-sub">Clientes que compraron en el período, ordenados por facturación neta (list_price × uxb × (1 − dto_vol) × (1 − 2% web)). Espeja el cálculo del Ranking Inactivos.</p>
+            </div>
+            <div class="rc-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <select id="rcPeriodo" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;">
+                <option value="1">1 mes</option>
+                <option value="3">3 meses</option>
+                <option value="6">6 meses</option>
+                <option value="12" selected>12 meses</option>
+                <option value="24">24 meses</option>
+                <option value="36">36 meses</option>
+              </select>
+              <input id="rcMinMonto" type="number" min="0" step="1000" placeholder="Monto mín ($)" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;width:130px;">
+              <input id="rcBuscar" placeholder="🔎 Código / razón social / CUIT" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;min-width:220px;">
+              <button id="rcBtnCargar" class="btn-primary" style="padding:8px 14px;">Cargar</button>
+              <button id="rcBtnExcel" class="btn-secondary" style="padding:8px 14px;">📥 Excel</button>
+            </div>
+          </div>
+          <div id="rcResumen" style="margin:10px 0;color:#64748b;font-size:13px;"></div>
+          <div id="rcTabla"></div>
+          <div id="rcPager" style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:center;"></div>
+        </section>
+
+        <section class="page" id="grupos-clientes">
+          <div class="page-header">
+            <div>
+              <h1>Clientes agrupados</h1>
+              <p class="page-sub">
+                Grupos de razones sociales distintas que son el mismo cliente real.
+              </p>
+            </div>
+            <button type="button" class="btn-primary" onclick="cargarGruposClientes()">
+              Actualizar
+            </button>
+          </div>
+
+          <div id="gruposStatus" style="margin-bottom: 12px"></div>
+
+          <!-- 1. Alta manual -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head" onclick="toggleEstCard('grupoManualBody', this)">
+              <span class="est-card-caret">▾</span>
+              <h2 style="margin: 0; font-size: 21px">Agrupar manualmente</h2>
+              <span style="color: #666; font-size: 13px">
+                Agrupar manualmente las razones sociales pertenecientes a un mismo cliente real
+              </span>
+            </div>
+            <div class="est-card-body" id="grupoManualBody">
+              <!-- Un grupo vive dentro de UNA empresa. El cruce entre empresas
+                   es otra cosa y va en Clientes vinculados. -->
+              <div class="emp-switch">
+                <span class="emp-switch-tit">Empresa</span>
+                <button type="button" class="emp-op activa" data-emp-grupo="lk"
+                        onclick="cambiarEmpresaGrupo('lk')">Loekemeyer</button>
+                <button type="button" class="emp-op" data-emp-grupo="chef"
+                        onclick="cambiarEmpresaGrupo('chef')">Chef</button>
+              </div>
+              <div class="grupo-slot-tit">Última razón social activa</div>
+              <div id="grupoSlotPrincipal"></div>
+
+              <div class="grupo-slot-tit" style="margin-top: 16px">
+                Razones sociales anteriores
+                <button type="button" class="grupo-add" onclick="agregarSlotVinculado()"
+                        title="Agregar razón social anterior">+</button>
+                <span class="grupo-slot-hint">Agregar razón social anterior</span>
+              </div>
+              <div id="grupoSlotsExtra"></div>
+
+              <div id="grupoResumen" class="grupo-resumen"></div>
+              <button type="button" class="btn-primary" id="grupoGuardarBtn"
+                      onclick="guardarGrupoClientes()" disabled
+                      style="margin-top: 12px">
+                Agrupar
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. Sugerencias -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head collapsed" onclick="toggleEstCard('gruposSugeridosBody', this)">
+              <span class="est-card-caret">▸</span>
+              <h2 style="margin: 0; font-size: 21px">
+                Sugerencias
+                <span id="gruposSugeridosCount" style="margin-left: 6px; background: #e67e22; color: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700;">0</span>
+                <span class="est-help"
+                      onclick="event.stopPropagation()"
+                      data-tip="Se proponen por CUIT compartido, razón social, dirección de entrega o un apellido poco común, siempre que al menos uno haya dejado de comprar. Son pistas: revisá cada caso antes de agrupar.">?</span>
+              </h2>
+              <span style="color: #666; font-size: 13px">
+                Posibles grupos de razones sociales pertenecientes a un mismo cliente real
+              </span>
+            </div>
+            <div class="est-card-body" id="gruposSugeridosBody" style="display: none">
+              <div class="emp-switch">
+                <span class="emp-switch-tit">Empresa</span>
+                <button type="button" class="emp-op activa" data-emp-sug="lk"
+                        onclick="cambiarEmpresaSug('lk')">Loekemeyer</button>
+                <button type="button" class="emp-op" data-emp-sug="chef"
+                        onclick="cambiarEmpresaSug('chef')">Chef</button>
+                <!-- Vuelve a proponer todo lo que se descartó de esta empresa. -->
+                <button type="button" class="grupo-mini emp-refrescar" id="sugRefrescarBtn"
+                        onclick="refrescarSugerencias()"
+                        title="Volver a proponer las sugerencias descartadas">↻ Refrescar</button>
+              </div>
+              <div id="gruposSugeridosLista"></div>
+            </div>
+          </div>
+
+          <!-- 3. Grupos armados -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head collapsed" onclick="toggleEstCard('gruposArmadosBody', this)">
+              <span class="est-card-caret">▸</span>
+              <h2 style="margin: 0; font-size: 21px">
+                Grupos armados
+                <span id="gruposArmadosCount" style="margin-left: 6px; background: #1f7a3a; color: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700;">0</span>
+              </h2>
+              <span style="color: #666; font-size: 13px">
+                Editar y revisar grupos ya armados
+              </span>
+            </div>
+            <div class="est-card-body" id="gruposArmadosBody" style="display: none">
+              <div class="emp-switch">
+                <span class="emp-switch-tit">Empresa</span>
+                <button type="button" class="emp-op activa" data-emp-armados="lk"
+                        onclick="cambiarEmpresaArmados('lk')">Loekemeyer</button>
+                <button type="button" class="emp-op" data-emp-armados="chef"
+                        onclick="cambiarEmpresaArmados('chef')">Chef</button>
+              </div>
+              <div id="gruposArmadosLista"></div>
+            </div>
+          </div>
+
+          <!-- 4. Clientes vinculados -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head collapsed" onclick="toggleEstCard('lkchBody', this)">
+              <span class="est-card-caret">▸</span>
+              <h2 style="margin: 0; font-size: 21px">
+                Clientes vinculados
+                <span id="lkchCount" style="margin-left: 6px; background: #7c3aed; color: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700;">0</span>
+                <span class="est-help"
+                      onclick="event.stopPropagation()"
+                      data-tip="El vínculo va por CUIT, por razón social o a mano — nunca por número de cliente, porque las dos empresas tienen numeraciones independientes. Si el cliente está agrupado, vale para todo el grupo. El switch lo saca de Ranking Inactivos y viene marcado solo cuando dejó de comprarle a Loekemeyer pero le compró a Chef en el último año.">?</span>
+              </h2>
+              <span style="color: #666; font-size: 13px">
+                Clientes reales que son clientes tanto de Loekemeyer como de Chef
+              </span>
+            </div>
+            <div class="est-card-body" id="lkchBody" style="display: none">
+              <div id="lkchStatus" class="cliente-lookup-status"></div>
+
+              <!-- Vínculo manual: el único camino para los que cambiaron de razón
+                   social al pasar a Chef, que ni el nombre ni el CUIT detectan. -->
+              <div class="lkch-vincular">
+                <div class="lkch-vincular-head">
+                  <strong>Vincular a mano</strong>
+                  <span>Cuando ni el CUIT ni la razón social coinciden entre las dos</span>
+                </div>
+                <div id="lkchSlots"></div>
+                <button type="button" class="btn-primary" id="lkchVincularBtn" onclick="vincularLkCh()">Vincular</button>
+                <div id="lkchVincularStatus" class="cliente-lookup-status"></div>
+              </div>
+
+              <!-- Buscador. Filtra en el navegador, no en la base: la RPC trae
+                   las 165 filas de una y no hay paginado, así que una consulta
+                   por tecla sería un viaje al servidor al pedo. -->
+              <div class="rank-buscar" style="margin: 0 0 10px">
+                <input type="text" id="lkchBuscar" class="rank-buscar-input"
+                       placeholder="Buscar razón social, código LK o CUIT…"
+                       autocomplete="off"
+                       oninput="onInputBuscarLkCh(this)">
+                <button type="button" class="rank-buscar-x"
+                        onclick="limpiarBusquedaLkCh()" title="Limpiar búsqueda">✕</button>
+              </div>
+
+              <div class="est-table-wrap" style="max-width: 1180px">
+                <table class="est-table" id="lkchTable">
+                  <colgroup>
+                    <col style="width: 78px">
+                    <col>
+                    <col style="width: 96px">
+                    <col style="width: 118px">
+                    <col style="width: 96px">
+                    <col style="width: 118px">
+                    <col style="width: 208px">
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>Código LK</th>
+                      <th>Razón social</th>
+                      <th>Última LK</th>
+                      <th>Valor LK</th>
+                      <th>Última Chef</th>
+                      <th>Valor Chef</th>
+                      <th>Sacar del ranking</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PAGE: GERENTE DE VENTAS -->
+        <section class="page" id="gerente-ventas">
+          <div class="page-header">
+            <div>
+              <h1>Gerente de ventas</h1>
+              <p class="page-sub">
+                Analiza toda la clientela y propone 5 acciones por día. Aprende de
+                lo que marcás como útil.
+              </p>
+            </div>
+            <button type="button" class="btn-primary" onclick="cargarGerenteVentas()">
+              Actualizar
+            </button>
+          </div>
+
+          <div id="gvStatus" style="margin-bottom: 12px"></div>
+
+          <!-- 0. Paneo general -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head" onclick="toggleEstCard('gvDashBody', this)">
+              <span class="est-card-caret">&#9662;</span>
+              <h2 style="margin: 0; font-size: 21px">Cómo viene la empresa</h2>
+              <span style="color: #666; font-size: 13px" id="gvDashResumen"></span>
+            </div>
+            <div class="est-card-body" id="gvDashBody">
+              <div class="gv-agenda-tools gv-no-print">
+                <button type="button" class="btn-secondary" onclick="recalcularDashboard()">
+                  Recalcular ahora
+                </button>
+                <button type="button" class="btn-secondary" onclick="imprimirDashboard()">
+                  Descargar PDF
+                </button>
+                <span class="gv-geo-estado" id="gvDashEstado"></span>
+              </div>
+              <div id="gvDash"></div>
+            </div>
+          </div>
+
+          <!-- 1. La agenda del día -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head" onclick="toggleEstCard('gvAgendaBody', this)">
+              <span class="est-card-caret">▾</span>
+              <h2 style="margin: 0; font-size: 21px">Acciones de hoy</h2>
+              <span style="color: #666; font-size: 13px" id="gvAgendaResumen"></span>
+            </div>
+            <div class="est-card-body" id="gvAgendaBody">
+              <div class="gv-agenda-tools">
+                <select id="gvVista" class="gv-fecha" onchange="cargarAgendaGerente()">
+                  <option value="dia">Solo este día</option>
+                  <option value="semana">Últimos 7 días</option>
+                </select>
+                <input
+                  type="date"
+                  id="gvFecha"
+                  class="gv-fecha"
+                  onchange="cargarAgendaGerente()"
+                />
+                <!-- El filtro por vendedor va en el navegador: son 5 filas por día,
+                     35 en la semana. Un p_vendedor server-side sería un viaje al pedo. -->
+                <select id="gvFiltroVend" class="gv-fecha" onchange="_gvPintarAgenda()">
+                  <option value="">Todos los vendedores</option>
+                </select>
+                <button type="button" class="btn-secondary" onclick="regenerarAgendaGerente()">
+                  Regenerar el día
+                </button>
+                <button type="button" class="btn-secondary" onclick="copiarAgendaGerente()">
+                  Copiar como mensaje
+                </button>
+              </div>
+              <!-- Regenerar solo rehace las pendientes: una acción ya resuelta
+                   no se pisa, si no se perdería el aprendizaje del día. -->
+              <div id="gvAgendaLista" class="gv-lista"></div>
+            </div>
+          </div>
+
+          <!-- 2. Preguntas del agente -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head" onclick="toggleEstCard('gvPreguntasBody', this)">
+              <span class="est-card-caret">▾</span>
+              <h2 style="margin: 0; font-size: 21px">El agente te pregunta</h2>
+              <span style="color: #666; font-size: 13px" id="gvPreguntasResumen"></span>
+            </div>
+            <div class="est-card-body" id="gvPreguntasBody">
+              <p class="gv-ayuda">
+                Esto <strong>no</strong> son acciones de venta: son preguntas sobre cómo
+                quiero trabajar. Tu respuesta cambia lo que te propongo de acá en
+                adelante. Salen de patrones que veo en tus respuestas, no están
+                escritas a mano.
+              </p>
+              <div id="gvPreguntasLista" class="gv-lista"></div>
+            </div>
+          </div>
+
+          <!-- 3. Mapa de cobertura -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head" onclick="toggleEstCard('gvMapaBody', this)">
+              <span class="est-card-caret">▸</span>
+              <h2 style="margin: 0; font-size: 21px">Mapa de cobertura</h2>
+              <span style="color: #666; font-size: 13px" id="gvMapaResumen"></span>
+            </div>
+            <div class="est-card-body" id="gvMapaBody" style="display: none">
+              <div class="gv-agenda-tools">
+                <!-- Las opciones las llena el JS desde ARGENTINA_PROVINCIAS, que es
+                     la misma lista con la que se etiquetan los path del SVG. -->
+                <select id="gvZoomProv" class="gv-fecha" onchange="gvZoomProvincia(this.value)">
+                  <option value="">Todo el país</option>
+                </select>
+                <select id="gvMapaColor" class="gv-fecha" onchange="cargarMapaGerente()">
+                  <option value="ratio">Color: habitantes por punto</option>
+                  <option value="activos">Color: % de clientes activos</option>
+                </select>
+                <button type="button" class="btn-secondary" onclick="gvGeocodificarTodo()">
+                  Ubicar localidades en el mapa
+                </button>
+                <span class="gv-geo-estado" id="gvGeoEstado"></span>
+              </div>
+              <div class="gv-mapa-wrap">
+                <div id="gvMapaSlot" class="gv-mapa-slot">Cargando mapa…</div>
+                <div id="gvMapaTip" class="gv-mapa-tip" style="display: none"></div>
+              </div>
+              <div class="gv-mapa-leyenda">
+                <span><span class="gv-dot gv-dot-cal"></span>Zona caliente (más puntos por habitante)</span>
+                <span><span class="gv-dot gv-dot-med"></span>En la media</span>
+                <span><span class="gv-dot gv-dot-fri"></span>Zona fría (pocos puntos por habitante)</span>
+                <span><span class="gv-dot gv-dot-sin"></span>Sin población cargada</span>
+                <span class="gv-leyenda-nota">El tamaño del círculo es la cantidad de sucursales. Hacé clic en una provincia para acercarte.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Ratio por provincia -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head" onclick="toggleEstCard('gvRatioBody', this)">
+              <span class="est-card-caret">▸</span>
+              <h2 style="margin: 0; font-size: 21px">Habitantes por punto de venta</h2>
+              <span style="color: #666; font-size: 13px" id="gvRatioResumen"></span>
+            </div>
+            <div class="est-card-body" id="gvRatioBody" style="display: none">
+              <div class="gv-nivel-switch">
+                <button type="button" class="emp-op activa" data-gv-nivel="prov"
+                        onclick="gvCambiarNivel('prov')">Por provincia</button>
+                <button type="button" class="emp-op" data-gv-nivel="loc"
+                        onclick="gvCambiarNivel('loc')">Por localidad</button>
+              </div>
+              <div class="est-table-wrap">
+                <table class="est-table" id="gvRatioTabla">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rinde del módulo -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head" onclick="toggleEstCard('gvRindeBody', this)">
+              <span class="est-card-caret">▸</span>
+              <h2 style="margin: 0; font-size: 21px">¿Está rindiendo?</h2>
+              <span style="color: #666; font-size: 13px" id="gvRindeResumen"></span>
+            </div>
+            <div class="est-card-body" id="gvRindeBody" style="display: none">
+              <p class="gv-ayuda">
+                De los clientes sobre los que se actuó, cuántos compraron dentro de los
+                30 días siguientes y por cuánto. La columna <strong>sin trabajar</strong>
+                es la referencia: si los trabajados no compran más que los ignorados, el
+                módulo no está aportando. <em>No es un experimento controlado —nadie
+                asignó al azar— pero es la comparación honesta que tenemos.</em>
+              </p>
+              <div class="est-table-wrap">
+                <table class="est-table" id="gvRindeTabla">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Cómo viene aprendiendo -->
+          <div class="card">
+            <div class="est-card-head" onclick="toggleEstCard('gvSenalesBody', this)">
+              <span class="est-card-caret">▸</span>
+              <h2 style="margin: 0; font-size: 21px">Cómo viene aprendiendo</h2>
+              <span style="color: #666; font-size: 13px" id="gvSenalesResumen"></span>
+            </div>
+            <div class="est-card-body" id="gvSenalesBody" style="display: none">
+              <p class="gv-ayuda">
+                Cada señal arranca en 0,50 y se mueve con lo que marcás. Las que más
+                sirven se proponen más seguido; las que no, se apagan solas.
+              </p>
+              <div class="est-table-wrap">
+                <table class="est-table" id="gvSenalesTabla">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel Top-50 seguimiento clientes (Fase 2 etapa 2 — pedido explícito
+               del user 2026-08-11: "no perder pisada de si me están comprando o no").
+               Dos rankings paralelos (histórico total / pedido máximo individual) para
+               las dos empresas (LK y Chef). Debajo, matriz de seguimiento mensual con
+               alerta cuando el gap actual supera 1.5× la frecuencia habitual del
+               cliente. Backend: get_top_clientes_hist, get_top_clientes_max_pedido,
+               get_seguimiento_mensual. -->
+          <div class="card" style="margin-bottom: 18px">
+            <div class="est-card-head" onclick="toggleEstCard('gvTopBody', this)">
+              <span class="est-card-caret">▾</span>
+              <h2 style="margin: 0; font-size: 21px">🎯 Top-50 seguimiento clientes</h2>
+              <span style="color: #666; font-size: 13px" id="gvTopResumen">
+                Los clientes que no querés perder. Alertas cuando dejan de comprar.
+              </span>
+            </div>
+            <div class="est-card-body" id="gvTopBody" style="display: none;">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;">
+                <div style="display:flex;gap:2px;background:#f1f5f9;padding:3px;border-radius:8px;">
+                  <button id="gvTopTabHist" type="button" onclick="gvTopSetTab('hist')" style="padding:6px 14px;border:none;background:#111;color:#fff;border-radius:6px;cursor:pointer;font-size:13px;">Histórico total</button>
+                  <button id="gvTopTabMax"  type="button" onclick="gvTopSetTab('max')"  style="padding:6px 14px;border:none;background:transparent;color:#333;border-radius:6px;cursor:pointer;font-size:13px;">Pedido máximo</button>
+                </div>
+                <div style="display:flex;gap:2px;background:#f1f5f9;padding:3px;border-radius:8px;">
+                  <button id="gvTopEmpLk"  type="button" onclick="gvTopSetEmp('lk')"   style="padding:6px 14px;border:none;background:#1e6bd6;color:#fff;border-radius:6px;cursor:pointer;font-size:13px;">Loekemeyer</button>
+                  <button id="gvTopEmpCh"  type="button" onclick="gvTopSetEmp('chef')" style="padding:6px 14px;border:none;background:transparent;color:#333;border-radius:6px;cursor:pointer;font-size:13px;">Chef</button>
+                </div>
+                <label style="font-size:13px;color:#64748b;">Ver últimos
+                  <select id="gvTopMeses" onchange="gvTopCargar()" style="padding:6px;border:1px solid #cbd5e1;border-radius:6px;margin:0 4px;">
+                    <option value="6">6 m</option>
+                    <option value="12" selected>12 m</option>
+                    <option value="18">18 m</option>
+                    <option value="24">24 m</option>
+                  </select>
+                  de seguimiento
+                </label>
+                <label style="font-size:13px;color:#64748b;">Solo activos últimos
+                  <select id="gvTopMinAct" onchange="gvTopCargar()" style="padding:6px;border:1px solid #cbd5e1;border-radius:6px;margin:0 4px;">
+                    <option value="">— todos —</option>
+                    <option value="24">24 m</option>
+                    <option value="36" selected>36 m</option>
+                    <option value="60">60 m</option>
+                  </select>
+                </label>
+                <button type="button" class="btn-secondary" onclick="gvTopCargar()" style="padding:6px 14px;">↻ Recargar</button>
+                <button type="button" class="btn-secondary" onclick="gvTopExcel()" style="padding:6px 14px;">📥 Excel</button>
+              </div>
+              <div id="gvTopStatus" style="margin:8px 0;color:#64748b;font-size:13px;"></div>
+              <div id="gvTopTabla"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Modal de composición (drill-down del dashboard) -->
+        <div id="gvDrillModal" class="gv-drill-modal" style="display: none">
+          <div class="gv-drill-caja">
+            <div class="gv-drill-head">
+              <div id="gvDrillMigas" class="gv-migas"></div>
+              <button type="button" class="gv-drill-x" onclick="gvCerrarDrill()">&times;</button>
+            </div>
+            <div id="gvDrillBody" class="gv-drill-body"></div>
+          </div>
+        </div>
+
+        <!-- PAGE: HISTORIAL DE CLIENTE -->
+        <section class="page" id="historial-cliente">
+          <div class="page-header">
+            <div>
+              <h1>Historial de Cliente</h1>
+              <p class="page-sub">
+                Buscá un cliente por su código y visualizá su historial de
+                compras (misma vista que el cliente ve en su perfil).
+              </p>
+            </div>
+          </div>
+
+          <div class="card cliente-lookup-card">
+            <div class="cliente-lookup-field">
+              <label for="histClienteCodInput">Código de cliente</label>
+              <div class="cliente-lookup-row">
+                <input
+                  type="text"
+                  id="histClienteCodInput"
+                  placeholder="Ej: 4234"
+                  inputmode="numeric"
+                  autocomplete="off"
+                />
+                <button type="button" class="cliente-lookup-btn" onclick="cargarHistorialClienteAdmin()">
+                  Buscar
+                </button>
+              </div>
+            </div>
+            <div id="histClienteStatus" class="cliente-lookup-status"></div>
+          </div>
+
+          <div class="card cliente-embed-card" id="histClienteEmbedCard" style="display:none">
+            <iframe
+              id="histClienteIframe"
+              class="cliente-embed-iframe"
+              src=""
+              title="Historial de cliente"
+              loading="lazy"
+            ></iframe>
+          </div>
+        </section>
+
+        <!-- PAGE: SUGERENCIAS x IA -->
+        <section class="page" id="sugerencias-cliente">
+          <div class="page-header">
+            <div>
+              <h1>Sugerencias x IA</h1>
+              <p class="page-sub">
+                Buscá un cliente por su código y visualizá las sugerencias por
+                IA (misma vista que el cliente ve en su perfil).
+              </p>
+            </div>
+          </div>
+
+          <div class="card cliente-lookup-card">
+            <div class="cliente-lookup-field">
+              <label for="sugClienteCodInput">Código de cliente</label>
+              <div class="cliente-lookup-row">
+                <input
+                  type="text"
+                  id="sugClienteCodInput"
+                  placeholder="Ej: 4234"
+                  inputmode="numeric"
+                  autocomplete="off"
+                />
+                <button type="button" class="cliente-lookup-btn" onclick="cargarSugerenciasClienteAdmin()">
+                  Buscar
+                </button>
+              </div>
+            </div>
+            <div id="sugClienteStatus" class="cliente-lookup-status"></div>
+          </div>
+
+          <div class="card cliente-embed-card" id="sugClienteEmbedCard" style="display:none">
+            <iframe
+              id="sugClienteIframe"
+              class="cliente-embed-iframe"
+              src=""
+              title="Sugerencias del cliente"
+              loading="lazy"
+            ></iframe>
+          </div>
+        </section>
+
+        <!-- PAGE: ANÁLISIS VENTA CLIENTE -->
+        <section class="page" id="analisis-venta-cliente">
+          <div class="page-header">
+            <div>
+              <h1>Análisis Venta Cliente</h1>
+              <p class="page-sub">
+                Análisis detallado de ventas, productos y comportamiento por cliente.
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap">
+              <!-- btnExportarExcel se movió adentro de la card de razón social
+                   para que se entienda que exporta el Excel de ESE cliente -->
+              <button
+                type="button"
+                id="btnReporteTotal"
+                class="avc-btn avc-btn-ghost"
+                title="Genera reporte de TODOS los clientes"
+              >
+                Reporte Total Clientes
+              </button>
+            </div>
+          </div>
+
+          <main class="avc-main" style="max-width: none; padding: 0">
+            <!-- ESTADÍSTICA MADRE — IMPORTADOR (movido arriba de la búsqueda) -->
+            <section class="avc-search-section" style="padding: 0">
+              <details>
+                <summary
+                  style="
+                    cursor: pointer;
+                    padding: 14px 20px;
+                    font-weight: 600;
+                    font-size: 14px;
+                    user-select: none;
+                  "
+                >
+                  Estadística Madre — Importador
+                  <span
+                    id="emLastImport"
+                    style="
+                      font-weight: 400;
+                      font-size: 12px;
+                      color: var(--text2);
+                      margin-left: 8px;
+                    "
+                  ></span>
+                </summary>
+                <div style="padding: 4px 20px 18px 20px">
+                  <p
+                    style="
+                      font-size: 13px;
+                      color: var(--text2);
+                      margin-bottom: 14px;
+                    "
+                  >
+                    Importa el xlsx de tendencia mensual por SKU
+                    (<code>Y:\AA  VENTAS\A7 Estadistica MADRE\…</code>) y
+                    actualiza la tabla <code>estadistica_madre</code>.
+                    Re-importar cada vez que se actualice el archivo
+                    (cada ~3 meses).
+                  </p>
+
+                  <div
+                    style="
+                      display: flex;
+                      gap: 12px;
+                      align-items: center;
+                      flex-wrap: wrap;
+                      margin-bottom: 12px;
+                    "
+                  >
+                    <input
+                      type="file"
+                      id="emFileInput"
+                      accept=".xlsx,.xlsm,.xls"
+                      style="display: none"
+                    />
+                    <button
+                      type="button"
+                      class="avc-btn avc-btn-primary"
+                      onclick="document.getElementById('emFileInput').click()"
+                    >
+                      Elegir archivo xlsx
+                    </button>
+                    <span
+                      id="emFileName"
+                      style="font-size: 13px; color: var(--text2)"
+                    >
+                      Ningún archivo seleccionado
+                    </span>
+                    <button
+                      type="button"
+                      class="avc-btn"
+                      id="emBtnImportar"
+                      disabled
+                      style="margin-left: auto"
+                    >
+                      Importar a Supabase
+                    </button>
+                  </div>
+
+                  <div
+                    id="emStatus"
+                    style="
+                      font-size: 13px;
+                      color: var(--text);
+                      margin-bottom: 8px;
+                      min-height: 18px;
+                    "
+                  ></div>
+
+                  <div
+                    id="emPreview"
+                    style="
+                      max-height: 400px;
+                      overflow: auto;
+                      border: 1px solid var(--border);
+                      border-radius: var(--radius-sm);
+                      display: none;
+                    "
+                  ></div>
+
+                  <details
+                    style="
+                      margin-top: 14px;
+                      font-size: 13px;
+                      color: var(--text2);
+                    "
+                  >
+                    <summary style="cursor: pointer; font-weight: 600">
+                      Detalles técnicos
+                    </summary>
+                    <ul style="margin: 8px 0; padding-left: 20px">
+                      <li>
+                        Hoja esperada: <code>Loeke Madre - &lt;fecha&gt;</code>
+                        (fallback: primera hoja con
+                        <em>"loeke madre"</em> en el nombre)
+                      </li>
+                      <li>
+                        Encabezado en fila 5. Columnas leídas:
+                        <code>Cat. Art</code>, <code>Ranking</code>,
+                        <code>Descripcion</code>,
+                        <code>Cod Nuevo Isis</code>,
+                        <code>E.Madre Uni x Mes</code>,
+                        <code>Tendencia en UNI</code>,
+                        <code>uni x Caja</code>,
+                        <code>E.Madre en Cajas</code>,
+                        <code>Proveedor</code>
+                      </li>
+                      <li>Upsert por <code>cod</code> en lotes de 500</li>
+                      <li>
+                        La fecha de última importación se guarda en
+                        localStorage <code>lastImport_em</code>
+                      </li>
+                    </ul>
+                  </details>
+                </div>
+              </details>
+            </section>
+
+            <!-- RAZÓN SOCIAL DEL CLIENTE BUSCADO (aparece al cargar) -->
+            <div id="clienteRazonSocial" class="avc-cliente-rs" hidden></div>
+
+            <!-- BUSCADOR DE CLIENTE -->
+            <section class="avc-search-section">
+              <form id="formBuscar" class="avc-search-form" autocomplete="off">
+                <label for="inputCodCliente" class="avc-search-label">
+                  Código Cliente
+                </label>
+                <input
+                  type="text"
+                  id="inputCodCliente"
+                  class="avc-search-input"
+                  placeholder="Ej: 1234"
+                  required
+                />
+                <button type="submit" class="avc-btn avc-btn-primary">
+                  Buscar
+                </button>
+                <span id="busquedaStatus" class="avc-search-status"></span>
+              </form>
+            </section>
+
+            <!-- INFO DEL CLIENTE -->
+            <section
+              id="clienteInfo"
+              class="avc-cliente-info"
+              style="display: none"
+            ></section>
+
+            <!-- TABS POR SUCURSAL -->
+            <section
+              id="sucursalTabs"
+              class="avc-sucursal-tabs"
+              style="display: none"
+            ></section>
+
+            <!-- CONTENIDO POR SUCURSAL -->
+            <section
+              id="sucursalContent"
+              class="avc-sucursal-content"
+              style="display: none"
+            ></section>
+
+            <!-- ESTADO VACÍO -->
+            <section id="emptyState" class="avc-empty-state">
+              <p>Ingresá un código de cliente para comenzar el análisis.</p>
+            </section>
+          </main>
+        </section>
+
+        <!-- PAGE: ESTADÍSTICA MADRE -->
+        <section class="page" id="estadistica-madre">
+          <div class="page-header">
+            <div>
+              <h1>Estadística Madre</h1>
+              <p class="page-sub">
+                Unidades vendidas por mes de cada artículo. Proyección
+                mensual calculada por cliente sobre los últimos 24 meses
+                (desde la primera compra de cada uno), excluyendo meses
+                disruptivos que no sean recurrentes ni parte de un
+                crecimiento progresivo.
+              </p>
+            </div>
+          </div>
+
+          <div class="card est-madre-toolbar">
+            <div class="est-madre-search-wrap">
+              <label for="estMadreSearch">Buscar artículo (cod o descripción)</label>
+              <input
+                type="text"
+                id="estMadreSearch"
+                placeholder="Ej: 505 o &quot;Abrelatas&quot;"
+                autocomplete="off"
+                oninput="filtrarEstadisticaMadre()"
+              />
+            </div>
+            <div class="est-madre-range-wrap">
+              <label for="estMadreMonths">Meses a mostrar</label>
+              <select id="estMadreMonths" onchange="aplicarRangoEstadisticaMadre()">
+                <option value="12">Últimos 12 meses</option>
+                <option value="24" selected>Últimos 24 meses</option>
+                <option value="36">Últimos 36 meses</option>
+                <option value="0">Todo el historial</option>
+              </select>
+            </div>
+            <div class="est-madre-range-wrap" style="min-width: auto;">
+              <label for="estMadreDisruptivasMonth">Mes a descargar</label>
+              <select id="estMadreDisruptivasMonth" style="padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-family: inherit; background: #f9fafb;">
+                <option value="">Seleccionar mes...</option>
+              </select>
+            </div>
+            <div class="est-madre-range-wrap" style="min-width: auto;">
+              <label>&nbsp;</label>
+              <button class="btn-primary" onclick="descargarReporteVentasDisruptivas()" title="Descargar reporte de ventas anómalas del mes seleccionado">
+                ⬇ Descargar Disruptivas
+              </button>
+            </div>
+            <div id="estMadreStatus" class="cliente-lookup-status"></div>
+          </div>
+
+          <div class="card est-madre-card">
+            <div class="est-madre-table-wrap">
+              <table class="est-madre-table" id="estMadreTable">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Modal detalle de venta (cliente click en celda) -->
+          <div id="estMadreModal" class="em-modal" style="display:none">
+            <div class="em-modal-overlay" onclick="cerrarDetalleVentaMadre()"></div>
+            <div class="em-modal-box">
+              <div class="em-modal-header">
+                <h3 id="estMadreModalTitle" style="margin:0;font-size:18px">Detalle de ventas</h3>
+                <button type="button" class="em-modal-close" onclick="cerrarDetalleVentaMadre()" aria-label="Cerrar">&times;</button>
+              </div>
+              <div class="em-modal-body" id="estMadreModalBody">
+                Cargando…
+              </div>
+            </div>
+          </div>
+
+          <style>
+            .est-madre-table td.est-madre-clickable {
+              cursor: pointer;
+              transition: background 0.15s;
+            }
+            .est-madre-table td.est-madre-clickable:hover {
+              background: #fff9c4 !important;
+              color: #2c3e50 !important;
+              font-weight: 700;
+            }
+            .em-modal {
+              position: fixed; inset: 0; z-index: 9999;
+              display: flex; align-items: center; justify-content: center;
+            }
+            .em-modal-overlay {
+              position: absolute; inset: 0;
+              background: rgba(0,0,0,0.5);
+            }
+            .em-modal-box {
+              position: relative; z-index: 1;
+              background: white; border-radius: 12px;
+              width: 90vw; max-width: 1100px;
+              max-height: 88vh; overflow: hidden;
+              display: flex; flex-direction: column;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }
+            .em-modal-header {
+              padding: 16px 20px; border-bottom: 1px solid #e0e0e0;
+              display: flex; justify-content: space-between; align-items: center;
+              background: #f8f9fa;
+            }
+            .em-modal-close {
+              background: none; border: none;
+              font-size: 28px; line-height: 1;
+              color: #888; cursor: pointer; padding: 0 6px;
+            }
+            .em-modal-close:hover { color: #c0392b; }
+            .em-modal-body {
+              padding: 20px; overflow-y: auto;
+            }
+            .em-detail-tbl {
+              width: 100%; border-collapse: collapse;
+              font-size: 12.5px;
+              white-space: nowrap;
+            }
+            .em-detail-tbl th {
+              background: #2c3e50; color: white;
+              padding: 6px 12px; text-align: left;
+              font-size: 10.5px; text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .em-detail-tbl td {
+              padding: 4px 12px; border-bottom: 1px solid #f0f0f0;
+            }
+            .em-detail-tbl tbody tr:hover { background: #f8f9fa; }
+            /* Header sticky cuando la tabla está dentro de un wrapper con scroll vertical */
+            .em-detail-tbl-sticky thead th {
+              position: sticky;
+              top: 0;
+              z-index: 2;
+              box-shadow: 0 2px 0 rgba(0,0,0,0.1);
+            }
+            /* Card colapsable (ventas disruptivas) — usa <details>/<summary> nativo */
+            .em-card-collapse {
+              border: 1px solid #e0e0e0;
+              border-radius: 8px;
+              background: #fff;
+              overflow: hidden;
+              transition: box-shadow 0.2s ease;
+            }
+            .em-card-collapse[open] {
+              box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            }
+            .em-card-collapse.em-card-warn {
+              border-color: #e74c3c;
+              background: #fffaf9;
+            }
+            .em-card-collapse.em-card-ok {
+              border-color: #27ae60;
+              background: #f5fdf8;
+            }
+            .em-card-collapse summary {
+              list-style: none;
+              cursor: pointer;
+              padding: 14px 18px;
+              display: flex;
+              align-items: center;
+              gap: 14px;
+              user-select: none;
+              transition: background 0.15s ease;
+            }
+            .em-card-collapse summary::-webkit-details-marker {
+              display: none;
+            }
+            .em-card-collapse summary:hover {
+              background: rgba(0,0,0,0.025);
+            }
+            .em-card-title {
+              font-weight: 700;
+              font-size: 15px;
+              color: #2c3e50;
+              flex: 1;
+            }
+            .em-card-badge {
+              font-size: 12px;
+              font-weight: 700;
+              padding: 4px 10px;
+              border-radius: 4px;
+              white-space: nowrap;
+            }
+            .em-card-badge-warn {
+              background: #e74c3c;
+              color: #fff;
+            }
+            .em-card-badge-ok {
+              background: #27ae60;
+              color: #fff;
+            }
+            .em-card-chevron {
+              font-size: 14px;
+              color: #888;
+              transition: transform 0.2s ease;
+            }
+            .em-card-collapse[open] .em-card-chevron {
+              transform: rotate(180deg);
+            }
+            .em-card-content {
+              padding: 0 18px 18px;
+            }
+
+            /* Spinner de carga + texto dinámico — centrado en el contenedor */
+            .em-loader {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              gap: 14px;
+              padding: 60px 0;
+              width: 100%;
+              text-align: center;
+            }
+            .em-spinner {
+              width: 48px;
+              height: 48px;
+              border: 3px solid #e0e0e0;
+              border-top-color: #2c3e50;
+              border-radius: 50%;
+              animation: emSpin 0.8s linear infinite;
+            }
+            .em-loader-text {
+              font-size: 13px;
+              font-weight: 600;
+              color: #666;
+              letter-spacing: 0.2px;
+            }
+            @keyframes emSpin {
+              to { transform: rotate(360deg); }
+            }
+          </style>
+        </section>
+
+        <!-- PAGE: REGISTRO ENVIOS CORREO -->
+        <section class="page" id="registro-envios">
+          <div class="page-header">
+            <div>
+              <h1>Registro Envíos Correo</h1>
+              <p class="page-sub">
+                Estado de la edge function <code>procesar-pedidos-db</code>
+                que compila pedidos desde la base de datos en Excel y los envía por mail.
+              </p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+              <label for="reEnvRange" style="font-weight:600;font-size:14px">Período:</label>
+              <select id="reEnvRange" onchange="cargarRegistroEnvios()" class="field-input" style="width:auto;min-width:180px">
+                <option value="7">Últimos 7 días</option>
+                <option value="30" selected>Últimos 30 días</option>
+                <option value="90">Últimos 90 días</option>
+                <option value="365">Último año</option>
+              </select>
+              <button class="btn-ghost" type="button" onclick="cargarRegistroEnvios()">Actualizar</button>
+              <div id="reEnvStatus" class="cliente-lookup-status" style="margin-left:auto;font-size:12px"></div>
+            </div>
+
+            <div id="reEnvStatsGrid" style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px">
+              <div style="grid-column:1/-1;text-align:center;padding:20px;color:#999">
+                Seleccioná un período y presioná Actualizar.
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:16px">
+            <div id="reEnvRecent"></div>
+          </div>
+        </section>
+
+        <!-- ===== OSA · Entregas / Ventas (carga a Supabase) ===== -->
+        <section class="page" id="osa-entregas"></section>
+        <section class="page" id="osa-ventas"></section>
+
+      </main>
+    </div>
+
+    <!-- EDIT CLIENTE MODAL -->
+    <div class="modal-overlay" id="editClienteModal" style="display: none">
+      <div class="modal-box" style="max-width: 600px">
+        <div class="modal-header">
+          <h3 id="editModalTitle">Editar Cliente</h3>
+          <button class="modal-close" id="closeEditModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editClienteId" />
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px">
+            <div class="form-field">
+              <label class="field-label">COD Cliente</label
+              ><input class="field-input" id="editCod" placeholder="Ej: 4214" />
+            </div>
+            <div class="form-field">
+              <label class="field-label">CUIT</label
+              ><input
+                class="field-input"
+                id="editCuit"
+                placeholder="30123456789"
+              />
+            </div>
+            <div class="form-field" style="grid-column: 1/-1">
+              <label class="field-label">Razon Social</label
+              ><input
+                class="field-input"
+                id="editRazon"
+                placeholder="Nombre empresa"
+              />
+            </div>
+            <div class="form-field">
+              <label class="field-label">Mail</label
+              ><input
+                class="field-input"
+                id="editMail"
+                placeholder="mail@ejemplo.com"
+              />
+            </div>
+            <div class="form-field">
+              <label class="field-label">Vendedor</label
+              ><input class="field-input" id="editVend" placeholder="Ej: 7" />
+            </div>
+            <div class="form-field">
+              <label class="field-label">Dto. Vol (%)</label
+              ><input
+                class="field-input"
+                id="editDto"
+                type="number"
+                placeholder="Ej: 8"
+                min="0"
+                max="100"
+              />
+            </div>
+            <div class="form-field">
+              <label class="field-label">Usuario (login)</label
+              ><input
+                class="field-input"
+                id="editUsername"
+                placeholder="Ej: juan123"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" id="closeEditModal2">Cancelar</button>
+          <button class="btn-primary" id="saveEditCliente">
+            Guardar Cambios
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD SUCURSAL MODAL -->
+    <div class="modal-overlay" id="addSucModal" style="display: none">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3>Agregar Sucursal</h3>
+          <button class="modal-close" id="closeAddSucModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="modalSucClienteId" />
+          <div class="form-field">
+            <label class="field-label">Direccion del cliente (label)</label
+            ><input
+              class="field-input"
+              id="modalSucLabel"
+              placeholder="Ej: Av. Corrientes 1234 - CABA"
+            />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Slot</label
+            ><input
+              class="field-input"
+              id="modalSucSlot"
+              type="number"
+              value="1"
+              min="1"
+            />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Direccion real de entrega</label
+            ><input
+              class="field-input"
+              id="modalSucDirEntrega"
+              placeholder="Donde entregamos nosotros"
+            />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Zona Expreso</label
+            ><input
+              class="field-input"
+              id="modalSucZona"
+              placeholder="Ej: Soldati, Barracas, Retira..."
+            />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" id="closeAddSucModal2">Cancelar</button>
+          <button class="btn-primary" id="saveModalSuc">
+            Guardar Sucursal
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast-wrap" id="toastWrap"></div>
+
+    <!-- LOADER GLOBAL -->
+    <div class="admin-loader" id="adminLoader" hidden>
+      <div class="admin-loader-box">
+        <div class="admin-spinner"></div>
+        <div class="admin-loader-msg" id="adminLoaderMsg">Procesando...</div>
+      </div>
+    </div>
+
+    <script src="./version.js?v=23179"></script>
+    <script src="excel-parser-smart.js"></script>
+    <script src="argentina-map-data.js?v=23179"></script>
+    <script src="admin.js?v=23179"></script>
+    <script src="admin-supercot.js?v=23179"></script>
+    <script src="admin-excel-krikos.js?v=23179"></script>
+    <script src="analisis-venta-cliente.js?v=23179"></script>
+    <!-- OSA: reusa la capa de datos del Formato OSA (parsers + escritura a Supabase) -->
+    <script src="osa/js/store.js?v=23179"></script>
+    <script src="admin-osa.js?v=23179"></script>
+  </body>
+</html>

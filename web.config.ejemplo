@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ARCHIVO DE REFERENCIA, NO DE DESPLIEGUE.
+
+  Se llama .ejemplo a propósito: si se llamara web.config, un copiado del repo
+  al IIS lo pisaría. El web.config REAL vive únicamente en el servidor.
+
+  Historia: el 25/6/2026 el commit aeab082 agregó al repo un archivo llamado
+  web.config con 3.191 líneas de JavaScript y cero XML. Nunca hubo una versión
+  buena versionada, así que no se pudo recuperar. Se borró porque copiarlo al
+  IIS devolvía HTTP 500 en todo el sitio.
+
+  QUÉ HACER: traer el web.config real del servidor, compararlo con esto y
+  versionar el del servidor (que es el que manda). Lo de abajo implementa lo
+  que documenta CLAUDE.md, pero NO está verificado contra producción.
+-->
+<configuration>
+  <system.webServer>
+
+    <!-- HTTPS obligatorio -->
+    <rewrite>
+      <rules>
+        <rule name="Redirigir a HTTPS" stopProcessing="true">
+          <match url="(.*)" />
+          <conditions>
+            <add input="{HTTPS}" pattern="^OFF$" />
+          </conditions>
+          <action type="Redirect" url="https://{HTTP_HOST}/{R:1}"
+                  redirectType="Permanent" />
+        </rule>
+      </rules>
+    </rewrite>
+
+    <!-- Tipos que IIS no conoce de fábrica -->
+    <staticContent>
+      <remove fileExtension=".webp" />
+      <mimeMap fileExtension=".webp" mimeType="image/webp" />
+      <remove fileExtension=".avif" />
+      <mimeMap fileExtension=".avif" mimeType="image/avif" />
+      <remove fileExtension=".woff2" />
+      <mimeMap fileExtension=".woff2" mimeType="font/woff2" />
+      <!-- Cache de un año: los .js y .css llevan ?v=XXX, que lo invalida
+           cuando cambian (ver hooks/pre-commit). -->
+      <clientCache cacheControlMode="UseMaxAge"
+                   cacheControlMaxAge="365.00:00:00" />
+    </staticContent>
+
+    <urlCompression doStaticCompression="true" doDynamicCompression="true" />
+
+    <httpProtocol>
+      <customHeaders>
+        <add name="X-Content-Type-Options" value="nosniff" />
+        <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
+        <add name="X-Frame-Options" value="SAMEORIGIN" />
+      </customHeaders>
+    </httpProtocol>
+
+  </system.webServer>
+</configuration>
