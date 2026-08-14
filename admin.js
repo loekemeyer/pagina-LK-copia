@@ -1837,7 +1837,7 @@ async function _expoAutoSave() {
   if (id && _expoSavedCustomer) {
     // Ya guardado: actualizar silenciosamente
     var updatePayload = {
-      cod_cliente: cod,
+      cod_cliente: cod ? parseInt(cod, 10) : null,
       business_name: razon,
       cuit: cuit || null,
       vend: document.getElementById("editVend").value.trim() || null,
@@ -1860,7 +1860,7 @@ async function _expoAutoSave() {
   var pin = (pwd30El && pwd30El.value.length >= 20) ? pwd30El.value : generatePassword30();
   document.getElementById("editPassword").value = pin;
   var payload = {
-    cod_cliente: cod,
+    cod_cliente: cod ? parseInt(cod, 10) : null,
     business_name: razon,
     cuit: cuit || null,
     vend: document.getElementById("editVend").value.trim() || null,
@@ -1876,7 +1876,7 @@ async function _expoAutoSave() {
     document.getElementById("editClienteId").value = inserted[0].id;
     _expoSavedCustomer = {
       id: inserted[0].id,
-      cod_cliente: cod,
+      cod_cliente: cod ? parseInt(cod, 10) : null,
       business_name: razon,
       dto_vol: parseFloat(payload.dto_vol) || 0,
       vend: payload.vend || "",
