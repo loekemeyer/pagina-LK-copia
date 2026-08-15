@@ -67,3 +67,38 @@ $$;
 
 revoke execute on function public.buscar_cliente_expo(text) from public;
 grant execute on function public.buscar_cliente_expo(text) to authenticated, service_role;
+
+-- ----------------------------------------------------------------------------
+-- Fase 2: expo_clientes_pendientes — "otro módulo" que junta los clientes
+--   nuevos cargados en la expo para levantarlos todos juntos al ERP. El cliente
+--   igual se crea en customers+auth (para que el pedido/PIN/descarga funcionen);
+--   esta tabla es el registro para el alta ERP posterior.
+-- ----------------------------------------------------------------------------
+create table if not exists public.expo_clientes_pendientes (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid references public.customers(id) on delete set null,
+  cod_cliente bigint,
+  business_name text,
+  cuit text,
+  direccion text,
+  localidad text,
+  provincia text,
+  whatsapp text,
+  mail text,
+  vend text,
+  dto_vol numeric,
+  pin text,
+  direcciones_entrega jsonb default '[]'::jsonb,
+  estado text default 'pendiente',           -- pendiente | cargado_erp
+  creado_por uuid default auth.uid(),
+  creado_at timestamptz default now(),
+  actualizado_at timestamptz default now()
+);
+
+alter table public.expo_clientes_pendientes enable row level security;
+
+drop policy if exists expo_pend_admin_all on public.expo_clientes_pendientes;
+create policy expo_pend_admin_all on public.expo_clientes_pendientes
+  for all
+  using (exists (select 1 from public.admins a where a.auth_user_id = auth.uid()))
+  with check (exists (select 1 from public.admins a where a.auth_user_id = auth.uid()));

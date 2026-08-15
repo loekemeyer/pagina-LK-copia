@@ -9099,10 +9099,275 @@ async function expoApplyCustomer(cust) {
   _expoUpdateChip();
 }
 
+// ---- EXPO: Nuevo cliente (Fase 2) ----
+// Estado del alta en curso: permite pausar (guardar parcial) y volver a editar.
+var _expoNewState = { id: null, authId: null };
+var _expoNewWired = false;
+
+// Clave de 30 chars (mismo esquema que el admin). Excluye 0/O/1/I/l.
+function _expoNewGenPin() {
+  var chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  var r = "";
+  for (var i = 0; i < 30; i++) r += chars.charAt(Math.floor(Math.random() * chars.length));
+  return r;
+}
+
+// Crea el usuario auth con un cliente aparte (no pisa la sesión del operador).
+async function _expoCreateAuthUser(cuit, pin) {
+  var digits = String(cuit || "").replace(/[^0-9]/g, "");
+  if (!digits) return null;
+  var email = digits + "@cuit.loekemeyer";
+  var tmp = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  var res = await tmp.auth.signUp({ email: email, password: pin });
+  if (res.error) {
+    if (res.error.message.toLowerCase().includes("already registered")) {
+      var lg = await tmp.auth.signInWithPassword({ email: email, password: pin });
+      if (!lg.error && lg.data.user) return lg.data.user.id;
+    }
+    console.warn("expo auth signup:", res.error.message);
+    return null;
+  }
+  return res.data.user ? res.data.user.id : null;
+}
+
+function _expoNewStatus(msg, kind) {
+  var el = document.getElementById("expoNewStatus");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.color = kind === "err" ? "#b91c1c" : kind === "ok" ? "#166534" : "#6b7280";
+}
+
+function _expoAddrAddRow(prefill) {
+  prefill = prefill || {};
+  var list = document.getElementById("expoAddrList");
+  if (!list) return;
+  var row = document.createElement("div");
+  row.className = "expo-addr-row";
+  row.innerHTML =
+    '<input class="expo-inp expo-addr-dir" placeholder="Dirección de entrega" />' +
+    '<input class="expo-inp expo-addr-loc" placeholder="Localidad" />' +
+    '<input class="expo-inp expo-addr-prov" placeholder="Provincia" />' +
+    '<button type="button" class="expo-addr-del" title="Quitar">&times;</button>';
+  row.querySelector(".expo-addr-dir").value = prefill.direccion || "";
+  row.querySelector(".expo-addr-loc").value = prefill.localidad || "";
+  row.querySelector(".expo-addr-prov").value = prefill.provincia || "";
+  row.querySelector(".expo-addr-del").addEventListener("click", function () {
+    row.remove();
+    // Garantizar mínimo 1 fila
+    if (!document.querySelectorAll("#expoAddrList .expo-addr-row").length)
+      _expoAddrAddRow();
+  });
+  list.appendChild(row);
+}
+
+function _expoAddrCollect() {
+  var out = [];
+  document.querySelectorAll("#expoAddrList .expo-addr-row").forEach(function (r) {
+    var dir = (r.querySelector(".expo-addr-dir").value || "").trim();
+    if (!dir) return;
+    out.push({
+      direccion: dir,
+      localidad: (r.querySelector(".expo-addr-loc").value || "").trim(),
+      provincia: (r.querySelector(".expo-addr-prov").value || "").trim(),
+    });
+  });
+  return out;
+}
+
 function expoNuevoCliente() {
-  alert(
-    "Nuevo cliente: en construcción (Fase 2).\n\nPor ahora podés elegir clientes existentes y cargarles el pedido.",
-  );
+  var m = document.getElementById("expoNewModal");
+  if (!m) return;
+  _expoNewState = { id: null, authId: null };
+  [
+    "expoNewRazon", "expoNewCuit", "expoNewWhatsapp", "expoNewMail",
+    "expoNewVend", "expoNewCod", "expoNewDto", "expoNewDirFiscal",
+    "expoNewLocFiscal", "expoNewProvFiscal",
+  ].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  document.getElementById("expoNewPin").value = _expoNewGenPin();
+  document.getElementById("expoAddrList").innerHTML = "";
+  _expoAddrAddRow();
+  _expoNewStatus("");
+  _expoWireNewModal();
+  m.classList.remove("hidden");
+  m.setAttribute("aria-hidden", "false");
+}
+
+function _expoCloseNewModal() {
+  var m = document.getElementById("expoNewModal");
+  if (!m) return;
+  m.classList.add("hidden");
+  m.setAttribute("aria-hidden", "true");
+}
+
+async function _expoGuardarNuevo(pauseOnly) {
+  var razon = (document.getElementById("expoNewRazon").value || "").trim();
+  var cuit = (document.getElementById("expoNewCuit").value || "").replace(/[^0-9]/g, "");
+  if (!razon || !cuit) {
+    _expoNewStatus("Razón social y CUIT son obligatorios.", "err");
+    return;
+  }
+  var addrs = _expoAddrCollect();
+  if (!addrs.length) {
+    _expoNewStatus("Agregá al menos una dirección de entrega.", "err");
+    return;
+  }
+  var cod = (document.getElementById("expoNewCod").value || "").trim();
+  var pin = document.getElementById("expoNewPin").value;
+  var dtoNum = parseFloat(document.getElementById("expoNewDto").value);
+  var dto = isNaN(dtoNum) ? 0 : dtoNum / 100;
+  var whatsapp = (document.getElementById("expoNewWhatsapp").value || "").trim();
+  var mail = (document.getElementById("expoNewMail").value || "").trim();
+  var vend = (document.getElementById("expoNewVend").value || "").trim();
+  var dirFiscal = (document.getElementById("expoNewDirFiscal").value || "").trim();
+  var locFiscal = (document.getElementById("expoNewLocFiscal").value || "").trim();
+  var provFiscal = (document.getElementById("expoNewProvFiscal").value || "").trim();
+
+  var pauseBtn = document.getElementById("expoNewPause");
+  var goBtn = document.getElementById("expoNewGoOrder");
+  if (pauseBtn) pauseBtn.disabled = true;
+  if (goBtn) goBtn.disabled = true;
+  _expoNewStatus("Guardando…");
+
+  try {
+    var cust = {
+      business_name: razon,
+      cuit: cuit || null,
+      cod_cliente: cod ? parseInt(cod, 10) : null,
+      dto_vol: dto,
+      vend: vend || null,
+      mail: mail || null,
+      whatsapp: whatsapp || null,
+      direccion_fiscal: dirFiscal || null,
+      localidad: locFiscal || null,
+    };
+
+    if (!_expoNewState.id) {
+      _expoNewState.authId = await _expoCreateAuthUser(cuit, pin);
+      var insPayload = Object.assign({}, cust, { pin: pin });
+      if (_expoNewState.authId) insPayload.auth_user_id = _expoNewState.authId;
+      var ins = await supabaseClient
+        .from("customers")
+        .insert(insPayload)
+        .select("id")
+        .single();
+      if (ins.error) throw ins.error;
+      _expoNewState.id = ins.data.id;
+    } else {
+      var upd = await supabaseClient
+        .from("customers")
+        .update(cust)
+        .eq("id", _expoNewState.id);
+      if (upd.error) throw upd.error;
+    }
+
+    // Direcciones de entrega: reemplazo total (borrar + insertar).
+    await supabaseClient
+      .from("customer_delivery_addresses")
+      .delete()
+      .eq("customer_id", _expoNewState.id);
+    var addrRows = addrs.map(function (a, i) {
+      return {
+        customer_id: _expoNewState.id,
+        slot: i + 1,
+        label: a.direccion,
+        direccion_entrega: a.direccion,
+        localidad: a.localidad || null,
+        provincia: a.provincia || null,
+      };
+    });
+    var addrIns = await supabaseClient
+      .from("customer_delivery_addresses")
+      .insert(addrRows);
+    if (addrIns.error) throw addrIns.error;
+
+    // Staging para el ERP (una fila por cliente).
+    await supabaseClient
+      .from("expo_clientes_pendientes")
+      .delete()
+      .eq("customer_id", _expoNewState.id);
+    var stIns = await supabaseClient.from("expo_clientes_pendientes").insert({
+      customer_id: _expoNewState.id,
+      cod_cliente: cust.cod_cliente,
+      business_name: razon,
+      cuit: cuit,
+      direccion: dirFiscal || null,
+      localidad: locFiscal || null,
+      provincia: provFiscal || null,
+      whatsapp: whatsapp || null,
+      mail: mail || null,
+      vend: vend || null,
+      dto_vol: dto,
+      pin: pin,
+      direcciones_entrega: addrs,
+      estado: "pendiente",
+      actualizado_at: new Date().toISOString(),
+    });
+    if (stIns.error) throw stIns.error;
+    // Nota: el vend queda en customers.vend + staging (suficiente para el ERP).
+    // La asociación a user_customer_links la resuelve el panel admin, no el alta expo.
+
+    if (pauseOnly) {
+      _expoNewStatus("Guardado. Podés cerrar y volver a completar.", "ok");
+      if (pauseBtn) pauseBtn.disabled = false;
+      if (goBtn) goBtn.disabled = false;
+      return;
+    }
+
+    var custObj = {
+      id: _expoNewState.id,
+      cod_cliente: cust.cod_cliente,
+      business_name: razon,
+      cuit: cuit,
+      dto_vol: dto,
+      vend: vend,
+    };
+    _expoCloseNewModal();
+    await expoApplyCustomer(custObj);
+    if (typeof showSection === "function") showSection("productos");
+  } catch (e) {
+    _expoNewStatus("Error: " + (e && e.message ? e.message : e), "err");
+  } finally {
+    if (pauseBtn) pauseBtn.disabled = false;
+    if (goBtn) goBtn.disabled = false;
+  }
+}
+
+function _expoWireNewModal() {
+  if (_expoNewWired) return;
+  var m = document.getElementById("expoNewModal");
+  if (!m) return;
+  _expoNewWired = true;
+  var byId = function (x) { return document.getElementById(x); };
+  if (byId("expoNewBackdrop")) byId("expoNewBackdrop").addEventListener("click", _expoCloseNewModal);
+  if (byId("expoNewClose")) byId("expoNewClose").addEventListener("click", _expoCloseNewModal);
+  if (byId("expoAddrAdd")) byId("expoAddrAdd").addEventListener("click", function () { _expoAddrAddRow(); });
+  if (byId("expoAddrUseFiscal"))
+    byId("expoAddrUseFiscal").addEventListener("click", function () {
+      _expoAddrAddRow({
+        direccion: (byId("expoNewDirFiscal").value || "").trim(),
+        localidad: (byId("expoNewLocFiscal").value || "").trim(),
+        provincia: (byId("expoNewProvFiscal").value || "").trim(),
+      });
+    });
+  if (byId("expoNewPause")) byId("expoNewPause").addEventListener("click", function () { _expoGuardarNuevo(true); });
+  if (byId("expoNewGoOrder")) byId("expoNewGoOrder").addEventListener("click", function () { _expoGuardarNuevo(false); });
+  if (byId("expoNewPinCopy"))
+    byId("expoNewPinCopy").addEventListener("click", function () {
+      var v = byId("expoNewPin").value;
+      if (!v) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(v).then(function () {
+          _expoNewStatus("Clave copiada.", "ok");
+        });
+      } else {
+        byId("expoNewPin").select();
+      }
+    });
 }
 
 function _expoWirePickModal() {

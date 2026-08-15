@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23188" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23188" />
+    <link rel="stylesheet" href="css/styles.css?v=23189" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23189" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1020,6 +1020,108 @@
         </div>
       </div>
 
+      <!-- Modal EXPO: Nuevo cliente -->
+      <div id="expoNewModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop" id="expoNewBackdrop"></div>
+        <div
+          class="modal-card expo-new-card"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="expoNewTitle"
+        >
+          <div class="modal-title" id="expoNewTitle">Nuevo cliente</div>
+
+          <div class="expo-new-pin-row">
+            <label class="expo-lbl">Clave generada (30 caracteres)</label>
+            <div class="expo-pin-wrap">
+              <input id="expoNewPin" class="expo-inp" readonly />
+              <button type="button" class="profile-btn subtle" id="expoNewPinCopy">
+                Copiar
+              </button>
+            </div>
+          </div>
+
+          <div class="expo-new-grid">
+            <div class="expo-fld expo-fld-wide">
+              <label class="expo-lbl">Razón social *</label>
+              <input id="expoNewRazon" class="expo-inp" placeholder="Nombre empresa" />
+            </div>
+            <div class="expo-fld">
+              <label class="expo-lbl">CUIT *</label>
+              <input id="expoNewCuit" class="expo-inp" placeholder="30123456789" />
+            </div>
+            <div class="expo-fld">
+              <label class="expo-lbl">WhatsApp</label>
+              <input id="expoNewWhatsapp" class="expo-inp" placeholder="5491131181021" />
+            </div>
+            <div class="expo-fld">
+              <label class="expo-lbl">Mail</label>
+              <input id="expoNewMail" class="expo-inp" placeholder="mail@ejemplo.com" />
+            </div>
+            <div class="expo-fld">
+              <label class="expo-lbl">Vendedor</label>
+              <input id="expoNewVend" class="expo-inp" placeholder="Ej: 7" />
+            </div>
+            <div class="expo-fld">
+              <label class="expo-lbl">Cód cliente (opcional)</label>
+              <input id="expoNewCod" class="expo-inp" placeholder="Ej: 4214" />
+            </div>
+            <div class="expo-fld">
+              <label class="expo-lbl">Dto. Vol (%)</label>
+              <input
+                id="expoNewDto"
+                class="expo-inp"
+                type="number"
+                min="0"
+                max="100"
+                placeholder="Ej: 8"
+              />
+            </div>
+            <div class="expo-fld expo-fld-wide">
+              <label class="expo-lbl">Dirección fiscal</label>
+              <input id="expoNewDirFiscal" class="expo-inp" placeholder="Calle y número" />
+            </div>
+            <div class="expo-fld">
+              <label class="expo-lbl">Localidad (fiscal)</label>
+              <input id="expoNewLocFiscal" class="expo-inp" placeholder="Localidad" />
+            </div>
+            <div class="expo-fld">
+              <label class="expo-lbl">Provincia (fiscal)</label>
+              <input id="expoNewProvFiscal" class="expo-inp" placeholder="Provincia" />
+            </div>
+          </div>
+
+          <div class="expo-addr-block">
+            <div class="expo-addr-head">
+              <span class="expo-lbl">Direcciones de entrega (mín. 1)</span>
+              <div class="expo-addr-head-btns">
+                <button type="button" class="profile-btn subtle" id="expoAddrUseFiscal">
+                  Usar la fiscal
+                </button>
+                <button type="button" class="profile-btn subtle" id="expoAddrAdd">
+                  + Agregar
+                </button>
+              </div>
+            </div>
+            <div id="expoAddrList" class="expo-addr-list"></div>
+          </div>
+
+          <div id="expoNewStatus" class="profile-status" aria-live="polite"></div>
+
+          <div class="modal-actions expo-new-actions">
+            <button type="button" class="profile-btn subtle" id="expoNewClose">
+              Cerrar
+            </button>
+            <button type="button" class="profile-btn" id="expoNewPause">
+              Pausar y guardar
+            </button>
+            <button type="button" class="profile-btn primary" id="expoNewGoOrder">
+              Guardar y cargar pedido
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Modal: Detalle de pedido (vendedor) -->
       <div id="vendorOrderDetailModal" class="modal hidden" aria-hidden="true">
         <div
@@ -1795,14 +1897,14 @@
     </button>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23188"></script>
-    <script src="script.js?v=23188"></script>
+    <script src="./version.js?v=23189"></script>
+    <script src="script.js?v=23189"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23188"></script>
+    <script src="analisis-venta-cliente.js?v=23189"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23188"></script>
-    <script src="admin-excel-krikos.js?v=23188"></script>
-    <script src="vendor-import-excel.js?v=23188"></script>
+    <script src="scotapi-shim.js?v=23189"></script>
+    <script src="admin-excel-krikos.js?v=23189"></script>
+    <script src="vendor-import-excel.js?v=23189"></script>
   </body>
 </html>
