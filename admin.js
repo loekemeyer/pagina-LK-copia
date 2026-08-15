@@ -696,6 +696,12 @@ document.querySelectorAll(".nav-item").forEach(function (btn) {
       cargarGerenteVentas();
     }
     if (
+      btn.dataset.page === "escala-expo" &&
+      typeof cargarEscalaExpo === "function"
+    ) {
+      cargarEscalaExpo();
+    }
+    if (
       btn.dataset.page === "estadistica-madre" &&
       typeof cargarEstadisticaMadre === "function" &&
       !_estMadreData
@@ -14290,3 +14296,104 @@ function _gvTopInit() {
     return r;
   };
 })();
+
+// ===== ESCALA EXPO — editor de la escala de descuento por volumen =====
+// Aplica solo a clientes NUEVOS de expo (tabla expo_dto_escala, RLS admin).
+var _escalaExpoWired = false;
+
+async function cargarEscalaExpo() {
+  var body = document.getElementById("escalaExpoBody");
+  if (!body) return;
+  _escalaExpoWireOnce();
+  body.innerHTML = "";
+  var r = await sb
+    .from("expo_dto_escala")
+    .select("desde,dto")
+    .order("desde", { ascending: true });
+  if (r.error) {
+    _escalaExpoStatus("Error al cargar: " + r.error.message, true);
+    return;
+  }
+  (r.data || []).forEach(function (t) {
+    _escalaExpoAddRow(Number(t.desde), Number(t.dto) * 100);
+  });
+  if (!(r.data || []).length) _escalaExpoAddRow(0, 0);
+  _escalaExpoStatus("");
+}
+
+function _escalaExpoAddRow(desde, dtoPct) {
+  var body = document.getElementById("escalaExpoBody");
+  if (!body) return;
+  var tr = document.createElement("tr");
+  tr.innerHTML =
+    '<td><input type="number" class="field-input esc-desde" min="0" step="1000" value="' +
+    (desde != null ? desde : "") +
+    '"/></td>' +
+    '<td><input type="number" class="field-input esc-dto" min="0" max="100" step="0.5" value="' +
+    (dtoPct != null ? dtoPct : "") +
+    '"/></td>' +
+    '<td><button type="button" class="btn-ghost esc-del">Quitar</button></td>';
+  tr.querySelector(".esc-del").addEventListener("click", function () {
+    tr.remove();
+    if (!document.querySelectorAll("#escalaExpoBody tr").length)
+      _escalaExpoAddRow(0, 0);
+  });
+  body.appendChild(tr);
+}
+
+function _escalaExpoStatus(msg, isErr) {
+  var el = document.getElementById("escalaExpoStatus");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.color = isErr ? "#b91c1c" : "#166534";
+}
+
+async function guardarEscalaExpo() {
+  var rows = [];
+  var bad = false;
+  document.querySelectorAll("#escalaExpoBody tr").forEach(function (tr) {
+    var d = parseFloat(tr.querySelector(".esc-desde").value);
+    var p = parseFloat(tr.querySelector(".esc-dto").value);
+    if (isNaN(d) || isNaN(p)) {
+      bad = true;
+      return;
+    }
+    rows.push({ desde: d, dto: p / 100 });
+  });
+  if (bad || !rows.length) {
+    _escalaExpoStatus(
+      "Revisá los valores: cada tramo necesita monto y dto.",
+      true,
+    );
+    return;
+  }
+  rows.sort(function (a, b) {
+    return a.desde - b.desde;
+  });
+  _escalaExpoStatus("Guardando…");
+  try {
+    var del = await sb.from("expo_dto_escala").delete().gte("desde", 0);
+    if (del.error) throw del.error;
+    var ins = await sb.from("expo_dto_escala").insert(rows);
+    if (ins.error) throw ins.error;
+    _escalaExpoStatus(
+      "Escala guardada. Se aplica a los próximos clientes nuevos de expo.",
+    );
+    if (typeof toast === "function") toast("Escala guardada");
+    cargarEscalaExpo();
+  } catch (e) {
+    _escalaExpoStatus("Error: " + (e.message || e), true);
+  }
+}
+
+function _escalaExpoWireOnce() {
+  if (_escalaExpoWired) return;
+  _escalaExpoWired = true;
+  var add = document.getElementById("escalaExpoAddRow");
+  var save = document.getElementById("escalaExpoSave");
+  if (add)
+    add.addEventListener("click", function () {
+      _escalaExpoAddRow(0, 0);
+    });
+  if (save) save.addEventListener("click", guardarEscalaExpo);
+}
