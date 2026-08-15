@@ -14213,3 +14213,288 @@ a.user-menu-item:hover {
   }
 }
 
+/***********************
+ * EXPO — barra de entrada [Elegir cliente] [Nuevo cliente] + popup
+ ***********************/
+.expo-entry-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.expo-hidden-select {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.expo-current {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: 13px;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.expo-current.has-client {
+  color: #111827;
+}
+.expo-chip-name {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.expo-chip-meta {
+  font-size: 12px;
+  color: #6b7280;
+}
+.expo-entry-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.expo-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+.expo-btn:active {
+  transform: translateY(1px);
+}
+.expo-btn-pick {
+  background: #111827;
+  color: #fff;
+}
+.expo-btn-new {
+  background: #fff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+}
+.expo-btn:hover {
+  filter: brightness(0.95);
+}
+
+/* Popup Elegir cliente */
+.expo-pick-card {
+  max-width: 520px;
+  width: 92vw;
+}
+.expo-pick-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  font-size: 15px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  margin: 6px 0 12px;
+}
+.expo-pick-search:focus {
+  outline: none;
+  border-color: #111827;
+}
+.expo-pick-results {
+  max-height: 52vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.expo-pick-hint {
+  padding: 14px 6px;
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
+}
+.expo-pick-err {
+  color: #b91c1c;
+}
+.expo-pick-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  width: 100%;
+  background: #f9fafb;
+  border: 1px solid #eef0f2;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.expo-pick-row:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+.expo-pick-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: #111827;
+}
+.expo-pick-sub {
+  font-size: 12px;
+  color: #4b5563;
+}
+.expo-pick-dir {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Modal Nuevo cliente */
+.expo-new-card {
+  max-width: 640px;
+  width: 94vw;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.expo-lbl {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 4px;
+}
+.expo-inp {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+.expo-inp:focus {
+  outline: none;
+  border-color: #111827;
+}
+.expo-new-pin-row {
+  margin-bottom: 12px;
+}
+.expo-pin-wrap {
+  display: flex;
+  gap: 8px;
+}
+.expo-pin-wrap .expo-inp {
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+.expo-new-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.expo-fld-wide {
+  grid-column: 1 / -1;
+}
+.expo-addr-block {
+  margin-top: 16px;
+  border-top: 1px solid #eef0f2;
+  padding-top: 12px;
+}
+.expo-addr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.expo-addr-head-btns {
+  display: flex;
+  gap: 6px;
+}
+.expo-addr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.expo-addr-row {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr 0.8fr auto;
+  gap: 6px;
+  align-items: center;
+}
+.expo-addr-del {
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.expo-addr-del:hover {
+  background: #fecaca;
+}
+.expo-new-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.profile-btn.primary {
+  background: #111827;
+  color: #fff;
+}
+@media (max-width: 560px) {
+  .expo-new-grid {
+    grid-template-columns: 1fr;
+  }
+  .expo-addr-row {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+
+/* Panel de confirmación expo (PIN + WhatsApp) */
+.expo-confirm-panel {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #d1fae5;
+  background: #f0fdf4;
+  border-radius: 12px;
+  text-align: center;
+}
+.expo-confirm-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #065f46;
+  margin-bottom: 10px;
+}
+.expo-confirm-pinrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.expo-confirm-pinlbl {
+  font-size: 13px;
+  color: #4b5563;
+}
+.expo-confirm-pin {
+  font-family: monospace;
+  font-size: 14px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 8px;
+  word-break: break-all;
+}
+.expo-confirm-wa {
+  display: inline-flex;
+  background: #25d366;
+  color: #fff;
+}
+.expo-confirm-wa:hover {
+  filter: brightness(0.96);
+}
+

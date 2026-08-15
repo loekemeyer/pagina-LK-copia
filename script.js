@@ -33,6 +33,15 @@ const NOTIFY_NEW_ADDRESS_URL =
  ***********************/
 let WEB_ORDER_DISCOUNT = 0.02; // default fallback
 const UPSELL_DISCOUNT = 0.3; // Descuento extra aplicado al pedido "promo" (items agregados desde popup upsell). Se graba como pedido separado (X+1).
+// EXPO: en esta copia el admin no elige entre sus razones vinculadas; entra a
+// cualquier cliente del padrón vía "Elegir cliente" o crea uno con "Nuevo cliente".
+const EXPO_MODE = true;
+// Modo cliente-expo: activo cuando el cliente seleccionado es un cliente NUEVO
+// de expo (está en expo_clientes_pendientes). En ese modo el pricing deja de ser
+// "admin/precio lista" y pasa a cliente real: dto por ESCALA (según subtotal de
+// lista, en vivo) + contado (-25%) OBLIGATORIO + web (-2%).
+var _expoClientMode = false;
+var _expoScale = null; // [{desde, dto}] ordenado por desde asc
 // NOTA: el endpoint /storage/v1/render/image/public/ requiere el feature
 // de image transformations, que NO está habilitado en este proyecto Supabase.
 // Las imágenes están almacenadas a 400x400 WebP, así que se sirven directo
@@ -130,6 +139,9 @@ let isAdmin = false; // admin flag
 let customerProfile = null; // {id, business_name, dto_vol, ...}
 let _vendorOwnProfile = null; // snapshot del perfil del vendedor logueado (para volver desde "Pedir para")
 function isListPriceOnlyClient() {
+  // En modo cliente-expo el operador (admin) cotiza para un cliente real:
+  // se aplican los descuentos como a cualquier cliente.
+  if (_expoClientMode) return false;
   return isAdmin || String(customerProfile?.cod_cliente) === "5000";
 }
 
@@ -962,6 +974,8 @@ function unitYourPrice(listPrice) {
  * MÉTODO DE PAGO
  ***********************/
 function getPaymentDiscount() {
+  // Cliente nuevo de expo: 1ª compra = contado (-25%) OBLIGATORIO.
+  if (_expoClientMode) return 0.25;
   if (isListPriceOnlyClient()) return 0;
 
   const sel = $("paymentSelect");
@@ -972,6 +986,7 @@ function getPaymentDiscount() {
 }
 
 function getPaymentMethodText() {
+  if (_expoClientMode) return "Contado";
   if (isListPriceOnlyClient()) return "Contado";
 
   const sel = $("paymentSelect");
@@ -982,6 +997,7 @@ function getPaymentMethodText() {
 }
 
 function getPaymentMethodCode() {
+  if (_expoClientMode) return 8; // Contado -25%
   if (isListPriceOnlyClient()) return 8;
 
   const sel = $("paymentSelect");
@@ -3345,6 +3361,10 @@ let __productsEntranceFired = false;
 function renderProducts() {
   const container = $("productsContainer");
   if (!container) return;
+
+  // Modo cliente-expo: recalcular el dto por escala según el carrito actual
+  // antes de pintar los precios de cada card.
+  _expoSyncDto();
 
   // ✨ Sync carrusel de novedades en cada render (mantiene qty en cart sincronizada)
   try {
@@ -5888,7 +5908,7 @@ function toggleControls(productId, show) {
 function calcTotals() {
   const logged = !!currentSession;
   const paymentDiscount = getPaymentDiscount();
-  const webDiscountRate = isAdmin ? 0 : WEB_ORDER_DISCOUNT;
+  const webDiscountRate = (isAdmin && !_expoClientMode) ? 0 : WEB_ORDER_DISCOUNT;
 
   let subtotal = 0;
 
@@ -5938,6 +5958,10 @@ function calcTotals() {
 function updateCart() {
   const cartDiv = $("cart");
   if (!cartDiv) return;
+
+  // Modo cliente-expo: dto por escala según subtotal, antes de calcular totales.
+  _expoSyncDto();
+  _expoUpdateChip();
 
   const submitBtn = document.getElementById("submitOrderBtn");
   const shippingSelectEl = document.getElementById("shippingSelect");
@@ -6533,7 +6557,7 @@ function renderMissingAssortmentModule() {
     return;
   }
 
-  var showTuPrecio = !isAdmin && !isListPriceOnlyClient();
+  var showTuPrecio = (!isAdmin || _expoClientMode) && !isListPriceOnlyClient();
   var cartQtyById = new Map(
     cart.map(function (i) {
       return [String(i.productId), Number(i.qtyCajas || 0)];
@@ -6883,7 +6907,7 @@ async function _submitSingleOrder(
   editOrderId,
 ) {
   var paymentDiscount = getPaymentDiscount();
-  var webDiscountRate = isAdmin ? 0 : WEB_ORDER_DISCOUNT;
+  var webDiscountRate = (isAdmin && !_expoClientMode) ? 0 : WEB_ORDER_DISCOUNT;
   var dtoVol = getDtoVol();
   var extraRate = Number(extraDiscountRate || 0);
   var isPromo = extraRate > 0;
@@ -7393,6 +7417,7 @@ async function submitOrder() {
 
     showSection("pedidoConfirmado");
     playSuccessAnimation();
+    _expoShowConfirmPanel();
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     // ---- Detección de anomalías en background (solo sobre el pedido regular) ----
@@ -8906,6 +8931,635 @@ function onAnyCustomerSelectChange(e) {
   onLinkedCustomerSelected();
 }
 
+/***********************
+ * EXPO — entrada "Elegir cliente" / "Nuevo cliente"
+ * Reemplaza el selector "Elegir razón social" en esta copia.
+ ***********************/
+var _expoPickWired = false;
+var _expoSearchTimer = null;
+
+function _expoEsc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+  });
+}
+
+// Carga la escala de descuento por volumen (una vez).
+async function _expoLoadScale() {
+  if (_expoScale) return _expoScale;
+  try {
+    var r = await supabaseClient
+      .from("expo_dto_escala")
+      .select("desde,dto")
+      .order("desde", { ascending: true });
+    _expoScale = r.error ? [] : (r.data || []);
+  } catch (e) {
+    _expoScale = [];
+  }
+  return _expoScale;
+}
+
+// Subtotal de LISTA del carrito (sin dto): base para elegir el tramo.
+function _expoListSubtotal() {
+  var s = 0;
+  (cart || []).forEach(function (item) {
+    var p = findAnyProduct(item.productId);
+    if (!p) return;
+    s += Number(p.list_price || 0) * (item.qtyCajas * Number(p.uxb || 0));
+  });
+  return s;
+}
+
+// dto (fracción) que corresponde a un subtotal según la escala.
+function _expoScaleDtoFor(sub) {
+  if (!_expoScale || !_expoScale.length) return 0;
+  var dto = 0;
+  _expoScale.forEach(function (t) {
+    if (sub >= Number(t.desde)) dto = Number(t.dto);
+  });
+  return dto;
+}
+
+// Sincroniza el dto del cliente-expo con la escala según el carrito actual.
+// Lo escribe en customerProfile.dto_vol para que TODO el pricing lo lea igual.
+function _expoSyncDto() {
+  if (!_expoClientMode || !customerProfile) return;
+  customerProfile.dto_vol = _expoScaleDtoFor(_expoListSubtotal());
+}
+
+// Garantiza que el <select> oculto tenga la <option> del cliente elegido.
+// Ese value lo leen onLinkedCustomerSelected y el gate de confirmación.
+function _expoEnsureOption(id, label) {
+  var sel = document.getElementById("customerSelect");
+  if (!sel) return;
+  if (!sel.querySelector('option[value="' + id + '"]')) {
+    var o = document.createElement("option");
+    o.value = id;
+    o.textContent = label || "";
+    sel.appendChild(o);
+  }
+}
+
+function _expoNextTier(sub) {
+  if (!_expoScale) return null;
+  for (var i = 0; i < _expoScale.length; i++) {
+    if (Number(_expoScale[i].desde) > sub) {
+      return { dto: Number(_expoScale[i].dto), falta: Number(_expoScale[i].desde) - sub };
+    }
+  }
+  return null;
+}
+
+function _expoMoney(n) {
+  try {
+    return Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 });
+  } catch (e) {
+    return String(Math.round(Number(n || 0)));
+  }
+}
+
+function _expoUpdateChip() {
+  var chip = document.getElementById("expoCurrentChip");
+  if (!chip) return;
+  if (!(customerProfile && customerProfile.id && customerProfile.business_name)) {
+    chip.textContent = "Sin cliente seleccionado";
+    chip.classList.remove("has-client");
+    return;
+  }
+  var dto = Number(customerProfile.dto_vol || 0);
+  var name =
+    '<span class="expo-chip-name">' + _expoEsc(customerProfile.business_name) + "</span>";
+  if (_expoClientMode) {
+    var sub = _expoListSubtotal();
+    var next = _expoNextTier(sub);
+    var meta =
+      "Dto volumen " + Math.round(dto * 100) + "% · Pedido lista $" + _expoMoney(sub);
+    if (next)
+      meta +=
+        " · faltan $" + _expoMoney(next.falta) + " → " + Math.round(next.dto * 100) + "%";
+    meta += " · Contado obligatorio 1ª compra";
+    chip.innerHTML = name + '<span class="expo-chip-meta expo-chip-live">' + meta + "</span>";
+  } else {
+    chip.innerHTML =
+      name +
+      '<span class="expo-chip-meta">Cód ' +
+      _expoEsc(customerProfile.cod_cliente || "—") +
+      (dto > 0 ? " · Dto " + Math.round(dto * 100) + "%" : "") +
+      "</span>";
+  }
+  chip.classList.add("has-client");
+}
+
+function renderExpoEntryBar() {
+  var bar = document.createElement("div");
+  bar.id = "customerSelectorBanner";
+  bar.className = "customer-selector-banner expo-entry-bar";
+  bar.innerHTML =
+    '<div class="expo-current" id="expoCurrentChip">Sin cliente seleccionado</div>' +
+    '<div class="expo-entry-actions">' +
+    '<button type="button" class="expo-btn expo-btn-pick" id="expoElegirBtn">Elegir cliente</button>' +
+    '<button type="button" class="expo-btn expo-btn-new" id="expoNuevoBtn">+ Nuevo cliente</button>' +
+    "</div>" +
+    '<select id="customerSelect" class="expo-hidden-select" tabindex="-1" aria-hidden="true"><option value=""></option></select>';
+
+  var section = document.getElementById("productos");
+  if (section) {
+    var sortRow = section.querySelector(".sort-row");
+    if (sortRow) {
+      sortRow.insertBefore(bar, sortRow.firstChild);
+    } else {
+      var titleRow = section.querySelector(".section-title-row");
+      if (titleRow) titleRow.parentNode.insertBefore(bar, titleRow.nextSibling);
+      else section.insertBefore(bar, section.firstChild);
+    }
+  }
+
+  // Si ya hay un cliente activo, reflejarlo en el select oculto + chip.
+  if (customerProfile && customerProfile.id) {
+    _expoEnsureOption(customerProfile.id, customerProfile.business_name);
+    var selNow = document.getElementById("customerSelect");
+    if (selNow) selNow.value = customerProfile.id;
+    _expoUpdateChip();
+  }
+
+  var elegirBtn = document.getElementById("expoElegirBtn");
+  var nuevoBtn = document.getElementById("expoNuevoBtn");
+  if (elegirBtn) elegirBtn.addEventListener("click", expoOpenPickModal);
+  if (nuevoBtn) nuevoBtn.addEventListener("click", expoNuevoCliente);
+
+  _expoWirePickModal();
+}
+
+// EXPO: panel de cierre en la confirmación (PIN + WhatsApp con resumen).
+// Solo para clientes nuevos de expo (modo cliente-expo activo).
+async function _expoShowConfirmPanel() {
+  var panel = document.getElementById("expoConfirmPanel");
+  if (!panel) return;
+  if (!_expoClientMode || !lastConfirmedOrder || !(customerProfile && customerProfile.id)) {
+    panel.style.display = "none";
+    return;
+  }
+  var pin = "", wsp = "";
+  try {
+    var r = await supabaseClient
+      .from("customers")
+      .select("pin,whatsapp")
+      .eq("id", customerProfile.id)
+      .maybeSingle();
+    if (r.data) {
+      pin = r.data.pin || "";
+      wsp = r.data.whatsapp || "";
+    }
+  } catch (e) { /* ignore */ }
+  var pinEl = document.getElementById("expoConfirmPin");
+  if (pinEl) pinEl.textContent = pin || "—";
+  var dtoPct = Math.round(Number(lastConfirmedOrder.dtoVol || 0) * 100);
+  var total = _expoMoney(lastConfirmedOrder.total || 0);
+  var msg =
+    "Hola " + (lastConfirmedOrder.customerName || "") +
+    "! Resumen de tu pedido en Loekemeyer:\n\n" +
+    "Pedido N° " + (lastConfirmedOrder.orderId || "") + "\n" +
+    "Total: $" + total + " + IVA\n" +
+    "Descuento por volumen otorgado: " + dtoPct + "%\n" +
+    "Pago: Contado (1ra compra)\n\n" +
+    "Para tus próximos pedidos online:\n" +
+    "Usuario: tu CUIT\n" +
+    "Clave: " + (pin || "(a definir)") + "\n\n" +
+    "¡Gracias por tu compra!";
+  var waBtn = document.getElementById("expoConfirmWa");
+  if (waBtn) {
+    var num = String(wsp).replace(/[^0-9]/g, "");
+    waBtn.href = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
+  }
+  panel.style.display = "";
+}
+
+function expoOpenPickModal() {
+  var m = document.getElementById("expoPickModal");
+  if (!m) return;
+  m.classList.remove("hidden");
+  m.setAttribute("aria-hidden", "false");
+  var inp = document.getElementById("expoPickSearch");
+  var res = document.getElementById("expoPickResults");
+  if (inp) inp.value = "";
+  if (res)
+    res.innerHTML =
+      '<div class="expo-pick-hint">Escribí cód, razón social, CUIT o dirección…</div>';
+  if (inp) setTimeout(function () { inp.focus(); }, 30);
+}
+
+function expoClosePickModal() {
+  var m = document.getElementById("expoPickModal");
+  if (!m) return;
+  m.classList.add("hidden");
+  m.setAttribute("aria-hidden", "true");
+}
+
+async function _expoRunSearch() {
+  var inp = document.getElementById("expoPickSearch");
+  var res = document.getElementById("expoPickResults");
+  if (!inp || !res) return;
+  var q = inp.value.trim();
+  if (q.length < 2) {
+    res.innerHTML =
+      '<div class="expo-pick-hint">Escribí al menos 2 caracteres…</div>';
+    return;
+  }
+  res.innerHTML = '<div class="expo-pick-hint">Buscando…</div>';
+  var r = await supabaseClient.rpc("buscar_cliente_expo", { p_q: q });
+  // El input pudo cambiar mientras esperábamos: descartar respuesta vieja.
+  if (inp.value.trim() !== q) return;
+  if (r.error) {
+    res.innerHTML =
+      '<div class="expo-pick-hint expo-pick-err">Error: ' +
+      _expoEsc(r.error.message) +
+      "</div>";
+    return;
+  }
+  var rows = r.data || [];
+  if (!rows.length) {
+    res.innerHTML =
+      '<div class="expo-pick-hint">Sin resultados para "' +
+      _expoEsc(q) +
+      '"</div>';
+    return;
+  }
+  var html = "";
+  rows.forEach(function (c) {
+    var dto = Number(c.dto_vol || 0);
+    html +=
+      '<button type="button" class="expo-pick-row" data-id="' +
+      c.id +
+      '"><span class="expo-pick-name">' +
+      _expoEsc(c.business_name) +
+      '</span><span class="expo-pick-sub">Cód ' +
+      _expoEsc(c.cod_cliente || "—") +
+      (c.cuit ? " · CUIT " + _expoEsc(c.cuit) : "") +
+      (dto > 0 ? " · Dto " + Math.round(dto * 100) + "%" : "") +
+      "</span>" +
+      (c.direccion
+        ? '<span class="expo-pick-dir">' +
+          _expoEsc(c.direccion) +
+          (c.localidad ? " · " + _expoEsc(c.localidad) : "") +
+          "</span>"
+        : "") +
+      "</button>";
+  });
+  res.innerHTML = html;
+  res.querySelectorAll(".expo-pick-row").forEach(function (row) {
+    row.addEventListener("click", function () {
+      var cust = rows.find(function (x) {
+        return String(x.id) === row.dataset.id;
+      });
+      if (cust) expoApplyCustomer(cust);
+    });
+  });
+}
+
+async function expoApplyCustomer(cust, opts) {
+  opts = opts || {};
+  // Registrar en linkedCustomers para que el resto del flujo lo reconozca.
+  if (
+    !(linkedCustomers || []).some(function (c) {
+      return String(c.customer_id) === String(cust.id);
+    })
+  ) {
+    linkedCustomers.push({
+      customer_id: cust.id,
+      cod_cliente: cust.cod_cliente,
+      business_name: cust.business_name,
+      dto_vol: cust.dto_vol,
+      vend: cust.vend,
+    });
+  }
+  _expoEnsureOption(cust.id, cust.business_name);
+  var sel = document.getElementById("customerSelect");
+  if (sel) sel.value = cust.id;
+  expoClosePickModal();
+
+  // ¿Es cliente NUEVO de expo? (forzado desde el alta, o presente en staging).
+  // Solo esos entran en "modo cliente-expo" (escala + contado obligatorio + web).
+  _expoClientMode = !!opts.forceExpoNew;
+  if (!_expoClientMode) {
+    try {
+      var st = await supabaseClient
+        .from("expo_clientes_pendientes")
+        .select("id")
+        .eq("customer_id", cust.id)
+        .eq("estado", "pendiente")
+        .limit(1);
+      _expoClientMode = !st.error && !!st.data && st.data.length > 0;
+    } catch (e) {
+      _expoClientMode = false;
+    }
+  }
+  if (_expoClientMode) await _expoLoadScale();
+
+  await onLinkedCustomerSelected({ customerId: cust.id });
+
+  if (_expoClientMode) {
+    // Forzar contado en la UI de pago (el cálculo ya lo fuerza igual).
+    var paySel = document.getElementById("paymentSelect");
+    if (paySel) paySel.value = "0.25";
+    _expoSyncDto();
+    updateCart();
+    renderProducts();
+  }
+  _expoUpdateChip();
+}
+
+// ---- EXPO: Nuevo cliente (Fase 2) ----
+// Estado del alta en curso: permite pausar (guardar parcial) y volver a editar.
+var _expoNewState = { id: null, authId: null };
+var _expoNewWired = false;
+
+// Clave de 30 chars (mismo esquema que el admin). Excluye 0/O/1/I/l.
+function _expoNewGenPin() {
+  var chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  var r = "";
+  for (var i = 0; i < 30; i++) r += chars.charAt(Math.floor(Math.random() * chars.length));
+  return r;
+}
+
+// Crea el usuario auth con un cliente aparte (no pisa la sesión del operador).
+async function _expoCreateAuthUser(cuit, pin) {
+  var digits = String(cuit || "").replace(/[^0-9]/g, "");
+  if (!digits) return null;
+  var email = digits + "@cuit.loekemeyer";
+  var tmp = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  var res = await tmp.auth.signUp({ email: email, password: pin });
+  if (res.error) {
+    if (res.error.message.toLowerCase().includes("already registered")) {
+      var lg = await tmp.auth.signInWithPassword({ email: email, password: pin });
+      if (!lg.error && lg.data.user) return lg.data.user.id;
+    }
+    console.warn("expo auth signup:", res.error.message);
+    return null;
+  }
+  return res.data.user ? res.data.user.id : null;
+}
+
+function _expoNewStatus(msg, kind) {
+  var el = document.getElementById("expoNewStatus");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.color = kind === "err" ? "#b91c1c" : kind === "ok" ? "#166534" : "#6b7280";
+}
+
+function _expoAddrAddRow(prefill) {
+  prefill = prefill || {};
+  var list = document.getElementById("expoAddrList");
+  if (!list) return;
+  var row = document.createElement("div");
+  row.className = "expo-addr-row";
+  row.innerHTML =
+    '<input class="expo-inp expo-addr-dir" placeholder="Dirección de entrega" />' +
+    '<input class="expo-inp expo-addr-loc" placeholder="Localidad" />' +
+    '<input class="expo-inp expo-addr-prov" placeholder="Provincia" />' +
+    '<button type="button" class="expo-addr-del" title="Quitar">&times;</button>';
+  row.querySelector(".expo-addr-dir").value = prefill.direccion || "";
+  row.querySelector(".expo-addr-loc").value = prefill.localidad || "";
+  row.querySelector(".expo-addr-prov").value = prefill.provincia || "";
+  row.querySelector(".expo-addr-del").addEventListener("click", function () {
+    row.remove();
+    // Garantizar mínimo 1 fila
+    if (!document.querySelectorAll("#expoAddrList .expo-addr-row").length)
+      _expoAddrAddRow();
+  });
+  list.appendChild(row);
+}
+
+function _expoAddrCollect() {
+  var out = [];
+  document.querySelectorAll("#expoAddrList .expo-addr-row").forEach(function (r) {
+    var dir = (r.querySelector(".expo-addr-dir").value || "").trim();
+    if (!dir) return;
+    out.push({
+      direccion: dir,
+      localidad: (r.querySelector(".expo-addr-loc").value || "").trim(),
+      provincia: (r.querySelector(".expo-addr-prov").value || "").trim(),
+    });
+  });
+  return out;
+}
+
+function expoNuevoCliente() {
+  var m = document.getElementById("expoNewModal");
+  if (!m) return;
+  _expoNewState = { id: null, authId: null };
+  [
+    "expoNewRazon", "expoNewCuit", "expoNewWhatsapp", "expoNewMail",
+    "expoNewVend", "expoNewCod", "expoNewDto", "expoNewDirFiscal",
+    "expoNewLocFiscal", "expoNewProvFiscal",
+  ].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  document.getElementById("expoNewPin").value = _expoNewGenPin();
+  document.getElementById("expoAddrList").innerHTML = "";
+  _expoAddrAddRow();
+  _expoNewStatus("");
+  _expoWireNewModal();
+  m.classList.remove("hidden");
+  m.setAttribute("aria-hidden", "false");
+}
+
+function _expoCloseNewModal() {
+  var m = document.getElementById("expoNewModal");
+  if (!m) return;
+  m.classList.add("hidden");
+  m.setAttribute("aria-hidden", "true");
+}
+
+async function _expoGuardarNuevo(pauseOnly) {
+  var razon = (document.getElementById("expoNewRazon").value || "").trim();
+  var cuit = (document.getElementById("expoNewCuit").value || "").replace(/[^0-9]/g, "");
+  if (!razon || !cuit) {
+    _expoNewStatus("Razón social y CUIT son obligatorios.", "err");
+    return;
+  }
+  var addrs = _expoAddrCollect();
+  if (!addrs.length) {
+    _expoNewStatus("Agregá al menos una dirección de entrega.", "err");
+    return;
+  }
+  var cod = (document.getElementById("expoNewCod").value || "").trim();
+  var pin = document.getElementById("expoNewPin").value;
+  var dtoNum = parseFloat(document.getElementById("expoNewDto").value);
+  var dto = isNaN(dtoNum) ? 0 : dtoNum / 100;
+  var whatsapp = (document.getElementById("expoNewWhatsapp").value || "").trim();
+  var mail = (document.getElementById("expoNewMail").value || "").trim();
+  var vend = (document.getElementById("expoNewVend").value || "").trim();
+  var dirFiscal = (document.getElementById("expoNewDirFiscal").value || "").trim();
+  var locFiscal = (document.getElementById("expoNewLocFiscal").value || "").trim();
+  var provFiscal = (document.getElementById("expoNewProvFiscal").value || "").trim();
+
+  var pauseBtn = document.getElementById("expoNewPause");
+  var goBtn = document.getElementById("expoNewGoOrder");
+  if (pauseBtn) pauseBtn.disabled = true;
+  if (goBtn) goBtn.disabled = true;
+  _expoNewStatus("Guardando…");
+
+  try {
+    var cust = {
+      business_name: razon,
+      cuit: cuit || null,
+      cod_cliente: cod ? parseInt(cod, 10) : null,
+      dto_vol: dto,
+      vend: vend || null,
+      mail: mail || null,
+      whatsapp: whatsapp || null,
+      direccion_fiscal: dirFiscal || null,
+      localidad: locFiscal || null,
+    };
+
+    if (!_expoNewState.id) {
+      _expoNewState.authId = await _expoCreateAuthUser(cuit, pin);
+      var insPayload = Object.assign({}, cust, { pin: pin });
+      if (_expoNewState.authId) insPayload.auth_user_id = _expoNewState.authId;
+      var ins = await supabaseClient
+        .from("customers")
+        .insert(insPayload)
+        .select("id")
+        .single();
+      if (ins.error) throw ins.error;
+      _expoNewState.id = ins.data.id;
+    } else {
+      var upd = await supabaseClient
+        .from("customers")
+        .update(cust)
+        .eq("id", _expoNewState.id);
+      if (upd.error) throw upd.error;
+    }
+
+    // Direcciones de entrega: reemplazo total (borrar + insertar).
+    await supabaseClient
+      .from("customer_delivery_addresses")
+      .delete()
+      .eq("customer_id", _expoNewState.id);
+    var addrRows = addrs.map(function (a, i) {
+      return {
+        customer_id: _expoNewState.id,
+        slot: i + 1,
+        label: a.direccion,
+        direccion_entrega: a.direccion,
+        localidad: a.localidad || null,
+        provincia: a.provincia || null,
+      };
+    });
+    var addrIns = await supabaseClient
+      .from("customer_delivery_addresses")
+      .insert(addrRows);
+    if (addrIns.error) throw addrIns.error;
+
+    // Staging para el ERP (una fila por cliente).
+    await supabaseClient
+      .from("expo_clientes_pendientes")
+      .delete()
+      .eq("customer_id", _expoNewState.id);
+    var stIns = await supabaseClient.from("expo_clientes_pendientes").insert({
+      customer_id: _expoNewState.id,
+      cod_cliente: cust.cod_cliente,
+      business_name: razon,
+      cuit: cuit,
+      direccion: dirFiscal || null,
+      localidad: locFiscal || null,
+      provincia: provFiscal || null,
+      whatsapp: whatsapp || null,
+      mail: mail || null,
+      vend: vend || null,
+      dto_vol: dto,
+      pin: pin,
+      direcciones_entrega: addrs,
+      estado: "pendiente",
+      actualizado_at: new Date().toISOString(),
+    });
+    if (stIns.error) throw stIns.error;
+    // Nota: el vend queda en customers.vend + staging (suficiente para el ERP).
+    // La asociación a user_customer_links la resuelve el panel admin, no el alta expo.
+
+    if (pauseOnly) {
+      _expoNewStatus("Guardado. Podés cerrar y volver a completar.", "ok");
+      if (pauseBtn) pauseBtn.disabled = false;
+      if (goBtn) goBtn.disabled = false;
+      return;
+    }
+
+    var custObj = {
+      id: _expoNewState.id,
+      cod_cliente: cust.cod_cliente,
+      business_name: razon,
+      cuit: cuit,
+      dto_vol: dto,
+      vend: vend,
+    };
+    _expoCloseNewModal();
+    await expoApplyCustomer(custObj, { forceExpoNew: true });
+    if (typeof showSection === "function") showSection("productos");
+  } catch (e) {
+    _expoNewStatus("Error: " + (e && e.message ? e.message : e), "err");
+  } finally {
+    if (pauseBtn) pauseBtn.disabled = false;
+    if (goBtn) goBtn.disabled = false;
+  }
+}
+
+function _expoWireNewModal() {
+  if (_expoNewWired) return;
+  var m = document.getElementById("expoNewModal");
+  if (!m) return;
+  _expoNewWired = true;
+  var byId = function (x) { return document.getElementById(x); };
+  if (byId("expoNewBackdrop")) byId("expoNewBackdrop").addEventListener("click", _expoCloseNewModal);
+  if (byId("expoNewClose")) byId("expoNewClose").addEventListener("click", _expoCloseNewModal);
+  if (byId("expoAddrAdd")) byId("expoAddrAdd").addEventListener("click", function () { _expoAddrAddRow(); });
+  if (byId("expoAddrUseFiscal"))
+    byId("expoAddrUseFiscal").addEventListener("click", function () {
+      _expoAddrAddRow({
+        direccion: (byId("expoNewDirFiscal").value || "").trim(),
+        localidad: (byId("expoNewLocFiscal").value || "").trim(),
+        provincia: (byId("expoNewProvFiscal").value || "").trim(),
+      });
+    });
+  if (byId("expoNewPause")) byId("expoNewPause").addEventListener("click", function () { _expoGuardarNuevo(true); });
+  if (byId("expoNewGoOrder")) byId("expoNewGoOrder").addEventListener("click", function () { _expoGuardarNuevo(false); });
+  if (byId("expoNewPinCopy"))
+    byId("expoNewPinCopy").addEventListener("click", function () {
+      var v = byId("expoNewPin").value;
+      if (!v) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(v).then(function () {
+          _expoNewStatus("Clave copiada.", "ok");
+        });
+      } else {
+        byId("expoNewPin").select();
+      }
+    });
+}
+
+function _expoWirePickModal() {
+  if (_expoPickWired) return;
+  var m = document.getElementById("expoPickModal");
+  if (!m) return;
+  _expoPickWired = true;
+  var closeBtn = document.getElementById("expoPickClose");
+  var backdrop = document.getElementById("expoPickBackdrop");
+  var inp = document.getElementById("expoPickSearch");
+  if (closeBtn) closeBtn.addEventListener("click", expoClosePickModal);
+  if (backdrop) backdrop.addEventListener("click", expoClosePickModal);
+  if (inp)
+    inp.addEventListener("input", function () {
+      clearTimeout(_expoSearchTimer);
+      _expoSearchTimer = setTimeout(_expoRunSearch, 250);
+    });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !m.classList.contains("hidden"))
+      expoClosePickModal();
+  });
+}
+
 function renderCustomerSelector() {
   var existing = document.getElementById("customerSelectorBanner");
   if (existing) existing.remove();
@@ -8917,6 +9571,13 @@ function renderCustomerSelector() {
   // de un render previo — así no se reusa un wrapper vacío.
   var existingZone = document.getElementById("csVendorZone");
   if (existingZone) existingZone.remove();
+
+  // EXPO: reemplaza el selector "Elegir razón social" por la barra
+  // [Elegir cliente] [Nuevo cliente]. Solo para el operador admin.
+  if (EXPO_MODE && isAdmin) {
+    renderExpoEntryBar();
+    return;
+  }
 
   if (!linkedCustomers.length) return;
 
@@ -9346,7 +10007,9 @@ async function onLinkedCustomerSelected(opts) {
 
   var sel = document.getElementById("customerSelect");
   var selCart = document.getElementById("customerSelectCart");
-  var val = (sel && sel.value) || (selCart && selCart.value) || "";
+  // EXPO: se puede pasar el id del cliente explícito (elegido desde el popup),
+  // sin depender del <select> visible.
+  var val = opts.customerId || (sel && sel.value) || (selCart && selCart.value) || "";
 
   if (val === VENDOR_SELF_VALUE) {
     // Volver al perfil propio del vendedor — sin necesidad de refresh
