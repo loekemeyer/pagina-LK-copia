@@ -9318,10 +9318,12 @@ function _expoAddrAddRow(prefill) {
     '<input class="expo-inp expo-addr-dir" placeholder="Dirección de entrega" />' +
     '<input class="expo-inp expo-addr-loc" placeholder="Localidad" />' +
     '<input class="expo-inp expo-addr-prov" placeholder="Provincia" />' +
+    '<input class="expo-inp expo-addr-exp" placeholder="Expreso (transportista)" />' +
     '<button type="button" class="expo-addr-del" title="Quitar">&times;</button>';
   row.querySelector(".expo-addr-dir").value = prefill.direccion || "";
   row.querySelector(".expo-addr-loc").value = prefill.localidad || "";
   row.querySelector(".expo-addr-prov").value = prefill.provincia || "";
+  row.querySelector(".expo-addr-exp").value = prefill.expreso || "";
   row.querySelector(".expo-addr-del").addEventListener("click", function () {
     row.remove();
     // Garantizar mínimo 1 fila
@@ -9340,23 +9342,27 @@ function _expoAddrCollect() {
       direccion: dir,
       localidad: (r.querySelector(".expo-addr-loc").value || "").trim(),
       provincia: (r.querySelector(".expo-addr-prov").value || "").trim(),
+      expreso: (r.querySelector(".expo-addr-exp").value || "").trim(),
     });
   });
   return out;
 }
 
-function expoNuevoCliente() {
+async function expoNuevoCliente() {
   var m = document.getElementById("expoNewModal");
   if (!m) return;
   _expoNewState = { id: null, authId: null };
   [
-    "expoNewRazon", "expoNewCuit", "expoNewWhatsapp", "expoNewMail",
-    "expoNewVend", "expoNewCod", "expoNewDto", "expoNewDirFiscal",
+    "expoNewRazon", "expoNewCuit", "expoNewTel", "expoNewWhatsapp",
+    "expoNewMail", "expoNewVend", "expoNewCod", "expoNewDto",
+    "expoNewDirFiscal", "expoNewNumFiscal", "expoNewCpFiscal",
     "expoNewLocFiscal", "expoNewProvFiscal",
   ].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) el.value = "";
   });
+  var condIva = document.getElementById("expoNewCondIva");
+  if (condIva) condIva.value = "Responsable Inscripto";
   document.getElementById("expoNewPin").value = _expoNewGenPin();
   document.getElementById("expoAddrList").innerHTML = "";
   _expoAddrAddRow();
@@ -9364,6 +9370,19 @@ function expoNuevoCliente() {
   _expoWireNewModal();
   m.classList.remove("hidden");
   m.setAttribute("aria-hidden", "false");
+  // Sugerir el próximo código (max real < 5000, +1). Los 10001+ son vendedores.
+  try {
+    var r = await supabaseClient
+      .from("customers")
+      .select("cod_cliente")
+      .lt("cod_cliente", 5000)
+      .order("cod_cliente", { ascending: false })
+      .limit(1);
+    if (!r.error && r.data && r.data.length) {
+      var codEl = document.getElementById("expoNewCod");
+      if (codEl && !codEl.value) codEl.value = Number(r.data[0].cod_cliente) + 1;
+    }
+  } catch (e) { /* opcional */ }
 }
 
 function _expoCloseNewModal() {
@@ -9393,8 +9412,13 @@ async function _expoGuardarNuevo(pauseOnly) {
   var mail = (document.getElementById("expoNewMail").value || "").trim();
   var vend = (document.getElementById("expoNewVend").value || "").trim();
   var dirFiscal = (document.getElementById("expoNewDirFiscal").value || "").trim();
+  var numFiscal = (document.getElementById("expoNewNumFiscal").value || "").trim();
+  var cpFiscal = (document.getElementById("expoNewCpFiscal").value || "").trim();
   var locFiscal = (document.getElementById("expoNewLocFiscal").value || "").trim();
   var provFiscal = (document.getElementById("expoNewProvFiscal").value || "").trim();
+  var tel = (document.getElementById("expoNewTel").value || "").trim();
+  var condIvaEl = document.getElementById("expoNewCondIva");
+  var condIva = condIvaEl ? condIvaEl.value : "";
 
   var pauseBtn = document.getElementById("expoNewPause");
   var goBtn = document.getElementById("expoNewGoOrder");
@@ -9447,6 +9471,7 @@ async function _expoGuardarNuevo(pauseOnly) {
         direccion_entrega: a.direccion,
         localidad: a.localidad || null,
         provincia: a.provincia || null,
+        nombre_expreso: a.expreso || null,
       };
     });
     var addrIns = await supabaseClient
@@ -9465,8 +9490,12 @@ async function _expoGuardarNuevo(pauseOnly) {
       business_name: razon,
       cuit: cuit,
       direccion: dirFiscal || null,
+      numero: numFiscal || null,
+      cp: cpFiscal || null,
       localidad: locFiscal || null,
       provincia: provFiscal || null,
+      condicion_iva: condIva || null,
+      telefono: tel || null,
       whatsapp: whatsapp || null,
       mail: mail || null,
       vend: vend || null,

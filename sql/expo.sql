@@ -80,20 +80,30 @@ create table if not exists public.expo_clientes_pendientes (
   cod_cliente bigint,
   business_name text,
   cuit text,
+  condicion_iva text,
   direccion text,
+  numero text,
+  cp text,
   localidad text,
   provincia text,
+  telefono text,
   whatsapp text,
   mail text,
   vend text,
   dto_vol numeric,
   pin text,
-  direcciones_entrega jsonb default '[]'::jsonb,
+  direcciones_entrega jsonb default '[]'::jsonb,  -- [{direccion,localidad,provincia,expreso}]
   estado text default 'pendiente',           -- pendiente | cargado_erp
   creado_por uuid default auth.uid(),
   creado_at timestamptz default now(),
   actualizado_at timestamptz default now()
 );
+-- Si la tabla ya existía, sumar las columnas nuevas:
+alter table public.expo_clientes_pendientes
+  add column if not exists condicion_iva text,
+  add column if not exists numero text,
+  add column if not exists cp text,
+  add column if not exists telefono text;
 
 alter table public.expo_clientes_pendientes enable row level security;
 
