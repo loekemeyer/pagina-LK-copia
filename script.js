@@ -7417,6 +7417,7 @@ async function submitOrder() {
 
     showSection("pedidoConfirmado");
     playSuccessAnimation();
+    _expoShowConfirmPanel();
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     // ---- Detección de anomalías en background (solo sobre el pedido regular) ----
@@ -9087,6 +9088,50 @@ function renderExpoEntryBar() {
   if (nuevoBtn) nuevoBtn.addEventListener("click", expoNuevoCliente);
 
   _expoWirePickModal();
+}
+
+// EXPO: panel de cierre en la confirmación (PIN + WhatsApp con resumen).
+// Solo para clientes nuevos de expo (modo cliente-expo activo).
+async function _expoShowConfirmPanel() {
+  var panel = document.getElementById("expoConfirmPanel");
+  if (!panel) return;
+  if (!_expoClientMode || !lastConfirmedOrder || !(customerProfile && customerProfile.id)) {
+    panel.style.display = "none";
+    return;
+  }
+  var pin = "", wsp = "";
+  try {
+    var r = await supabaseClient
+      .from("customers")
+      .select("pin,whatsapp")
+      .eq("id", customerProfile.id)
+      .maybeSingle();
+    if (r.data) {
+      pin = r.data.pin || "";
+      wsp = r.data.whatsapp || "";
+    }
+  } catch (e) { /* ignore */ }
+  var pinEl = document.getElementById("expoConfirmPin");
+  if (pinEl) pinEl.textContent = pin || "—";
+  var dtoPct = Math.round(Number(lastConfirmedOrder.dtoVol || 0) * 100);
+  var total = _expoMoney(lastConfirmedOrder.total || 0);
+  var msg =
+    "Hola " + (lastConfirmedOrder.customerName || "") +
+    "! Resumen de tu pedido en Loekemeyer:\n\n" +
+    "Pedido N° " + (lastConfirmedOrder.orderId || "") + "\n" +
+    "Total: $" + total + " + IVA\n" +
+    "Descuento por volumen otorgado: " + dtoPct + "%\n" +
+    "Pago: Contado (1ra compra)\n\n" +
+    "Para tus próximos pedidos online:\n" +
+    "Usuario: tu CUIT\n" +
+    "Clave: " + (pin || "(a definir)") + "\n\n" +
+    "¡Gracias por tu compra!";
+  var waBtn = document.getElementById("expoConfirmWa");
+  if (waBtn) {
+    var num = String(wsp).replace(/[^0-9]/g, "");
+    waBtn.href = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
+  }
+  panel.style.display = "";
 }
 
 function expoOpenPickModal() {

@@ -14453,3 +14453,48 @@ a.user-menu-item:hover {
   }
 }
 
+/* Panel de confirmación expo (PIN + WhatsApp) */
+.expo-confirm-panel {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #d1fae5;
+  background: #f0fdf4;
+  border-radius: 12px;
+  text-align: center;
+}
+.expo-confirm-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #065f46;
+  margin-bottom: 10px;
+}
+.expo-confirm-pinrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.expo-confirm-pinlbl {
+  font-size: 13px;
+  color: #4b5563;
+}
+.expo-confirm-pin {
+  font-family: monospace;
+  font-size: 14px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 8px;
+  word-break: break-all;
+}
+.expo-confirm-wa {
+  display: inline-flex;
+  background: #25d366;
+  color: #fff;
+}
+.expo-confirm-wa:hover {
+  filter: brightness(0.96);
+}
+

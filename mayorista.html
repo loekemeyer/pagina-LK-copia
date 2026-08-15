@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23191" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23191" />
+    <link rel="stylesheet" href="css/styles.css?v=23192" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23192" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1403,6 +1403,27 @@
               También lo podrás visualizar desde "Mi Perfil"
             </div>
           </div>
+
+          <!-- EXPO: panel de cierre para cliente nuevo (PIN + WhatsApp) -->
+          <div id="expoConfirmPanel" class="expo-confirm-panel" style="display: none">
+            <div class="expo-confirm-title">Cliente nuevo — cerrá el circuito</div>
+            <div class="expo-confirm-pinrow">
+              <span class="expo-confirm-pinlbl">Clave (PIN) del cliente:</span>
+              <code id="expoConfirmPin" class="expo-confirm-pin">—</code>
+            </div>
+            <a
+              id="expoConfirmWa"
+              class="success-btn primary expo-confirm-wa"
+              href="#"
+              target="_blank"
+              rel="noopener"
+            >
+              Enviar resumen + PIN por WhatsApp
+            </a>
+            <div class="success-pdf-note">
+              Incluye N° de pedido, total, dto de volumen otorgado y la clave.
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -1897,14 +1918,14 @@
     </button>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23191"></script>
-    <script src="script.js?v=23191"></script>
+    <script src="./version.js?v=23192"></script>
+    <script src="script.js?v=23192"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23191"></script>
+    <script src="analisis-venta-cliente.js?v=23192"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23191"></script>
-    <script src="admin-excel-krikos.js?v=23191"></script>
-    <script src="vendor-import-excel.js?v=23191"></script>
+    <script src="scotapi-shim.js?v=23192"></script>
+    <script src="admin-excel-krikos.js?v=23192"></script>
+    <script src="vendor-import-excel.js?v=23192"></script>
   </body>
 </html>
