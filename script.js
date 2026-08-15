@@ -33,6 +33,9 @@ const NOTIFY_NEW_ADDRESS_URL =
  ***********************/
 let WEB_ORDER_DISCOUNT = 0.02; // default fallback
 const UPSELL_DISCOUNT = 0.3; // Descuento extra aplicado al pedido "promo" (items agregados desde popup upsell). Se graba como pedido separado (X+1).
+// EXPO: en esta copia el admin no elige entre sus razones vinculadas; entra a
+// cualquier cliente del padrón vía "Elegir cliente" o crea uno con "Nuevo cliente".
+const EXPO_MODE = true;
 // NOTA: el endpoint /storage/v1/render/image/public/ requiere el feature
 // de image transformations, que NO está habilitado en este proyecto Supabase.
 // Las imágenes están almacenadas a 400x400 WebP, así que se sirven directo
@@ -8906,6 +8909,223 @@ function onAnyCustomerSelectChange(e) {
   onLinkedCustomerSelected();
 }
 
+/***********************
+ * EXPO — entrada "Elegir cliente" / "Nuevo cliente"
+ * Reemplaza el selector "Elegir razón social" en esta copia.
+ ***********************/
+var _expoPickWired = false;
+var _expoSearchTimer = null;
+
+function _expoEsc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+  });
+}
+
+// Garantiza que el <select> oculto tenga la <option> del cliente elegido.
+// Ese value lo leen onLinkedCustomerSelected y el gate de confirmación.
+function _expoEnsureOption(id, label) {
+  var sel = document.getElementById("customerSelect");
+  if (!sel) return;
+  if (!sel.querySelector('option[value="' + id + '"]')) {
+    var o = document.createElement("option");
+    o.value = id;
+    o.textContent = label || "";
+    sel.appendChild(o);
+  }
+}
+
+function _expoUpdateChip() {
+  var chip = document.getElementById("expoCurrentChip");
+  if (!chip) return;
+  if (customerProfile && customerProfile.id && customerProfile.business_name) {
+    var dto = Number(customerProfile.dto_vol || 0);
+    chip.innerHTML =
+      '<span class="expo-chip-name">' +
+      _expoEsc(customerProfile.business_name) +
+      '</span><span class="expo-chip-meta">Cód ' +
+      _expoEsc(customerProfile.cod_cliente || "—") +
+      (dto > 0 ? " · Dto " + Math.round(dto * 100) + "%" : "") +
+      "</span>";
+    chip.classList.add("has-client");
+  } else {
+    chip.textContent = "Sin cliente seleccionado";
+    chip.classList.remove("has-client");
+  }
+}
+
+function renderExpoEntryBar() {
+  var bar = document.createElement("div");
+  bar.id = "customerSelectorBanner";
+  bar.className = "customer-selector-banner expo-entry-bar";
+  bar.innerHTML =
+    '<div class="expo-current" id="expoCurrentChip">Sin cliente seleccionado</div>' +
+    '<div class="expo-entry-actions">' +
+    '<button type="button" class="expo-btn expo-btn-pick" id="expoElegirBtn">Elegir cliente</button>' +
+    '<button type="button" class="expo-btn expo-btn-new" id="expoNuevoBtn">+ Nuevo cliente</button>' +
+    "</div>" +
+    '<select id="customerSelect" class="expo-hidden-select" tabindex="-1" aria-hidden="true"><option value=""></option></select>';
+
+  var section = document.getElementById("productos");
+  if (section) {
+    var sortRow = section.querySelector(".sort-row");
+    if (sortRow) {
+      sortRow.insertBefore(bar, sortRow.firstChild);
+    } else {
+      var titleRow = section.querySelector(".section-title-row");
+      if (titleRow) titleRow.parentNode.insertBefore(bar, titleRow.nextSibling);
+      else section.insertBefore(bar, section.firstChild);
+    }
+  }
+
+  // Si ya hay un cliente activo, reflejarlo en el select oculto + chip.
+  if (customerProfile && customerProfile.id) {
+    _expoEnsureOption(customerProfile.id, customerProfile.business_name);
+    var selNow = document.getElementById("customerSelect");
+    if (selNow) selNow.value = customerProfile.id;
+    _expoUpdateChip();
+  }
+
+  var elegirBtn = document.getElementById("expoElegirBtn");
+  var nuevoBtn = document.getElementById("expoNuevoBtn");
+  if (elegirBtn) elegirBtn.addEventListener("click", expoOpenPickModal);
+  if (nuevoBtn) nuevoBtn.addEventListener("click", expoNuevoCliente);
+
+  _expoWirePickModal();
+}
+
+function expoOpenPickModal() {
+  var m = document.getElementById("expoPickModal");
+  if (!m) return;
+  m.classList.remove("hidden");
+  m.setAttribute("aria-hidden", "false");
+  var inp = document.getElementById("expoPickSearch");
+  var res = document.getElementById("expoPickResults");
+  if (inp) inp.value = "";
+  if (res)
+    res.innerHTML =
+      '<div class="expo-pick-hint">Escribí cód, razón social, CUIT o dirección…</div>';
+  if (inp) setTimeout(function () { inp.focus(); }, 30);
+}
+
+function expoClosePickModal() {
+  var m = document.getElementById("expoPickModal");
+  if (!m) return;
+  m.classList.add("hidden");
+  m.setAttribute("aria-hidden", "true");
+}
+
+async function _expoRunSearch() {
+  var inp = document.getElementById("expoPickSearch");
+  var res = document.getElementById("expoPickResults");
+  if (!inp || !res) return;
+  var q = inp.value.trim();
+  if (q.length < 2) {
+    res.innerHTML =
+      '<div class="expo-pick-hint">Escribí al menos 2 caracteres…</div>';
+    return;
+  }
+  res.innerHTML = '<div class="expo-pick-hint">Buscando…</div>';
+  var r = await supabaseClient.rpc("buscar_cliente_expo", { p_q: q });
+  // El input pudo cambiar mientras esperábamos: descartar respuesta vieja.
+  if (inp.value.trim() !== q) return;
+  if (r.error) {
+    res.innerHTML =
+      '<div class="expo-pick-hint expo-pick-err">Error: ' +
+      _expoEsc(r.error.message) +
+      "</div>";
+    return;
+  }
+  var rows = r.data || [];
+  if (!rows.length) {
+    res.innerHTML =
+      '<div class="expo-pick-hint">Sin resultados para "' +
+      _expoEsc(q) +
+      '"</div>';
+    return;
+  }
+  var html = "";
+  rows.forEach(function (c) {
+    var dto = Number(c.dto_vol || 0);
+    html +=
+      '<button type="button" class="expo-pick-row" data-id="' +
+      c.id +
+      '"><span class="expo-pick-name">' +
+      _expoEsc(c.business_name) +
+      '</span><span class="expo-pick-sub">Cód ' +
+      _expoEsc(c.cod_cliente || "—") +
+      (c.cuit ? " · CUIT " + _expoEsc(c.cuit) : "") +
+      (dto > 0 ? " · Dto " + Math.round(dto * 100) + "%" : "") +
+      "</span>" +
+      (c.direccion
+        ? '<span class="expo-pick-dir">' +
+          _expoEsc(c.direccion) +
+          (c.localidad ? " · " + _expoEsc(c.localidad) : "") +
+          "</span>"
+        : "") +
+      "</button>";
+  });
+  res.innerHTML = html;
+  res.querySelectorAll(".expo-pick-row").forEach(function (row) {
+    row.addEventListener("click", function () {
+      var cust = rows.find(function (x) {
+        return String(x.id) === row.dataset.id;
+      });
+      if (cust) expoApplyCustomer(cust);
+    });
+  });
+}
+
+async function expoApplyCustomer(cust) {
+  // Registrar en linkedCustomers para que el resto del flujo lo reconozca.
+  if (
+    !(linkedCustomers || []).some(function (c) {
+      return String(c.customer_id) === String(cust.id);
+    })
+  ) {
+    linkedCustomers.push({
+      customer_id: cust.id,
+      cod_cliente: cust.cod_cliente,
+      business_name: cust.business_name,
+      dto_vol: cust.dto_vol,
+      vend: cust.vend,
+    });
+  }
+  _expoEnsureOption(cust.id, cust.business_name);
+  var sel = document.getElementById("customerSelect");
+  if (sel) sel.value = cust.id;
+  expoClosePickModal();
+  await onLinkedCustomerSelected({ customerId: cust.id });
+  _expoUpdateChip();
+}
+
+function expoNuevoCliente() {
+  alert(
+    "Nuevo cliente: en construcción (Fase 2).\n\nPor ahora podés elegir clientes existentes y cargarles el pedido.",
+  );
+}
+
+function _expoWirePickModal() {
+  if (_expoPickWired) return;
+  var m = document.getElementById("expoPickModal");
+  if (!m) return;
+  _expoPickWired = true;
+  var closeBtn = document.getElementById("expoPickClose");
+  var backdrop = document.getElementById("expoPickBackdrop");
+  var inp = document.getElementById("expoPickSearch");
+  if (closeBtn) closeBtn.addEventListener("click", expoClosePickModal);
+  if (backdrop) backdrop.addEventListener("click", expoClosePickModal);
+  if (inp)
+    inp.addEventListener("input", function () {
+      clearTimeout(_expoSearchTimer);
+      _expoSearchTimer = setTimeout(_expoRunSearch, 250);
+    });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !m.classList.contains("hidden"))
+      expoClosePickModal();
+  });
+}
+
 function renderCustomerSelector() {
   var existing = document.getElementById("customerSelectorBanner");
   if (existing) existing.remove();
@@ -8917,6 +9137,13 @@ function renderCustomerSelector() {
   // de un render previo — así no se reusa un wrapper vacío.
   var existingZone = document.getElementById("csVendorZone");
   if (existingZone) existingZone.remove();
+
+  // EXPO: reemplaza el selector "Elegir razón social" por la barra
+  // [Elegir cliente] [Nuevo cliente]. Solo para el operador admin.
+  if (EXPO_MODE && isAdmin) {
+    renderExpoEntryBar();
+    return;
+  }
 
   if (!linkedCustomers.length) return;
 
@@ -9346,7 +9573,9 @@ async function onLinkedCustomerSelected(opts) {
 
   var sel = document.getElementById("customerSelect");
   var selCart = document.getElementById("customerSelectCart");
-  var val = (sel && sel.value) || (selCart && selCart.value) || "";
+  // EXPO: se puede pasar el id del cliente explícito (elegido desde el popup),
+  // sin depender del <select> visible.
+  var val = opts.customerId || (sel && sel.value) || (selCart && selCart.value) || "";
 
   if (val === VENDOR_SELF_VALUE) {
     // Volver al perfil propio del vendedor — sin necesidad de refresh
