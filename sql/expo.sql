@@ -102,3 +102,36 @@ create policy expo_pend_admin_all on public.expo_clientes_pendientes
   for all
   using (exists (select 1 from public.admins a where a.auth_user_id = auth.uid()))
   with check (exists (select 1 from public.admins a where a.auth_user_id = auth.uid()));
+
+-- ----------------------------------------------------------------------------
+-- Fase 3: expo_dto_escala — escala de descuento por volumen para clientes
+--   nuevos de expo. El dto se aplica según el subtotal de LISTA del pedido
+--   (antes del dto), en vivo. Editable (lectura abierta, escritura admin).
+-- ----------------------------------------------------------------------------
+create table if not exists public.expo_dto_escala (
+  id uuid primary key default gen_random_uuid(),
+  desde numeric not null,      -- subtotal de lista desde el cual aplica
+  dto   numeric not null,      -- fracción 0..1
+  creado_at timestamptz default now()
+);
+
+alter table public.expo_dto_escala enable row level security;
+
+drop policy if exists expo_escala_read on public.expo_dto_escala;
+create policy expo_escala_read on public.expo_dto_escala for select using (true);
+
+drop policy if exists expo_escala_admin on public.expo_dto_escala;
+create policy expo_escala_admin on public.expo_dto_escala
+  for all
+  using (exists (select 1 from public.admins a where a.auth_user_id = auth.uid()))
+  with check (exists (select 1 from public.admins a where a.auth_user_id = auth.uid()));
+
+-- Semilla (tramos confirmados 15/8/2026).
+insert into public.expo_dto_escala (desde, dto)
+select * from (values
+  (0::numeric, 0.00::numeric), (600000::numeric, 0.02::numeric),
+  (1000000::numeric, 0.04::numeric), (1500000::numeric, 0.06::numeric),
+  (2300000::numeric, 0.08::numeric), (4000000::numeric, 0.10::numeric),
+  (6000000::numeric, 0.12::numeric)
+) as t(desde, dto)
+where not exists (select 1 from public.expo_dto_escala);

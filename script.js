@@ -36,6 +36,12 @@ const UPSELL_DISCOUNT = 0.3; // Descuento extra aplicado al pedido "promo" (item
 // EXPO: en esta copia el admin no elige entre sus razones vinculadas; entra a
 // cualquier cliente del padrón vía "Elegir cliente" o crea uno con "Nuevo cliente".
 const EXPO_MODE = true;
+// Modo cliente-expo: activo cuando el cliente seleccionado es un cliente NUEVO
+// de expo (está en expo_clientes_pendientes). En ese modo el pricing deja de ser
+// "admin/precio lista" y pasa a cliente real: dto por ESCALA (según subtotal de
+// lista, en vivo) + contado (-25%) OBLIGATORIO + web (-2%).
+var _expoClientMode = false;
+var _expoScale = null; // [{desde, dto}] ordenado por desde asc
 // NOTA: el endpoint /storage/v1/render/image/public/ requiere el feature
 // de image transformations, que NO está habilitado en este proyecto Supabase.
 // Las imágenes están almacenadas a 400x400 WebP, así que se sirven directo
@@ -133,6 +139,9 @@ let isAdmin = false; // admin flag
 let customerProfile = null; // {id, business_name, dto_vol, ...}
 let _vendorOwnProfile = null; // snapshot del perfil del vendedor logueado (para volver desde "Pedir para")
 function isListPriceOnlyClient() {
+  // En modo cliente-expo el operador (admin) cotiza para un cliente real:
+  // se aplican los descuentos como a cualquier cliente.
+  if (_expoClientMode) return false;
   return isAdmin || String(customerProfile?.cod_cliente) === "5000";
 }
 
@@ -965,6 +974,8 @@ function unitYourPrice(listPrice) {
  * MÉTODO DE PAGO
  ***********************/
 function getPaymentDiscount() {
+  // Cliente nuevo de expo: 1ª compra = contado (-25%) OBLIGATORIO.
+  if (_expoClientMode) return 0.25;
   if (isListPriceOnlyClient()) return 0;
 
   const sel = $("paymentSelect");
@@ -975,6 +986,7 @@ function getPaymentDiscount() {
 }
 
 function getPaymentMethodText() {
+  if (_expoClientMode) return "Contado";
   if (isListPriceOnlyClient()) return "Contado";
 
   const sel = $("paymentSelect");
@@ -985,6 +997,7 @@ function getPaymentMethodText() {
 }
 
 function getPaymentMethodCode() {
+  if (_expoClientMode) return 8; // Contado -25%
   if (isListPriceOnlyClient()) return 8;
 
   const sel = $("paymentSelect");
@@ -3348,6 +3361,10 @@ let __productsEntranceFired = false;
 function renderProducts() {
   const container = $("productsContainer");
   if (!container) return;
+
+  // Modo cliente-expo: recalcular el dto por escala según el carrito actual
+  // antes de pintar los precios de cada card.
+  _expoSyncDto();
 
   // ✨ Sync carrusel de novedades en cada render (mantiene qty en cart sincronizada)
   try {
@@ -5891,7 +5908,7 @@ function toggleControls(productId, show) {
 function calcTotals() {
   const logged = !!currentSession;
   const paymentDiscount = getPaymentDiscount();
-  const webDiscountRate = isAdmin ? 0 : WEB_ORDER_DISCOUNT;
+  const webDiscountRate = (isAdmin && !_expoClientMode) ? 0 : WEB_ORDER_DISCOUNT;
 
   let subtotal = 0;
 
@@ -5941,6 +5958,10 @@ function calcTotals() {
 function updateCart() {
   const cartDiv = $("cart");
   if (!cartDiv) return;
+
+  // Modo cliente-expo: dto por escala según subtotal, antes de calcular totales.
+  _expoSyncDto();
+  _expoUpdateChip();
 
   const submitBtn = document.getElementById("submitOrderBtn");
   const shippingSelectEl = document.getElementById("shippingSelect");
@@ -6536,7 +6557,7 @@ function renderMissingAssortmentModule() {
     return;
   }
 
-  var showTuPrecio = !isAdmin && !isListPriceOnlyClient();
+  var showTuPrecio = (!isAdmin || _expoClientMode) && !isListPriceOnlyClient();
   var cartQtyById = new Map(
     cart.map(function (i) {
       return [String(i.productId), Number(i.qtyCajas || 0)];
@@ -6886,7 +6907,7 @@ async function _submitSingleOrder(
   editOrderId,
 ) {
   var paymentDiscount = getPaymentDiscount();
-  var webDiscountRate = isAdmin ? 0 : WEB_ORDER_DISCOUNT;
+  var webDiscountRate = (isAdmin && !_expoClientMode) ? 0 : WEB_ORDER_DISCOUNT;
   var dtoVol = getDtoVol();
   var extraRate = Number(extraDiscountRate || 0);
   var isPromo = extraRate > 0;
@@ -8922,6 +8943,49 @@ function _expoEsc(s) {
   });
 }
 
+// Carga la escala de descuento por volumen (una vez).
+async function _expoLoadScale() {
+  if (_expoScale) return _expoScale;
+  try {
+    var r = await supabaseClient
+      .from("expo_dto_escala")
+      .select("desde,dto")
+      .order("desde", { ascending: true });
+    _expoScale = r.error ? [] : (r.data || []);
+  } catch (e) {
+    _expoScale = [];
+  }
+  return _expoScale;
+}
+
+// Subtotal de LISTA del carrito (sin dto): base para elegir el tramo.
+function _expoListSubtotal() {
+  var s = 0;
+  (cart || []).forEach(function (item) {
+    var p = findAnyProduct(item.productId);
+    if (!p) return;
+    s += Number(p.list_price || 0) * (item.qtyCajas * Number(p.uxb || 0));
+  });
+  return s;
+}
+
+// dto (fracción) que corresponde a un subtotal según la escala.
+function _expoScaleDtoFor(sub) {
+  if (!_expoScale || !_expoScale.length) return 0;
+  var dto = 0;
+  _expoScale.forEach(function (t) {
+    if (sub >= Number(t.desde)) dto = Number(t.dto);
+  });
+  return dto;
+}
+
+// Sincroniza el dto del cliente-expo con la escala según el carrito actual.
+// Lo escribe en customerProfile.dto_vol para que TODO el pricing lo lea igual.
+function _expoSyncDto() {
+  if (!_expoClientMode || !customerProfile) return;
+  customerProfile.dto_vol = _expoScaleDtoFor(_expoListSubtotal());
+}
+
 // Garantiza que el <select> oculto tenga la <option> del cliente elegido.
 // Ese value lo leen onLinkedCustomerSelected y el gate de confirmación.
 function _expoEnsureOption(id, label) {
@@ -8935,23 +8999,54 @@ function _expoEnsureOption(id, label) {
   }
 }
 
+function _expoNextTier(sub) {
+  if (!_expoScale) return null;
+  for (var i = 0; i < _expoScale.length; i++) {
+    if (Number(_expoScale[i].desde) > sub) {
+      return { dto: Number(_expoScale[i].dto), falta: Number(_expoScale[i].desde) - sub };
+    }
+  }
+  return null;
+}
+
+function _expoMoney(n) {
+  try {
+    return Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 });
+  } catch (e) {
+    return String(Math.round(Number(n || 0)));
+  }
+}
+
 function _expoUpdateChip() {
   var chip = document.getElementById("expoCurrentChip");
   if (!chip) return;
-  if (customerProfile && customerProfile.id && customerProfile.business_name) {
-    var dto = Number(customerProfile.dto_vol || 0);
+  if (!(customerProfile && customerProfile.id && customerProfile.business_name)) {
+    chip.textContent = "Sin cliente seleccionado";
+    chip.classList.remove("has-client");
+    return;
+  }
+  var dto = Number(customerProfile.dto_vol || 0);
+  var name =
+    '<span class="expo-chip-name">' + _expoEsc(customerProfile.business_name) + "</span>";
+  if (_expoClientMode) {
+    var sub = _expoListSubtotal();
+    var next = _expoNextTier(sub);
+    var meta =
+      "Dto volumen " + Math.round(dto * 100) + "% · Pedido lista $" + _expoMoney(sub);
+    if (next)
+      meta +=
+        " · faltan $" + _expoMoney(next.falta) + " → " + Math.round(next.dto * 100) + "%";
+    meta += " · Contado obligatorio 1ª compra";
+    chip.innerHTML = name + '<span class="expo-chip-meta expo-chip-live">' + meta + "</span>";
+  } else {
     chip.innerHTML =
-      '<span class="expo-chip-name">' +
-      _expoEsc(customerProfile.business_name) +
-      '</span><span class="expo-chip-meta">Cód ' +
+      name +
+      '<span class="expo-chip-meta">Cód ' +
       _expoEsc(customerProfile.cod_cliente || "—") +
       (dto > 0 ? " · Dto " + Math.round(dto * 100) + "%" : "") +
       "</span>";
-    chip.classList.add("has-client");
-  } else {
-    chip.textContent = "Sin cliente seleccionado";
-    chip.classList.remove("has-client");
   }
+  chip.classList.add("has-client");
 }
 
 function renderExpoEntryBar() {
@@ -9076,7 +9171,8 @@ async function _expoRunSearch() {
   });
 }
 
-async function expoApplyCustomer(cust) {
+async function expoApplyCustomer(cust, opts) {
+  opts = opts || {};
   // Registrar en linkedCustomers para que el resto del flujo lo reconozca.
   if (
     !(linkedCustomers || []).some(function (c) {
@@ -9095,7 +9191,35 @@ async function expoApplyCustomer(cust) {
   var sel = document.getElementById("customerSelect");
   if (sel) sel.value = cust.id;
   expoClosePickModal();
+
+  // ¿Es cliente NUEVO de expo? (forzado desde el alta, o presente en staging).
+  // Solo esos entran en "modo cliente-expo" (escala + contado obligatorio + web).
+  _expoClientMode = !!opts.forceExpoNew;
+  if (!_expoClientMode) {
+    try {
+      var st = await supabaseClient
+        .from("expo_clientes_pendientes")
+        .select("id")
+        .eq("customer_id", cust.id)
+        .eq("estado", "pendiente")
+        .limit(1);
+      _expoClientMode = !st.error && !!st.data && st.data.length > 0;
+    } catch (e) {
+      _expoClientMode = false;
+    }
+  }
+  if (_expoClientMode) await _expoLoadScale();
+
   await onLinkedCustomerSelected({ customerId: cust.id });
+
+  if (_expoClientMode) {
+    // Forzar contado en la UI de pago (el cálculo ya lo fuerza igual).
+    var paySel = document.getElementById("paymentSelect");
+    if (paySel) paySel.value = "0.25";
+    _expoSyncDto();
+    updateCart();
+    renderProducts();
+  }
   _expoUpdateChip();
 }
 
@@ -9327,7 +9451,7 @@ async function _expoGuardarNuevo(pauseOnly) {
       vend: vend,
     };
     _expoCloseNewModal();
-    await expoApplyCustomer(custObj);
+    await expoApplyCustomer(custObj, { forceExpoNew: true });
     if (typeof showSection === "function") showSection("productos");
   } catch (e) {
     _expoNewStatus("Error: " + (e && e.message ? e.message : e), "err");
