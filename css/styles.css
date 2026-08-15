@@ -14415,7 +14415,7 @@ a.user-menu-item:hover {
 }
 .expo-addr-row {
   display: grid;
-  grid-template-columns: 1fr 0.8fr 0.8fr auto;
+  grid-template-columns: 1fr 0.8fr 0.8fr 0.9fr auto;
   gap: 6px;
   align-items: center;
 }
@@ -14449,7 +14449,11 @@ a.user-menu-item:hover {
     grid-template-columns: 1fr;
   }
   .expo-addr-row {
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr;
+  }
+  .expo-addr-row .expo-addr-del {
+    grid-column: 1 / -1;
+    justify-self: end;
   }
 }
 
