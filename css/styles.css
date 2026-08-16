@@ -14552,14 +14552,35 @@ a.user-menu-item:hover {
 .expo-addr-del:hover {
   background: #fecaca;
 }
+.expo-confirm-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  cursor: pointer;
+  user-select: none;
+}
+.expo-confirm-check input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
 .expo-new-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
   padding-top: 12px;
-  margin-top: 16px;
+  margin-top: 12px;
   border-top: 1px solid #eef0f2;
+}
+.expo-new-actions .profile-btn.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 /* Modales expo: que scrollee TODO el modal (card al tope), así se alcanzan
    siempre las direcciones y los botones en dispositivos cortos. */

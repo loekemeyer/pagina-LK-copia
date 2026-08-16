@@ -9424,6 +9424,13 @@ function _expoNewStatus(msg, kind) {
   el.style.color = kind === "err" ? "#b91c1c" : kind === "ok" ? "#166534" : "#6b7280";
 }
 
+// El botón "Cargar pedido" queda deshabilitado hasta tildar "datos completos".
+function _expoNewSyncConfirm() {
+  var chk = document.getElementById("expoNewConfirm");
+  var btn = document.getElementById("expoNewGoOrder");
+  if (btn) btn.disabled = !(chk && chk.checked);
+}
+
 // Provincias argentinas (24 jurisdicciones) para los desplegables del alta.
 var EXPO_PROVINCIAS = [
   "Buenos Aires", "Ciudad Autónoma de Buenos Aires", "Catamarca", "Chaco",
@@ -9447,7 +9454,7 @@ function _expoFillProvincias() {
   if (sel) sel.innerHTML = _expoProvinciaOptions(sel.value);
 }
 
-function _expoAddrAddRow(prefill) {
+function _expoAddrAddRow(prefill, prepend) {
   prefill = prefill || {};
   var list = document.getElementById("expoAddrList");
   if (!list) return;
@@ -9485,7 +9492,9 @@ function _expoAddrAddRow(prefill) {
     if (!document.querySelectorAll("#expoAddrList .expo-addr-row").length)
       _expoAddrAddRow();
   });
-  list.appendChild(row);
+  // Las sucursales nuevas (botones Agregar / Usar fiscal) van ARRIBA (primeras).
+  if (prepend && list.firstChild) list.insertBefore(row, list.firstChild);
+  else list.appendChild(row);
 }
 
 function _expoAddrCollect() {
@@ -9548,6 +9557,9 @@ async function expoNuevoCliente() {
   if (condIva) condIva.value = "Responsable Inscripto";
   _expoFillVendedores();
   _expoFillProvincias();
+  var chkNuevo = document.getElementById("expoNewConfirm");
+  if (chkNuevo) chkNuevo.checked = false;
+  _expoNewSyncConfirm();
   document.getElementById("expoNewPin").value = _expoNewGenPin();
   document.getElementById("expoAddrList").innerHTML = "";
   _expoAddrAddRow();
@@ -9797,7 +9809,8 @@ function _expoWireNewModal() {
   var byId = function (x) { return document.getElementById(x); };
   if (byId("expoNewBackdrop")) byId("expoNewBackdrop").addEventListener("click", _expoCloseNewModal);
   if (byId("expoNewClose")) byId("expoNewClose").addEventListener("click", _expoCloseNewModal);
-  if (byId("expoAddrAdd")) byId("expoAddrAdd").addEventListener("click", function () { _expoAddrAddRow(); });
+  // Sucursales nuevas van ARRIBA (prepend = true).
+  if (byId("expoAddrAdd")) byId("expoAddrAdd").addEventListener("click", function () { _expoAddrAddRow({}, true); });
   if (byId("expoAddrUseFiscal"))
     byId("expoAddrUseFiscal").addEventListener("click", function () {
       var calle = (byId("expoNewDirFiscal").value || "").trim();
@@ -9809,10 +9822,13 @@ function _expoWireNewModal() {
         direccion: dir,
         localidad: loc,
         provincia: (byId("expoNewProvFiscal").value || "").trim(),
-      });
+      }, true);
     });
   if (byId("expoNewPause")) byId("expoNewPause").addEventListener("click", function () { _expoGuardarNuevo(true); });
   if (byId("expoNewGoOrder")) byId("expoNewGoOrder").addEventListener("click", function () { _expoGuardarNuevo(false); });
+  // Tic "Confirmo datos completos": habilita el botón de cargar pedido.
+  if (byId("expoNewConfirm"))
+    byId("expoNewConfirm").addEventListener("change", _expoNewSyncConfirm);
   if (byId("expoNewPinCopy"))
     byId("expoNewPinCopy").addEventListener("click", function () {
       var v = byId("expoNewPin").value;
@@ -9927,6 +9943,9 @@ function expoEditarPendiente(row) {
   var vendSel = document.getElementById("expoNewVend");
   if (vendSel && row.vend != null && row.vend !== "") vendSel.value = String(row.vend);
   document.getElementById("expoNewPin").value = row.pin || _expoNewGenPin();
+  var chkEdit = document.getElementById("expoNewConfirm");
+  if (chkEdit) chkEdit.checked = false;
+  _expoNewSyncConfirm();
   var list = document.getElementById("expoAddrList");
   list.innerHTML = "";
   var dirs = Array.isArray(row.direcciones_entrega) ? row.direcciones_entrega : [];
