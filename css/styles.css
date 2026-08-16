@@ -14449,10 +14449,25 @@ a.user-menu-item:hover {
   justify-content: space-between;
   margin-bottom: 8px;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .expo-addr-head-btns {
   display: flex;
   gap: 6px;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+/* Botones del encabezado de direcciones: compactos y con texto que puede ir
+   en dos líneas (el modal es angosto y "Usar fiscal" se encimaba). */
+.expo-addr-head-btns .profile-btn {
+  margin-top: 0;
+  height: auto;
+  min-height: 40px;
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.1;
+  white-space: normal;
+  text-align: center;
 }
 .expo-addr-list {
   display: flex;
