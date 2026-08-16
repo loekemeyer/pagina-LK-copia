@@ -14381,6 +14381,12 @@ a.user-menu-item:hover {
   outline: none;
   border-color: #111827;
 }
+.expo-inp-lock {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 .expo-new-pin-row {
   margin-bottom: 12px;
 }
