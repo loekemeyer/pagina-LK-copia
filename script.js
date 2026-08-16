@@ -9497,6 +9497,72 @@ function _expoProvinciaOptions(selected) {
   });
   return out;
 }
+
+// Expresos/transportistas TAL CUAL están cargados en ISIS (última columna del
+// export de sucursales). El campo Expreso autocompleta contra esta lista para
+// que se elija el nombre EXACTO y la importación al ERP no falle por un typo.
+var EXPO_EXPRESOS = [
+  "11 de Marzo", "4H S.R.L.", "7 de Agosto", "AG Distribuciones Cordoba", "AGUILAR", "ALBO",
+  "ALCUVA", "ALEX", "ALONSO", "Alta Cba Encomiendas", "ALVEAR SUR", "AMANES", "AMICCI",
+  "ANDESMAR", "Andina HC SRL", "ANDINA HNOS", "ARAVERA", "ARIAS (COMODORO)",
+  "ARIAS (SANTA FE)", "ARNES", "ASCENCIO", "Astutti", "AVELLANEDA", "AZUL",
+  "BAIRES MATADEROS", "BALUT", "BARILOCHE", "BBB Express", "BELGRANO", "BICENTENARIO",
+  "BILLETA", "BIN", "BISONTE", "BOLLATI", "BOLLATTI", "CALTABIANO", "CAMIONERA MENDOCINA",
+  "CARDONE S.A.", "CARENA", "CARGO", "CARLITOS (para Entre Rios)",
+  "CARLITOS (para Prov BsAS)", "CARNEVALI", "CAROSIO Y VAIROLATTI",
+  "Carossio, Vairolatti y Cía SRL", "CATALBIANO", "CAÑADA DE GOMEZ", "CD Bazares en Linea",
+  "CEMA", "CENTRAL ARGENTINO", "CHAMORRO", "CHAVEZ HNOS", "Chilecito", "CHIVILCOY",
+  "CIARLANTINI", "CONTE", "COOP DE TRABAJO RSUT LTDA", "COPAR", "CRUZ DEL SUR", "DE LA VEGA",
+  "Delog", "DEMONTE", "DIAGONAL", "DIEMAR", "DON ROBERTO", "DOÑA RAMONA", "EL CHANGUITO",
+  "EL CHINO", "EL FARO SA", "EL JESUITA", "EL NOBLE", "EL RAPIDO", "EL RAYO", "El Resero",
+  "EL VASQUITO", "ENCARGO", "ENCARGO EXPRESS", "ENCOMIENDAS CARLOS CASARES",
+  "ENTREGA DEPOSITO", "Estacion De Cargas Serena SRL", "ESTRELLA", "EXPRESO 2 CIUDADES",
+  "EXPRESO ALFA", "Expreso Biletta S.R.L.", "EXPRESO CAMUFER", "EXPRESO CAVALA",
+  "Expreso de a 4 Bahia", "Expreso El Rapido", "Expreso El Vasquito SA", "EXPRESO FUEGUINOS",
+  "EXPRESO GARMENDIA", "Expreso Interprovincial", "Expreso Junin", "Expreso Lo Bruno",
+  "EXPRESO MAIPU", "EXPRESO MKS", "EXPRESO PANAMA", "EXPRESO PUERTAS DE CUYO",
+  "EXPRESO RICHTER", "Expreso Suarence", "EXPRESO T.A.S.", "EXPRESO TRAN VITALE",
+  "Expreso Trole", "EXPRESO TROLE", "Expreso Valeiras", "FANTACCI", "Ferrocargas del Sur",
+  "FONTANA", "FORZAP", "FRASER", "FRONTERA", "GAL LOGISTICA SA",
+  "Gestiones y Soluciones Logist", "GOMEZ", "Grupo Nava", "Guillan", "HACHA DE PIEDRA",
+  "HADA", "HERMES", "ILIA", "IMAZ", "INCA", "INTERPROVINCIAL", "JE Logistica",
+  "JOSE BELARDI", "KEMBER", "L y D Logistica", "LA ANTARTIDA", "LA SEVILLANITA", "LAN CARG",
+  "LANCIONI", "LARRAZ", "LAST EXPRES", "Lazaro Cargas", "LEO", "LESCANO", "LEZANA", "Lider",
+  "Logiscar SAS", "LOGISTICA ANDREA", "Logistica Busca Lo Mio", "Logistica Cardo",
+  "Logistica Difabio", "LOGISTICA SALTA SRL", "LOGISTICA SATELITAL SRL",
+  "Logistica TransSAB", "LOPEZ", "LOTSA", "LUCES", "LUJAN DE CUYO", "LUKE", "LURO", "M Z",
+  "MALARGUE", "MF Logistica", "MIGUEL MESSARA", "MONTERO HERMANOS SRL", "MORABITO",
+  "Morresi", "MOSTTO- PERGAMINO", "MOSTTO- PORTELA", "Moyano Cargas", "NOR PATAGONICO",
+  "NT SERVICIOS", "NUB LOGISTICA S.A.S", "NUB LOGISTICAS SAS", "NUEVA ROMA",
+  "NUEVO HORIZONTE", "NUEVO TRANSPORTE SRL", "NUEVO VALLE", "Oliva", "OLIVA HNOS", "ORION",
+  "ORO BLANCO", "ORO NEGRO", "Ortiz", "PACINI", "PEDRITO", "PIGUE", "POLI", "PRADA",
+  "PREMAT", "PRIVITERA", "PUNILLA", "Raosa S.R.L.", "Red del Norte", "RETIRA", "RICHARDS",
+  "RIDISSI", "Rio Lavayen", "RIVADAVIA", "RIVERO", "RODRIGO", "RODRIGUEZ", "RUTA 11",
+  "SALDAR", "SALMA", "SALTA", "San Carlos (Bs As)", "SAN CARLOS (Rosario)", "SAN JOSE",
+  "SAN NICOLAS", "SANCHEZ", "SANELLI", "SANTA ELISA", "SANTA ROSA", "SANTULI", "SARITA",
+  "Scor Dina", "Servicargas Transporte", "Servicios Logisticos y Postale", "SEVILLANITA",
+  "SNAIDER", "SOLMAR", "SPACAPAN", "SUDAMERICANO", "SZILAK S.R.L.", "TAQSA PAQ", "TARRES",
+  "TB LOGISTICA", "TIM CAR", "Todo Facil Express", "Tokio", "TRADELOG", "Trand Melly's",
+  "TRANS", "TRANS-NORT", "TRANSCARGO ARGENTINA", "Transfull SA", "TRANSGUAZU", "TRANSNORT",
+  "TRANSP THUNDER", "TRANSP.LAS FLORES", "Transporte Falco", "Transporte Frontera",
+  "TRANSPORTE HIPPOCARGO", "Transporte Iros", "Transporte Jaime", "TRANSPORTE LA RUTA S-A-",
+  "Transporte Milana", "TRANSPORTE PILONI", "Transporte RSUT", "TRANSPORTE SALDAR",
+  "Transporte Santa Fe", "Transporte Sierra", "Transportes Union SA", "TRANSVEL", "TRAVERSO",
+  "Tuñon y Mossotto", "UNION (CHUBUT)", "VALLE DE LERMA", "VELOMAX", "VESPRINI", "Victorica",
+  "VILLA ANGELA", "VILLANOVA", "YOUVE", "Ñandubay",
+];
+// Crea (una vez) el <datalist> global que alimenta el autocomplete de Expreso.
+function _expoBuildExpresoDatalist() {
+  if (document.getElementById("expoExpresoList")) return;
+  var dl = document.createElement("datalist");
+  dl.id = "expoExpresoList";
+  var html = "";
+  EXPO_EXPRESOS.forEach(function (n) {
+    html += '<option value="' + _expoEsc(n) + '"></option>';
+  });
+  dl.innerHTML = html;
+  document.body.appendChild(dl);
+}
 function _expoFillProvincias() {
   var sel = document.getElementById("expoNewProvFiscal");
   if (sel) sel.innerHTML = _expoProvinciaOptions(sel.value);
@@ -9504,6 +9570,7 @@ function _expoFillProvincias() {
 
 function _expoAddrAddRow(prefill, prepend) {
   prefill = prefill || {};
+  _expoBuildExpresoDatalist();
   var list = document.getElementById("expoAddrList");
   if (!list) return;
   var row = document.createElement("div");
@@ -9514,7 +9581,7 @@ function _expoAddrAddRow(prefill, prepend) {
     '<input class="expo-inp expo-addr-dir" placeholder="Dirección de entrega" />' +
     '<input class="expo-inp expo-addr-loc" placeholder="Localidad / zona" />' +
     '<select class="expo-inp expo-addr-prov">' + _expoProvinciaOptions(prefill.provincia) + "</select>" +
-    '<input class="expo-inp expo-addr-exp" placeholder="Expreso (transportista)" />' +
+    '<input class="expo-inp expo-addr-exp" list="expoExpresoList" autocomplete="off" placeholder="Expreso (empezá a escribir)" />' +
     '<button type="button" class="expo-addr-del" title="Quitar">&times;</button>' +
     "</div>";
   row.querySelector(".expo-addr-tit").value = prefill.titulo || "";
