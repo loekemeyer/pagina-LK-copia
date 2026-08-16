@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23209" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23209" />
+    <link rel="stylesheet" href="css/styles.css?v=23210" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23210" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1270,8 +1270,8 @@
            ============================================================ -->
       <div class="cart-2col">
         <div class="cart-col-left">
-      <!-- Dirección de entrega -->
-      <div class="ship-row">
+      <!-- Dirección de entrega + Observaciones (misma fila, mitad y mitad) -->
+      <div class="ship-row ship-row-split">
         <div class="ship-card">
           <label class="ship-label" for="shippingSelect"
             >Indicar Dirección de Entrega</label
@@ -1282,6 +1282,16 @@
           <div class="ship-hint">
             Seleccioná una dirección para poder confirmar el pedido.
           </div>
+        </div>
+        <div class="ship-card">
+          <label class="ship-label" for="obsPedidoInput">Observaciones</label>
+          <textarea
+            id="obsPedidoInput"
+            class="ship-textarea"
+            rows="3"
+            placeholder="Anotá algo sobre este pedido (opcional)"
+          ></textarea>
+          <div class="ship-hint">Se envía junto con el pedido.</div>
         </div>
       </div>
 
@@ -1963,14 +1973,14 @@
     </button>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23209"></script>
-    <script src="script.js?v=23209"></script>
+    <script src="./version.js?v=23210"></script>
+    <script src="script.js?v=23210"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23209"></script>
+    <script src="analisis-venta-cliente.js?v=23210"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23209"></script>
-    <script src="admin-excel-krikos.js?v=23209"></script>
-    <script src="vendor-import-excel.js?v=23209"></script>
+    <script src="scotapi-shim.js?v=23210"></script>
+    <script src="admin-excel-krikos.js?v=23210"></script>
+    <script src="vendor-import-excel.js?v=23210"></script>
   </body>
 </html>

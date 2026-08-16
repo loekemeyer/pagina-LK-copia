@@ -7078,6 +7078,7 @@ async function _submitSingleOrder(
       deliveryChoiceSnapshot.label || deliveryChoiceSnapshot.slot || "",
     ).trim(),
     cliente_nuevo: String(clienteNuevoValue || "").trim(),
+    observaciones: String(observacionesValue || "").trim(),
     is_promo: isPromo,
     extra_discount: extraRate,
     deuda: debt,
@@ -7197,6 +7198,7 @@ async function submitOrder() {
   const clienteNuevoValue = isAdmin
     ? String($("clienteNuevoInput")?.value || "").trim()
     : "";
+  const observacionesValue = String($("obsPedidoInput")?.value || "").trim();
   try {
     setOrderStatus("");
 
@@ -7406,6 +7408,8 @@ async function submitOrder() {
       shipConfirmBtn.remove();
     }
     if (paySel) paySel.value = "";
+    var obsInput = $("obsPedidoInput");
+    if (obsInput) obsInput.value = "";
     document.querySelectorAll("#paymentButtons .pay-btn").forEach(function (b) {
       b.classList.remove("selected", "active");
     });
