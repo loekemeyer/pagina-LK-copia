@@ -470,6 +470,22 @@ a {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
+.cli-pend-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cli-pend-badge.wait {
+  background: #fef3c7;
+  color: #92400e;
+}
+.cli-pend-badge.ok {
+  background: #dcfce7;
+  color: #166534;
+}
 .data-table {
   width: 100%;
   border-collapse: collapse;

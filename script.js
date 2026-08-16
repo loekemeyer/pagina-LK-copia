@@ -9060,6 +9060,7 @@ function renderExpoEntryBar() {
     '<div class="expo-entry-actions">' +
     '<button type="button" class="expo-btn expo-btn-pick" id="expoElegirBtn">Elegir cliente</button>' +
     '<button type="button" class="expo-btn expo-btn-new" id="expoNuevoBtn">+ Nuevo cliente</button>' +
+    '<button type="button" class="expo-btn expo-btn-resume" id="expoContinuarBtn" style="display:none">Continuar carga pausada</button>' +
     "</div>" +
     '<select id="customerSelect" class="expo-hidden-select" tabindex="-1" aria-hidden="true"><option value=""></option></select>';
 
@@ -9085,10 +9086,32 @@ function renderExpoEntryBar() {
 
   var elegirBtn = document.getElementById("expoElegirBtn");
   var nuevoBtn = document.getElementById("expoNuevoBtn");
+  var contBtn = document.getElementById("expoContinuarBtn");
   if (elegirBtn) elegirBtn.addEventListener("click", expoOpenPickModal);
   if (nuevoBtn) nuevoBtn.addEventListener("click", expoNuevoCliente);
+  if (contBtn) contBtn.addEventListener("click", expoOpenResumeModal);
 
   _expoWirePickModal();
+  _expoWireResumeModal();
+  // Mostrar "Continuar carga pausada" solo si hay clientes en staging.
+  _expoRefreshResumeBtn();
+}
+
+// Muestra/oculta el botón "Continuar carga pausada" según haya pendientes.
+async function _expoRefreshResumeBtn() {
+  var btn = document.getElementById("expoContinuarBtn");
+  if (!btn) return;
+  try {
+    var r = await supabaseClient
+      .from("expo_clientes_pendientes")
+      .select("id", { count: "exact", head: true })
+      .eq("estado", "pendiente");
+    var n = r.count || 0;
+    btn.style.display = n > 0 ? "" : "none";
+    btn.textContent = n > 0 ? "Continuar carga pausada (" + n + ")" : "Continuar carga pausada";
+  } catch (e) {
+    btn.style.display = "none";
+  }
 }
 
 // EXPO: panel de cierre en la confirmación (PIN + WhatsApp con resumen).
@@ -9567,9 +9590,10 @@ async function _expoGuardarNuevo(pauseOnly) {
     // La asociación a user_customer_links la resuelve el panel admin, no el alta expo.
 
     if (pauseOnly) {
-      _expoNewStatus("Guardado. Podés cerrar y volver a completar.", "ok");
+      _expoNewStatus("Guardado. Podés cerrar y volver a completar desde “Continuar carga pausada”.", "ok");
       if (pauseBtn) pauseBtn.disabled = false;
       if (goBtn) goBtn.disabled = false;
+      _expoRefreshResumeBtn();
       return;
     }
 
@@ -9630,6 +9654,119 @@ function _expoWireNewModal() {
         byId("expoNewPin").select();
       }
     });
+}
+
+// ---- EXPO: Continuar carga pausada ----
+var _expoResumeWired = false;
+
+function _expoWireResumeModal() {
+  if (_expoResumeWired) return;
+  var m = document.getElementById("expoResumeModal");
+  if (!m) return;
+  _expoResumeWired = true;
+  if (m.parentElement !== document.body) document.body.appendChild(m);
+  var closeBtn = document.getElementById("expoResumeClose");
+  var backdrop = document.getElementById("expoResumeBackdrop");
+  if (closeBtn) closeBtn.addEventListener("click", expoCloseResumeModal);
+  if (backdrop) backdrop.addEventListener("click", expoCloseResumeModal);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && m.classList.contains("open")) expoCloseResumeModal();
+  });
+}
+
+function expoCloseResumeModal() {
+  var m = document.getElementById("expoResumeModal");
+  if (!m) return;
+  m.classList.remove("open");
+  m.classList.add("hidden");
+  m.setAttribute("aria-hidden", "true");
+}
+
+async function expoOpenResumeModal() {
+  var m = document.getElementById("expoResumeModal");
+  if (!m) return;
+  _expoWireResumeModal();
+  m.classList.add("open");
+  m.classList.remove("hidden");
+  m.setAttribute("aria-hidden", "false");
+  var res = document.getElementById("expoResumeList");
+  if (res) res.innerHTML = '<div class="expo-pick-hint">Cargando…</div>';
+  var r = await supabaseClient
+    .from("expo_clientes_pendientes")
+    .select("customer_id,cod_cliente,business_name,cuit,localidad,provincia,telefono,whatsapp,mail,vend,dto_vol,pin,condicion_iva,direccion,numero,cp,direcciones_entrega,actualizado_at")
+    .eq("estado", "pendiente")
+    .order("actualizado_at", { ascending: false });
+  if (!res) return;
+  if (r.error) {
+    res.innerHTML = '<div class="expo-pick-hint expo-pick-err">Error: ' + _expoEsc(r.error.message) + "</div>";
+    return;
+  }
+  var rows = r.data || [];
+  if (!rows.length) {
+    res.innerHTML = '<div class="expo-pick-hint">No hay cargas pausadas.</div>';
+    return;
+  }
+  _expoResumeRows = rows;
+  var html = "";
+  rows.forEach(function (c, i) {
+    var nDir = Array.isArray(c.direcciones_entrega) ? c.direcciones_entrega.length : 0;
+    html +=
+      '<button type="button" class="expo-pick-row" data-idx="' + i + '">' +
+      '<span class="expo-pick-name">' + _expoEsc(c.business_name || "(sin razón social)") + "</span>" +
+      '<span class="expo-pick-sub">Cód ' + _expoEsc(c.cod_cliente || "—") +
+      (c.cuit ? " · CUIT " + _expoEsc(c.cuit) : "") +
+      " · " + nDir + " dir." + "</span>" +
+      "</button>";
+  });
+  res.innerHTML = html;
+  res.querySelectorAll(".expo-pick-row").forEach(function (row) {
+    row.addEventListener("click", function () {
+      var c = _expoResumeRows[parseInt(row.dataset.idx, 10)];
+      if (c) expoEditarPendiente(c);
+    });
+  });
+}
+
+var _expoResumeRows = [];
+
+// Abre el modal de "Nuevo cliente" en modo EDICIÓN, precargado desde staging.
+function expoEditarPendiente(row) {
+  var m = document.getElementById("expoNewModal");
+  if (!m) return;
+  expoCloseResumeModal();
+  _expoNewState = { id: row.customer_id, authId: null };
+  _expoFillVendedores();
+  function setVal(id, v) {
+    var el = document.getElementById(id);
+    if (el) el.value = v != null ? v : "";
+  }
+  setVal("expoNewRazon", row.business_name);
+  setVal("expoNewCuit", row.cuit);
+  setVal("expoNewTel", row.telefono);
+  setVal("expoNewWhatsapp", row.whatsapp);
+  setVal("expoNewMail", row.mail);
+  setVal("expoNewCod", row.cod_cliente);
+  setVal("expoNewDto", row.dto_vol != null ? Math.round(Number(row.dto_vol) * 100) : "");
+  setVal("expoNewDirFiscal", row.direccion);
+  setVal("expoNewNumFiscal", row.numero);
+  setVal("expoNewCpFiscal", row.cp);
+  setVal("expoNewLocFiscal", row.localidad);
+  setVal("expoNewProvFiscal", row.provincia);
+  var condIva = document.getElementById("expoNewCondIva");
+  if (condIva) condIva.value = row.condicion_iva || "Responsable Inscripto";
+  var vendSel = document.getElementById("expoNewVend");
+  if (vendSel && row.vend != null && row.vend !== "") vendSel.value = String(row.vend);
+  document.getElementById("expoNewPin").value = row.pin || _expoNewGenPin();
+  var list = document.getElementById("expoAddrList");
+  list.innerHTML = "";
+  var dirs = Array.isArray(row.direcciones_entrega) ? row.direcciones_entrega : [];
+  if (dirs.length) dirs.forEach(function (d) { _expoAddrAddRow(d); });
+  else _expoAddrAddRow();
+  _expoNewStatus("Editando carga pausada. Guardá para actualizar.", "");
+  _expoWireNewModal();
+  m.classList.add("open");
+  m.classList.remove("hidden");
+  m.setAttribute("aria-hidden", "false");
 }
 
 function _expoWirePickModal() {

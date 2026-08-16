@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23203" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23203" />
+    <link rel="stylesheet" href="css/styles.css?v=23204" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23204" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1020,6 +1020,32 @@
         </div>
       </div>
 
+      <!-- Modal EXPO: Continuar carga pausada -->
+      <div id="expoResumeModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop" id="expoResumeBackdrop"></div>
+        <div
+          class="modal-card expo-pick-card"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="expoResumeTitle"
+        >
+          <div class="modal-title" id="expoResumeTitle">Continuar carga pausada</div>
+          <p class="expo-pick-sub" style="margin: 0 0 8px">
+            Clientes con datos guardados a medias. Elegí uno para seguir cargándolo.
+          </p>
+          <div id="expoResumeList" class="expo-pick-results"></div>
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="profile-btn subtle"
+              id="expoResumeClose"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Modal EXPO: Nuevo cliente -->
       <div id="expoNewModal" class="modal hidden" aria-hidden="true">
         <div class="modal-backdrop" id="expoNewBackdrop"></div>
@@ -1937,14 +1963,14 @@
     </button>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23203"></script>
-    <script src="script.js?v=23203"></script>
+    <script src="./version.js?v=23204"></script>
+    <script src="script.js?v=23204"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23203"></script>
+    <script src="analisis-venta-cliente.js?v=23204"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23203"></script>
-    <script src="admin-excel-krikos.js?v=23203"></script>
-    <script src="vendor-import-excel.js?v=23203"></script>
+    <script src="scotapi-shim.js?v=23204"></script>
+    <script src="admin-excel-krikos.js?v=23204"></script>
+    <script src="vendor-import-excel.js?v=23204"></script>
   </body>
 </html>
