@@ -9505,11 +9505,11 @@ window.expoClearCustomer = expoClearCustomer;
 var _expoNewState = { id: null, authId: null };
 var _expoNewWired = false;
 
-// Clave de 30 chars (mismo esquema que el admin). Excluye 0/O/1/I/l.
+// PIN de 6 DÍGITOS: es el password del login del cliente (CUIT + PIN) y la tabla
+// customers tiene el constraint customers_pin_6_digits (pin ~ '^\d{6}$').
 function _expoNewGenPin() {
-  var chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   var r = "";
-  for (var i = 0; i < 30; i++) r += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (var i = 0; i < 6; i++) r += String(Math.floor(Math.random() * 10));
   return r;
 }
 
