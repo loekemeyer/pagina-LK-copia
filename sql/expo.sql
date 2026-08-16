@@ -136,6 +136,43 @@ create policy expo_escala_admin on public.expo_dto_escala
   using (exists (select 1 from public.admins a where a.auth_user_id = auth.uid()))
   with check (exists (select 1 from public.admins a where a.auth_user_id = auth.uid()));
 
+-- ----------------------------------------------------------------------------
+-- Código de cliente asignado por el sistema (contador propio). Arranca en 4272
+-- (ISIS tenía max 4271). NO se deriva del padrón parcial de la página.
+-- ----------------------------------------------------------------------------
+create table if not exists public.expo_config (
+  id int primary key default 1,
+  next_cod bigint not null,
+  constraint expo_config_singleton check (id = 1)
+);
+insert into public.expo_config (id, next_cod)
+select 1, 4272 where not exists (select 1 from public.expo_config where id = 1);
+alter table public.expo_config enable row level security;
+drop policy if exists expo_config_admin on public.expo_config;
+create policy expo_config_admin on public.expo_config for all
+  using (exists (select 1 from public.admins a where a.auth_user_id = auth.uid()))
+  with check (exists (select 1 from public.admins a where a.auth_user_id = auth.uid()));
+
+create or replace function public.expo_peek_cod()
+returns bigint language sql security definer set search_path=public as $$
+  select next_cod from public.expo_config where id = 1;
+$$;
+create or replace function public.expo_reservar_cod()
+returns bigint language plpgsql security definer set search_path=public as $$
+declare v bigint;
+begin
+  if not exists (select 1 from admins a where a.auth_user_id = auth.uid()) then
+    raise exception 'no autorizado';
+  end if;
+  update public.expo_config set next_cod = next_cod + 1 where id = 1
+    returning next_cod - 1 into v;
+  return v;
+end; $$;
+revoke execute on function public.expo_peek_cod() from public;
+revoke execute on function public.expo_reservar_cod() from public;
+grant execute on function public.expo_peek_cod() to authenticated, service_role;
+grant execute on function public.expo_reservar_cod() to authenticated, service_role;
+
 -- Semilla (tramos confirmados 15/8/2026).
 insert into public.expo_dto_escala (desde, dto)
 select * from (values

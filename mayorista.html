@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23197" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23197" />
+    <link rel="stylesheet" href="css/styles.css?v=23198" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23198" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1031,15 +1031,9 @@
         >
           <div class="modal-title" id="expoNewTitle">Nuevo cliente</div>
 
-          <div class="expo-new-pin-row">
-            <label class="expo-lbl">Clave generada (30 caracteres)</label>
-            <div class="expo-pin-wrap">
-              <input id="expoNewPin" class="expo-inp" readonly />
-              <button type="button" class="profile-btn subtle" id="expoNewPinCopy">
-                Copiar
-              </button>
-            </div>
-          </div>
+          <!-- La clave (PIN) se genera sola y NO se muestra acá; va en el
+               resumen/WhatsApp al cerrar el pedido. -->
+          <input id="expoNewPin" type="hidden" />
 
           <div class="expo-new-grid">
             <div class="expo-fld expo-fld-wide">
@@ -1074,11 +1068,11 @@
             </div>
             <div class="expo-fld">
               <label class="expo-lbl">Vendedor</label>
-              <input id="expoNewVend" class="expo-inp" placeholder="Ej: 7" />
+              <select id="expoNewVend" class="expo-inp"></select>
             </div>
             <div class="expo-fld">
-              <label class="expo-lbl">Cód cliente (sugerido)</label>
-              <input id="expoNewCod" class="expo-inp" placeholder="Ej: 4271" />
+              <label class="expo-lbl">Cód cliente (asignado)</label>
+              <input id="expoNewCod" class="expo-inp" readonly />
             </div>
             <div class="expo-fld">
               <label class="expo-lbl">Dto. Vol (%)</label>
@@ -1940,14 +1934,14 @@
     </button>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23197"></script>
-    <script src="script.js?v=23197"></script>
+    <script src="./version.js?v=23198"></script>
+    <script src="script.js?v=23198"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23197"></script>
+    <script src="analisis-venta-cliente.js?v=23198"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23197"></script>
-    <script src="admin-excel-krikos.js?v=23197"></script>
-    <script src="vendor-import-excel.js?v=23197"></script>
+    <script src="scotapi-shim.js?v=23198"></script>
+    <script src="admin-excel-krikos.js?v=23198"></script>
+    <script src="vendor-import-excel.js?v=23198"></script>
   </body>
 </html>
