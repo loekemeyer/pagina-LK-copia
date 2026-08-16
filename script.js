@@ -880,10 +880,12 @@ async function refreshAuthState(sessionOverride) {
   const clienteNuevoInput = $("clienteNuevoInput");
 
   if (clienteNuevoRow) {
-    clienteNuevoRow.style.display = isAdmin ? "block" : "none";
+    // EXPO: el alta de cliente nuevo tiene su propio módulo; este campo admin
+    // legacy no corresponde (no va cuando hay un cliente elegido).
+    clienteNuevoRow.style.display = isAdmin && !EXPO_MODE ? "block" : "none";
   }
 
-  if (clienteNuevoInput && !isAdmin) {
+  if (clienteNuevoInput && (!isAdmin || EXPO_MODE)) {
     clienteNuevoInput.value = "";
   }
   syncAdminCheckoutUI();
@@ -9286,6 +9288,20 @@ async function expoApplyCustomer(cust, opts) {
 
   await onLinkedCustomerSelected({ customerId: cust.id });
 
+  // Loke sigue al cliente elegido, no al operador admin (ver checkLokeAccess).
+  await checkLokeAccess();
+  updateLokeButton();
+  if (hasLokeAccess) {
+    try {
+      await loadLokeProducts();
+      renderLokeProducts();
+    } catch (e) { /* opcional */ }
+  } else if (typeof showSection === "function") {
+    // Si estaba mirando la Línea Loke y el cliente nuevo no la tiene, salir.
+    var lokeSec = document.getElementById("loke");
+    if (lokeSec && lokeSec.classList.contains("active")) showSection("productos");
+  }
+
   if (_expoClientMode) {
     // Forzar contado en la UI de pago (el cálculo ya lo fuerza igual).
     var paySel = document.getElementById("paymentSelect");
@@ -10581,6 +10597,23 @@ let hasLokeAccess = false;
 async function checkLokeAccess() {
   if (!currentSession || !customerProfile?.id) {
     hasLokeAccess = false;
+    return;
+  }
+  // EXPO: has_loke_access() devuelve true para CUALQUIER admin (cláusula
+  // "OR admins"), y el operador de expo es admin. Para que "Línea LOKE" siga al
+  // CLIENTE (el perfil cargado) y no al operador, en expo consultamos siempre
+  // loke_access directo por customer_id (la policy admin lo permite). Así vale
+  // también tras un reload que restaura el cliente sin pasar por expoApplyCustomer.
+  if (EXPO_MODE && isAdmin) {
+    try {
+      var la = await supabaseClient
+        .from("loke_access")
+        .select("customer_id", { count: "exact", head: true })
+        .eq("customer_id", customerProfile.id);
+      hasLokeAccess = !la.error && (la.count || 0) > 0;
+    } catch (e) {
+      hasLokeAccess = false;
+    }
     return;
   }
   var result = await supabaseClient.rpc("has_loke_access", {
