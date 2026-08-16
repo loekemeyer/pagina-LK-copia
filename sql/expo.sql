@@ -189,6 +189,43 @@ revoke execute on function public.expo_reservar_cod() from public;
 grant execute on function public.expo_peek_cod() to authenticated, service_role;
 grant execute on function public.expo_reservar_cod() to authenticated, service_role;
 
+-- ----------------------------------------------------------------------------
+-- expo_dashboard() — métricas del módulo "Clientes Expo pend." (admin.js →
+--   _cliPendCargarStats). Devuelve jsonb con: clientes_total,
+--   clientes_pendientes, clientes_cargados, pedidos_count y pedidos_monto
+--   (los pedidos de orders cuyo customer_id está en el staging de expo).
+--   Gate admin adentro. OJO: `create or replace` re-otorga EXECUTE a PUBLIC y
+--   anon lo hereda; un `revoke ... from public` en el MISMO batch no siempre
+--   lo saca — hay que revocar EXPLÍCITAMENTE a anon (verificado 16/8/2026).
+-- ----------------------------------------------------------------------------
+create or replace function public.expo_dashboard()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v jsonb;
+begin
+  if not exists (select 1 from admins a where a.auth_user_id = auth.uid()) then
+    raise exception 'no autorizado';
+  end if;
+  select jsonb_build_object(
+    'clientes_total',      (select count(*) from expo_clientes_pendientes),
+    'clientes_pendientes', (select count(*) from expo_clientes_pendientes where estado = 'pendiente'),
+    'clientes_cargados',   (select count(*) from expo_clientes_pendientes where estado = 'cargado_erp'),
+    'pedidos_count',       (select count(*) from orders o
+                              where o.customer_id in (select customer_id from expo_clientes_pendientes where customer_id is not null)),
+    'pedidos_monto',       (select coalesce(sum(o.total),0) from orders o
+                              where o.customer_id in (select customer_id from expo_clientes_pendientes where customer_id is not null))
+  ) into v;
+  return v;
+end;
+$$;
+revoke execute on function public.expo_dashboard() from public;
+revoke execute on function public.expo_dashboard() from anon;
+grant execute on function public.expo_dashboard() to authenticated, service_role;
+
 -- Semilla (tramos confirmados 15/8/2026).
 insert into public.expo_dto_escala (desde, dto)
 select * from (values
