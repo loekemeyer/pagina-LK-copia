@@ -276,10 +276,23 @@ async function fetchCustomerFull(customerId) {
   }
 }
 
-function renderClienteSelectorSug(linked, currentCod, onChangeClient) {
+function renderClienteSelectorSug(linked, currentCod, onChangeClient, currentName) {
   const old = document.getElementById("sug-cliente-selector");
   if (old) old.remove();
-  if (!linked || !linked.length) return;
+
+  // EXPO / admin: el cliente elegido puede NO estar entre los vinculados (se
+  // eligió del padrón completo). Si falta, lo inyectamos para que el selector
+  // muestre al cliente real y no caiga al primer vinculado (bug "otra razón
+  // social"). El nombre sale del que se persistió al elegirlo.
+  const opciones = Array.isArray(linked) ? linked.slice() : [];
+  const yaEsta = opciones.some((c) => String(c.cod_cliente) === String(currentCod));
+  if (currentCod && !yaEsta) {
+    opciones.unshift({
+      cod_cliente: currentCod,
+      business_name: currentName || "(cliente elegido)",
+    });
+  }
+  if (!opciones.length) return;
 
   const wrap = document.createElement("div");
   wrap.id = "sug-cliente-selector";
@@ -294,7 +307,7 @@ function renderClienteSelectorSug(linked, currentCod, onChangeClient) {
   sel.id = "sugClienteSelect";
   sel.className = "sug-cliente-select";
 
-  linked.forEach((c) => {
+  opciones.forEach((c) => {
     const opt = document.createElement("option");
     opt.value = String(c.cod_cliente);
     opt.textContent = `${c.business_name} (${c.cod_cliente})`;
@@ -303,7 +316,7 @@ function renderClienteSelectorSug(linked, currentCod, onChangeClient) {
   });
 
   sel.addEventListener("change", () => {
-    const match = linked.find((c) => String(c.cod_cliente) === sel.value);
+    const match = opciones.find((c) => String(c.cod_cliente) === sel.value);
     if (!match) return;
     onChangeClient(match);
   });
@@ -515,7 +528,7 @@ async function init() {
         `Cliente: ${cliente.business_name} (${cliente.cod_cliente})`;
       sugMostrados = 5;
       await loadSugerencias(cliente.cod_cliente);
-    });
+    }, cliente.business_name);
   } catch (e) {
     console.error("Init crash:", e);
     setStatus("Error inesperado. Ver consola.");

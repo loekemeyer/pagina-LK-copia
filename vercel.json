@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/mayorista", "destination": "/mayorista.html" },
+    { "source": "/historial", "destination": "/historial.html" },
+    { "source": "/sugerencias", "destination": "/sugerencias.html" },
+    { "source": "/admin", "destination": "/admin.html" }
+  ]
+}

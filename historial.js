@@ -377,10 +377,23 @@ async function loadLinkedCustomersHistorial() {
   }
 }
 
-function renderClienteSelectorHistorial(linked, currentCod, onChangeClient) {
+function renderClienteSelectorHistorial(linked, currentCod, onChangeClient, currentName) {
   const old = document.getElementById("hist-cliente-selector");
   if (old) old.remove();
-  if (!linked || !linked.length) return;
+
+  // EXPO / admin: el cliente elegido puede NO estar entre los vinculados (se
+  // eligió del padrón completo). Si falta, lo inyectamos para que el selector
+  // muestre al cliente real y no caiga al primer vinculado (bug "otra razón
+  // social"). El nombre sale del que se persistió al elegirlo.
+  const opciones = Array.isArray(linked) ? linked.slice() : [];
+  const yaEsta = opciones.some((c) => String(c.cod_cliente) === String(currentCod));
+  if (currentCod && !yaEsta) {
+    opciones.unshift({
+      cod_cliente: currentCod,
+      business_name: currentName || "(cliente elegido)",
+    });
+  }
+  if (!opciones.length) return;
 
   const wrap = document.createElement("div");
   wrap.id = "hist-cliente-selector";
@@ -395,7 +408,7 @@ function renderClienteSelectorHistorial(linked, currentCod, onChangeClient) {
   sel.id = "histClienteSelect";
   sel.className = "hist-cliente-select";
 
-  linked.forEach((c) => {
+  opciones.forEach((c) => {
     const opt = document.createElement("option");
     opt.value = String(c.cod_cliente);
     opt.textContent = `${c.business_name} (${c.cod_cliente})`;
@@ -404,7 +417,7 @@ function renderClienteSelectorHistorial(linked, currentCod, onChangeClient) {
   });
 
   sel.addEventListener("change", () => {
-    const match = linked.find((c) => String(c.cod_cliente) === sel.value);
+    const match = opciones.find((c) => String(c.cod_cliente) === sel.value);
     if (!match) return;
     onChangeClient(match);
   });
@@ -563,6 +576,7 @@ async function init() {
         const rows2 = await getHistory(cliente.cod_cliente);
         await renderTabla(rows2);
       },
+      cliente.business_name,
     );
   } catch (e) {
     console.error("Init crash:", e);
