@@ -7487,9 +7487,21 @@ async function submitOrder() {
       } else {
         setTimeout(_subirPDF, 2500);
       }
+
+      // Mostrar la pantalla "¡Pedido confirmado!" AHORA, apenas se confirmó el
+      // pedido, ANTES del reset de UI. Si algo del reset fallara (throw), el
+      // catch se saltaba el showSection y el operador no veía la confirmación
+      // aunque el pedido sí quedaba grabado.
+      showSection("pedidoConfirmado");
+      playSuccessAnimation();
+      _expoShowConfirmPanel();
+      try {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (e) {}
     }
 
-    // ---- Reset UI ----
+    // ---- Reset UI (defensivo: si algo falla, la confirmación ya se mostró) ----
+    try {
     // Salir del modo edición (si venía de "Editar Pedido").
     setEditingOrderId(null);
     setEditBanner(null);
@@ -7538,11 +7550,10 @@ async function submitOrder() {
     syncPaymentButtons();
     loadDeliveryOptions();
     refreshSubmitEnabled();
-
-    showSection("pedidoConfirmado");
-    playSuccessAnimation();
-    _expoShowConfirmPanel();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (_resetErr) {
+      // El reset de UI no debe tapar la confirmación (ya mostrada arriba).
+      console.warn("reset UI post-pedido:", _resetErr);
+    }
 
     // ---- Detección de anomalías en background (solo sobre el pedido regular) ----
     if (regularResult && regularResult.itemsPayload) {
