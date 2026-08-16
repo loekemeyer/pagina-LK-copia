@@ -14584,6 +14584,23 @@ a.user-menu-item:hover {
   opacity: 0.45;
   cursor: not-allowed;
 }
+/* "Datos completados": verde cuando está TODO completo (habilitado);
+   gris y no-clickeable mientras falte algún dato (salvo el expreso). */
+.expo-btn-done {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+.expo-btn-done:hover {
+  filter: brightness(0.95);
+}
+.expo-btn-done:disabled {
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  filter: none;
+}
 /* Modales expo: que scrollee TODO el modal (card al tope), así se alcanzan
    siempre las direcciones y los botones en dispositivos cortos. */
 #expoNewModal.modal,

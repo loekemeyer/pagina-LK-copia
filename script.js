@@ -102,6 +102,36 @@ function _expoFaltantes(d) {
   }
   return out;
 }
+
+// Lee el formulario de alta a la forma que consumen _expoDatosCompletos/_expoFaltantes.
+function _expoReadFormData() {
+  function v(id) {
+    var e = document.getElementById(id);
+    return e ? String(e.value || "").trim() : "";
+  }
+  return {
+    business_name: v("expoNewRazon"),
+    cuit: v("expoNewCuit").replace(/[^0-9]/g, ""),
+    condicion_iva: v("expoNewCondIva"),
+    vend: v("expoNewVend"),
+    whatsapp: v("expoNewWhatsapp"),
+    mail: v("expoNewMail"),
+    direccion: v("expoNewDirFiscal"),
+    numero: v("expoNewNumFiscal"),
+    cp: v("expoNewCpFiscal"),
+    localidad: v("expoNewLocFiscal"),
+    provincia: v("expoNewProvFiscal"),
+    direcciones_entrega: _expoAddrCollect(),
+  };
+}
+
+// Habilita el botón "Datos completados" (verde) SOLO cuando está todo completo
+// (incluida la sucursal; el único opcional es el expreso). Corre en vivo.
+function _expoNewSyncComplete() {
+  var btn = document.getElementById("expoNewClose");
+  if (!btn) return;
+  btn.disabled = !_expoDatosCompletos(_expoReadFormData());
+}
 // NOTA: el endpoint /storage/v1/render/image/public/ requiere el feature
 // de image transformations, que NO está habilitado en este proyecto Supabase.
 // Las imágenes están almacenadas a 400x400 WebP, así que se sirven directo
@@ -9637,10 +9667,12 @@ function _expoAddrAddRow(prefill, prepend) {
     // Garantizar mínimo 1 fila
     if (!document.querySelectorAll("#expoAddrList .expo-addr-row").length)
       _expoAddrAddRow();
+    _expoNewSyncComplete();
   });
   // Las sucursales nuevas (botones Agregar / Usar fiscal) van ARRIBA (primeras).
   if (prepend && list.firstChild) list.insertBefore(row, list.firstChild);
   else list.appendChild(row);
+  _expoNewSyncComplete();
 }
 
 function _expoAddrCollect() {
@@ -9708,6 +9740,7 @@ async function expoNuevoCliente() {
   _expoAddrAddRow();
   _expoNewStatus("");
   _expoWireNewModal();
+  _expoNewSyncComplete();
   m.classList.add("open"); // ✅ clave: .modal se muestra con .open
   m.classList.remove("hidden");
   m.setAttribute("aria-hidden", "false");
@@ -9991,6 +10024,9 @@ function _expoWireNewModal() {
   _expoNewWired = true;
   // Sacar del #perfil (display:none desde Productos) para que el modal renderice.
   if (m.parentElement !== document.body) document.body.appendChild(m);
+  // Validación EN VIVO: el botón "Datos completados" se habilita solo si está todo.
+  m.addEventListener("input", _expoNewSyncComplete);
+  m.addEventListener("change", _expoNewSyncComplete);
   var byId = function (x) { return document.getElementById(x); };
   if (byId("expoNewBackdrop")) byId("expoNewBackdrop").addEventListener("click", _expoCloseNewModal);
   // "Datos completados": exige TODO (salvo expreso). Si falta, avisa qué; si
@@ -10134,6 +10170,7 @@ function expoEditarPendiente(row) {
   else _expoAddrAddRow();
   _expoNewStatus("Editando carga pausada. Guardá para actualizar.", "");
   _expoWireNewModal();
+  _expoNewSyncComplete();
   m.classList.add("open");
   m.classList.remove("hidden");
   m.setAttribute("aria-hidden", "false");
