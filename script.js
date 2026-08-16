@@ -9343,6 +9343,12 @@ async function _expoRefreshResumeBtn() {
       .from("expo_clientes_pendientes")
       .select("business_name,cuit,condicion_iva,vend,whatsapp,mail,direccion,numero,cp,localidad,provincia,direcciones_entrega")
       .eq("estado", "pendiente");
+    // Re-chequear: mientras esperábamos, el operador pudo soltar el cliente y
+    // volver a su perfil (race). Si ya no hay cliente activo, ocultar.
+    if (!_expoActiveCustomer || !_expoClientMode) {
+      btn.style.display = "none";
+      return;
+    }
     if (r.error || !r.data || !r.data.length) {
       btn.style.display = "none";
       return;
