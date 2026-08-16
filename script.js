@@ -9040,6 +9040,7 @@ function _expoUpdateChip() {
   var dto = Number(customerProfile.dto_vol || 0);
   var name =
     '<span class="expo-chip-name">' + _expoEsc(customerProfile.business_name) + "</span>";
+  var inner;
   if (_expoClientMode) {
     var sub = _expoListSubtotal();
     var next = _expoNextTier(sub);
@@ -9049,15 +9050,20 @@ function _expoUpdateChip() {
       meta +=
         " · faltan $" + _expoMoney(next.falta) + " → " + Math.round(next.dto * 100) + "%";
     meta += " · Contado obligatorio 1ª compra";
-    chip.innerHTML = name + '<span class="expo-chip-meta expo-chip-live">' + meta + "</span>";
+    inner = name + '<span class="expo-chip-meta expo-chip-live">' + meta + "</span>";
   } else {
-    chip.innerHTML =
+    inner =
       name +
       '<span class="expo-chip-meta">Cód ' +
       _expoEsc(customerProfile.cod_cliente || "—") +
       (dto > 0 ? " · Dto " + Math.round(dto * 100) + "%" : "") +
       "</span>";
   }
+  // Texto en columna + cruz para soltar el cliente y volver al perfil del operador.
+  chip.innerHTML =
+    '<div class="expo-chip-text">' + inner + "</div>" +
+    '<button type="button" class="expo-chip-clear" title="Soltar cliente y volver a tu perfil" ' +
+    'onclick="expoClearCustomer()">&times;</button>';
   chip.classList.add("has-client");
 }
 
@@ -9340,6 +9346,43 @@ async function expoApplyCustomer(cust, opts) {
   }
   _expoUpdateChip();
 }
+
+// EXPO: soltar el cliente elegido y volver al perfil del operador (admin).
+// Evita quedarse "pegado" a un cliente que no se terminó de fijar.
+function expoClearCustomer() {
+  if (cart && cart.length > 0) {
+    if (
+      !window.confirm(
+        "Vas a soltar al cliente y volver a tu perfil. El pedido en curso (" +
+          cart.length +
+          " ítem/s) se vacía. ¿Continuar?",
+      )
+    )
+      return;
+    cart.splice(0, cart.length);
+    if (typeof saveCartToLS === "function") saveCartToLS();
+  }
+  try {
+    localStorage.removeItem("lk_expo_selected_client");
+  } catch (e) {}
+  _expoActiveCustomer = false;
+  _expoClientMode = false;
+  var sel = document.getElementById("customerSelect");
+  if (sel) sel.value = VENDOR_SELF_VALUE;
+  // Restaurar el perfil propio del operador (misma vía que "Perfil Vendedor").
+  Promise.resolve(
+    onLinkedCustomerSelected({ customerId: VENDOR_SELF_VALUE, fromRestore: true }),
+  ).then(function () {
+    _expoUpdateChip();
+    checkLokeAccess().then(function () {
+      updateLokeButton();
+    });
+    if (typeof updateCart === "function") updateCart();
+    if (typeof renderProducts === "function") renderProducts();
+    if (typeof refreshSubmitEnabled === "function") refreshSubmitEnabled();
+  });
+}
+window.expoClearCustomer = expoClearCustomer;
 
 // ---- EXPO: Nuevo cliente (Fase 2) ----
 // Estado del alta en curso: permite pausar (guardar parcial) y volver a editar.
