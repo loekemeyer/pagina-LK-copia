@@ -40,7 +40,8 @@ const EXPO_MODE = true;
 // de expo (está en expo_clientes_pendientes). En ese modo el pricing deja de ser
 // "admin/precio lista" y pasa a cliente real: dto por ESCALA (según subtotal de
 // lista, en vivo) + contado (-25%) OBLIGATORIO + web (-2%).
-var _expoClientMode = false;
+var _expoClientMode = false;      // cliente NUEVO de expo (escala + contado forzado)
+var _expoActiveCustomer = false;  // hay un cliente REAL seleccionado (mostrar SU precio)
 var _expoScale = null; // [{desde, dto}] ordenado por desde asc
 // NOTA: el endpoint /storage/v1/render/image/public/ requiere el feature
 // de image transformations, que NO está habilitado en este proyecto Supabase.
@@ -139,9 +140,9 @@ let isAdmin = false; // admin flag
 let customerProfile = null; // {id, business_name, dto_vol, ...}
 let _vendorOwnProfile = null; // snapshot del perfil del vendedor logueado (para volver desde "Pedir para")
 function isListPriceOnlyClient() {
-  // En modo cliente-expo el operador (admin) cotiza para un cliente real:
-  // se aplican los descuentos como a cualquier cliente.
-  if (_expoClientMode) return false;
+  // Si el operador (admin) tiene un cliente REAL seleccionado, cotiza para ese
+  // cliente: se aplican SUS descuentos como a cualquier cliente.
+  if (_expoActiveCustomer) return false;
   return isAdmin || String(customerProfile?.cod_cliente) === "5000";
 }
 
@@ -5908,7 +5909,7 @@ function toggleControls(productId, show) {
 function calcTotals() {
   const logged = !!currentSession;
   const paymentDiscount = getPaymentDiscount();
-  const webDiscountRate = (isAdmin && !_expoClientMode) ? 0 : WEB_ORDER_DISCOUNT;
+  const webDiscountRate = (isAdmin && !_expoActiveCustomer) ? 0 : WEB_ORDER_DISCOUNT;
 
   let subtotal = 0;
 
@@ -6557,7 +6558,7 @@ function renderMissingAssortmentModule() {
     return;
   }
 
-  var showTuPrecio = (!isAdmin || _expoClientMode) && !isListPriceOnlyClient();
+  var showTuPrecio = (!isAdmin || _expoActiveCustomer) && !isListPriceOnlyClient();
   var cartQtyById = new Map(
     cart.map(function (i) {
       return [String(i.productId), Number(i.qtyCajas || 0)];
@@ -6907,7 +6908,7 @@ async function _submitSingleOrder(
   editOrderId,
 ) {
   var paymentDiscount = getPaymentDiscount();
-  var webDiscountRate = (isAdmin && !_expoClientMode) ? 0 : WEB_ORDER_DISCOUNT;
+  var webDiscountRate = (isAdmin && !_expoActiveCustomer) ? 0 : WEB_ORDER_DISCOUNT;
   var dtoVol = getDtoVol();
   var extraRate = Number(extraDiscountRate || 0);
   var isPromo = extraRate > 0;
@@ -9239,6 +9240,9 @@ async function expoApplyCustomer(cust, opts) {
   if (sel) sel.value = cust.id;
   expoClosePickModal();
 
+  // Hay un cliente real seleccionado: mostrar SUS precios (dto + web), no lista.
+  _expoActiveCustomer = true;
+
   // ¿Es cliente NUEVO de expo? (forzado desde el alta, o presente en staging).
   // Solo esos entran en "modo cliente-expo" (escala + contado obligatorio + web).
   _expoClientMode = !!opts.forceExpoNew;
@@ -10270,6 +10274,7 @@ async function onLinkedCustomerSelected(opts) {
 
   await loadDeliveryOptions();
   myAssortmentIds = await loadMyAssortmentIds();
+  if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
   renderProducts();
   updateCart();
   fillProfileSummaryUI();
@@ -10898,8 +10903,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function syncMyAssortmentBtn() {
     const b = $("btnFilterAssortment");
-    if (b) b.classList.toggle("on", !!filterMyAssortment);
+    if (!b) return;
+    b.classList.toggle("on", !!filterMyAssortment);
+    // Casi ningún cliente tiene surtido: mostrar el botón solo si tiene.
+    var tiene = myAssortmentIds instanceof Set && myAssortmentIds.size > 0;
+    b.style.display = tiene ? "" : "none";
   }
+  window.syncMyAssortmentBtn = syncMyAssortmentBtn;
 
   // estado inicial
   syncMyAssortmentBtn();
