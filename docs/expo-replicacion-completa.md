@@ -48,9 +48,16 @@ reemplaza** por una barra de entrada con:
    (verde) se habilita EN VIVO solo cuando está TODO salvo el expreso.
 5. Va al carrito. El pago es **Contado (–25%)** forzado por ser 1ª compra.
 6. **Confirmar pedido** (se deshabilita apenas se toca; anti doble-click).
-7. Pantalla **"¡Pedido confirmado!"** con panel de cierre: **PIN** del cliente +
-   botón **WhatsApp** con el resumen (N° pedido, total, dto otorgado, usuario =
-   CUIT, clave = PIN) + descarga del pedido.
+7. Pantalla **"¡Pedido confirmado!"** — muestra en pantalla el **N° de pedido**
+   (chip verde: prueba concreta de que quedó grabado) + **panel de cierre**. El
+   panel aparece para **cualquier cliente de expo** (nuevo o elegido del padrón),
+   no solo los nuevos. Trae tres botones: **Descargar pedido** (PDF), **Copiar
+   resumen** (al portapapeles) y **Escribir al cliente por WhatsApp** (`wa.me`).
+   El **bot NO manda nada solo**: el operador toca el botón `wa.me` y desde el
+   **teléfono de ventas** se abre el chat con el texto ya cargado ("¡Tu pedido
+   fue confirmado! ✅" + resumen) listo para enviar. Solo para **cliente nuevo**
+   el resumen agrega el **PIN** (usuario = CUIT, clave = PIN) para sus compras
+   online futuras.
 
 ### Decisiones de arquitectura
 
@@ -63,6 +70,12 @@ reemplaza** por una barra de entrada con:
   levantarlos al ERP (ISIS) todos juntos más tarde.
 - **Los clientes EXISTENTES no cambian en nada.** Elegir un cliente del padrón
   cotiza con SUS descuentos reales, como cualquier cliente logueado.
+- **El aviso al cliente lo manda el OPERADOR a mano, no un bot.** El panel de
+  cierre da un botón `wa.me` que abre WhatsApp en el teléfono de ventas con el
+  resumen pre-cargado; el operador revisa y envía. Es una decisión de producto:
+  se quiere control humano sobre el mensaje, no un envío automático. Si el repo
+  destino tiene un bot (n8n/Edge Function) que dispara con el push a Sheets, ese
+  envío automático hay que **apagarlo aparte** — no vive en este frontend.
 - **[LK-específico]** No se espeja a otros paneles. En LK, los cambios del panel
   admin se espejan al repo Virgilio (ver CLAUDE.md), pero el módulo Expo NO se
   espeja. En los otros repos esto no aplica.
@@ -512,15 +525,16 @@ Estado global (arriba del archivo): `EXPO_MODE = true` **[LK]**, `_expoClientMod
 
 | Función | Qué hace |
 |---|---|
-| `_expoRefreshResumeBtn()` | Muestra/oculta "Continuar carga pausada (N)" / "✓ Editar cliente" según el staging. Re-chequea el estado tras el await (race). |
-| `expoOpenResumeModal()` / `expoCloseResumeModal()` | Lista los `pendiente` del staging con badge Completo/Falta datos. |
+| `_expoRefreshResumeBtn()` | Muestra/oculta "Continuar carga pausada (N)" / "✓ Editar cliente" según el staging. `N` cuenta solo los **incompletos**. Re-chequea el estado tras el await (race). |
+| `expoOpenResumeModal()` / `expoCloseResumeModal()` | Lista **solo lo EN CURSO**: los `pendiente` **incompletos** ("Falta datos") + el cliente **activo** ahora (para editarlo aunque esté completo). Los clientes viejos ya completos NO se listan (ensuciaban la carga en curso). |
 | `expoEditarPendiente(row)` | Reabre `#expoNewModal` en modo EDICIÓN precargado (setea `_expoNewState.id` → el guardado hace UPDATE). |
 
 ### Confirmación
 
 | Función | Qué hace |
 |---|---|
-| `_expoShowConfirmPanel()` | Tras `showSection("pedidoConfirmado")`, si `_expoClientMode`: lee `pin`/`whatsapp` de `customers`, muestra el PIN y arma el link `wa.me` con el resumen (N° pedido, total, dto otorgado, usuario=CUIT, clave=PIN). |
+| `_expoShowConfirmPanel()` | Tras `showSection("pedidoConfirmado")`. Muestra el panel si `EXPO_MODE && (_expoClientMode || _expoActiveCustomer)` — es decir, para **cualquier** cliente de expo. Lee `pin`/`whatsapp` de `customers`; oculta la fila del PIN si NO es cliente nuevo. Arma el resumen (arranca con "¡Tu pedido fue confirmado! ✅"; agrega usuario=CUIT / clave=PIN solo para cliente nuevo), lo guarda en `_expoConfirmMsg` (para "Copiar resumen") y arma el link `wa.me` con ese texto. Oculta la descarga estándar duplicada (`.success-download-wrap`). |
+| `expoCopiarResumen()` | Copia `_expoConfirmMsg` al portapapeles (`navigator.clipboard` con fallback a `textarea` + `execCommand`). Feedback visual "✓ Resumen copiado" 1,8 s. |
 
 ### Listas de datos — **[LK-específico: reemplazar por los datos de cada empresa]**
 
@@ -639,6 +653,12 @@ se omite entera.
 - **Hooks de versionado** (`hooks/`, `git config core.hooksPath hooks`): bumpean
   `version.js` y los `?v=XXX` de `.js`/`.css` en los HTML en cada commit. Igual que
   el repo base.
+- **Badge de versión fijo** (opcional pero muy útil al testear un sitio que
+  autodeploya): un `<div data-app-version>` con `position:fixed; right/bottom` justo
+  antes de `</body>` en `mayorista.html`. `version.js` ya rellena todo elemento con
+  `[data-app-version]` con `"v" + APP_VERSION` en `DOMContentLoaded`. Sirve para
+  confirmar a simple vista que el navegador tiene el último deploy (evita el
+  ida-y-vuelta de "¿lo ves? / hacé Ctrl+F5").
 
 ---
 
@@ -665,7 +685,9 @@ se omite entera.
    flags es la misma).
 8. **Portar mayorista.html**: 3 modales (`#expoPickModal`, `#expoResumeModal`,
    `#expoNewModal`), `#expoOrderGate` junto al botón Confirmar, `#expoConfirmPanel`
-   dentro de `#pedidoConfirmado`.
+   dentro de `#pedidoConfirmado` (con botones Descargar/Copiar/WhatsApp y las ids
+   `#expoConfirmTitle`/`#expoConfirmPinrow`), el chip `#successOrderNum`, y el badge
+   `[data-app-version]` fijo antes de `</body>`.
 9. **Portar CSS** (`.expo-*` en `css/styles.css`), incluida la regla
    ID-específica `#expoNewModal .expo-new-card` (gotcha de especificidad).
 10. **Cargar las listas** `EXPO_VENDEDORES`, `EXPO_PROVINCIAS`, `EXPO_EXPRESOS` con
@@ -720,6 +742,24 @@ se omite entera.
 11. **`expo_clientes_pendientes` creció** en LK con decenas de columnas que espejan
     el maestro de ISIS (para la importación). El frontend solo escribe el núcleo;
     no hace falta portar las columnas extra para tener el módulo funcionando.
+12. **La confirmación se muestra ANTES del reset de UI, y el reset va en
+    `try/catch`.** El pedido ya está grabado cuando se llama a
+    `showSection("pedidoConfirmado")`. Si `showSection` quedara DESPUÉS del reset
+    (limpiar carrito, `renderProducts`, `loadDeliveryOptions`) y algo del reset
+    tirara, el `catch` se saltaba la confirmación aunque el pedido SÍ existía: el
+    operador no veía "¡Pedido confirmado!" y creía que no se mandó. Orden correcto:
+    grabar → `showSection` + panel de cierre → `try { reset UI } catch {}`.
+13. **`ReferenceError` de una var de otra función tumba la confirmación (bug real
+    16/8/2026).** `_submitSingleOrder` referenciaba `observacionesValue`, que estaba
+    declarada con `const` dentro de `submitOrder` — otra función, otro scope. El
+    RPC del pedido corre ANTES de esa línea, así que el pedido **se grababa** y
+    después la función explotaba con `observacionesValue is not defined`; el `catch`
+    de `submitOrder` lo tomaba como "no se pudo confirmar" y nunca se mostraba el
+    modal. Síntoma exacto: "el pedido aparece en la base pero no veo la
+    confirmación". Fix: leer el valor DENTRO de `_submitSingleOrder` (desde el DOM),
+    no depender de una var de la función llamadora. Lección general: cualquier dato
+    del formulario que use `_submitSingleOrder` debe leerse ahí o pasarse por
+    parámetro.
 
 ---
 
@@ -728,8 +768,8 @@ se omite entera.
 | Archivo | Qué contiene del módulo Expo |
 |---|---|
 | `script.js` | ~1000 líneas: flags de estado (líneas 34-46), completitud (51-134), bloque EXPO (9085-10337), rama de `renderCustomerSelector` (10353), primitivas de pricing tocadas, `restoreSelectedCustomerIfAny` (11034), `checkLokeAccess` (11103). |
-| `mayorista.html` | 3 modales (`#expoPickModal` ~994, `#expoResumeModal` ~1024, `#expoNewModal` ~1050), `#expoOrderGate` (~1245), `#expoConfirmPanel` (~1458). |
-| `css/styles.css` | Bloques `.expo-*` (~14246-14840): entry bar, chip, checkpoints, pick/new cards, addr rows, order gate, confirm panel, regla ID-específica del modal. |
+| `mayorista.html` | 3 modales (`#expoPickModal` ~994, `#expoResumeModal` ~1024, `#expoNewModal` ~1050), `#expoOrderGate` (~1245), `#expoConfirmPanel` (~1458, con `#expoConfirmTitle`/`#expoConfirmPinrow`/`#expoConfirmCopy` + `.expo-confirm-btns`), `#successOrderNum` (chip N° pedido) en `#pedidoConfirmado`, badge `[data-app-version]` fijo antes de `</body>`. |
+| `css/styles.css` | Bloques `.expo-*` (~14246-14880): entry bar, chip, checkpoints, pick/new cards, addr rows, order gate, confirm panel (`.expo-confirm-btns`/`-dl`/`-copy`/`-wa`), `.success-ordernum`, regla ID-específica del modal. |
 | `admin.html` | Nav-items `escala-expo` / `clientes-pendientes` (~483,496); secciones `#escala-expo` (~3205) y `#clientes-pendientes` (~3243). |
 | `admin.js` | Router lazy-load (~695-708); `cargarEscalaExpo`/`guardarEscalaExpo` (~14310); `cargarClientesPendientes` + `_cliPend*` + `exportarClientesPendientes` (~14410-14643). |
 | `vercel.json` | Rewrites extensionless → `.html`. |
