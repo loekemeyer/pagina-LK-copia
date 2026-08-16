@@ -14444,6 +14444,26 @@ async function cargarClientesPendientes() {
   var cnt = document.getElementById("cliPendCount");
   if (cnt) cnt.textContent = _cliPendRows.length + " cliente(s)";
   _cliPendStatus("");
+  _cliPendCargarStats();
+}
+
+async function _cliPendCargarStats() {
+  var d = await sb.rpc("expo_dashboard");
+  if (d.error || !d.data) return;
+  var s = d.data;
+  function set(id, v) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = v;
+  }
+  set("statCliTotal", s.clientes_total != null ? s.clientes_total : "—");
+  set("statCliPend", s.clientes_pendientes != null ? s.clientes_pendientes : "—");
+  set("statCliCarg", s.clientes_cargados != null ? s.clientes_cargados : "—");
+  set("statPedCount", s.pedidos_count != null ? s.pedidos_count : "—");
+  var monto = Number(s.pedidos_monto || 0);
+  set(
+    "statPedMonto",
+    "$" + monto.toLocaleString("es-AR", { maximumFractionDigits: 0 }),
+  );
 }
 
 function _cliPendDirResumen(dirs) {

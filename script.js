@@ -9461,6 +9461,39 @@ function _expoCloseNewModal() {
   m.setAttribute("aria-hidden", "true");
 }
 
+// Validación de CUIT argentino (11 dígitos + dígito verificador módulo 11).
+// Devuelve true si el DV cierra. Los placeholders 99… no cierran → se avisa,
+// pero NO se bloquea (el ERP los usa a propósito).
+function _expoCuitValido(digits) {
+  digits = String(digits || "").replace(/[^0-9]/g, "");
+  if (digits.length !== 11) return false;
+  var pesos = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  var suma = 0;
+  for (var i = 0; i < 10; i++) suma += parseInt(digits[i], 10) * pesos[i];
+  var resto = suma % 11;
+  var dv = 11 - resto;
+  if (dv === 11) dv = 0;
+  if (dv === 10) return false; // CUIT inválido por norma
+  return dv === parseInt(digits[10], 10);
+}
+
+// Busca clientes existentes con el MISMO CUIT (excluyendo el propio en edición).
+// Reusa buscar_cliente_expo (matchea por dígitos) y filtra por coincidencia exacta.
+async function _expoDuplicadosCuit(cuit, selfId) {
+  var out = [];
+  try {
+    var r = await supabaseClient.rpc("buscar_cliente_expo", { p_q: cuit });
+    if (!r.error && r.data) {
+      r.data.forEach(function (c) {
+        if (selfId && String(c.id) === String(selfId)) return;
+        var cd = String(c.cuit || "").replace(/[^0-9]/g, "");
+        if (cd && cd === cuit) out.push(c);
+      });
+    }
+  } catch (e) { /* si falla la búsqueda, no bloquea el alta */ }
+  return out;
+}
+
 async function _expoGuardarNuevo(pauseOnly) {
   var razon = (document.getElementById("expoNewRazon").value || "").trim();
   var cuit = (document.getElementById("expoNewCuit").value || "").replace(/[^0-9]/g, "");
@@ -9472,6 +9505,32 @@ async function _expoGuardarNuevo(pauseOnly) {
   if (!addrs.length) {
     _expoNewStatus("Agregá al menos una dirección de entrega.", "err");
     return;
+  }
+
+  // Validar CUIT (avisar, no bloquear: hay placeholders 99… a propósito).
+  if (!_expoCuitValido(cuit)) {
+    if (!confirm(
+      "El CUIT " + cuit + " no parece válido (dígito verificador no cierra o no tiene 11 dígitos).\n\n" +
+      "¿Guardar igual? (usá esto solo si es un CUIT provisorio)."
+    )) {
+      _expoNewStatus("Revisá el CUIT.", "err");
+      return;
+    }
+  }
+
+  // Aviso de duplicado por CUIT (excluye el propio si es edición).
+  var dups = await _expoDuplicadosCuit(cuit, _expoNewState.id);
+  if (dups.length) {
+    var lista = dups.slice(0, 5).map(function (c) {
+      return "• Cód " + (c.cod_cliente || "—") + " — " + (c.business_name || "");
+    }).join("\n");
+    if (!confirm(
+      "Ya existe " + dups.length + " cliente(s) con el CUIT " + cuit + ":\n\n" +
+      lista + "\n\n¿Crear/actualizar igual?"
+    )) {
+      _expoNewStatus("Alta cancelada: CUIT ya existente.", "err");
+      return;
+    }
   }
   var cod = (document.getElementById("expoNewCod").value || "").trim();
   var pin = document.getElementById("expoNewPin").value;
