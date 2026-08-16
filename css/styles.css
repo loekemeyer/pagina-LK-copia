@@ -14353,6 +14353,108 @@ a.user-menu-item:hover {
   color: #9a3412;
   border: 1px solid #fdba74;
 }
+
+/* Barra de checkpoints del descuento por volumen (cliente nuevo de expo) */
+.expo-cp-wrap {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px 34px 30px;
+  margin: 0 0 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.expo-cp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 22px;
+}
+.expo-cp-title {
+  font-weight: 600;
+}
+.expo-cp-title b {
+  color: #16a34a;
+  font-size: 16px;
+  font-weight: 800;
+}
+.expo-cp-sub b {
+  color: #111827;
+}
+.expo-cp-next {
+  color: #b45309;
+  font-weight: 600;
+}
+.expo-cp-next b {
+  color: #92400e;
+}
+.expo-cp-track {
+  position: relative;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 999px;
+}
+.expo-cp-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #15803d, #22c55e);
+  transition: width 0.35s ease;
+}
+.expo-cp-step {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.expo-cp-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #d1d5db;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+.expo-cp-step.done .expo-cp-dot,
+.expo-cp-step.current .expo-cp-dot {
+  border-color: #16a34a;
+  background: #16a34a;
+}
+.expo-cp-step.current .expo-cp-dot {
+  width: 18px;
+  height: 18px;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.2);
+}
+.expo-cp-pct {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 800;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+.expo-cp-step.done .expo-cp-pct,
+.expo-cp-step.current .expo-cp-pct {
+  color: #16a34a;
+}
+.expo-cp-amt {
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
 .expo-btn:hover {
   filter: brightness(0.95);
 }

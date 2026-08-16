@@ -9107,6 +9107,7 @@ function _expoScaleDtoFor(sub) {
 function _expoSyncDto() {
   if (!_expoClientMode || !customerProfile) return;
   customerProfile.dto_vol = _expoScaleDtoFor(_expoListSubtotal());
+  _expoRenderCheckpoints();
 }
 
 // Garantiza que el <select> oculto tenga la <option> del cliente elegido.
@@ -9140,6 +9141,70 @@ function _expoMoney(n) {
   }
 }
 
+// Monto compacto para las etiquetas de los checkpoints: 600000 → $600k, 1500000 → $1,5M.
+function _expoCompact(n) {
+  n = Number(n) || 0;
+  if (n >= 1000000) {
+    var m = n / 1000000;
+    return "$" + (m % 1 === 0 ? m : m.toFixed(1).replace(".", ",")) + "M";
+  }
+  if (n >= 1000) return "$" + Math.round(n / 1000) + "k";
+  return "$" + n;
+}
+
+// Barra de "checkpoints": muestra los tramos de la escala como hitos, el progreso
+// del pedido (lista) y cuánto falta para el próximo tramo. Solo para cliente nuevo.
+function _expoRenderCheckpoints() {
+  var cp = document.getElementById("expoCheckpoints");
+  if (!cp) return;
+  if (!_expoClientMode || !_expoScale || !_expoScale.length) {
+    cp.style.display = "none";
+    return;
+  }
+  var tiers = _expoScale.slice().sort(function (a, b) {
+    return Number(a.desde) - Number(b.desde);
+  });
+  var sub = _expoListSubtotal();
+  var n = tiers.length;
+  var curIdx = 0;
+  for (var i = 0; i < n; i++) if (sub >= Number(tiers[i].desde)) curIdx = i;
+  var pos = function (i) { return n <= 1 ? 100 : (i / (n - 1)) * 100; };
+  var fillFrac;
+  if (curIdx >= n - 1) {
+    fillFrac = 100;
+  } else {
+    var a = Number(tiers[curIdx].desde), b = Number(tiers[curIdx + 1].desde);
+    var prog = b > a ? Math.min(1, Math.max(0, (sub - a) / (b - a))) : 0;
+    fillFrac = pos(curIdx) + prog * (pos(curIdx + 1) - pos(curIdx));
+  }
+  var steps = "";
+  tiers.forEach(function (t, i) {
+    var cls = i < curIdx ? "done" : i === curIdx ? "current" : "todo";
+    steps +=
+      '<div class="expo-cp-step ' + cls + '" style="left:' + pos(i) + '%">' +
+      '<span class="expo-cp-pct">' + Math.round(Number(t.dto) * 100) + "%</span>" +
+      '<span class="expo-cp-dot"></span>' +
+      '<span class="expo-cp-amt">' + _expoCompact(t.desde) + "</span>" +
+      "</div>";
+  });
+  var next = _expoNextTier(sub);
+  var curDto = Math.round(Number(tiers[curIdx].dto) * 100);
+  var right = next
+    ? "Faltan <b>$" + _expoMoney(next.falta) + "</b> para " + Math.round(next.dto * 100) + "%"
+    : "<b>Descuento máximo alcanzado</b>";
+  cp.innerHTML =
+    '<div class="expo-cp-head">' +
+      '<span class="expo-cp-title">Descuento por volumen · <b>' + curDto + "%</b></span>" +
+      '<span class="expo-cp-sub">Pedido (lista): <b>$' + _expoMoney(sub) + "</b></span>" +
+      '<span class="expo-cp-next">' + right + "</span>" +
+    "</div>" +
+    '<div class="expo-cp-track">' +
+      '<div class="expo-cp-fill" style="width:' + fillFrac + '%"></div>' +
+      steps +
+    "</div>";
+  cp.style.display = "";
+}
+
 function _expoUpdateChip() {
   var chip = document.getElementById("expoCurrentChip");
   if (!chip) return;
@@ -9153,15 +9218,8 @@ function _expoUpdateChip() {
     '<span class="expo-chip-name">' + _expoEsc(customerProfile.business_name) + "</span>";
   var inner;
   if (_expoClientMode) {
-    var sub = _expoListSubtotal();
-    var next = _expoNextTier(sub);
-    var meta =
-      "Dto volumen " + Math.round(dto * 100) + "% · Pedido lista $" + _expoMoney(sub);
-    if (next)
-      meta +=
-        " · faltan $" + _expoMoney(next.falta) + " → " + Math.round(next.dto * 100) + "%";
-    meta += " · Contado obligatorio 1ª compra";
-    inner = name + '<span class="expo-chip-meta expo-chip-live">' + meta + "</span>";
+    // El detalle del dto por volumen se muestra en la barra de checkpoints.
+    inner = name + '<span class="expo-chip-meta">Contado obligatorio 1ª compra</span>';
   } else {
     inner =
       name +
@@ -9178,6 +9236,7 @@ function _expoUpdateChip() {
     : "";
   chip.innerHTML = '<div class="expo-chip-text">' + inner + "</div>" + cruz;
   chip.classList.add("has-client");
+  _expoRenderCheckpoints();
 }
 
 function renderExpoEntryBar() {
@@ -9194,15 +9253,31 @@ function renderExpoEntryBar() {
     '<select id="customerSelect" class="expo-hidden-select" tabindex="-1" aria-hidden="true"><option value=""></option></select>';
 
   var section = document.getElementById("productos");
+  var anchorRow = null;
   if (section) {
     var sortRow = section.querySelector(".sort-row");
     if (sortRow) {
       sortRow.insertBefore(bar, sortRow.firstChild);
+      anchorRow = sortRow;
     } else {
       var titleRow = section.querySelector(".section-title-row");
-      if (titleRow) titleRow.parentNode.insertBefore(bar, titleRow.nextSibling);
+      if (titleRow) { titleRow.parentNode.insertBefore(bar, titleRow.nextSibling); anchorRow = titleRow; }
       else section.insertBefore(bar, section.firstChild);
     }
+  }
+
+  // Barra de checkpoints del dto por volumen (full-width, debajo de la fila).
+  var cp = document.getElementById("expoCheckpoints");
+  if (!cp) {
+    cp = document.createElement("div");
+    cp.id = "expoCheckpoints";
+    cp.className = "expo-cp-wrap";
+    cp.style.display = "none";
+  }
+  if (anchorRow && anchorRow.parentNode) {
+    anchorRow.parentNode.insertBefore(cp, anchorRow.nextSibling);
+  } else if (section) {
+    section.insertBefore(cp, section.firstChild);
   }
 
   // Si ya hay un cliente activo, reflejarlo en el select oculto + chip.
