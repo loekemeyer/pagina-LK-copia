@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23217" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23217" />
+    <link rel="stylesheet" href="css/styles.css?v=23218" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23218" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1062,16 +1062,17 @@
           <input id="expoNewPin" type="hidden" />
 
           <div class="expo-new-grid">
-            <div class="expo-fld expo-sp4">
+            <div class="expo-fld expo-sp7">
               <label class="expo-lbl">Razón social *</label>
               <input id="expoNewRazon" class="expo-inp" placeholder="Nombre empresa" />
             </div>
-            <div class="expo-fld expo-sp2">
+            <div class="expo-fld expo-sp5">
               <label class="expo-lbl">CUIT *</label>
               <input id="expoNewCuit" class="expo-inp" placeholder="30123456789" />
             </div>
 
-            <div class="expo-fld expo-sp2">
+            <!-- Fila: Condición IVA · Vendedor · Cód · WhatsApp · Mail -->
+            <div class="expo-fld expo-sp3">
               <label class="expo-lbl">Condición de IVA</label>
               <select id="expoNewCondIva" class="expo-inp">
                 <option value="Responsable Inscripto">Responsable Inscripto</option>
@@ -1081,35 +1082,36 @@
                 <option value="No Categorizado">No Categorizado</option>
               </select>
             </div>
-            <div class="expo-fld expo-sp2">
+            <div class="expo-fld expo-sp3">
               <label class="expo-lbl">Vendedor</label>
               <select id="expoNewVend" class="expo-inp"></select>
             </div>
             <div class="expo-fld expo-sp2">
-              <label class="expo-lbl">Cód cliente (lo asigna el sistema)</label>
+              <label class="expo-lbl">Cód cliente</label>
               <input
                 id="expoNewCod"
                 class="expo-inp expo-inp-lock"
                 readonly
                 tabindex="-1"
                 aria-readonly="true"
+                title="Lo asigna el sistema"
               />
             </div>
-
-            <div class="expo-fld expo-sp3">
+            <div class="expo-fld expo-sp2">
               <label class="expo-lbl">WhatsApp</label>
               <input id="expoNewWhatsapp" class="expo-inp" placeholder="5491131181021" />
             </div>
-            <div class="expo-fld expo-sp3">
+            <div class="expo-fld expo-sp2">
               <label class="expo-lbl">Mail</label>
               <input id="expoNewMail" class="expo-inp" placeholder="mail@ejemplo.com" />
             </div>
 
-            <div class="expo-fld expo-sp3">
+            <!-- Fila: Calle · Número · C.P. · Localidad · Provincia -->
+            <div class="expo-fld expo-sp4">
               <label class="expo-lbl">Dirección fiscal (calle)</label>
               <input id="expoNewDirFiscal" class="expo-inp" placeholder="Calle" />
             </div>
-            <div class="expo-fld expo-sp1">
+            <div class="expo-fld expo-sp2">
               <label class="expo-lbl">Número</label>
               <input id="expoNewNumFiscal" class="expo-inp" placeholder="1234" />
             </div>
@@ -1117,12 +1119,11 @@
               <label class="expo-lbl">C.P.</label>
               <input id="expoNewCpFiscal" class="expo-inp" placeholder="2000" />
             </div>
-
-            <div class="expo-fld expo-sp3">
+            <div class="expo-fld expo-sp2">
               <label class="expo-lbl">Localidad (fiscal)</label>
               <input id="expoNewLocFiscal" class="expo-inp" placeholder="Localidad" />
             </div>
-            <div class="expo-fld expo-sp3">
+            <div class="expo-fld expo-sp2">
               <label class="expo-lbl">Provincia (fiscal)</label>
               <select id="expoNewProvFiscal" class="expo-inp"></select>
             </div>
@@ -1972,14 +1973,14 @@
     </button>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23217"></script>
-    <script src="script.js?v=23217"></script>
+    <script src="./version.js?v=23218"></script>
+    <script src="script.js?v=23218"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23217"></script>
+    <script src="analisis-venta-cliente.js?v=23218"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23217"></script>
-    <script src="admin-excel-krikos.js?v=23217"></script>
-    <script src="vendor-import-excel.js?v=23217"></script>
+    <script src="scotapi-shim.js?v=23218"></script>
+    <script src="admin-excel-krikos.js?v=23218"></script>
+    <script src="vendor-import-excel.js?v=23218"></script>
   </body>
 </html>
