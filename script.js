@@ -9137,6 +9137,7 @@ async function _expoShowConfirmPanel() {
 function expoOpenPickModal() {
   var m = document.getElementById("expoPickModal");
   if (!m) return;
+  m.classList.add("open"); // ✅ clave: .modal se muestra con .open, no quitando .hidden
   m.classList.remove("hidden");
   m.setAttribute("aria-hidden", "false");
   var inp = document.getElementById("expoPickSearch");
@@ -9151,6 +9152,7 @@ function expoOpenPickModal() {
 function expoClosePickModal() {
   var m = document.getElementById("expoPickModal");
   if (!m) return;
+  m.classList.remove("open");
   m.classList.add("hidden");
   m.setAttribute("aria-hidden", "true");
 }
@@ -9368,6 +9370,7 @@ async function expoNuevoCliente() {
   _expoAddrAddRow();
   _expoNewStatus("");
   _expoWireNewModal();
+  m.classList.add("open"); // ✅ clave: .modal se muestra con .open
   m.classList.remove("hidden");
   m.setAttribute("aria-hidden", "false");
   // Sugerir el próximo código (max real < 5000, +1). Los 10001+ son vendedores.
@@ -9388,6 +9391,7 @@ async function expoNuevoCliente() {
 function _expoCloseNewModal() {
   var m = document.getElementById("expoNewModal");
   if (!m) return;
+  m.classList.remove("open");
   m.classList.add("hidden");
   m.setAttribute("aria-hidden", "true");
 }
@@ -9540,6 +9544,8 @@ function _expoWireNewModal() {
   var m = document.getElementById("expoNewModal");
   if (!m) return;
   _expoNewWired = true;
+  // Sacar del #perfil (display:none desde Productos) para que el modal renderice.
+  if (m.parentElement !== document.body) document.body.appendChild(m);
   var byId = function (x) { return document.getElementById(x); };
   if (byId("expoNewBackdrop")) byId("expoNewBackdrop").addEventListener("click", _expoCloseNewModal);
   if (byId("expoNewClose")) byId("expoNewClose").addEventListener("click", _expoCloseNewModal);
@@ -9573,6 +9579,9 @@ function _expoWirePickModal() {
   var m = document.getElementById("expoPickModal");
   if (!m) return;
   _expoPickWired = true;
+  // El markup quedó dentro de #perfil (una .section que se oculta con display:none),
+  // así que el modal no renderiza desde Productos. Lo movemos al body.
+  if (m.parentElement !== document.body) document.body.appendChild(m);
   var closeBtn = document.getElementById("expoPickClose");
   var backdrop = document.getElementById("expoPickBackdrop");
   var inp = document.getElementById("expoPickSearch");

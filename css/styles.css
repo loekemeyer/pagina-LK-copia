@@ -14217,10 +14217,18 @@ a.user-menu-item:hover {
  * EXPO — barra de entrada [Elegir cliente] [Nuevo cliente] + popup
  ***********************/
 .expo-entry-bar {
-  display: flex;
+  display: flex !important;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  margin: 0 0 12px !important;
+}
+#productos .sort-row > .customer-selector-banner.expo-entry-bar {
+  flex: 1 1 100%; /* ocupa la fila entera, no una cajita */
 }
 .expo-hidden-select {
   position: absolute;
