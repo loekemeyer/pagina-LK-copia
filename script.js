@@ -9382,7 +9382,6 @@ async function _expoRefreshResumeBtn() {
       btn.style.display = "none";
       return;
     }
-    var total = r.data.length;
     var incompletos = r.data.filter(function (d) {
       return !_expoDatosCompletos(d);
     }).length;
@@ -9393,11 +9392,10 @@ async function _expoRefreshResumeBtn() {
       btn.classList.remove("expo-btn-resume-done");
       btn.textContent = "Continuar carga pausada (" + incompletos + ")";
     } else {
-      // Todos completos → no decir "pausada": permitir editar/agregar.
+      // Cliente activo completo → editar solo ese (los viejos completos no se listan).
       btn.classList.remove("expo-btn-resume");
       btn.classList.add("expo-btn-resume-done");
-      btn.textContent =
-        total > 1 ? "✓ Editar clientes (" + total + ")" : "✓ Editar cliente";
+      btn.textContent = "✓ Editar cliente";
     }
   } catch (e) {
     btn.style.display = "none";
@@ -10344,9 +10342,20 @@ async function expoOpenResumeModal() {
     res.innerHTML = '<div class="expo-pick-hint expo-pick-err">Error: ' + _expoEsc(r.error.message) + "</div>";
     return;
   }
-  var rows = r.data || [];
+  // Solo el/los que están EN CURSO: incompletos ("Falta datos"), más el cliente
+  // activo ahora (para poder editarlo aunque ya esté completo). Los clientes
+  // viejos ya completos NO se listan acá — ensucian la carga en curso.
+  var _activeCod =
+    customerProfile && customerProfile.cod_cliente
+      ? String(customerProfile.cod_cliente)
+      : "";
+  var rows = (r.data || []).filter(function (c) {
+    var completo = _expoDatosCompletos(c);
+    var esActivo = _activeCod && String(c.cod_cliente || "") === _activeCod;
+    return !completo || esActivo;
+  });
   if (!rows.length) {
-    res.innerHTML = '<div class="expo-pick-hint">No hay cargas pausadas.</div>';
+    res.innerHTML = '<div class="expo-pick-hint">No hay cargas en curso.</div>';
     return;
   }
   _expoResumeRows = rows;
