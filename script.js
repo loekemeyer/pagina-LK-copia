@@ -42,7 +42,35 @@ const EXPO_MODE = true;
 // lista, en vivo) + contado (-25%) OBLIGATORIO + web (-2%).
 var _expoClientMode = false;      // cliente NUEVO de expo (escala + contado forzado)
 var _expoActiveCustomer = false;  // hay un cliente REAL seleccionado (mostrar SU precio)
+var _expoClientComplete = false;  // el cliente NUEVO de expo tiene TODOS los datos (salvo expreso)
 var _expoScale = null; // [{desde, dto}] ordenado por desde asc
+
+// Completitud automática de un cliente nuevo de expo: TODOS los campos son
+// obligatorios salvo el Expreso de cada dirección de entrega. Opera sobre una
+// fila de staging (expo_clientes_pendientes) o un objeto con los mismos campos.
+function _expoDatosCompletos(d) {
+  if (!d) return false;
+  var req = [
+    d.business_name, d.cuit, d.condicion_iva, d.vend, d.whatsapp, d.mail,
+    d.direccion, d.numero, d.cp, d.localidad, d.provincia,
+  ];
+  for (var i = 0; i < req.length; i++) {
+    if (!String(req[i] == null ? "" : req[i]).trim()) return false;
+  }
+  var dirs = Array.isArray(d.direcciones_entrega) ? d.direcciones_entrega : [];
+  if (!dirs.length) return false;
+  for (var j = 0; j < dirs.length; j++) {
+    var a = dirs[j] || {};
+    // Expreso NO es obligatorio (puede no haber uno fijo).
+    if (
+      !String(a.direccion || "").trim() ||
+      !String(a.localidad || "").trim() ||
+      !String(a.provincia || "").trim()
+    )
+      return false;
+  }
+  return true;
+}
 // NOTA: el endpoint /storage/v1/render/image/public/ requiere el feature
 // de image transformations, que NO está habilitado en este proyecto Supabase.
 // Las imágenes están almacenadas a 400x400 WebP, así que se sirven directo
@@ -7180,6 +7208,13 @@ async function _submitSingleOrder(
 }
 
 async function submitOrder() {
+  // EXPO: no dejar enviar el pedido si el cliente nuevo está incompleto.
+  if (_expoClientMode && !_expoClientComplete) {
+    setOrderStatus(
+      "Faltan datos del cliente nuevo. Completalos en “Continuar carga pausada” para poder enviar el pedido.",
+    );
+    return;
+  }
   // Snapshot del modo edición: si está seteado, este submit edita ese pedido.
   var editOrderIdSnapshot = editingOrderId;
 
@@ -7523,12 +7558,27 @@ function refreshSubmitEnabled() {
     !isVendorProfile() ||
     (!!custSelVal && custSelVal !== VENDOR_SELF_VALUE && customerConfirmedByUser);
 
+  // EXPO: si el cliente es NUEVO y sus datos NO están completos (chequeo auto),
+  // se puede armar el pedido pero NO enviarlo hasta completarlos.
+  const expoOk = !(_expoClientMode && !_expoClientComplete);
+  var gate = document.getElementById("expoOrderGate");
+  if (gate) {
+    if (!expoOk) {
+      gate.textContent =
+        "Faltan datos del cliente nuevo. Completalos en “Continuar carga pausada” para poder enviar el pedido.";
+      gate.hidden = false;
+    } else {
+      gate.hidden = true;
+    }
+  }
+
   btn.disabled = !(
     hasSession &&
     hasItems &&
     hasShipping &&
     hasPayment &&
-    hasCustomer
+    hasCustomer &&
+    expoOk
   );
   btn.classList.toggle("is-disabled", btn.disabled);
 }
@@ -9286,20 +9336,22 @@ async function expoApplyCustomer(cust, opts) {
 
   // ¿Es cliente NUEVO de expo? (forzado desde el alta, o presente en staging).
   // Solo esos entran en "modo cliente-expo" (escala + contado obligatorio + web).
+  // En la misma consulta traemos los campos para calcular la COMPLETITUD (auto).
   _expoClientMode = !!opts.forceExpoNew;
-  if (!_expoClientMode) {
-    try {
-      var st = await supabaseClient
-        .from("expo_clientes_pendientes")
-        .select("id")
-        .eq("customer_id", cust.id)
-        .eq("estado", "pendiente")
-        .limit(1);
-      _expoClientMode = !st.error && !!st.data && st.data.length > 0;
-    } catch (e) {
-      _expoClientMode = false;
+  _expoClientComplete = false;
+  try {
+    var st = await supabaseClient
+      .from("expo_clientes_pendientes")
+      .select("business_name,cuit,condicion_iva,vend,whatsapp,mail,direccion,numero,cp,localidad,provincia,direcciones_entrega")
+      .eq("customer_id", cust.id)
+      .eq("estado", "pendiente")
+      .order("actualizado_at", { ascending: false })
+      .limit(1);
+    if (!st.error && st.data && st.data.length) {
+      _expoClientMode = true; // presente en staging = cliente de expo
+      _expoClientComplete = _expoDatosCompletos(st.data[0]);
     }
-  }
+  } catch (e) { /* si falla, queda incompleto (bloquea envío por las dudas) */ }
   if (_expoClientMode) await _expoLoadScale();
 
   await onLinkedCustomerSelected({ customerId: cust.id, fromRestore: !!opts.fromRestore });
@@ -9369,6 +9421,7 @@ function expoClearCustomer() {
   } catch (e) {}
   _expoActiveCustomer = false;
   _expoClientMode = false;
+  _expoClientComplete = false;
   var sel = document.getElementById("customerSelect");
   if (sel) sel.value = VENDOR_SELF_VALUE;
   // Restaurar el perfil propio del operador (misma vía que "Perfil Vendedor").
@@ -9424,13 +9477,6 @@ function _expoNewStatus(msg, kind) {
   if (!el) return;
   el.textContent = msg || "";
   el.style.color = kind === "err" ? "#b91c1c" : kind === "ok" ? "#166534" : "#6b7280";
-}
-
-// El botón "Cargar pedido" queda deshabilitado hasta tildar "datos completos".
-function _expoNewSyncConfirm() {
-  var chk = document.getElementById("expoNewConfirm");
-  var btn = document.getElementById("expoNewGoOrder");
-  if (btn) btn.disabled = !(chk && chk.checked);
 }
 
 // Provincias argentinas (24 jurisdicciones) para los desplegables del alta.
@@ -9559,9 +9605,6 @@ async function expoNuevoCliente() {
   if (condIva) condIva.value = "Responsable Inscripto";
   _expoFillVendedores();
   _expoFillProvincias();
-  var chkNuevo = document.getElementById("expoNewConfirm");
-  if (chkNuevo) chkNuevo.checked = false;
-  _expoNewSyncConfirm();
   document.getElementById("expoNewPin").value = _expoNewGenPin();
   document.getElementById("expoAddrList").innerHTML = "";
   _expoAddrAddRow();
@@ -9622,15 +9665,14 @@ async function _expoDuplicadosCuit(cuit, selfId) {
 async function _expoGuardarNuevo(pauseOnly) {
   var razon = (document.getElementById("expoNewRazon").value || "").trim();
   var cuit = (document.getElementById("expoNewCuit").value || "").replace(/[^0-9]/g, "");
+  // Mínimo para CREAR el registro (auth necesita CUIT). El resto puede quedar
+  // incompleto: se puede PAUSAR e ir a cargar el pedido, pero el ENVÍO del
+  // pedido queda bloqueado hasta que el cliente esté completo (chequeo auto).
   if (!razon || !cuit) {
-    _expoNewStatus("Razón social y CUIT son obligatorios.", "err");
+    _expoNewStatus("Razón social y CUIT son obligatorios para poder guardar.", "err");
     return;
   }
   var addrs = _expoAddrCollect();
-  if (!addrs.length) {
-    _expoNewStatus("Agregá al menos una dirección de entrega.", "err");
-    return;
-  }
 
   // Validar CUIT (avisar, no bloquear: hay placeholders 99… a propósito).
   if (!_expoCuitValido(cuit)) {
@@ -9739,10 +9781,13 @@ async function _expoGuardarNuevo(pauseOnly) {
         nombre_expreso: a.expreso || null,
       };
     });
-    var addrIns = await supabaseClient
-      .from("customer_delivery_addresses")
-      .insert(addrRows);
-    if (addrIns.error) throw addrIns.error;
+    // Puede no haber ninguna dirección todavía (cliente en pausa incompleto).
+    if (addrRows.length) {
+      var addrIns = await supabaseClient
+        .from("customer_delivery_addresses")
+        .insert(addrRows);
+      if (addrIns.error) throw addrIns.error;
+    }
 
     // Staging para el ERP (una fila por cliente).
     await supabaseClient
@@ -9829,8 +9874,6 @@ function _expoWireNewModal() {
   if (byId("expoNewPause")) byId("expoNewPause").addEventListener("click", function () { _expoGuardarNuevo(true); });
   if (byId("expoNewGoOrder")) byId("expoNewGoOrder").addEventListener("click", function () { _expoGuardarNuevo(false); });
   // Tic "Confirmo datos completos": habilita el botón de cargar pedido.
-  if (byId("expoNewConfirm"))
-    byId("expoNewConfirm").addEventListener("change", _expoNewSyncConfirm);
   if (byId("expoNewPinCopy"))
     byId("expoNewPinCopy").addEventListener("click", function () {
       var v = byId("expoNewPin").value;
@@ -9945,9 +9988,6 @@ function expoEditarPendiente(row) {
   var vendSel = document.getElementById("expoNewVend");
   if (vendSel && row.vend != null && row.vend !== "") vendSel.value = String(row.vend);
   document.getElementById("expoNewPin").value = row.pin || _expoNewGenPin();
-  var chkEdit = document.getElementById("expoNewConfirm");
-  if (chkEdit) chkEdit.checked = false;
-  _expoNewSyncConfirm();
   var list = document.getElementById("expoAddrList");
   list.innerHTML = "";
   var dirs = Array.isArray(row.direcciones_entrega) ? row.direcciones_entrega : [];
