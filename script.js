@@ -7276,6 +7276,18 @@ async function submitOrder() {
     );
     return;
   }
+  // Anti doble-click: deshabilitar el botón APENAS se toca (antes de cualquier
+  // await), así un segundo toque no dispara otro envío mientras procesa. Se
+  // re-habilita al terminar (finally) o si se cancela.
+  var _sob = document.getElementById("submitOrderBtn");
+  if (_sob && _sob.dataset.busy === "1") return;
+  if (_sob) {
+    _sob.dataset.busy = "1";
+    _sob.disabled = true;
+    _sob.classList.add("is-loading");
+    _sob.dataset.originalText = _sob.dataset.originalText || _sob.textContent;
+    _sob.textContent = "Enviando…";
+  }
   // Snapshot del modo edición: si está seteado, este submit edita ese pedido.
   var editOrderIdSnapshot = editingOrderId;
 
@@ -7286,7 +7298,16 @@ async function submitOrder() {
       window.__upsellShown = true;
       var upsellResult = await showUpsellPopup(upsellProducts);
       window.__upsellShown = false;
-      if (upsellResult === "cancel") return; // closed with X — don't send
+      if (upsellResult === "cancel") {
+        // Canceló: re-habilitar el botón.
+        if (_sob) {
+          _sob.dataset.busy = "0";
+          _sob.disabled = false;
+          _sob.classList.remove("is-loading");
+          _sob.textContent = _sob.dataset.originalText || "Confirmar pedido";
+        }
+        return;
+      }
     }
   }
 
@@ -7581,6 +7602,7 @@ async function submitOrder() {
     return;
   } finally {
     window.__submittingOrder = false;
+    if (_sob) _sob.dataset.busy = "0";
     setSubmitOrderLoading(false);
     refreshSubmitEnabled();
   }
