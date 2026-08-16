@@ -1059,6 +1059,33 @@ body {
   font-size: 12px;
   color: #666;
 }
+/* Fila partida: Dirección de entrega + Observaciones, mitad y mitad.
+   Mantiene el ancho total (~780px) del bloque original. */
+.ship-row-split {
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.ship-row-split > .ship-card {
+  width: auto;
+  flex: 1 1 340px;
+  min-width: 0;
+  max-width: 382px;
+}
+.ship-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  min-height: 42px;
+}
+.ship-textarea:focus {
+  border-color: #111;
+}
 /* Layout carrito */
 .cart-layout {
   width: 100%;
