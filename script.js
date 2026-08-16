@@ -9286,7 +9286,27 @@ async function expoApplyCustomer(cust, opts) {
   }
   if (_expoClientMode) await _expoLoadScale();
 
-  await onLinkedCustomerSelected({ customerId: cust.id });
+  await onLinkedCustomerSelected({ customerId: cust.id, fromRestore: !!opts.fromRestore });
+
+  // Persistir el cliente elegido de expo en su propia clave, para restaurarlo al
+  // volver de historial/sugerencias (que recargan la página): el cliente puede
+  // venir del padrón y NO estar en linkedCustomers, así que la restauración
+  // normal (que busca dentro de linkedCustomers) no lo encuentra.
+  if (!opts.fromRestore) {
+    try {
+      localStorage.setItem(
+        "lk_expo_selected_client",
+        JSON.stringify({
+          id: cust.id,
+          cod_cliente: cust.cod_cliente,
+          business_name: cust.business_name,
+          dto_vol: cust.dto_vol,
+          vend: cust.vend,
+          expoClientMode: _expoClientMode,
+        }),
+      );
+    } catch (e) {}
+  }
 
   // Loke sigue al cliente elegido, no al operador admin (ver checkLokeAccess).
   await checkLokeAccess();
@@ -10560,6 +10580,34 @@ async function onLinkedCustomerSelected(opts) {
 
 // Restaura el cliente seleccionado por el vendedor al volver de historial/sugerencias/etc.
 async function restoreSelectedCustomerIfAny() {
+  // EXPO: el cliente pudo elegirse del padrón (no queda en linkedCustomers tras
+  // recargar la página al volver de historial/sugerencias). Se restaura desde su
+  // propia clave, re-aplicándolo completo. fromRestore=true → NO vacía el carrito.
+  if (EXPO_MODE && isAdmin) {
+    var rawExpo = "";
+    try {
+      rawExpo = localStorage.getItem("lk_expo_selected_client") || "";
+    } catch (e) {}
+    if (rawExpo) {
+      try {
+        var ec = JSON.parse(rawExpo);
+        if (ec && ec.id) {
+          await expoApplyCustomer(
+            {
+              id: ec.id,
+              cod_cliente: ec.cod_cliente,
+              business_name: ec.business_name,
+              dto_vol: ec.dto_vol,
+              vend: ec.vend,
+            },
+            { forceExpoNew: !!ec.expoClientMode, fromRestore: true },
+          );
+          return;
+        }
+      } catch (e) { /* clave corrupta: seguir con la restauración normal */ }
+    }
+  }
+
   if (!linkedCustomers.length) return;
   var savedCod = "";
   try {
@@ -11822,6 +11870,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         localStorage.removeItem("lk_vendor_selected_cod_cliente");
         localStorage.removeItem("lk_vendor_selected_business_name");
         localStorage.removeItem("lk_vendor_selected_dto_vol");
+        localStorage.removeItem("lk_expo_selected_client");
       } catch (e) {}
     }
     await restoreSelectedCustomerIfAny();
