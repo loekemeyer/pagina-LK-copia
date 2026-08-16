@@ -9391,10 +9391,14 @@ async function _expoRefreshResumeBtn() {
 async function _expoShowConfirmPanel() {
   var panel = document.getElementById("expoConfirmPanel");
   if (!panel) return;
+  var stdWrap = document.querySelector(".success-download-wrap");
   if (!_expoClientMode || !lastConfirmedOrder || !(customerProfile && customerProfile.id)) {
     panel.style.display = "none";
+    if (stdWrap) stdWrap.style.display = ""; // cliente normal: descarga estándar visible
     return;
   }
+  // Cliente nuevo expo: el panel trae su propio botón de descarga → ocultar el estándar
+  if (stdWrap) stdWrap.style.display = "none";
   var pin = "", wsp = "";
   try {
     var r = await supabaseClient

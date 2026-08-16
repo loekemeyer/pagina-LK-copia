@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23230" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23230" />
+    <link rel="stylesheet" href="css/styles.css?v=23231" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23231" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1461,17 +1461,33 @@
               <span class="expo-confirm-pinlbl">Clave (PIN) del cliente:</span>
               <code id="expoConfirmPin" class="expo-confirm-pin">—</code>
             </div>
-            <a
-              id="expoConfirmWa"
-              class="success-btn primary expo-confirm-wa"
-              href="#"
-              target="_blank"
-              rel="noopener"
-            >
-              Enviar resumen + PIN por WhatsApp
-            </a>
+            <div class="expo-confirm-btns">
+              <button
+                type="button"
+                class="success-btn expo-confirm-dl"
+                onclick="descargarPedidoPDF()"
+              >
+                <span class="success-btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                </span>
+                Descargar pedido
+              </button>
+              <a
+                id="expoConfirmWa"
+                class="success-btn primary expo-confirm-wa"
+                href="#"
+                target="_blank"
+                rel="noopener"
+              >
+                Enviar resumen + PIN por WhatsApp
+              </a>
+            </div>
             <div class="success-pdf-note">
-              Incluye N° de pedido, total, dto de volumen otorgado y la clave.
+              Descargá el pedido y mandá el resumen + PIN por WhatsApp.
             </div>
           </div>
         </div>
@@ -1968,14 +1984,14 @@
     </button>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23230"></script>
-    <script src="script.js?v=23230"></script>
+    <script src="./version.js?v=23231"></script>
+    <script src="script.js?v=23231"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23230"></script>
+    <script src="analisis-venta-cliente.js?v=23231"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23230"></script>
-    <script src="admin-excel-krikos.js?v=23230"></script>
-    <script src="vendor-import-excel.js?v=23230"></script>
+    <script src="scotapi-shim.js?v=23231"></script>
+    <script src="admin-excel-krikos.js?v=23231"></script>
+    <script src="vendor-import-excel.js?v=23231"></script>
   </body>
 </html>

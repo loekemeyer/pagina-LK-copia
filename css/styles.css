@@ -14830,6 +14830,24 @@ a.user-menu-item:hover {
   padding: 4px 8px;
   word-break: break-all;
 }
+.expo-confirm-btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.expo-confirm-btns .success-btn {
+  flex: 1 1 220px;
+}
+.expo-confirm-dl {
+  display: inline-flex;
+  background: #fff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+}
+.expo-confirm-dl:hover {
+  background: #f3f4f6;
+}
 .expo-confirm-wa {
   display: inline-flex;
   background: #25d366;
