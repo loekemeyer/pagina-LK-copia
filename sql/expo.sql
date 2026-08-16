@@ -5,8 +5,8 @@
 -- verdad sigue siendo la base: correr esto a mano en el SQL editor.
 --
 -- Fase 1: buscar_cliente_expo — buscador único de la pantalla "Elegir cliente".
---   Matchea por cód, razón social, CUIT (solo dígitos, >=6) o dirección de
---   entrega / localidad. Gateada a admin. Solo lectura.
+--   Matchea por cód, razón social, CUIT (solo dígitos, >=4 para búsqueda
+--   incremental) o dirección de entrega / localidad. Gateada a admin. Solo lectura.
 -- ----------------------------------------------------------------------------
 
 create or replace function public.buscar_cliente_expo(p_q text)
