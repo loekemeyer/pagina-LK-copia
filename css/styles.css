@@ -14286,6 +14286,11 @@ a.user-menu-item:hover {
   color: #111827;
   border: 1px solid #d1d5db;
 }
+.expo-btn-resume {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+}
 .expo-btn:hover {
   filter: brightness(0.95);
 }

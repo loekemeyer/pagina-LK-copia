@@ -83,6 +83,12 @@ grant execute on function public.buscar_cliente_expo(text) to authenticated, ser
 --   nuevos cargados en la expo para levantarlos todos juntos al ERP. El cliente
 --   igual se crea en customers+auth (para que el pedido/PIN/descarga funcionen);
 --   esta tabla es el registro para el alta ERP posterior.
+--   Consumidores en el frontend:
+--   - admin.js → cargarClientesPendientes(): pantalla "Clientes Expo pend." que
+--     lista/filtra por estado, marca 'cargado_erp', elimina y exporta a Excel.
+--   - script.js → expoOpenResumeModal()/expoEditarPendiente(): "Continuar carga
+--     pausada" en mayorista, relee una fila 'pendiente' y repuebla el modal de
+--     alta para terminar los datos (setea _expoNewState.id → hace UPDATE).
 -- ----------------------------------------------------------------------------
 create table if not exists public.expo_clientes_pendientes (
   id uuid primary key default gen_random_uuid(),

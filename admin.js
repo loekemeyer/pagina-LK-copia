@@ -702,6 +702,12 @@ document.querySelectorAll(".nav-item").forEach(function (btn) {
       cargarEscalaExpo();
     }
     if (
+      btn.dataset.page === "clientes-pendientes" &&
+      typeof cargarClientesPendientes === "function"
+    ) {
+      cargarClientesPendientes();
+    }
+    if (
       btn.dataset.page === "estadistica-madre" &&
       typeof cargarEstadisticaMadre === "function" &&
       !_estMadreData
@@ -14396,4 +14402,222 @@ function _escalaExpoWireOnce() {
       _escalaExpoAddRow(0, 0);
     });
   if (save) save.addEventListener("click", guardarEscalaExpo);
+}
+
+// ============================================================================
+// Clientes Expo pendientes de ERP
+// ============================================================================
+var _cliPendWired = false;
+var _cliPendRows = [];
+
+function _cliPendStatus(msg, isErr) {
+  var el = document.getElementById("cliPendStatus");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.style.color = isErr ? "#b91c1c" : "#166534";
+}
+
+async function cargarClientesPendientes() {
+  var body = document.getElementById("cliPendBody");
+  if (!body) return;
+  _cliPendWireOnce();
+  var filtro = (document.getElementById("cliPendFiltro") || {}).value || "pendiente";
+  body.innerHTML =
+    '<tr><td colspan="13" style="text-align:center;color:#6b7280">Cargando…</td></tr>';
+  var q = sb
+    .from("expo_clientes_pendientes")
+    .select(
+      "id,customer_id,cod_cliente,business_name,cuit,condicion_iva,direccion,numero,cp,localidad,provincia,telefono,whatsapp,mail,vend,dto_vol,pin,direcciones_entrega,estado,creado_at,actualizado_at",
+    )
+    .order("actualizado_at", { ascending: false });
+  if (filtro !== "todos") q = q.eq("estado", filtro);
+  var r = await q;
+  if (r.error) {
+    body.innerHTML =
+      '<tr><td colspan="13" style="text-align:center;color:#b91c1c">Error: ' +
+      escapeHtml(r.error.message) +
+      "</td></tr>";
+    return;
+  }
+  _cliPendRows = r.data || [];
+  _cliPendRender(_cliPendRows);
+  var cnt = document.getElementById("cliPendCount");
+  if (cnt) cnt.textContent = _cliPendRows.length + " cliente(s)";
+  _cliPendStatus("");
+}
+
+function _cliPendDirResumen(dirs) {
+  if (!Array.isArray(dirs) || !dirs.length) return "—";
+  var tit = dirs
+    .map(function (d) {
+      return d.titulo || d.direccion || "";
+    })
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    '<span title="' + escapeHtml(tit) + '">' + dirs.length + " dir.</span>"
+  );
+}
+
+function _cliPendRender(rows) {
+  var body = document.getElementById("cliPendBody");
+  if (!body) return;
+  if (!rows.length) {
+    body.innerHTML =
+      '<tr><td colspan="13" style="text-align:center;color:#6b7280">No hay clientes en este estado.</td></tr>';
+    return;
+  }
+  var html = "";
+  rows.forEach(function (c) {
+    var cargado = c.estado === "cargado_erp";
+    var tel = [c.telefono, c.whatsapp].filter(Boolean).join(" / ") || "—";
+    var dto = c.dto_vol != null ? Math.round(Number(c.dto_vol) * 100) + "%" : "—";
+    html +=
+      "<tr>" +
+      "<td>" + escapeHtml(c.cod_cliente || "—") + "</td>" +
+      "<td>" + escapeHtml(c.business_name || "(sin razón social)") + "</td>" +
+      "<td>" + escapeHtml(c.cuit || "—") + "</td>" +
+      "<td>" + escapeHtml(c.condicion_iva || "—") + "</td>" +
+      "<td>" + escapeHtml(c.localidad || "—") + "</td>" +
+      "<td>" + escapeHtml(c.provincia || "—") + "</td>" +
+      "<td>" + escapeHtml(tel) + "</td>" +
+      "<td>" + escapeHtml(c.vend || "—") + "</td>" +
+      "<td>" + dto + "</td>" +
+      "<td>" + _cliPendDirResumen(c.direcciones_entrega) + "</td>" +
+      '<td style="text-align:center">' +
+      '<input type="checkbox" class="cli-pend-chk" data-id="' +
+      escapeHtml(c.id) +
+      '" ' +
+      (cargado ? "checked" : "") +
+      " /></td>" +
+      "<td>" +
+      '<span class="cli-pend-badge ' +
+      (cargado ? "ok" : "wait") +
+      '">' +
+      (cargado ? "Cargado ERP" : "Pendiente") +
+      "</span></td>" +
+      "<td>" +
+      '<button type="button" class="btn-ghost cli-pend-del" data-id="' +
+      escapeHtml(c.id) +
+      '">Eliminar</button></td>' +
+      "</tr>";
+  });
+  body.innerHTML = html;
+  body.querySelectorAll(".cli-pend-chk").forEach(function (chk) {
+    chk.addEventListener("change", function () {
+      _cliPendSetEstado(chk.dataset.id, chk.checked ? "cargado_erp" : "pendiente");
+    });
+  });
+  body.querySelectorAll(".cli-pend-del").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      _cliPendDelete(btn.dataset.id);
+    });
+  });
+}
+
+async function _cliPendSetEstado(id, estado) {
+  _cliPendStatus("Guardando…");
+  var upd = await sb
+    .from("expo_clientes_pendientes")
+    .update({ estado: estado, actualizado_at: new Date().toISOString() })
+    .eq("id", id);
+  if (upd.error) {
+    _cliPendStatus("Error: " + upd.error.message, true);
+    return;
+  }
+  _cliPendStatus(estado === "cargado_erp" ? "Marcado como cargado en ERP." : "Vuelto a pendiente.");
+  cargarClientesPendientes();
+}
+
+async function _cliPendDelete(id) {
+  var row = _cliPendRows.find(function (x) {
+    return String(x.id) === String(id);
+  });
+  var nombre = row ? row.business_name || "este cliente" : "este cliente";
+  if (
+    !confirm(
+      "¿Quitar “" +
+        nombre +
+        "” de la lista de pendientes?\n\nSolo se borra el registro de staging; el cliente sigue en la web (customers) para su pedido/PIN.",
+    )
+  )
+    return;
+  _cliPendStatus("Eliminando…");
+  var del = await sb.from("expo_clientes_pendientes").delete().eq("id", id);
+  if (del.error) {
+    _cliPendStatus("Error: " + del.error.message, true);
+    return;
+  }
+  _cliPendStatus("Registro eliminado.");
+  if (typeof toast === "function") toast("Eliminado de pendientes");
+  cargarClientesPendientes();
+}
+
+function exportarClientesPendientes() {
+  if (!_cliPendRows.length) {
+    _cliPendStatus("No hay filas para exportar.", true);
+    return;
+  }
+  var encabezados = [
+    "Cod cliente", "Razon social", "CUIT", "Condicion IVA",
+    "Direccion fiscal", "Numero", "CP", "Localidad", "Provincia",
+    "Telefono", "WhatsApp", "Mail", "Vendedor", "Dto vol %", "PIN",
+    "Direcciones de entrega", "Estado", "Creado",
+  ];
+  var aoa = [encabezados];
+  _cliPendRows.forEach(function (c) {
+    var dirs = Array.isArray(c.direcciones_entrega) ? c.direcciones_entrega : [];
+    var dirTxt = dirs
+      .map(function (d) {
+        return (
+          (d.titulo || d.direccion || "") +
+          (d.localidad ? " (" + d.localidad + ")" : "") +
+          (d.provincia ? ", " + d.provincia : "") +
+          (d.expreso ? " [Expreso: " + d.expreso + "]" : "")
+        );
+      })
+      .join(" | ");
+    aoa.push([
+      c.cod_cliente || "",
+      c.business_name || "",
+      c.cuit || "",
+      c.condicion_iva || "",
+      c.direccion || "",
+      c.numero || "",
+      c.cp || "",
+      c.localidad || "",
+      c.provincia || "",
+      c.telefono || "",
+      c.whatsapp || "",
+      c.mail || "",
+      c.vend || "",
+      c.dto_vol != null ? Math.round(Number(c.dto_vol) * 100) : "",
+      c.pin || "",
+      dirTxt,
+      c.estado === "cargado_erp" ? "Cargado ERP" : "Pendiente",
+      (c.creado_at || "").slice(0, 10),
+    ]);
+  });
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [
+    { wch: 10 }, { wch: 32 }, { wch: 14 }, { wch: 20 },
+    { wch: 26 }, { wch: 8 }, { wch: 8 }, { wch: 18 }, { wch: 14 },
+    { wch: 16 }, { wch: 16 }, { wch: 24 }, { wch: 8 }, { wch: 9 }, { wch: 32 },
+    { wch: 50 }, { wch: 12 }, { wch: 12 },
+  ];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Clientes Expo");
+  XLSX.writeFile(wb, "clientes-expo-pendientes.xlsx");
+  _cliPendStatus("Excel generado (" + _cliPendRows.length + " filas).");
+}
+
+function _cliPendWireOnce() {
+  if (_cliPendWired) return;
+  _cliPendWired = true;
+  var filtro = document.getElementById("cliPendFiltro");
+  var reload = document.getElementById("cliPendReload");
+  var exp = document.getElementById("cliPendExport");
+  if (filtro) filtro.addEventListener("change", cargarClientesPendientes);
+  if (reload) reload.addEventListener("click", cargarClientesPendientes);
+  if (exp) exp.addEventListener("click", exportarClientesPendientes);
 }
