@@ -9059,11 +9059,13 @@ function _expoUpdateChip() {
       (dto > 0 ? " · Dto " + Math.round(dto * 100) + "%" : "") +
       "</span>";
   }
-  // Texto en columna + cruz para soltar el cliente y volver al perfil del operador.
-  chip.innerHTML =
-    '<div class="expo-chip-text">' + inner + "</div>" +
-    '<button type="button" class="expo-chip-clear" title="Soltar cliente y volver a tu perfil" ' +
-    'onclick="expoClearCustomer()">&times;</button>';
+  // La cruz (soltar cliente) solo cuando hay un cliente ELEGIDO/NUEVO de expo,
+  // NO en el perfil propio del operador (ahí no hay nada que soltar).
+  var cruz = _expoActiveCustomer
+    ? '<button type="button" class="expo-chip-clear" title="Soltar cliente y volver a tu perfil" ' +
+      'onclick="expoClearCustomer()">&times;</button>'
+    : "";
+  chip.innerHTML = '<div class="expo-chip-text">' + inner + "</div>" + cruz;
   chip.classList.add("has-client");
 }
 
