@@ -9424,6 +9424,29 @@ function _expoNewStatus(msg, kind) {
   el.style.color = kind === "err" ? "#b91c1c" : kind === "ok" ? "#166534" : "#6b7280";
 }
 
+// Provincias argentinas (24 jurisdicciones) para los desplegables del alta.
+var EXPO_PROVINCIAS = [
+  "Buenos Aires", "Ciudad Autónoma de Buenos Aires", "Catamarca", "Chaco",
+  "Chubut", "Córdoba", "Corrientes", "Entre Ríos", "Formosa", "Jujuy",
+  "La Pampa", "La Rioja", "Mendoza", "Misiones", "Neuquén", "Río Negro",
+  "Salta", "San Juan", "San Luis", "Santa Cruz", "Santa Fe",
+  "Santiago del Estero", "Tierra del Fuego", "Tucumán",
+];
+function _expoProvinciaOptions(selected) {
+  var out = '<option value="">Provincia</option>';
+  EXPO_PROVINCIAS.forEach(function (p) {
+    out +=
+      '<option value="' + p + '"' +
+      (String(selected || "") === p ? " selected" : "") +
+      ">" + p + "</option>";
+  });
+  return out;
+}
+function _expoFillProvincias() {
+  var sel = document.getElementById("expoNewProvFiscal");
+  if (sel) sel.innerHTML = _expoProvinciaOptions(sel.value);
+}
+
 function _expoAddrAddRow(prefill) {
   prefill = prefill || {};
   var list = document.getElementById("expoAddrList");
@@ -9435,7 +9458,7 @@ function _expoAddrAddRow(prefill) {
     '<div class="expo-addr-fields">' +
     '<input class="expo-inp expo-addr-dir" placeholder="Dirección de entrega" />' +
     '<input class="expo-inp expo-addr-loc" placeholder="Localidad / zona" />' +
-    '<input class="expo-inp expo-addr-prov" placeholder="Provincia" />' +
+    '<select class="expo-inp expo-addr-prov">' + _expoProvinciaOptions(prefill.provincia) + "</select>" +
     '<input class="expo-inp expo-addr-exp" placeholder="Expreso (transportista)" />' +
     '<button type="button" class="expo-addr-del" title="Quitar">&times;</button>' +
     "</div>";
@@ -9513,8 +9536,8 @@ async function expoNuevoCliente() {
   if (!m) return;
   _expoNewState = { id: null, authId: null };
   [
-    "expoNewRazon", "expoNewCuit", "expoNewTel", "expoNewWhatsapp",
-    "expoNewMail", "expoNewCod", "expoNewDto",
+    "expoNewRazon", "expoNewCuit", "expoNewWhatsapp",
+    "expoNewMail", "expoNewCod",
     "expoNewDirFiscal", "expoNewNumFiscal", "expoNewCpFiscal",
     "expoNewLocFiscal", "expoNewProvFiscal",
   ].forEach(function (id) {
@@ -9524,6 +9547,7 @@ async function expoNuevoCliente() {
   var condIva = document.getElementById("expoNewCondIva");
   if (condIva) condIva.value = "Responsable Inscripto";
   _expoFillVendedores();
+  _expoFillProvincias();
   document.getElementById("expoNewPin").value = _expoNewGenPin();
   document.getElementById("expoAddrList").innerHTML = "";
   _expoAddrAddRow();
@@ -9621,8 +9645,9 @@ async function _expoGuardarNuevo(pauseOnly) {
   }
   var cod = (document.getElementById("expoNewCod").value || "").trim();
   var pin = document.getElementById("expoNewPin").value;
-  var dtoNum = parseFloat(document.getElementById("expoNewDto").value);
-  var dto = isNaN(dtoNum) ? 0 : dtoNum / 100;
+  // El Dto por volumen NO se carga acá: se calcula por la escala en función del
+  // pedido. El cliente se crea con dto 0 (el ERP fija el dto vigente después).
+  var dto = 0;
   var whatsapp = (document.getElementById("expoNewWhatsapp").value || "").trim();
   var mail = (document.getElementById("expoNewMail").value || "").trim();
   var vend = (document.getElementById("expoNewVend").value || "").trim();
@@ -9631,7 +9656,7 @@ async function _expoGuardarNuevo(pauseOnly) {
   var cpFiscal = (document.getElementById("expoNewCpFiscal").value || "").trim();
   var locFiscal = (document.getElementById("expoNewLocFiscal").value || "").trim();
   var provFiscal = (document.getElementById("expoNewProvFiscal").value || "").trim();
-  var tel = (document.getElementById("expoNewTel").value || "").trim();
+  var tel = ""; // campo Teléfono removido del alta (queda WhatsApp)
   var condIvaEl = document.getElementById("expoNewCondIva");
   var condIva = condIvaEl ? condIvaEl.value : "";
 
@@ -9882,17 +9907,16 @@ function expoEditarPendiente(row) {
   expoCloseResumeModal();
   _expoNewState = { id: row.customer_id, authId: null };
   _expoFillVendedores();
+  _expoFillProvincias();
   function setVal(id, v) {
     var el = document.getElementById(id);
     if (el) el.value = v != null ? v : "";
   }
   setVal("expoNewRazon", row.business_name);
   setVal("expoNewCuit", row.cuit);
-  setVal("expoNewTel", row.telefono);
   setVal("expoNewWhatsapp", row.whatsapp);
   setVal("expoNewMail", row.mail);
   setVal("expoNewCod", row.cod_cliente);
-  setVal("expoNewDto", row.dto_vol != null ? Math.round(Number(row.dto_vol) * 100) : "");
   setVal("expoNewDirFiscal", row.direccion);
   setVal("expoNewNumFiscal", row.numero);
   setVal("expoNewCpFiscal", row.cp);
