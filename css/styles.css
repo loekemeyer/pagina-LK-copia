@@ -5409,6 +5409,19 @@ body.section-perfil #navSearch {
   justify-content: center;
 }
 
+.success-ordernum {
+  margin: 6px auto 14px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.3px;
+  text-align: center;
+}
+
 .success-btn {
   display: inline-flex;
   align-items: center;

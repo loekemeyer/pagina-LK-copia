@@ -7494,6 +7494,18 @@ async function submitOrder() {
       // aunque el pedido sí quedaba grabado.
       showSection("pedidoConfirmado");
       playSuccessAnimation();
+      // Mostrar el N° de pedido en pantalla: prueba concreta de que quedó grabado.
+      try {
+        var _onEl = document.getElementById("successOrderNum");
+        if (_onEl) {
+          var _oid = primaryResult.orderId || "";
+          var _oid2 = (promoResult && regularResult) ? promoResult.orderId : "";
+          _onEl.textContent = _oid2
+            ? "Pedido N° " + _oid + " y N° " + _oid2
+            : "Pedido N° " + _oid;
+          _onEl.style.display = _oid ? "" : "none";
+        }
+      } catch (e) {}
       _expoShowConfirmPanel();
       try {
         window.scrollTo({ top: 0, behavior: "smooth" });
