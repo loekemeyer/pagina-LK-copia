@@ -52,7 +52,9 @@ begin
     from customers c
     where (v_cod is not null and c.cod_cliente = v_cod)
        or c.business_name ilike '%' || v_q || '%'
-       or (length(v_digits) >= 6
+       -- CUIT por dígitos, min 4 (para búsqueda incremental; el resultado final
+       -- se ordena por cod_cliente y se corta a 25 — ver el wrap de abajo).
+       or (length(v_digits) >= 4
            and regexp_replace(coalesce(c.cuit, ''), '\D', '', 'g') like '%' || v_digits || '%')
     union
     select da.customer_id
