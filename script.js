@@ -7003,6 +7003,12 @@ async function _submitSingleOrder(
   var dtoVol = getDtoVol();
   var extraRate = Number(extraDiscountRate || 0);
   var isPromo = extraRate > 0;
+  // Observaciones: se lee acá (no es parámetro). Antes se referenciaba una var
+  // declarada en submitOrder() → ReferenceError que grababa el pedido pero
+  // tumbaba la confirmación (no se veía "¡Pedido confirmado!").
+  var observacionesValue = String(
+    (document.getElementById("obsPedidoInput")?.value || ""),
+  ).trim();
 
   // Build items payload
   var itemsPayload = items
