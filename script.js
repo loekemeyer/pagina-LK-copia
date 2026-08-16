@@ -9354,13 +9354,38 @@ function _expoAddrCollect() {
   return out;
 }
 
+// Vendedores (código ERP → nombre). El 7 (FCA = nosotros) va primero.
+var EXPO_VENDEDORES = [
+  { c: "7", n: "FCA (Nosotros)" },
+  { c: "1", n: "Andres O. Luca" }, { c: "2", n: "Audisio Mario" },
+  { c: "3", n: "Cagnolo Mario" }, { c: "4", n: "Carrizo Gabriel" },
+  { c: "5", n: "Fabrica J" }, { c: "6", n: "Fabrica P" },
+  { c: "8", n: "Horizonte" }, { c: "9", n: "Juan Jose Zaffaroni" },
+  { c: "10", n: "Lisa Katz" }, { c: "11", n: "Marcos Lilo" },
+  { c: "12", n: "Tomas Schinder" }, { c: "13", n: "Monin Leticia S" },
+  { c: "14", n: "Norhon" }, { c: "15", n: "O.M.D. Argentina" },
+  { c: "16", n: "Pablo Antonelli" }, { c: "17", n: "Pedro Serra" },
+  { c: "18", n: "Primer Precio" }, { c: "19", n: "Sphan" },
+  { c: "20", n: "Supermercados" }, { c: "21", n: "Thomas LK" },
+  { c: "22", n: "La Bianca" }, { c: "23", n: "Mottura" },
+];
+
+function _expoFillVendedores() {
+  var sel = document.getElementById("expoNewVend");
+  if (!sel) return;
+  sel.innerHTML = EXPO_VENDEDORES.map(function (v) {
+    return '<option value="' + v.c + '">' + v.c + " - " + v.n + "</option>";
+  }).join("");
+  sel.value = "7"; // default: nosotros
+}
+
 async function expoNuevoCliente() {
   var m = document.getElementById("expoNewModal");
   if (!m) return;
   _expoNewState = { id: null, authId: null };
   [
     "expoNewRazon", "expoNewCuit", "expoNewTel", "expoNewWhatsapp",
-    "expoNewMail", "expoNewVend", "expoNewCod", "expoNewDto",
+    "expoNewMail", "expoNewCod", "expoNewDto",
     "expoNewDirFiscal", "expoNewNumFiscal", "expoNewCpFiscal",
     "expoNewLocFiscal", "expoNewProvFiscal",
   ].forEach(function (id) {
@@ -9369,6 +9394,7 @@ async function expoNuevoCliente() {
   });
   var condIva = document.getElementById("expoNewCondIva");
   if (condIva) condIva.value = "Responsable Inscripto";
+  _expoFillVendedores();
   document.getElementById("expoNewPin").value = _expoNewGenPin();
   document.getElementById("expoAddrList").innerHTML = "";
   _expoAddrAddRow();
@@ -9377,18 +9403,11 @@ async function expoNuevoCliente() {
   m.classList.add("open"); // ✅ clave: .modal se muestra con .open
   m.classList.remove("hidden");
   m.setAttribute("aria-hidden", "false");
-  // Sugerir el próximo código (max real < 5000, +1). Los 10001+ son vendedores.
+  // Código ASIGNADO por el sistema (contador propio, no depende del padrón parcial).
   try {
-    var r = await supabaseClient
-      .from("customers")
-      .select("cod_cliente")
-      .lt("cod_cliente", 5000)
-      .order("cod_cliente", { ascending: false })
-      .limit(1);
-    if (!r.error && r.data && r.data.length) {
-      var codEl = document.getElementById("expoNewCod");
-      if (codEl && !codEl.value) codEl.value = Number(r.data[0].cod_cliente) + 1;
-    }
+    var r = await supabaseClient.rpc("expo_peek_cod");
+    var codEl = document.getElementById("expoNewCod");
+    if (codEl && !r.error && r.data != null) codEl.value = r.data;
   } catch (e) { /* opcional */ }
 }
 
@@ -9435,6 +9454,17 @@ async function _expoGuardarNuevo(pauseOnly) {
   _expoNewStatus("Guardando…");
 
   try {
+    if (!_expoNewState.id) {
+      // Reservar el código asignado por el sistema (solo en el alta inicial).
+      try {
+        var rc = await supabaseClient.rpc("expo_reservar_cod");
+        if (!rc.error && rc.data != null) {
+          cod = String(rc.data);
+          var ce = document.getElementById("expoNewCod");
+          if (ce) ce.value = cod;
+        }
+      } catch (e) { /* si falla, queda el código del peek */ }
+    }
     var cust = {
       business_name: razon,
       cuit: cuit || null,
