@@ -14590,10 +14590,16 @@ a.user-menu-item:hover {
   align-items: flex-start;
   overflow-y: auto;
 }
-.expo-new-card {
-  max-height: none;
-  overflow: visible;
-  margin: 4vh auto;
+/* ID-específico: `.modal .modal-card` (0,2,0) fija max-width:420px y overflow
+   hidden, y le gana a `.expo-new-card` (0,1,0). Con el id lo pisamos para que el
+   modal sea REALMENTE ancho (no alto y angosto). */
+#expoNewModal .expo-new-card {
+  max-width: 1500px;
+  width: 96vw;
+  max-height: 92vh;
+  overflow-y: auto;
+  overflow-x: visible;
+  margin: 3vh auto;
 }
 .profile-btn.primary {
   background: #111827;
