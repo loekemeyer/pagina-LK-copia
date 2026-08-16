@@ -28,6 +28,7 @@ declare
   v_q      text := btrim(coalesce(p_q, ''));
   v_digits text := regexp_replace(coalesce(p_q, ''), '\D', '', 'g');
   v_isnum  boolean := v_q ~ '^\d+$';
+  v_cod    bigint := null;
 begin
   -- Gate admin (RPC solo para el panel expo)
   if not exists (select 1 from admins a where a.auth_user_id = auth.uid()) then
@@ -38,11 +39,18 @@ begin
     return;
   end if;
 
+  -- Cast protegido a bigint: SOLO dígitos puros. Si se usa v_q::bigint directo
+  -- en el WHERE, Postgres lo const-foldea y tira 22P02 con un CUIT con guiones
+  -- (ej "30-68092135-7"), rompiendo la búsqueda por CUIT.
+  if v_isnum and length(v_q) <= 18 then
+    begin v_cod := v_q::bigint; exception when others then v_cod := null; end;
+  end if;
+
   return query
   with matches as (
     select c.id
     from customers c
-    where (v_isnum and c.cod_cliente = v_q::bigint)
+    where (v_cod is not null and c.cod_cliente = v_cod)
        or c.business_name ilike '%' || v_q || '%'
        or (length(v_digits) >= 6
            and regexp_replace(coalesce(c.cuit, ''), '\D', '', 'g') like '%' || v_digits || '%')
