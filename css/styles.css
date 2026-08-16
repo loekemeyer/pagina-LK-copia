@@ -14861,6 +14861,20 @@ a.user-menu-item:hover {
 .expo-confirm-dl:hover {
   background: #f3f4f6;
 }
+.expo-confirm-copy {
+  display: inline-flex;
+  background: #fff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+}
+.expo-confirm-copy:hover {
+  background: #f3f4f6;
+}
+.expo-confirm-copy.expo-copied {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
 .expo-confirm-wa {
   display: inline-flex;
   background: #25d366;
