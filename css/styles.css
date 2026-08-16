@@ -14422,9 +14422,9 @@ a.user-menu-item:hover {
   color: #6b7280;
 }
 
-/* Modal Nuevo cliente */
+/* Modal Nuevo cliente — ancho para entrar en una sola pantalla sin scroll */
 .expo-new-card {
-  max-width: 640px;
+  max-width: 960px;
   width: 94vw;
   max-height: 88vh;
   overflow-y: auto;
@@ -14467,11 +14467,23 @@ a.user-menu-item:hover {
 }
 .expo-new-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px 12px;
 }
 .expo-fld-wide {
   grid-column: 1 / -1;
+}
+.expo-sp1 {
+  grid-column: span 1;
+}
+.expo-sp2 {
+  grid-column: span 2;
+}
+.expo-sp3 {
+  grid-column: span 3;
+}
+.expo-sp4 {
+  grid-column: span 4;
 }
 .expo-addr-block {
   margin-top: 16px;
@@ -14565,9 +14577,28 @@ a.user-menu-item:hover {
   background: #111827;
   color: #fff;
 }
-@media (max-width: 560px) {
+@media (max-width: 820px) {
+  .expo-new-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .expo-sp1,
+  .expo-sp2 {
+    grid-column: span 1;
+  }
+  .expo-sp3,
+  .expo-sp4 {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 520px) {
   .expo-new-grid {
     grid-template-columns: 1fr;
+  }
+  .expo-sp1,
+  .expo-sp2,
+  .expo-sp3,
+  .expo-sp4 {
+    grid-column: span 1;
   }
   .expo-addr-fields {
     grid-template-columns: 1fr 1fr;
