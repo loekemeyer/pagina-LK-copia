@@ -14255,10 +14255,10 @@ a.user-menu-item:hover {
   margin: 0 0 12px !important;
 }
 #productos .sort-row > .customer-selector-banner.expo-entry-bar {
-  /* Comparte la fila con los filtros (Mi surtido / Nuevos / Filtrar por): crece
-     para tomar el espacio libre pero puede achicarse, así el chip no empuja
-     "Filtrar por" fuera de pantalla. */
-  flex: 1 1 auto;
+  /* Comparte la fila con los filtros (Mi surtido / Nuevos / Filtrar por):
+     compacta (no crece) y puede achicarse, así no empuja "Filtrar por" ni su
+     popup fuera de pantalla. */
+  flex: 0 1 auto;
   min-width: 0;
 }
 .expo-hidden-select {
@@ -14269,8 +14269,8 @@ a.user-menu-item:hover {
   pointer-events: none;
 }
 .expo-current {
-  flex: 0 1 240px;
-  max-width: 240px;
+  flex: 0 1 160px;
+  max-width: 160px;
   min-width: 0;
   font-size: 13px;
   color: #6b7280;
