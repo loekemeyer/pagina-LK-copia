@@ -9262,6 +9262,7 @@ function _expoUpdateChip() {
   chip.innerHTML = '<div class="expo-chip-text">' + inner + "</div>" + cruz;
   chip.classList.add("has-client");
   _expoRenderCheckpoints();
+  _expoRefreshResumeBtn();
 }
 
 function renderExpoEntryBar() {
@@ -9330,6 +9331,13 @@ function renderExpoEntryBar() {
 async function _expoRefreshResumeBtn() {
   var btn = document.getElementById("expoContinuarBtn");
   if (!btn) return;
+  // En el perfil propio del operador (sin cliente de expo elegido) NO mostrar el
+  // botón: siempre hay clientes en staging y aparecería permanentemente. Solo se
+  // ve con un cliente de expo activo (para editarlo/completarlo).
+  if (!_expoActiveCustomer || !_expoClientMode) {
+    btn.style.display = "none";
+    return;
+  }
   try {
     var r = await supabaseClient
       .from("expo_clientes_pendientes")
