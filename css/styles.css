@@ -14422,27 +14422,28 @@ a.user-menu-item:hover {
   color: #6b7280;
 }
 
-/* Modal Nuevo cliente — ancho para entrar en una sola pantalla sin scroll */
+/* Modal Nuevo cliente — bien ancho (usa casi toda la pantalla) para que se vea
+   todo cómodo y sin scroll. */
 .expo-new-card {
-  max-width: 960px;
-  width: 94vw;
-  max-height: 88vh;
+  max-width: 1500px;
+  width: 96vw;
+  max-height: 92vh;
   overflow-y: auto;
 }
 .expo-lbl {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #4b5563;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 .expo-inp {
   width: 100%;
   box-sizing: border-box;
-  padding: 9px 11px;
-  font-size: 14px;
+  padding: 13px 14px;
+  font-size: 15px;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 9px;
 }
 .expo-inp:focus {
   outline: none;
@@ -14468,7 +14469,7 @@ a.user-menu-item:hover {
 .expo-new-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 10px 12px;
+  gap: 14px 16px;
 }
 .expo-fld-wide {
   grid-column: 1 / -1;
