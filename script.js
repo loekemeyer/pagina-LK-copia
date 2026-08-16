@@ -7502,9 +7502,13 @@ function refreshSubmitEnabled() {
     !shipBtn || shipBtn.classList.contains("confirmed");
   const hasShipping =
     !!(shipSel && String(shipSel.value || "").trim()) && deliveryConfirmedByUser;
-  const hasPayment = isAdmin
-    ? true
-    : !!(paySel && String(paySel.value || "").trim());
+  // EXPO: con un cliente elegido, el operador (admin) toma el pedido COMO el
+  // cliente, así que se exige método de pago igual que en la página normal
+  // (para clientes nuevos ya viene forzado a contado, así que no molesta).
+  const hasPayment =
+    isAdmin && !(EXPO_MODE && _expoActiveCustomer)
+      ? true
+      : !!(paySel && String(paySel.value || "").trim());
   const custSelVal = custSel ? String(custSel.value || "").trim() : "";
   // Vendedor: además de elegir cliente, debe haber clickeado "Confirmar"
   // (mismo patrón que la dirección de entrega).
