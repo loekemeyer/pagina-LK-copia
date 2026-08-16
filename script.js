@@ -71,6 +71,37 @@ function _expoDatosCompletos(d) {
   }
   return true;
 }
+
+// Lista legible de lo que falta (para avisar al confirmar "Datos completados").
+function _expoFaltantes(d) {
+  var out = [];
+  var map = [
+    ["business_name", "Razón social"], ["cuit", "CUIT"],
+    ["condicion_iva", "Condición IVA"], ["vend", "Vendedor"],
+    ["whatsapp", "WhatsApp"], ["mail", "Mail"], ["direccion", "Calle"],
+    ["numero", "Número"], ["cp", "C.P."], ["localidad", "Localidad"],
+    ["provincia", "Provincia"],
+  ];
+  map.forEach(function (m) {
+    if (!String(d[m[0]] == null ? "" : d[m[0]]).trim()) out.push(m[1]);
+  });
+  var dirs = Array.isArray(d.direcciones_entrega) ? d.direcciones_entrega : [];
+  if (!dirs.length) out.push("una dirección de entrega");
+  else {
+    var bad = false;
+    dirs.forEach(function (a) {
+      a = a || {};
+      if (
+        !String(a.direccion || "").trim() ||
+        !String(a.localidad || "").trim() ||
+        !String(a.provincia || "").trim()
+      )
+        bad = true;
+    });
+    if (bad) out.push("dirección de entrega (calle/localidad/provincia)");
+  }
+  return out;
+}
 // NOTA: el endpoint /storage/v1/render/image/public/ requiere el feature
 // de image transformations, que NO está habilitado en este proyecto Supabase.
 // Las imágenes están almacenadas a 400x400 WebP, así que se sirven directo
@@ -9729,41 +9760,49 @@ async function _expoDuplicadosCuit(cuit, selfId) {
   return out;
 }
 
-async function _expoGuardarNuevo(pauseOnly) {
+// mode: "order"    → guarda parcial y va a armar el pedido (arranque incompleto).
+//       "complete" → exige TODOS los datos (salvo expreso). Si falta, avisa qué
+//                    y NO cierra (igual guarda lo que hay). Si está completo,
+//                    cierra y lleva al carrito para pagar/enviar.
+async function _expoGuardarNuevo(mode) {
+  if (mode === true) mode = "order"; // compat retro (viejo pauseOnly)
+  mode = mode || "order";
   var razon = (document.getElementById("expoNewRazon").value || "").trim();
   var cuit = (document.getElementById("expoNewCuit").value || "").replace(/[^0-9]/g, "");
-  // Mínimo para CREAR el registro (auth necesita CUIT). El resto puede quedar
-  // incompleto: se puede PAUSAR e ir a cargar el pedido, pero el ENVÍO del
-  // pedido queda bloqueado hasta que el cliente esté completo (chequeo auto).
-  if (!razon || !cuit) {
-    _expoNewStatus("Razón social y CUIT son obligatorios para poder guardar.", "err");
+  // Mínimo para registrar al cliente: SOLO la razón social (para tenerlo cargado
+  // apenas llega y arrancar el pedido). El CUIT y el resto pueden venir después;
+  // el ENVÍO del pedido queda bloqueado hasta que esté completo (chequeo auto).
+  if (!razon) {
+    _expoNewStatus("La razón social es obligatoria para registrar al cliente.", "err");
     return;
   }
   var addrs = _expoAddrCollect();
 
-  // Validar CUIT (avisar, no bloquear: hay placeholders 99… a propósito).
-  if (!_expoCuitValido(cuit)) {
-    if (!confirm(
-      "El CUIT " + cuit + " no parece válido (dígito verificador no cierra o no tiene 11 dígitos).\n\n" +
-      "¿Guardar igual? (usá esto solo si es un CUIT provisorio)."
-    )) {
-      _expoNewStatus("Revisá el CUIT.", "err");
-      return;
+  // Chequeos de CUIT solo si ya lo cargaron (puede completarse más tarde).
+  if (cuit) {
+    // Validar CUIT (avisar, no bloquear: hay placeholders 99… a propósito).
+    if (!_expoCuitValido(cuit)) {
+      if (!confirm(
+        "El CUIT " + cuit + " no parece válido (dígito verificador no cierra o no tiene 11 dígitos).\n\n" +
+        "¿Guardar igual? (usá esto solo si es un CUIT provisorio)."
+      )) {
+        _expoNewStatus("Revisá el CUIT.", "err");
+        return;
+      }
     }
-  }
-
-  // Aviso de duplicado por CUIT (excluye el propio si es edición).
-  var dups = await _expoDuplicadosCuit(cuit, _expoNewState.id);
-  if (dups.length) {
-    var lista = dups.slice(0, 5).map(function (c) {
-      return "• Cód " + (c.cod_cliente || "—") + " — " + (c.business_name || "");
-    }).join("\n");
-    if (!confirm(
-      "Ya existe " + dups.length + " cliente(s) con el CUIT " + cuit + ":\n\n" +
-      lista + "\n\n¿Crear/actualizar igual?"
-    )) {
-      _expoNewStatus("Alta cancelada: CUIT ya existente.", "err");
-      return;
+    // Aviso de duplicado por CUIT (excluye el propio si es edición).
+    var dups = await _expoDuplicadosCuit(cuit, _expoNewState.id);
+    if (dups.length) {
+      var lista = dups.slice(0, 5).map(function (c) {
+        return "• Cód " + (c.cod_cliente || "—") + " — " + (c.business_name || "");
+      }).join("\n");
+      if (!confirm(
+        "Ya existe " + dups.length + " cliente(s) con el CUIT " + cuit + ":\n\n" +
+        lista + "\n\n¿Crear/actualizar igual?"
+      )) {
+        _expoNewStatus("Alta cancelada: CUIT ya existente.", "err");
+        return;
+      }
     }
   }
   var cod = (document.getElementById("expoNewCod").value || "").trim();
@@ -9782,6 +9821,15 @@ async function _expoGuardarNuevo(pauseOnly) {
   var tel = ""; // campo Teléfono removido del alta (queda WhatsApp)
   var condIvaEl = document.getElementById("expoNewCondIva");
   var condIva = condIvaEl ? condIvaEl.value : "";
+
+  // Completitud automática (todo salvo expreso).
+  var formData = {
+    business_name: razon, cuit: cuit, condicion_iva: condIva, vend: vend,
+    whatsapp: whatsapp, mail: mail, direccion: dirFiscal, numero: numFiscal,
+    cp: cpFiscal, localidad: locFiscal, provincia: provFiscal,
+    direcciones_entrega: addrs,
+  };
+  var completo = _expoDatosCompletos(formData);
 
   var pauseBtn = document.getElementById("expoNewPause");
   var goBtn = document.getElementById("expoNewGoOrder");
@@ -9813,8 +9861,14 @@ async function _expoGuardarNuevo(pauseOnly) {
       localidad: locFiscal || null,
     };
 
-    if (!_expoNewState.id) {
+    // El usuario auth (login del cliente) SOLO se puede crear con CUIT (el email
+    // sintético es <cuit>@cuit.loekemeyer). Si todavía no hay CUIT, se difiere:
+    // se crea cuando se complete. Puede pasar en el alta o en un guardado posterior.
+    if (cuit && !_expoNewState.authId) {
       _expoNewState.authId = await _expoCreateAuthUser(cuit, pin);
+    }
+
+    if (!_expoNewState.id) {
       var insPayload = Object.assign({}, cust, { pin: pin });
       if (_expoNewState.authId) insPayload.auth_user_id = _expoNewState.authId;
       var ins = await supabaseClient
@@ -9825,9 +9879,12 @@ async function _expoGuardarNuevo(pauseOnly) {
       if (ins.error) throw ins.error;
       _expoNewState.id = ins.data.id;
     } else {
+      var updPayload = Object.assign({}, cust);
+      // Si recién ahora se creó el auth (CUIT cargado más tarde), vincularlo.
+      if (_expoNewState.authId) updPayload.auth_user_id = _expoNewState.authId;
       var upd = await supabaseClient
         .from("customers")
-        .update(cust)
+        .update(updPayload)
         .eq("id", _expoNewState.id);
       if (upd.error) throw upd.error;
     }
@@ -9886,13 +9943,8 @@ async function _expoGuardarNuevo(pauseOnly) {
     // Nota: el vend queda en customers.vend + staging (suficiente para el ERP).
     // La asociación a user_customer_links la resuelve el panel admin, no el alta expo.
 
-    if (pauseOnly) {
-      _expoNewStatus("Guardado. Podés cerrar y volver a completar desde “Continuar carga pausada”.", "ok");
-      if (pauseBtn) pauseBtn.disabled = false;
-      if (goBtn) goBtn.disabled = false;
-      _expoRefreshResumeBtn();
-      return;
-    }
+    _expoClientComplete = completo;
+    _expoRefreshResumeBtn();
 
     var custObj = {
       id: _expoNewState.id,
@@ -9902,9 +9954,28 @@ async function _expoGuardarNuevo(pauseOnly) {
       dto_vol: dto,
       vend: vend,
     };
+
+    // "Datos completados" pero faltan: avisar QUÉ falta y NO cerrar. El cliente
+    // queda guardado parcial; el envío del pedido sigue bloqueado hasta completar.
+    if (mode === "complete" && !completo) {
+      var faltan = _expoFaltantes(formData);
+      _expoNewStatus("Faltan datos para confirmar: " + faltan.join(", ") + ".", "err");
+      if (pauseBtn) pauseBtn.disabled = false;
+      if (goBtn) goBtn.disabled = false;
+      return;
+    }
+
     _expoCloseNewModal();
     await expoApplyCustomer(custObj, { forceExpoNew: true });
-    if (typeof showSection === "function") showSection("productos");
+    if (typeof showSection === "function") {
+      if (mode === "complete") {
+        // Datos completos → al carrito si ya hay ítems, si no al catálogo.
+        showSection(cart && cart.length > 0 ? "carrito" : "productos");
+      } else {
+        // Pausar y cargar pedido → al catálogo a armar el pedido.
+        showSection("productos");
+      }
+    }
   } catch (e) {
     _expoNewStatus("Error: " + (e && e.message ? e.message : e), "err");
   } finally {
@@ -9922,7 +9993,9 @@ function _expoWireNewModal() {
   if (m.parentElement !== document.body) document.body.appendChild(m);
   var byId = function (x) { return document.getElementById(x); };
   if (byId("expoNewBackdrop")) byId("expoNewBackdrop").addEventListener("click", _expoCloseNewModal);
-  if (byId("expoNewClose")) byId("expoNewClose").addEventListener("click", _expoCloseNewModal);
+  // "Datos completados": exige TODO (salvo expreso). Si falta, avisa qué; si
+  // está completo, guarda, cierra y lleva al carrito para pagar/enviar.
+  if (byId("expoNewClose")) byId("expoNewClose").addEventListener("click", function () { _expoGuardarNuevo("complete"); });
   // Sucursales nuevas van ARRIBA (prepend = true).
   if (byId("expoAddrAdd")) byId("expoAddrAdd").addEventListener("click", function () { _expoAddrAddRow({}, true); });
   if (byId("expoAddrUseFiscal"))
@@ -9938,9 +10011,8 @@ function _expoWireNewModal() {
         provincia: (byId("expoNewProvFiscal").value || "").trim(),
       }, true);
     });
-  if (byId("expoNewPause")) byId("expoNewPause").addEventListener("click", function () { _expoGuardarNuevo(true); });
-  if (byId("expoNewGoOrder")) byId("expoNewGoOrder").addEventListener("click", function () { _expoGuardarNuevo(false); });
-  // Tic "Confirmo datos completos": habilita el botón de cargar pedido.
+  if (byId("expoNewPause")) byId("expoNewPause").addEventListener("click", function () { _expoGuardarNuevo("order"); });
+  if (byId("expoNewGoOrder")) byId("expoNewGoOrder").addEventListener("click", function () { _expoGuardarNuevo("order"); });
   if (byId("expoNewPinCopy"))
     byId("expoNewPinCopy").addEventListener("click", function () {
       var v = byId("expoNewPin").value;
