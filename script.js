@@ -9321,15 +9321,31 @@ function _expoAddrAddRow(prefill) {
   var row = document.createElement("div");
   row.className = "expo-addr-row";
   row.innerHTML =
+    '<input class="expo-inp expo-addr-tit" placeholder="Nombre sucursal — ej: Gurruchaga 2100 - Palermo" />' +
+    '<div class="expo-addr-fields">' +
     '<input class="expo-inp expo-addr-dir" placeholder="Dirección de entrega" />' +
-    '<input class="expo-inp expo-addr-loc" placeholder="Localidad" />' +
+    '<input class="expo-inp expo-addr-loc" placeholder="Localidad / zona" />' +
     '<input class="expo-inp expo-addr-prov" placeholder="Provincia" />' +
     '<input class="expo-inp expo-addr-exp" placeholder="Expreso (transportista)" />' +
-    '<button type="button" class="expo-addr-del" title="Quitar">&times;</button>';
+    '<button type="button" class="expo-addr-del" title="Quitar">&times;</button>' +
+    "</div>";
+  row.querySelector(".expo-addr-tit").value = prefill.titulo || "";
   row.querySelector(".expo-addr-dir").value = prefill.direccion || "";
   row.querySelector(".expo-addr-loc").value = prefill.localidad || "";
   row.querySelector(".expo-addr-prov").value = prefill.provincia || "";
   row.querySelector(".expo-addr-exp").value = prefill.expreso || "";
+  // Autocompletar el título como "dirección - zona" si el operador no lo tocó.
+  var titEl = row.querySelector(".expo-addr-tit");
+  var dirEl = row.querySelector(".expo-addr-dir");
+  var locEl = row.querySelector(".expo-addr-loc");
+  function _autoTit() {
+    if (titEl.dataset.touched === "1") return;
+    var d = dirEl.value.trim(), l = locEl.value.trim();
+    titEl.value = d && l ? d + " - " + l : d || l || "";
+  }
+  dirEl.addEventListener("input", _autoTit);
+  locEl.addEventListener("input", _autoTit);
+  titEl.addEventListener("input", function () { titEl.dataset.touched = "1"; });
   row.querySelector(".expo-addr-del").addEventListener("click", function () {
     row.remove();
     // Garantizar mínimo 1 fila
@@ -9344,9 +9360,12 @@ function _expoAddrCollect() {
   document.querySelectorAll("#expoAddrList .expo-addr-row").forEach(function (r) {
     var dir = (r.querySelector(".expo-addr-dir").value || "").trim();
     if (!dir) return;
+    var loc = (r.querySelector(".expo-addr-loc").value || "").trim();
+    var tit = (r.querySelector(".expo-addr-tit").value || "").trim();
     out.push({
+      titulo: tit || (loc ? dir + " - " + loc : dir), // nombre de sucursal
       direccion: dir,
-      localidad: (r.querySelector(".expo-addr-loc").value || "").trim(),
+      localidad: loc,
       provincia: (r.querySelector(".expo-addr-prov").value || "").trim(),
       expreso: (r.querySelector(".expo-addr-exp").value || "").trim(),
     });
@@ -9505,7 +9524,7 @@ async function _expoGuardarNuevo(pauseOnly) {
       return {
         customer_id: _expoNewState.id,
         slot: i + 1,
-        label: a.direccion,
+        label: a.titulo || a.direccion, // nombre de la sucursal (dirección - zona)
         direccion_entrega: a.direccion,
         localidad: a.localidad || null,
         provincia: a.provincia || null,
@@ -9586,9 +9605,14 @@ function _expoWireNewModal() {
   if (byId("expoAddrAdd")) byId("expoAddrAdd").addEventListener("click", function () { _expoAddrAddRow(); });
   if (byId("expoAddrUseFiscal"))
     byId("expoAddrUseFiscal").addEventListener("click", function () {
+      var calle = (byId("expoNewDirFiscal").value || "").trim();
+      var nro = (byId("expoNewNumFiscal").value || "").trim();
+      var loc = (byId("expoNewLocFiscal").value || "").trim();
+      var dir = (calle + " " + nro).trim();
       _expoAddrAddRow({
-        direccion: (byId("expoNewDirFiscal").value || "").trim(),
-        localidad: (byId("expoNewLocFiscal").value || "").trim(),
+        titulo: dir && loc ? dir + " - " + loc : dir,
+        direccion: dir,
+        localidad: loc,
         provincia: (byId("expoNewProvFiscal").value || "").trim(),
       });
     });

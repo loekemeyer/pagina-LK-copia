@@ -14422,6 +14422,17 @@ a.user-menu-item:hover {
   gap: 8px;
 }
 .expo-addr-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #eef0f2;
+  border-radius: 10px;
+  padding: 8px;
+}
+.expo-addr-tit {
+  font-weight: 600;
+}
+.expo-addr-fields {
   display: grid;
   grid-template-columns: 1fr 0.8fr 0.8fr 0.9fr auto;
   gap: 6px;
@@ -14470,10 +14481,10 @@ a.user-menu-item:hover {
   .expo-new-grid {
     grid-template-columns: 1fr;
   }
-  .expo-addr-row {
+  .expo-addr-fields {
     grid-template-columns: 1fr 1fr;
   }
-  .expo-addr-row .expo-addr-del {
+  .expo-addr-fields .expo-addr-del {
     grid-column: 1 / -1;
     justify-self: end;
   }
