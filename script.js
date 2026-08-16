@@ -9404,18 +9404,26 @@ async function _expoRefreshResumeBtn() {
   }
 }
 
-// EXPO: panel de cierre en la confirmación (PIN + WhatsApp con resumen).
-// Solo para clientes nuevos de expo (modo cliente-expo activo).
+// EXPO: panel de cierre en la confirmación. El operador manda el resumen por
+// WhatsApp desde el teléfono de ventas (botón wa.me) — NO lo manda un bot solo.
+// Aparece para CUALQUIER cliente expo (nuevo o ya elegido), no solo los nuevos.
+// El PIN sólo se muestra para clientes NUEVOS (modo cliente-expo).
+var _expoConfirmMsg = ""; // resumen armado, para el botón "Copiar resumen"
 async function _expoShowConfirmPanel() {
   var panel = document.getElementById("expoConfirmPanel");
   if (!panel) return;
   var stdWrap = document.querySelector(".success-download-wrap");
-  if (!_expoClientMode || !lastConfirmedOrder || !(customerProfile && customerProfile.id)) {
+  // Sólo tiene sentido en modo expo con un cliente activo (nuevo o elegido).
+  var esExpo =
+    EXPO_MODE && (_expoClientMode || _expoActiveCustomer);
+  if (!esExpo || !lastConfirmedOrder || !(customerProfile && customerProfile.id)) {
     panel.style.display = "none";
+    _expoConfirmMsg = "";
     if (stdWrap) stdWrap.style.display = ""; // cliente normal: descarga estándar visible
     return;
   }
-  // Cliente nuevo expo: el panel trae su propio botón de descarga → ocultar el estándar
+  var esClienteNuevo = !!_expoClientMode;
+  // El panel trae su propio botón de descarga → ocultar el estándar
   if (stdWrap) stdWrap.style.display = "none";
   var pin = "", wsp = "";
   try {
@@ -9429,27 +9437,89 @@ async function _expoShowConfirmPanel() {
       wsp = r.data.whatsapp || "";
     }
   } catch (e) { /* ignore */ }
+
+  // Título + fila del PIN según sea cliente nuevo o ya existente.
+  var titleEl = document.getElementById("expoConfirmTitle");
+  var pinrowEl = document.getElementById("expoConfirmPinrow");
+  if (titleEl) {
+    titleEl.textContent = esClienteNuevo
+      ? "Cliente nuevo — cerrá el circuito"
+      : "Enviá la confirmación al cliente";
+  }
+  if (pinrowEl) pinrowEl.style.display = esClienteNuevo ? "" : "none";
   var pinEl = document.getElementById("expoConfirmPin");
   if (pinEl) pinEl.textContent = pin || "—";
+
+  // ---- Resumen del pedido ----
   var dtoPct = Math.round(Number(lastConfirmedOrder.dtoVol || 0) * 100);
   var total = _expoMoney(lastConfirmedOrder.total || 0);
   var msg =
+    "¡Tu pedido fue confirmado! ✅\n\n" +
     "Hola " + (lastConfirmedOrder.customerName || "") +
-    "! Resumen de tu pedido en Loekemeyer:\n\n" +
+    ", te paso el resumen de tu pedido en Loekemeyer:\n\n" +
     "Pedido N° " + (lastConfirmedOrder.orderId || "") + "\n" +
     "Total: $" + total + " + IVA\n" +
-    "Descuento por volumen otorgado: " + dtoPct + "%\n" +
-    "Pago: Contado (1ra compra)\n\n" +
-    "Para tus próximos pedidos online:\n" +
-    "Usuario: tu CUIT\n" +
-    "Clave: " + (pin || "(a definir)") + "\n\n" +
-    "¡Gracias por tu compra!";
+    "Descuento por volumen otorgado: " + dtoPct + "%\n";
+  if (esClienteNuevo) {
+    msg +=
+      "Pago: Contado (1ra compra)\n\n" +
+      "Para tus próximos pedidos online:\n" +
+      "Usuario: tu CUIT\n" +
+      "Clave: " + (pin || "(a definir)") + "\n\n";
+  } else {
+    msg += "\n";
+  }
+  msg += "¡Gracias por tu compra!";
+  _expoConfirmMsg = msg;
+
   var waBtn = document.getElementById("expoConfirmWa");
   if (waBtn) {
     var num = String(wsp).replace(/[^0-9]/g, "");
+    // Si el cliente no tiene WhatsApp cargado, wa.me igual abre el selector de
+    // contacto con el texto pre-cargado; el operador elige a quién mandarlo.
     waBtn.href = "https://wa.me/" + num + "?text=" + encodeURIComponent(msg);
   }
+  // Reset visual del botón "Copiar resumen" por si quedó en estado "copiado".
+  var copyBtn = document.getElementById("expoConfirmCopy");
+  if (copyBtn) copyBtn.classList.remove("expo-copied");
   panel.style.display = "";
+}
+
+// EXPO: copia el resumen del pedido al portapapeles (fallback para pegarlo a mano).
+async function expoCopiarResumen() {
+  var txt = _expoConfirmMsg || "";
+  if (!txt) return;
+  var ok = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(txt);
+      ok = true;
+    }
+  } catch (e) { /* fallback abajo */ }
+  if (!ok) {
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = txt;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch (e2) { /* nada */ }
+  }
+  var btn = document.getElementById("expoConfirmCopy");
+  if (btn) {
+    var prev = btn.dataset.origHtml || btn.innerHTML;
+    btn.dataset.origHtml = prev;
+    btn.classList.add("expo-copied");
+    btn.innerHTML = ok ? "✓ Resumen copiado" : "No se pudo copiar";
+    setTimeout(function () {
+      btn.classList.remove("expo-copied");
+      btn.innerHTML = btn.dataset.origHtml || prev;
+    }, 1800);
+  }
 }
 
 function expoOpenPickModal() {
@@ -9664,6 +9734,7 @@ function expoClearCustomer() {
   });
 }
 window.expoClearCustomer = expoClearCustomer;
+window.expoCopiarResumen = expoCopiarResumen;
 
 // ---- EXPO: Nuevo cliente (Fase 2) ----
 // Estado del alta en curso: permite pausar (guardar parcial) y volver a editar.
