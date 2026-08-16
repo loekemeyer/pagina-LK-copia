@@ -14353,6 +14353,36 @@ a.user-menu-item:hover {
   color: #9a3412;
   border: 1px solid #fdba74;
 }
+/* Todos los datos completos: entrar a editar (verde, no "pausada") */
+.expo-btn-resume-done {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+.expo-chip-ok {
+  color: #16a34a;
+  font-weight: 700;
+}
+.expo-chip-falta {
+  color: #b45309;
+  font-weight: 700;
+}
+.expo-resume-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.expo-resume-badge.ok {
+  background: #dcfce7;
+  color: #166534;
+}
+.expo-resume-badge.falta {
+  background: #fef3c7;
+  color: #92400e;
+}
 
 /* Barra de checkpoints del descuento por volumen (cliente nuevo de expo) */
 .expo-cp-wrap {

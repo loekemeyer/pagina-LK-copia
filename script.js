@@ -9241,7 +9241,10 @@ function _expoUpdateChip() {
   var inner;
   if (_expoClientMode) {
     // El detalle del dto por volumen se muestra en la barra de checkpoints.
-    inner = name + '<span class="expo-chip-meta">Contado obligatorio 1ª compra</span>';
+    var estado = _expoClientComplete
+      ? '<span class="expo-chip-ok">✓ Datos completos</span>'
+      : '<span class="expo-chip-falta">Faltan datos</span>';
+    inner = name + '<span class="expo-chip-meta">Contado 1ª compra · ' + estado + "</span>";
   } else {
     inner =
       name +
@@ -9330,11 +9333,29 @@ async function _expoRefreshResumeBtn() {
   try {
     var r = await supabaseClient
       .from("expo_clientes_pendientes")
-      .select("id", { count: "exact", head: true })
+      .select("business_name,cuit,condicion_iva,vend,whatsapp,mail,direccion,numero,cp,localidad,provincia,direcciones_entrega")
       .eq("estado", "pendiente");
-    var n = r.count || 0;
-    btn.style.display = n > 0 ? "" : "none";
-    btn.textContent = n > 0 ? "Continuar carga pausada (" + n + ")" : "Continuar carga pausada";
+    if (r.error || !r.data || !r.data.length) {
+      btn.style.display = "none";
+      return;
+    }
+    var total = r.data.length;
+    var incompletos = r.data.filter(function (d) {
+      return !_expoDatosCompletos(d);
+    }).length;
+    btn.style.display = "";
+    if (incompletos > 0) {
+      // Hay clientes con datos a medias → "Continuar carga pausada".
+      btn.classList.add("expo-btn-resume");
+      btn.classList.remove("expo-btn-resume-done");
+      btn.textContent = "Continuar carga pausada (" + incompletos + ")";
+    } else {
+      // Todos completos → no decir "pausada": permitir editar/agregar.
+      btn.classList.remove("expo-btn-resume");
+      btn.classList.add("expo-btn-resume-done");
+      btn.textContent =
+        total > 1 ? "✓ Editar clientes (" + total + ")" : "✓ Editar cliente";
+    }
   } catch (e) {
     btn.style.display = "none";
   }
@@ -10214,9 +10235,13 @@ async function expoOpenResumeModal() {
   var html = "";
   rows.forEach(function (c, i) {
     var nDir = Array.isArray(c.direcciones_entrega) ? c.direcciones_entrega.length : 0;
+    var ok = _expoDatosCompletos(c);
+    var badge = ok
+      ? '<span class="expo-resume-badge ok">✓ Completo</span>'
+      : '<span class="expo-resume-badge falta">Falta datos</span>';
     html +=
       '<button type="button" class="expo-pick-row" data-idx="' + i + '">' +
-      '<span class="expo-pick-name">' + _expoEsc(c.business_name || "(sin razón social)") + "</span>" +
+      '<span class="expo-pick-name">' + _expoEsc(c.business_name || "(sin razón social)") + " " + badge + "</span>" +
       '<span class="expo-pick-sub">Cód ' + _expoEsc(c.cod_cliente || "—") +
       (c.cuit ? " · CUIT " + _expoEsc(c.cuit) : "") +
       " · " + nDir + " dir." + "</span>" +
