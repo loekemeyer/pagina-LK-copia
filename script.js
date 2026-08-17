@@ -9259,6 +9259,16 @@ function _expoRenderCheckpoints() {
 function _expoUpdateChip() {
   var chip = document.getElementById("expoCurrentChip");
   if (!chip) return;
+  // Botón "Catálogo": solo con un cliente EXISTENTE elegido (tiene cod e historial).
+  var _catBtn = document.getElementById("expoCatalogoBtn");
+  if (_catBtn) {
+    var _hc =
+      _expoActiveCustomer &&
+      customerProfile &&
+      customerProfile.id &&
+      customerProfile.cod_cliente;
+    _catBtn.style.display = _hc ? "" : "none";
+  }
   if (!(customerProfile && customerProfile.id && customerProfile.business_name)) {
     chip.textContent = "Sin cliente seleccionado";
     chip.classList.remove("has-client");
@@ -9294,6 +9304,239 @@ function _expoUpdateChip() {
   _expoRefreshResumeBtn();
 }
 
+// ============================================================
+// EXPO — Catálogo de recuperación (PDF) desde el mayorista.
+// Para el cliente EXISTENTE elegido: productos más vendidos que NO compra
+// (con "se vende N× más") + productos que dejó de comprar. Foto de storage,
+// nombre del cliente arriba. Reusa jsPDF (cargado en mayorista.html).
+// ============================================================
+function _expoImgDataURL(src) {
+  return new Promise(function (resolve) {
+    var img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = function () {
+      try {
+        var c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext("2d").drawImage(img, 0, 0);
+        resolve(c.toDataURL("image/jpeg", 0.85));
+      } catch (e) {
+        resolve(null);
+      }
+    };
+    img.onerror = function () { resolve(null); };
+    img.src = src;
+  });
+}
+
+async function _expoCatalogoPDF() {
+  if (!customerProfile || !customerProfile.cod_cliente) {
+    alert("Elegí un cliente existente primero.");
+    return;
+  }
+  if (!(window.jspdf && window.jspdf.jsPDF)) {
+    alert("No se pudo cargar el generador de PDF. Recargá la página.");
+    return;
+  }
+  var cod = String(customerProfile.cod_cliente);
+  var rs = (customerProfile.business_name || "Cliente").trim();
+  var btn = document.getElementById("expoCatalogoBtn");
+  var btnTxt = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "Generando…"; }
+
+  try {
+    // 1. Historial del cliente (item_code, ym, boxes)
+    var hist = await supabaseClient.rpc("get_customer_history", { p_cod_cliente: cod });
+    var rows = (hist && hist.data) || [];
+    var purchased = new Set();
+    var lastYm = {};
+    var months = {};
+    rows.forEach(function (row) {
+      var c = String(row.item_code || "").trim().toUpperCase();
+      if (!c) return;
+      if ((Number(row.boxes) || 0) <= 0) return;
+      purchased.add(c);
+      var ym = String(row.ym || "");
+      if (!lastYm[c] || ym > lastYm[c]) lastYm[c] = ym;
+      months[c] = (months[c] || 0) + 1;
+    });
+
+    // 2. Estadística madre (demanda por SKU en todo el negocio)
+    var em = {};
+    var esRes = await supabaseClient
+      .from("estadistica_madre")
+      .select("cod, e_madre_uni_mes, ranking, descripcion, categoria")
+      .limit(3000);
+    (((esRes && esRes.data) || [])).forEach(function (r) {
+      em[String(r.cod || "").trim().toUpperCase()] = r;
+    });
+
+    // 3. Mapa del catálogo por código (para descripción + foto)
+    var prodByCod = {};
+    (products || []).forEach(function (p) {
+      var c = String(p.cod || "").trim().toUpperCase();
+      if (c) prodByCod[c] = p;
+    });
+
+    // 4. A ofrecer: catálogo vendible que NO compra, ordenado por demanda
+    var bv = [];
+    purchased.forEach(function (c) {
+      var e = em[c];
+      if (e && e.e_madre_uni_mes > 0) bv.push(e.e_madre_uni_mes);
+    });
+    bv.sort(function (x, y) { return x - y; });
+    var base = bv.length ? bv[Math.floor(bv.length / 2)] : 0;
+    var ofrecer = [];
+    (products || []).forEach(function (p) {
+      var c = String(p.cod || "").trim().toUpperCase();
+      if (!c || purchased.has(c)) return;
+      var e = em[c];
+      if (!e || (e.ranking == null && !e.e_madre_uni_mes)) return;
+      ofrecer.push({
+        cod: c,
+        descripcion: p.description || e.descripcion || c,
+        categoria: p.category || e.categoria || "",
+        ranking: e.ranking,
+        e_madre: e.e_madre_uni_mes,
+        mult: e.e_madre_uni_mes && base ? e.e_madre_uni_mes / base : null,
+      });
+    });
+    ofrecer.sort(function (m, n) {
+      var rm = m.ranking == null ? 1e9 : m.ranking;
+      var rn = n.ranking == null ? 1e9 : n.ranking;
+      return rm - rn;
+    });
+    ofrecer = ofrecer.slice(0, 20);
+
+    // 5. Bajas: comprados en >=2 meses cuya última compra es vieja (>=4 meses)
+    function ymNum(ym) {
+      var m = String(ym).match(/(\d{4})[-\/]?(\d{2})/);
+      return m ? parseInt(m[1], 10) * 12 + parseInt(m[2], 10) : 0;
+    }
+    var hoy = new Date();
+    var hoyNum = hoy.getFullYear() * 12 + (hoy.getMonth() + 1);
+    var bajas = [];
+    Object.keys(lastYm).forEach(function (c) {
+      if ((months[c] || 0) < 2) return;
+      if (hoyNum - ymNum(lastYm[c]) < 4) return;
+      var p = prodByCod[c];
+      bajas.push({
+        cod: c,
+        descripcion: (p && p.description) || (em[c] && em[c].descripcion) || c,
+        ultimaYm: lastYm[c],
+      });
+    });
+    bajas.sort(function (a, b) { return String(b.ultimaYm).localeCompare(String(a.ultimaYm)); });
+    bajas = bajas.slice(0, 20);
+
+    if (!ofrecer.length && !bajas.length) {
+      alert("No hay productos para armar el catálogo de este cliente.");
+      return;
+    }
+
+    await _expoBuildCatalogoPDF(rs, cod, ofrecer, bajas);
+  } catch (e) {
+    console.error("[expo] catálogo PDF falló:", e);
+    alert("No se pudo generar el catálogo: " + (e && e.message ? e.message : e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = btnTxt || "📄 Catálogo"; }
+  }
+}
+
+async function _expoBuildCatalogoPDF(rs, cod, ofrecer, bajas) {
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF("p", "mm", "a4");
+  var W = 210, H = 297, M = 14;
+
+  doc.setFillColor(17, 24, 39);
+  doc.rect(0, 0, W, 46, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("SELECCIÓN PREPARADA PARA", M, 18);
+  doc.setFontSize(20);
+  doc.text(String(rs).toUpperCase().slice(0, 38), M, 30);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(210, 210, 210);
+  doc.text("Cod " + cod + "  ·  Productos elegidos para vos", M, 40);
+  doc.setTextColor(0, 0, 0);
+  var y = 56;
+
+  function seccion(txt) {
+    if (y > H - 44) { doc.addPage(); y = M + 6; }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(180, 30, 30);
+    doc.text(txt, M, y);
+    doc.setTextColor(0, 0, 0);
+    y += 3;
+    doc.setDrawColor(220, 220, 220);
+    doc.line(M, y, W - M, y);
+    y += 8;
+  }
+
+  async function card(cod2, titulo, sub) {
+    var photoW = 34, rowH = 40;
+    if (y + rowH > H - M) { doc.addPage(); y = M + 6; }
+    var dataUrl = await _expoImgDataURL(
+      BASE_IMG + encodeURIComponent(cod2) + ".webp" + IMG_PARAMS
+    );
+    if (dataUrl) {
+      try { doc.addImage(dataUrl, "JPEG", M, y, photoW, photoW); } catch (e) {}
+    } else {
+      doc.setDrawColor(225, 225, 225);
+      doc.rect(M, y, photoW, photoW);
+      doc.setFontSize(7);
+      doc.setTextColor(160, 160, 160);
+      doc.text("sin foto", M + 9, y + 18);
+      doc.setTextColor(0, 0, 0);
+    }
+    var tx = M + photoW + 6;
+    var maxw = W - tx - M;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(doc.splitTextToSize(String(titulo), maxw), tx, y + 8);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(90, 90, 90);
+    doc.text(doc.splitTextToSize(String(sub), maxw), tx, y + 19);
+    doc.setTextColor(0, 0, 0);
+    doc.setDrawColor(240, 240, 240);
+    doc.line(M, y + rowH - 3, W - M, y + rowH - 3);
+    y += rowH;
+  }
+
+  if (ofrecer.length) {
+    seccion("PRODUCTOS PARA SUMAR");
+    for (var k = 0; k < ofrecer.length; k++) {
+      var o = ofrecer[k];
+      var sub = o.categoria ? o.categoria + ". " : "";
+      if (o.mult && o.mult >= 1.3) {
+        sub += "Se vende ~" + (o.mult >= 10 ? Math.round(o.mult) : o.mult.toFixed(1)) +
+          "× más que tu compra promedio.";
+      } else if (o.e_madre) {
+        sub += "Buena demanda en el mercado.";
+      }
+      await card(o.cod, o.descripcion || o.cod, sub || "Producto del catálogo.");
+    }
+  }
+
+  if (bajas.length) {
+    seccion("PRODUCTOS QUE DEJASTE DE LLEVAR");
+    for (var j = 0; j < bajas.length; j++) {
+      var b = bajas[j];
+      var ym = String(b.ultimaYm || "");
+      var lastTxt = ym ? "Última compra: " + ym.slice(0, 7) : "";
+      await card(b.cod, b.descripcion || b.cod, lastTxt || "Lo comprabas antes.");
+    }
+  }
+
+  doc.save("catalogo_" + cod + ".pdf");
+}
+window._expoCatalogoPDF = _expoCatalogoPDF;
+
 function renderExpoEntryBar() {
   var bar = document.createElement("div");
   bar.id = "customerSelectorBanner";
@@ -9304,6 +9547,7 @@ function renderExpoEntryBar() {
     '<button type="button" class="expo-btn expo-btn-pick" id="expoElegirBtn">Elegir cliente</button>' +
     '<button type="button" class="expo-btn expo-btn-new" id="expoNuevoBtn">+ Nuevo cliente</button>' +
     '<button type="button" class="expo-btn expo-btn-resume" id="expoContinuarBtn" style="display:none">Continuar carga pausada</button>' +
+    '<button type="button" class="expo-btn expo-btn-new" id="expoCatalogoBtn" style="display:none" title="Catálogo de recuperación con fotos para mostrarle al cliente" onclick="_expoCatalogoPDF()">📄 Catálogo</button>' +
     "</div>" +
     '<select id="customerSelect" class="expo-hidden-select" tabindex="-1" aria-hidden="true"><option value=""></option></select>';
 
