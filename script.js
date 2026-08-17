@@ -9733,6 +9733,7 @@ function expoClearCustomer() {
 }
 window.expoClearCustomer = expoClearCustomer;
 window.expoCopiarResumen = expoCopiarResumen;
+window._expoCloseNewModal = _expoCloseNewModal;
 
 // ---- EXPO: Nuevo cliente (Fase 2) ----
 // Estado del alta en curso: permite pausar (guardar parcial) y volver a editar.
