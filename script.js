@@ -9330,6 +9330,43 @@ function _expoImgDataURL(src) {
   });
 }
 
+// --- Motor de equivalencias de producto (base + variante) ---
+// La "base" es el tipo de producto sin la variante (material/mango/terminación/
+// tamaño). Dos productos con la misma base son equivalentes. La lista de tokens
+// de variante es EDITABLE — si una equivalencia sale mal, se ajusta acá.
+var EQUIV_VARIANT = {
+  cromado: 1, cromada: 1, niquelado: 1, niquelada: 1, rojo: 1, roja: 1,
+  color: 1, colores: 1, metalizado: 1, metalizada: 1, metalizados: 1,
+  acacia: 1, nylon: 1, silicona: 1, silicon: 1, inox: 1, inoxidable: 1,
+  acero: 1, madera: 1, loeke: 1, ergonomico: 1, bambu: 1, premium: 1,
+  alambre: 1, plastico: 1, plastica: 1, mgo: 1, mango: 1, capuchon: 1,
+  super: 1, tradicional: 1, chata: 1, ac: 1
+};
+var EQUIV_PREMIUM = { acacia: 1, inox: 1, inoxidable: 1, acero: 1, silicona: 1, premium: 1, bambu: 1 };
+function _equivNorm(s) {
+  return String(s || "").toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+}
+function _equivBase(desc) {
+  var toks = _equivNorm(desc).split(" ").filter(function (t) {
+    if (!t) return false;
+    if (EQUIV_VARIANT[t]) return false;
+    if (/^\d+(cm|mm|ml|lt|l|pza)?$/.test(t)) return false; // tamaños/cantidades
+    if (t.length === 1) return false; // tokens sueltos (c/, x, etc.)
+    if (t === "de" || t === "la" || t === "el" || t === "con" || t === "para" ||
+        t === "pza" || t === "pieza" || t === "uso" || t === "usos" || t === "pie") return false;
+    return true;
+  });
+  if (toks[0] && toks[0].length > 4 && toks[0].slice(-1) === "s") toks[0] = toks[0].slice(0, -1);
+  return toks.join(" ");
+}
+function _equivTier(desc) {
+  var toks = _equivNorm(desc).split(" ");
+  for (var i = 0; i < toks.length; i++) if (EQUIV_PREMIUM[toks[i]]) return 1;
+  return 0;
+}
+
 async function _expoCatalogoPDF() {
   if (!customerProfile || !customerProfile.cod_cliente) {
     alert("Elegí un cliente existente primero.");
@@ -9379,40 +9416,79 @@ async function _expoCatalogoPDF() {
       if (c) prodByCod[c] = p;
     });
 
-    // 4. A ofrecer: catálogo vendible que NO compra, ordenado por demanda
-    var bv = [];
-    purchased.forEach(function (c) {
-      var e = em[c];
-      if (e && e.e_madre_uni_mes > 0) bv.push(e.e_madre_uni_mes);
+    // 4. Equivalencias: base -> grupo de productos; y qué base ya lleva el cliente
+    var groupByBase = {};
+    var baseOf = {};
+    (products || []).forEach(function (p) {
+      var c = String(p.cod || "").trim().toUpperCase();
+      if (!c) return;
+      var b = _equivBase(p.description || "");
+      if (!b) return;
+      baseOf[c] = b;
+      (groupByBase[b] = groupByBase[b] || []).push({
+        cod: c,
+        desc: p.description || c,
+        tier: _equivTier(p.description || ""),
+        precio: p.list_price != null && p.uxb != null ? Number(p.list_price) * Number(p.uxb) : null,
+        uxb: p.uxb != null ? Number(p.uxb) : null,
+        ranking: em[c] ? em[c].ranking : null,
+      });
     });
+    var carried = {}; // base -> {tier, desc} de lo que YA lleva
+    purchased.forEach(function (c) {
+      var b = baseOf[c];
+      if (!b) return;
+      var d = (prodByCod[c] && prodByCod[c].description) || c;
+      var t = _equivTier((prodByCod[c] && prodByCod[c].description) || "");
+      if (!carried[b] || t > carried[b].tier) carried[b] = { tier: t, desc: d };
+    });
+
+    // baseline de demanda para el "N× más"
+    var bv = [];
+    purchased.forEach(function (c) { var e = em[c]; if (e && e.e_madre_uni_mes > 0) bv.push(e.e_madre_uni_mes); });
     bv.sort(function (x, y) { return x - y; });
-    var base = bv.length ? bv[Math.floor(bv.length / 2)] : 0;
-    var ofrecer = [];
+    var baseline = bv.length ? bv[Math.floor(bv.length / 2)] : 0;
+
+    // 5. SUMAR: más vendidos que no compra, SIN los equivalentes de lo que ya lleva
+    var sumar = [];
     (products || []).forEach(function (p) {
       var c = String(p.cod || "").trim().toUpperCase();
       if (!c || purchased.has(c)) return;
       var e = em[c];
       if (!e || (e.ranking == null && !e.e_madre_uni_mes)) return;
-      ofrecer.push({
-        cod: c,
-        descripcion: p.description || e.descripcion || c,
-        categoria: p.category || e.categoria || "",
-        ranking: e.ranking,
-        e_madre: e.e_madre_uni_mes,
-        mult: e.e_madre_uni_mes && base ? e.e_madre_uni_mes / base : null,
-        precio: p.list_price != null && p.uxb != null
-          ? Number(p.list_price) * Number(p.uxb) : null,
+      if (carried[baseOf[c]]) return; // ya lleva un equivalente → no redundar
+      var mult = e.e_madre_uni_mes && baseline ? e.e_madre_uni_mes / baseline : null;
+      var sub = p.category ? p.category + ". " : "";
+      if (mult && mult >= 1.3) sub += "Se vende ~" + (mult >= 10 ? Math.round(mult) : mult.toFixed(1)) + "× más que tu compra promedio.";
+      sumar.push({
+        cod: c, titulo: p.description || c,
+        precio: p.list_price != null && p.uxb != null ? Number(p.list_price) * Number(p.uxb) : null,
         uxb: p.uxb != null ? Number(p.uxb) : null,
+        sub: sub, ranking: e.ranking,
       });
     });
-    ofrecer.sort(function (m, n) {
-      var rm = m.ranking == null ? 1e9 : m.ranking;
-      var rn = n.ranking == null ? 1e9 : n.ranking;
-      return rm - rn;
-    });
-    ofrecer = ofrecer.slice(0, 20);
+    sumar.sort(function (m, n) { var rm = m.ranking == null ? 1e9 : m.ranking; var rn = n.ranking == null ? 1e9 : n.ranking; return rm - rn; });
+    sumar = sumar.slice(0, 16);
 
-    // 5. Bajas: comprados en >=2 meses cuya última compra es vieja (>=4 meses)
+    // 6. MEJORÁ: para cada base que lleva en estándar, la versión premium equivalente
+    var upgrades = [];
+    var seenUp = {};
+    Object.keys(carried).forEach(function (b) {
+      if (carried[b].tier >= 1) return; // ya lleva premium
+      (groupByBase[b] || []).forEach(function (g) {
+        if (g.tier < 1 || purchased.has(g.cod) || seenUp[g.cod]) return;
+        seenUp[g.cod] = 1;
+        upgrades.push({
+          cod: g.cod, titulo: g.desc, precio: g.precio, uxb: g.uxb,
+          sub: "Vos llevás " + String(carried[b].desc).trim() + ". Probá esta versión premium.",
+          ranking: g.ranking,
+        });
+      });
+    });
+    upgrades.sort(function (m, n) { var rm = m.ranking == null ? 1e9 : m.ranking; var rn = n.ranking == null ? 1e9 : n.ranking; return rm - rn; });
+    upgrades = upgrades.slice(0, 8);
+
+    // 7. Bajas: comprados en >=2 meses cuya última compra es vieja (>=4 meses)
     function ymNum(ym) {
       var m = String(ym).match(/(\d{4})[-\/]?(\d{2})/);
       return m ? parseInt(m[1], 10) * 12 + parseInt(m[2], 10) : 0;
@@ -9424,24 +9500,28 @@ async function _expoCatalogoPDF() {
       if ((months[c] || 0) < 2) return;
       if (hoyNum - ymNum(lastYm[c]) < 4) return;
       var p = prodByCod[c];
+      var ym = String(lastYm[c] || "");
       bajas.push({
-        cod: c,
-        descripcion: (p && p.description) || (em[c] && em[c].descripcion) || c,
-        ultimaYm: lastYm[c],
-        precio: p && p.list_price != null && p.uxb != null
-          ? Number(p.list_price) * Number(p.uxb) : null,
+        cod: c, titulo: (p && p.description) || (em[c] && em[c].descripcion) || c,
+        precio: p && p.list_price != null && p.uxb != null ? Number(p.list_price) * Number(p.uxb) : null,
         uxb: p && p.uxb != null ? Number(p.uxb) : null,
+        sub: ym ? "Última compra: " + ym.slice(0, 7) : "Lo comprabas antes.",
+        _ym: ym,
       });
     });
-    bajas.sort(function (a, b) { return String(b.ultimaYm).localeCompare(String(a.ultimaYm)); });
-    bajas = bajas.slice(0, 20);
+    bajas.sort(function (a, b) { return String(b._ym).localeCompare(String(a._ym)); });
+    bajas = bajas.slice(0, 16);
 
-    if (!ofrecer.length && !bajas.length) {
+    var secciones = [];
+    if (sumar.length) secciones.push({ titulo: "PRODUCTOS PARA SUMAR", items: sumar });
+    if (upgrades.length) secciones.push({ titulo: "MEJORÁ LO QUE YA LLEVÁS", items: upgrades });
+    if (bajas.length) secciones.push({ titulo: "PRODUCTOS QUE DEJASTE DE LLEVAR", items: bajas });
+
+    if (!secciones.length) {
       alert("No hay productos para armar el catálogo de este cliente.");
       return;
     }
-
-    await _expoBuildCatalogoPDF(rs, cod, ofrecer, bajas);
+    await _expoBuildCatalogoPDF(rs, cod, secciones);
   } catch (e) {
     console.error("[expo] catálogo PDF falló:", e);
     alert("No se pudo generar el catálogo: " + (e && e.message ? e.message : e));
@@ -9450,7 +9530,7 @@ async function _expoCatalogoPDF() {
   }
 }
 
-async function _expoBuildCatalogoPDF(rs, cod, ofrecer, bajas) {
+async function _expoBuildCatalogoPDF(rs, cod, secciones) {
   var jsPDF = window.jspdf.jsPDF;
   var doc = new jsPDF("p", "mm", "a4");
   var W = 210, H = 297, M = 12, GAP = 8;
@@ -9496,7 +9576,7 @@ async function _expoBuildCatalogoPDF(rs, cod, ofrecer, bajas) {
     y += 7;
   }
 
-  async function card(item, titulo, sub) {
+  async function card(item) {
     if (col === 0 && y + cardH > H - M) nextPage();
     var x = M + col * (colW + GAP);
     var px = x + (colW - photoW) / 2;
@@ -9516,7 +9596,7 @@ async function _expoBuildCatalogoPDF(rs, cod, ofrecer, bajas) {
     var ty = y + photoW + 6;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    var tl = doc.splitTextToSize(String(titulo), colW).slice(0, 2);
+    var tl = doc.splitTextToSize(String(item.titulo || item.cod), colW).slice(0, 2);
     doc.text(tl, x, ty);
     ty += tl.length * 4.4 + 1;
     if (item.precio) {
@@ -9527,38 +9607,20 @@ async function _expoBuildCatalogoPDF(rs, cod, ofrecer, bajas) {
       doc.setTextColor(0, 0, 0);
       ty += 5;
     }
-    if (sub) {
+    if (item.sub) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(110, 110, 110);
-      doc.text(doc.splitTextToSize(String(sub), colW).slice(0, 3), x, ty);
+      doc.text(doc.splitTextToSize(String(item.sub), colW).slice(0, 3), x, ty);
       doc.setTextColor(0, 0, 0);
     }
     if (col === 0) { col = 1; } else { col = 0; y += cardH; }
   }
 
-  if (ofrecer.length) {
-    seccion("PRODUCTOS PARA SUMAR");
-    for (var k = 0; k < ofrecer.length; k++) {
-      var o = ofrecer[k];
-      var sub = o.categoria ? o.categoria + ". " : "";
-      if (o.mult && o.mult >= 1.3) {
-        sub += "Se vende ~" + (o.mult >= 10 ? Math.round(o.mult) : o.mult.toFixed(1)) +
-          "× más que tu compra promedio.";
-      }
-      await card(o, o.descripcion || o.cod, sub);
-    }
-    if (col === 1) { y += cardH; col = 0; }
-  }
-
-  if (bajas.length) {
-    seccion("PRODUCTOS QUE DEJASTE DE LLEVAR");
-    for (var j = 0; j < bajas.length; j++) {
-      var b = bajas[j];
-      var ym = String(b.ultimaYm || "");
-      var lastTxt = ym ? "Última compra: " + ym.slice(0, 7) : "Lo comprabas antes.";
-      await card(b, b.descripcion || b.cod, lastTxt);
-    }
+  for (var s = 0; s < (secciones || []).length; s++) {
+    seccion(secciones[s].titulo);
+    var items = secciones[s].items || [];
+    for (var i = 0; i < items.length; i++) await card(items[i]);
     if (col === 1) { y += cardH; col = 0; }
   }
 
