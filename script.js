@@ -9400,6 +9400,9 @@ async function _expoCatalogoPDF() {
         ranking: e.ranking,
         e_madre: e.e_madre_uni_mes,
         mult: e.e_madre_uni_mes && base ? e.e_madre_uni_mes / base : null,
+        precio: p.list_price != null && p.uxb != null
+          ? Number(p.list_price) * Number(p.uxb) : null,
+        uxb: p.uxb != null ? Number(p.uxb) : null,
       });
     });
     ofrecer.sort(function (m, n) {
@@ -9425,6 +9428,9 @@ async function _expoCatalogoPDF() {
         cod: c,
         descripcion: (p && p.description) || (em[c] && em[c].descripcion) || c,
         ultimaYm: lastYm[c],
+        precio: p && p.list_price != null && p.uxb != null
+          ? Number(p.list_price) * Number(p.uxb) : null,
+        uxb: p && p.uxb != null ? Number(p.uxb) : null,
       });
     });
     bajas.sort(function (a, b) { return String(b.ultimaYm).localeCompare(String(a.ultimaYm)); });
@@ -9447,65 +9453,88 @@ async function _expoCatalogoPDF() {
 async function _expoBuildCatalogoPDF(rs, cod, ofrecer, bajas) {
   var jsPDF = window.jspdf.jsPDF;
   var doc = new jsPDF("p", "mm", "a4");
-  var W = 210, H = 297, M = 14;
+  var W = 210, H = 297, M = 12, GAP = 8;
+  var colW = (W - 2 * M - GAP) / 2; // ~89 mm
+  var photoW = 46;
+  var cardH = 82;
+  var y, col;
 
+  function money(n) {
+    if (n == null || !isFinite(n)) return "";
+    return "$" + Math.round(n).toLocaleString("es-AR");
+  }
+
+  // Encabezado
   doc.setFillColor(17, 24, 39);
-  doc.rect(0, 0, W, 46, "F");
+  doc.rect(0, 0, W, 42, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("SELECCIÓN PREPARADA PARA", M, 18);
-  doc.setFontSize(20);
-  doc.text(String(rs).toUpperCase().slice(0, 38), M, 30);
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.setTextColor(210, 210, 210);
-  doc.text("Cod " + cod + "  ·  Productos elegidos para vos", M, 40);
+  doc.text("SELECCIÓN PREPARADA PARA", M, 16);
+  doc.setFontSize(18);
+  doc.text(String(rs).toUpperCase().slice(0, 40), M, 27);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(200, 200, 200);
+  doc.text("Cod " + cod + "  ·  Productos elegidos para vos", M, 36);
   doc.setTextColor(0, 0, 0);
-  var y = 56;
+  y = 50; col = 0;
+
+  function nextPage() { doc.addPage(); y = M + 4; col = 0; }
 
   function seccion(txt) {
-    if (y > H - 44) { doc.addPage(); y = M + 6; }
+    if (col === 1) { y += cardH; col = 0; } // cerrar fila incompleta
+    if (y > H - cardH - 12) nextPage();
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
+    doc.setFontSize(12);
     doc.setTextColor(180, 30, 30);
     doc.text(txt, M, y);
     doc.setTextColor(0, 0, 0);
-    y += 3;
+    y += 2;
     doc.setDrawColor(220, 220, 220);
     doc.line(M, y, W - M, y);
-    y += 8;
+    y += 7;
   }
 
-  async function card(cod2, titulo, sub) {
-    var photoW = 34, rowH = 40;
-    if (y + rowH > H - M) { doc.addPage(); y = M + 6; }
+  async function card(item, titulo, sub) {
+    if (col === 0 && y + cardH > H - M) nextPage();
+    var x = M + col * (colW + GAP);
+    var px = x + (colW - photoW) / 2;
     var dataUrl = await _expoImgDataURL(
-      BASE_IMG + encodeURIComponent(cod2) + ".webp" + IMG_PARAMS
+      BASE_IMG + encodeURIComponent(item.cod) + ".webp" + IMG_PARAMS
     );
     if (dataUrl) {
-      try { doc.addImage(dataUrl, "JPEG", M, y, photoW, photoW); } catch (e) {}
+      try { doc.addImage(dataUrl, "JPEG", px, y, photoW, photoW); } catch (e) {}
     } else {
-      doc.setDrawColor(225, 225, 225);
-      doc.rect(M, y, photoW, photoW);
+      doc.setDrawColor(230, 230, 230);
+      doc.rect(px, y, photoW, photoW);
       doc.setFontSize(7);
-      doc.setTextColor(160, 160, 160);
-      doc.text("sin foto", M + 9, y + 18);
+      doc.setTextColor(175, 175, 175);
+      doc.text("sin foto", x + colW / 2 - 6, y + photoW / 2);
       doc.setTextColor(0, 0, 0);
     }
-    var tx = M + photoW + 6;
-    var maxw = W - tx - M;
+    var ty = y + photoW + 6;
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text(doc.splitTextToSize(String(titulo), maxw), tx, y + 8);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(90, 90, 90);
-    doc.text(doc.splitTextToSize(String(sub), maxw), tx, y + 19);
-    doc.setTextColor(0, 0, 0);
-    doc.setDrawColor(240, 240, 240);
-    doc.line(M, y + rowH - 3, W - M, y + rowH - 3);
-    y += rowH;
+    doc.setFontSize(10);
+    var tl = doc.splitTextToSize(String(titulo), colW).slice(0, 2);
+    doc.text(tl, x, ty);
+    ty += tl.length * 4.4 + 1;
+    if (item.precio) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(20, 120, 40);
+      doc.text(money(item.precio) + (item.uxb ? " /caja (" + item.uxb + " u.)" : ""), x, ty);
+      doc.setTextColor(0, 0, 0);
+      ty += 5;
+    }
+    if (sub) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(110, 110, 110);
+      doc.text(doc.splitTextToSize(String(sub), colW).slice(0, 3), x, ty);
+      doc.setTextColor(0, 0, 0);
+    }
+    if (col === 0) { col = 1; } else { col = 0; y += cardH; }
   }
 
   if (ofrecer.length) {
@@ -9516,11 +9545,10 @@ async function _expoBuildCatalogoPDF(rs, cod, ofrecer, bajas) {
       if (o.mult && o.mult >= 1.3) {
         sub += "Se vende ~" + (o.mult >= 10 ? Math.round(o.mult) : o.mult.toFixed(1)) +
           "× más que tu compra promedio.";
-      } else if (o.e_madre) {
-        sub += "Buena demanda en el mercado.";
       }
-      await card(o.cod, o.descripcion || o.cod, sub || "Producto del catálogo.");
+      await card(o, o.descripcion || o.cod, sub);
     }
+    if (col === 1) { y += cardH; col = 0; }
   }
 
   if (bajas.length) {
@@ -9528,9 +9556,10 @@ async function _expoBuildCatalogoPDF(rs, cod, ofrecer, bajas) {
     for (var j = 0; j < bajas.length; j++) {
       var b = bajas[j];
       var ym = String(b.ultimaYm || "");
-      var lastTxt = ym ? "Última compra: " + ym.slice(0, 7) : "";
-      await card(b.cod, b.descripcion || b.cod, lastTxt || "Lo comprabas antes.");
+      var lastTxt = ym ? "Última compra: " + ym.slice(0, 7) : "Lo comprabas antes.";
+      await card(b, b.descripcion || b.cod, lastTxt);
     }
+    if (col === 1) { y += cardH; col = 0; }
   }
 
   doc.save("catalogo_" + cod + ".pdf");
