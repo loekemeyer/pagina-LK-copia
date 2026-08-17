@@ -320,6 +320,11 @@ async function buscarCliente(codCliente) {
         '<button type="button" id="btnExportarExcelInline" ' +
         'class="avc-btn avc-btn-primary avc-rs-export">' +
         '<span aria-hidden="true">📊</span> Exportar Excel' +
+        "</button>" +
+        '<button type="button" id="btnCatalogoPDF" ' +
+        'class="avc-btn avc-btn-primary avc-rs-export" style="margin-left:8px" ' +
+        'title="Catálogo con fotos para mostrarle al cliente (a ofrecer + bajas)">' +
+        '<span aria-hidden="true">📄</span> Catálogo PDF' +
         "</button>";
       _rsHeaderEl.hidden = false;
       // Wire del botón inline directo al handler de exportar
@@ -327,6 +332,11 @@ async function buscarCliente(codCliente) {
       if (_newExportBtn && !_newExportBtn.__wired) {
         _newExportBtn.addEventListener("click", onExportarExcel);
         _newExportBtn.__wired = true;
+      }
+      var _pdfBtn = document.getElementById("btnCatalogoPDF");
+      if (_pdfBtn && !_pdfBtn.__wired) {
+        _pdfBtn.addEventListener("click", avcDescargarCatalogoPDF);
+        _pdfBtn.__wired = true;
       }
     }
 
@@ -1185,6 +1195,16 @@ function computeAOfrecer(excludedSet) {
   // excluyendo los items que el cliente ya compró (set provisto, normalmente global).
   var excluded = excludedSet instanceof Set ? excludedSet : new Set();
 
+  // Baseline de demanda = mediana del e_madre (unidades/mes en el negocio) de
+  // los productos que el cliente SÍ compra. Sirve para el "se vende N× más".
+  var _baseVals = [];
+  excluded.forEach(function (cod) {
+    var em = estadisticaMadre[cod];
+    if (em && em.e_madre_uni_mes > 0) _baseVals.push(em.e_madre_uni_mes);
+  });
+  _baseVals.sort(function (a, b) { return a - b; });
+  var _baseline = _baseVals.length ? _baseVals[Math.floor(_baseVals.length / 2)] : 0;
+
   var arr = [];
   Object.keys(productByCod).forEach(function (cod) {
     var p = productByCod[cod];
@@ -1199,6 +1219,7 @@ function computeAOfrecer(excludedSet) {
       categoria: p.categoria || (em ? em.categoria : "") || "",
       ranking: em ? em.ranking : null,
       e_madre: em ? em.e_madre_uni_mes : null,
+      mult: em && em.e_madre_uni_mes && _baseline ? em.e_madre_uni_mes / _baseline : null,
     });
   });
 
@@ -1211,6 +1232,163 @@ function computeAOfrecer(excludedSet) {
   });
   return arr.slice(0, TOP_OFRECER);
 }
+
+// ============================================================
+// CATÁLOGO DE RECUPERACIÓN (PDF) — para mostrarle al cliente cara a cara.
+// Arma un PDF con el nombre del cliente arriba, las fotos de storage, los
+// productos A OFRECER (nuevos no comprados, con "se vende N× más") y las
+// BAJAS (los que compraba y dejó). Reusa jsPDF (cargado en admin.html).
+// ============================================================
+var AVC_BASE_IMG =
+  AVC_SUPABASE_URL + "/storage/v1/object/public/products-images/";
+
+function avcLoadImageDataURL(src) {
+  return new Promise(function (resolve) {
+    var img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = function () {
+      try {
+        var c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext("2d").drawImage(img, 0, 0);
+        resolve(c.toDataURL("image/jpeg", 0.85));
+      } catch (e) {
+        resolve(null); // canvas "tainted" (CORS) u otro
+      }
+    };
+    img.onerror = function () { resolve(null); };
+    img.src = src;
+  });
+}
+
+async function avcDescargarCatalogoPDF() {
+  if (!currentCustomer) { alert("Elegí un cliente primero."); return; }
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert("No se pudo cargar el generador de PDF (jsPDF). Recargá la página.");
+    return;
+  }
+  var br = null;
+  for (var i = 0; i < branches.length; i++) {
+    if (branches[i].key === activeBranchKey) { br = branches[i]; break; }
+  }
+  if (!br) br = branches[0];
+  var a = (br && br.analysis) || {};
+  var aOfrecer = (a.aOfrecer || []).slice(0, TOP_OFRECER);
+  var bajas = a.bajas || [];
+  if (!aOfrecer.length && !bajas.length) {
+    alert("Este cliente no tiene productos para ofrecer ni bajas para mostrar.");
+    return;
+  }
+
+  var btn = document.getElementById("btnCatalogoPDF");
+  var btnTxt = btn ? btn.innerHTML : "";
+  if (btn) { btn.disabled = true; btn.innerHTML = "Generando…"; }
+
+  try {
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF("p", "mm", "a4");
+    var W = 210, H = 297, M = 14;
+    var rs = (currentCustomer.business_name || "Cliente").trim();
+
+    // ---- Encabezado personalizado ----
+    doc.setFillColor(17, 24, 39);
+    doc.rect(0, 0, W, 46, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("SELECCIÓN PREPARADA PARA", M, 18);
+    doc.setFontSize(20);
+    doc.text(rs.toUpperCase().slice(0, 38), M, 30);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(210, 210, 210);
+    doc.text(
+      "Cod " + (currentCustomer.cod_cliente || "") + "  ·  Productos elegidos para vos",
+      M, 40
+    );
+    doc.setTextColor(0, 0, 0);
+    var y = 56;
+
+    function seccion(txt) {
+      if (y > H - 44) { doc.addPage(); y = M + 6; }
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(180, 30, 30);
+      doc.text(txt, M, y);
+      doc.setTextColor(0, 0, 0);
+      y += 3;
+      doc.setDrawColor(220, 220, 220);
+      doc.line(M, y, W - M, y);
+      y += 8;
+    }
+
+    async function card(cod, titulo, sub) {
+      var photoW = 34, rowH = 40;
+      if (y + rowH > H - M) { doc.addPage(); y = M + 6; }
+      var dataUrl = await avcLoadImageDataURL(
+        AVC_BASE_IMG + encodeURIComponent(cod) + ".webp"
+      );
+      if (dataUrl) {
+        try { doc.addImage(dataUrl, "JPEG", M, y, photoW, photoW); } catch (e) {}
+      } else {
+        doc.setDrawColor(225, 225, 225);
+        doc.rect(M, y, photoW, photoW);
+        doc.setFontSize(7);
+        doc.setTextColor(160, 160, 160);
+        doc.text("sin foto", M + 9, y + 18);
+        doc.setTextColor(0, 0, 0);
+      }
+      var tx = M + photoW + 6;
+      var maxw = W - tx - M;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text(doc.splitTextToSize(String(titulo), maxw), tx, y + 8);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text(doc.splitTextToSize(String(sub), maxw), tx, y + 19);
+      doc.setTextColor(0, 0, 0);
+      doc.setDrawColor(240, 240, 240);
+      doc.line(M, y + rowH - 3, W - M, y + rowH - 3);
+      y += rowH;
+    }
+
+    if (aOfrecer.length) {
+      seccion("PRODUCTOS PARA SUMAR");
+      for (var k = 0; k < aOfrecer.length; k++) {
+        var o = aOfrecer[k];
+        var sub = o.categoria ? o.categoria + ". " : "";
+        if (o.mult && o.mult >= 1.3) {
+          sub += "Se vende ~" + (o.mult >= 10 ? Math.round(o.mult) : o.mult.toFixed(1)) +
+            "× más que tu compra promedio.";
+        } else if (o.e_madre) {
+          sub += "Buena demanda en el mercado.";
+        }
+        await card(o.cod, o.descripcion || o.cod, sub || "Producto nuevo del catálogo.");
+      }
+    }
+
+    if (bajas.length) {
+      seccion("PRODUCTOS QUE DEJASTE DE LLEVAR");
+      for (var j = 0; j < bajas.length; j++) {
+        var b = bajas[j];
+        var last = b.ultimaCompra ? new Date(b.ultimaCompra) : null;
+        var lastTxt = last ? "Última compra: " + last.toLocaleDateString("es-AR") : "";
+        var extra = b.comprasCount ? "  ·  " + b.comprasCount + " compras" : "";
+        await card(b.cod, b.descripcion || b.cod, (lastTxt + extra).trim() || "Lo comprabas antes.");
+      }
+    }
+
+    doc.save("catalogo_" + (currentCustomer.cod_cliente || "cliente") + ".pdf");
+  } catch (e) {
+    console.error("[AVC] catálogo PDF falló:", e);
+    alert("No se pudo generar el catálogo: " + (e && e.message ? e.message : e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = btnTxt || "📄 Catálogo PDF"; }
+  }
+}
+if (typeof window !== "undefined") window.avcDescargarCatalogoPDF = avcDescargarCatalogoPDF;
 
 // ============================================================
 // ACUERDO — índice precio_lista / precio_neto
