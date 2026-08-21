@@ -8,14 +8,27 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23253" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23253" />
+    <link rel="stylesheet" href="css/styles.css?v=23254" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23254" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
   </head>
 
   <body class="avc-customer-mode">
+    <!-- Google Translate -->
+    <div id="google_translate_element" style="display:none"></div>
+    <script>
+    function googleTranslateElementInit(){
+      new google.translate.TranslateElement({
+        pageLanguage:'es',
+        includedLanguages:'zh-CN',
+        autoDisplay:false
+      },'google_translate_element');
+    }
+    </script>
+    <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
     <header class="header">
       <div class="logo">
         <a href="index.html">
@@ -84,8 +97,16 @@
           </button>
         </div>
 
-        <!-- ✅ MOBILE ICONS: Loke + Carrito + Perfil -->
+        <!-- ✅ MOBILE ICONS: Traducir + Loke + Carrito + Perfil -->
         <div id="mobileIcons" class="mobile-icons" aria-label="Accesos rápidos">
+          <button
+            class="micon-btn btn-translate-cn"
+            type="button"
+            aria-label="翻译成中文"
+            onclick="toggleChineseTranslate()"
+            style="font-size:14px; border:none; padding:2px 6px;"
+          >🇨🇳</button>
+
           <button
             id="mobileLokeBtn"
             class="micon-btn micon-loke"
@@ -131,6 +152,13 @@
           >
             Quiero ser cliente
           </a>
+
+          <button
+            type="button"
+            class="btn-translate-cn"
+            onclick="toggleChineseTranslate()"
+            title="翻译成中文 — Traducir a Chino"
+          >🇨🇳 中文</button>
 
           <a id="loginBtn" onclick="openLogin()">Iniciar sesión</a>
 
@@ -2007,14 +2035,14 @@
     ></div>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23253"></script>
-    <script src="script.js?v=23253"></script>
+    <script src="./version.js?v=23254"></script>
+    <script src="script.js?v=23254"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23253"></script>
+    <script src="analisis-venta-cliente.js?v=23254"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23253"></script>
-    <script src="admin-excel-krikos.js?v=23253"></script>
-    <script src="vendor-import-excel.js?v=23253"></script>
+    <script src="scotapi-shim.js?v=23254"></script>
+    <script src="admin-excel-krikos.js?v=23254"></script>
+    <script src="vendor-import-excel.js?v=23254"></script>
   </body>
 </html>

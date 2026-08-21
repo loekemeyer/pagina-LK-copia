@@ -14942,3 +14942,23 @@ a.user-menu-item:hover {
 .escala-contado-icon { font-size: 20px; flex-shrink: 0; }
 .escala-contado-text b { font-weight: 700; }
 .escala-cp-wrap { margin-top: 12px; }
+
+/* Botón traducción chino mandarín */
+.btn-translate-cn {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #374151;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-translate-cn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+/* Ocultar la barra superior de Google Translate */
+.skiptranslate { display: none !important; }
+body { top: 0 !important; }

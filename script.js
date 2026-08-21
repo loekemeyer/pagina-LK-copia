@@ -13643,3 +13643,40 @@ document.addEventListener("keydown", function (e) {
     if (overlay && overlay.style.display !== "none") closeImgZoom();
   }
 });
+
+// =====================================================================
+// TRADUCCIÓN A CHINO MANDARÍN — Google Translate widget
+// =====================================================================
+function toggleChineseTranslate() {
+  // El widget de Google inyecta un iframe y un <select> dentro de
+  // #google_translate_element. Lo disparamos programáticamente.
+  var frame = document.querySelector(".goog-te-menu-frame");
+  if (frame) {
+    // Ya cargó — buscar si ya está en chino para volver a español
+    var combo = document.querySelector(".goog-te-combo");
+    if (combo) {
+      if (combo.value === "zh-CN") {
+        // Volver a español: resetear la cookie y recargar
+        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
+        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=." + location.hostname;
+        location.reload();
+      } else {
+        combo.value = "zh-CN";
+        combo.dispatchEvent(new Event("change"));
+      }
+      return;
+    }
+  }
+  // Primera vez: esperar a que el widget cargue y seleccionar chino
+  var tries = 0;
+  var iv = setInterval(function () {
+    var combo = document.querySelector(".goog-te-combo");
+    if (combo) {
+      clearInterval(iv);
+      combo.value = "zh-CN";
+      combo.dispatchEvent(new Event("change"));
+    }
+    if (++tries > 40) clearInterval(iv); // timeout 4s
+  }, 100);
+}
+window.toggleChineseTranslate = toggleChineseTranslate;
