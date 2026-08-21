@@ -14925,3 +14925,20 @@ a.user-menu-item:hover {
   margin-top: 14px; background: #fff; color: #111; border: none;
   border-radius: 9px; padding: 12px 22px; font-size: 15px; font-weight: 700; cursor: pointer;
 }
+
+/* Escala activa — aviso contado forzado + wrapper checkpoints self-service */
+.escala-contado-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1px solid #f59e0b;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 8px 0 4px;
+  font-size: 13px;
+  color: #92400e;
+}
+.escala-contado-icon { font-size: 20px; flex-shrink: 0; }
+.escala-contado-text b { font-weight: 700; }
+.escala-cp-wrap { margin-top: 12px; }
