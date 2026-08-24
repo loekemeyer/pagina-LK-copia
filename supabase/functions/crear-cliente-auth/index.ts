@@ -7,12 +7,11 @@
 // POR QUÉ EXISTE: Supabase endureció la validación de email en signUp y ahora
 // rechaza el dominio sintético <cuit>@cuit.loekemeyer ("Email address is
 // invalid"). auth.admin.createUser NO valida el formato, así que el alta vuelve
-// a funcionar. El login (grant_type=password) nunca validó el dominio, así que
-// los usuarios creados por acá entran normal.
+// a funcionar. El login (grant_type=password) nunca validó el dominio.
 //
-// SEGURIDAD: sólo un ADMIN puede llamarla. Se verifica el JWT del que llama
-// (getUser) y su presencia en public.admins. El service_role NUNCA sale de la
-// función (vive en los secrets, inyectado por Supabase).
+// AUTORIZACIÓN: el que llama tiene que ser ADMIN o VENDEDOR. Vendedor = su
+// auth_user_id tiene clientes vinculados en user_customer_links. El service_role
+// NUNCA sale de la función (vive en los secrets, inyectado por Supabase).
 //
 // Entrada:  { cuit: "<dígitos o con guiones>", pin: "123456" }
 // Salida:   { id: "<uuid>", created: true|false }  |  { error: "..." }
@@ -42,8 +41,6 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-// Busca el id de un usuario auth por email (paginando listUsers). El padrón es
-// chico, pero se pagina por las dudas.
 async function findUserIdByEmail(
   admin: ReturnType<typeof createClient>,
   email: string,
@@ -57,7 +54,7 @@ async function findUserIdByEmail(
       (u) => (u.email ?? "").toLowerCase() === target,
     );
     if (hit) return hit.id;
-    if (data.users.length < perPage) return null; // última página
+    if (data.users.length < perPage) return null;
   }
   return null;
 }
@@ -68,7 +65,6 @@ Deno.serve(async (req: Request) => {
   }
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
-  // 1) El que llama tiene que ser admin.
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!token) return json({ error: "no_auth" }, 401);
@@ -83,14 +79,22 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // Autorizado: admin O vendedor (tiene clientes vinculados en user_customer_links).
   const { data: adminRow } = await admin
     .from("admins")
     .select("auth_user_id")
     .eq("auth_user_id", who.user.id)
     .maybeSingle();
-  if (!adminRow) return json({ error: "not_admin" }, 403);
+  let allowed = !!adminRow;
+  if (!allowed) {
+    const { count } = await admin
+      .from("user_customer_links")
+      .select("auth_user_id", { count: "exact", head: true })
+      .eq("auth_user_id", who.user.id);
+    allowed = (count ?? 0) > 0;
+  }
+  if (!allowed) return json({ error: "no_autorizado" }, 403);
 
-  // 2) Entrada.
   const body = await req.json().catch(() => ({}));
   const digits = String(body?.cuit ?? "").replace(/[^0-9]/g, "");
   const pin = String(body?.pin ?? "");
@@ -98,7 +102,6 @@ Deno.serve(async (req: Request) => {
   if (pin.length < 6) return json({ error: "pin_invalido" }, 400);
   const email = `${digits}@${EMAIL_DOMAIN}`;
 
-  // 3) Crear el usuario (email_confirm: true -> puede loguear ya mismo).
   const { data: created, error: cErr } = await admin.auth.admin.createUser({
     email,
     password: pin,
@@ -108,8 +111,6 @@ Deno.serve(async (req: Request) => {
     return json({ id: created.user.id, created: true });
   }
 
-  // 4) Ya existía -> recuperar id y alinear la clave al pin ingresado, así el
-  //    login del cliente siempre coincide con el PIN que muestra el panel.
   const msg = (cErr?.message ?? "").toLowerCase();
   const yaExiste =
     msg.includes("already") || msg.includes("registered") ||
