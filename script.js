@@ -9203,19 +9203,18 @@ function _expoScaleDtoFor(sub) {
 
 // Sincroniza el dto del cliente-expo/escala-activa con la escala según el carrito.
 // Lo escribe en customerProfile.dto_vol para que TODO el pricing lo lea igual.
-// Códigos de vendedor SIN comisión (somos nosotros / fábrica): rate 0 en
-// customer_commissions. El resto de los vend paga comisión (~7% ponderado).
-// El vend vacío/null NO es sin-comisión (tiene 6-8%), por eso no entra acá.
-var _ESCALA_VEND_SIN_COMISION = { "7": 1, "4": 1, "18": 1, "19": 1, "80": 1 };
+// Códigos de vend que somos NOSOTROS (fábrica / venta directa a supermercados),
+// sin comisión de vendedor: "7" nosotros, "20" súper, "18"/"80" fábrica.
+// El resto son vendedores con comisión (el vend vacío/null también, tiene 6-8%).
+var _ESCALA_VEND_NOSOTROS = { "7": 1, "18": 1, "20": 1, "80": 1 };
 
 function _expoSyncDto() {
   if (!(_expoClientMode || _escalaActiva) || !customerProfile) return;
-  // LK: markup ponderado 1.51 (lista 151 para netear 100). El margen paga los
-  // dtos al cliente + comisión + flete. Si hay vendedor, la comisión (~7%) come
-  // margen => menos tope para el cliente. Sin comisión (nosotros) todo el margen
-  // va al cliente. Dos tramos, mismo swing 7% que Chef pero techo 12% (no 19%):
-  //   sin comisión -> tope 12% (escala tal cual)
-  //   con vendedor -> tope 5% (12% - 7% que se lleva el vendedor)
+  // LK: markup ponderado 1.51 (lista 151 para netear 100). Sobre 151 se aplican
+  // escala + contado (25%) + web (2%); del saldo salen comisión + flete (1%), y
+  // debe quedar ~100. Con contado forzado, el margen para la escala es chico:
+  //   nosotros (sin comisión)  -> tope 9%  (break-even al contado)
+  //   con vendedor (~8% com.)  -> tope 2%  (uniforme; la comisión come el resto)
   var base = _expoScaleDtoFor(_expoListSubtotal());
   var maxBase = 0;
   if (_expoScale && _expoScale.length) {
@@ -9225,8 +9224,8 @@ function _expoSyncDto() {
     });
   }
   var _v = customerProfile.vend != null ? String(customerProfile.vend).trim() : "";
-  var sinComision = !!_ESCALA_VEND_SIN_COMISION[_v];
-  var tope = sinComision ? 0.12 : 0.05;
+  var esNosotros = !!_ESCALA_VEND_NOSOTROS[_v];
+  var tope = esNosotros ? 0.09 : 0.02;
   _escalaFactor = maxBase > 0 ? tope / maxBase : 1;
   customerProfile.dto_vol = Math.min(base * _escalaFactor, tope);
   _expoRenderCheckpoints();
