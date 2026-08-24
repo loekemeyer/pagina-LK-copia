@@ -9205,21 +9205,10 @@ function _expoScaleDtoFor(sub) {
 // Lo escribe en customerProfile.dto_vol para que TODO el pricing lo lea igual.
 function _expoSyncDto() {
   if (!(_expoClientMode || _escalaActiva) || !customerProfile) return;
-  var base = _expoScaleDtoFor(_expoListSubtotal());
-  // Tope según vendedor: CON vend el tope es 12% (la escala base); SIN vend el
-  // cliente se lleva la comisión y el tope es 19%. Se escala la curva base al
-  // tope que corresponde (mismo factor para el dto y para la barra de tramos).
-  var maxBase = 0;
-  if (_expoScale && _expoScale.length) {
-    _expoScale.forEach(function (t) {
-      var d = Number(t.dto) || 0;
-      if (d > maxBase) maxBase = d;
-    });
-  }
-  var noVend = !(customerProfile.vend && String(customerProfile.vend).trim());
-  var tope = noVend ? 0.19 : 0.12;
-  _escalaFactor = maxBase > 0 ? tope / maxBase : 1;
-  customerProfile.dto_vol = Math.min(base * _escalaFactor, tope);
+  // LK: la escala topea en 12% para TODOS (no hay escalón por comisión como en
+  // Chef). El factor queda en 1 y el dto es la escala base tal cual (máx 12%).
+  _escalaFactor = 1;
+  customerProfile.dto_vol = _expoScaleDtoFor(_expoListSubtotal());
   _expoRenderCheckpoints();
   // Escala activa self-service: renderizar checkpoints en el carrito
   if (_escalaActiva) _escalaRenderCheckpoints();
