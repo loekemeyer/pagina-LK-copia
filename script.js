@@ -13740,16 +13740,22 @@ document.addEventListener("keydown", function (e) {
 // setea host-only y a veces con "." adelante; si queda una sola, al recargar
 // el widget re-traduce y "vuelve" al chino. Hay que matarlas todas.
 function _clearGoogTransCookie() {
-  var exp = "; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
   var host = location.hostname;
-  var variantes = ["googtrans=" + exp,
-                   "googtrans=" + exp + "; domain=" + host,
-                   "googtrans=" + exp + "; domain=." + host];
+  var dominios = ["", host, "." + host];
   var parts = host.split(".");
-  if (parts.length > 2) {
-    variantes.push("googtrans=" + exp + "; domain=." + parts.slice(-2).join("."));
-  }
-  variantes.forEach(function (c) { document.cookie = c; });
+  if (parts.length > 2) dominios.push("." + parts.slice(-2).join("."));
+  // Google puede setear la cookie con path "/" o con el path de la página, y
+  // con o sin domain. Hay que matar TODAS las combinaciones o al recargar
+  // el widget la lee y re-traduce (por eso "volvía" solo al chino).
+  var paths = ["/", location.pathname];
+  var exp = "expires=Thu, 01 Jan 1970 00:00:00 UTC";
+  dominios.forEach(function (d) {
+    paths.forEach(function (p) {
+      var c = "googtrans=; " + exp + "; path=" + p;
+      if (d) c += "; domain=" + d;
+      document.cookie = c;
+    });
+  });
 }
 
 function toggleChineseTranslate() {
@@ -13764,7 +13770,7 @@ function toggleChineseTranslate() {
         // Volver a español: borrar la cookie (todas las variantes) y recargar a
         // la URL SIN el hash #googtrans(...) que Google lee al cargar.
         _clearGoogTransCookie();
-        window.location.href = location.pathname + location.search;
+        window.location.replace(location.pathname + location.search);
       } else {
         combo.value = "zh-CN";
         combo.dispatchEvent(new Event("change"));
