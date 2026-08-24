@@ -13736,6 +13736,22 @@ document.addEventListener("keydown", function (e) {
 // =====================================================================
 // TRADUCCIÓN A CHINO MANDARÍN — Google Translate widget
 // =====================================================================
+// Borra la cookie googtrans en TODAS las variantes de dominio/path. Google la
+// setea host-only y a veces con "." adelante; si queda una sola, al recargar
+// el widget re-traduce y "vuelve" al chino. Hay que matarlas todas.
+function _clearGoogTransCookie() {
+  var exp = "; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
+  var host = location.hostname;
+  var variantes = ["googtrans=" + exp,
+                   "googtrans=" + exp + "; domain=" + host,
+                   "googtrans=" + exp + "; domain=." + host];
+  var parts = host.split(".");
+  if (parts.length > 2) {
+    variantes.push("googtrans=" + exp + "; domain=." + parts.slice(-2).join("."));
+  }
+  variantes.forEach(function (c) { document.cookie = c; });
+}
+
 function toggleChineseTranslate() {
   // El widget de Google inyecta un iframe y un <select> dentro de
   // #google_translate_element. Lo disparamos programáticamente.
@@ -13745,10 +13761,10 @@ function toggleChineseTranslate() {
     var combo = document.querySelector(".goog-te-combo");
     if (combo) {
       if (combo.value === "zh-CN") {
-        // Volver a español: resetear la cookie y recargar
-        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-        document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=." + location.hostname;
-        location.reload();
+        // Volver a español: borrar la cookie (todas las variantes) y recargar a
+        // la URL SIN el hash #googtrans(...) que Google lee al cargar.
+        _clearGoogTransCookie();
+        window.location.href = location.pathname + location.search;
       } else {
         combo.value = "zh-CN";
         combo.dispatchEvent(new Event("change"));
