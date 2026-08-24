@@ -994,14 +994,29 @@ body {
   bottom: 0;
   background: #fff;
   padding-top: 10px;
+  display: flex;
+  gap: 10px;
 }
 .filters-apply {
+  flex: 1;
   width: 100%;
   height: 44px;
   border-radius: 14px;
   border: none;
   background: #111;
   color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+/* Botón "Limpiar filtros": secundario, al lado de "Aplicar". */
+.filters-clear {
+  flex: 0 0 auto;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1.5px solid #d0d0d0;
+  background: #fff;
+  color: #333;
   font-weight: 800;
   cursor: pointer;
 }
@@ -10205,6 +10220,30 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+}
+
+/* P8: checkout compacto en DESKTOP (vista de 2 columnas) — reduce gap, padding
+   de las cards de entrega/pago y alto de los botones de pago para que toda la
+   columna izquierda entre en una pantalla. Mobile queda igual. */
+@media (min-width: 992px) {
+  #carrito .cart-2col .cart-col-left {
+    gap: 10px;
+  }
+  #carrito .cart-2col .cart-col-left .ship-card {
+    padding: 12px 14px;
+  }
+  #carrito .cart-2col .cart-col-left .pay-card {
+    padding: 12px 14px;
+  }
+  #carrito .cart-2col .cart-col-left .pay-btn {
+    padding: 8px 10px;
+  }
+  #carrito .cart-2col .cart-col-left .pay-title {
+    margin-bottom: 6px;
+  }
+  #carrito .cart-2col .cart-col-left .cart-total {
+    margin-top: 4px;
+  }
 }
 
 /* Columna derecha — su altura se setea via JS para matchear la izquierda
