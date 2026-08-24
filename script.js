@@ -9225,7 +9225,10 @@ function _expoSyncDto() {
   var esNosotros = !!_ESCALA_VEND_NOSOTROS[_v];
   var tope = esNosotros ? 0.12 : 0.08;
   _escalaFactor = maxBase > 0 ? tope / maxBase : 1;
-  customerProfile.dto_vol = Math.min(base * _escalaFactor, tope);
+  // dto SIEMPRE redondo (entero %): con vendedor la curva se comprime al 8% y
+  // el redondeo evita decimales (ej. 5,33% -> 5%). Nosotros queda 2/4/…/12.
+  var raw = Math.min(base * _escalaFactor, tope);
+  customerProfile.dto_vol = Math.round(raw * 100) / 100;
   _expoRenderCheckpoints();
   // Escala activa self-service: renderizar checkpoints en el carrito
   if (_escalaActiva) _escalaRenderCheckpoints();
