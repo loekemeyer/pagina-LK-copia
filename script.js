@@ -9210,11 +9210,9 @@ var _ESCALA_VEND_NOSOTROS = { "7": 1, "18": 1, "20": 1, "80": 1 };
 
 function _expoSyncDto() {
   if (!(_expoClientMode || _escalaActiva) || !customerProfile) return;
-  // LK: markup ponderado 1.51 (lista 151 para netear 100). Sobre 151 se aplican
-  // escala + contado (25%) + web (2%); del saldo salen comisión + flete (1%), y
-  // debe quedar ~100. Con contado forzado, el margen para la escala es chico:
-  //   nosotros (sin comisión)  -> tope 9%  (break-even al contado)
-  //   con vendedor (~8% com.)  -> tope 2%  (uniforme; la comisión come el resto)
+  // LK: tope de escala por dto x volumen definido por negocio:
+  //   nosotros (clientes propios) -> tope 12%
+  //   con vendedor                -> tope 8%  (la comisión deja menos margen)
   var base = _expoScaleDtoFor(_expoListSubtotal());
   var maxBase = 0;
   if (_expoScale && _expoScale.length) {
@@ -9225,7 +9223,7 @@ function _expoSyncDto() {
   }
   var _v = customerProfile.vend != null ? String(customerProfile.vend).trim() : "";
   var esNosotros = !!_ESCALA_VEND_NOSOTROS[_v];
-  var tope = esNosotros ? 0.09 : 0.02;
+  var tope = esNosotros ? 0.12 : 0.08;
   _escalaFactor = maxBase > 0 ? tope / maxBase : 1;
   customerProfile.dto_vol = Math.min(base * _escalaFactor, tope);
   _expoRenderCheckpoints();
