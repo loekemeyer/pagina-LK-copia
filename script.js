@@ -13758,36 +13758,28 @@ function _clearGoogTransCookie() {
   });
 }
 
+// Lee el valor actual de la cookie googtrans — es la FUENTE DE VERDAD del
+// estado de traducción (no el DOM del widget, que está display:none).
+function _googtransVal() {
+  var m = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/);
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
+// Toggle 100% por COOKIE + reload, NO por el <select> del widget. El widget va
+// display:none y no crea .goog-te-menu-frame, así que detectar el idioma por el
+// combo fallaba y cada click re-traducía a chino sin poder volver. Google lee
+// la cookie googtrans al iniciar (aunque autoDisplay sea false), por eso
+// seteándola/borrándola y recargando se va y se vuelve, siempre.
 function toggleChineseTranslate() {
-  // El widget de Google inyecta un iframe y un <select> dentro de
-  // #google_translate_element. Lo disparamos programáticamente.
-  var frame = document.querySelector(".goog-te-menu-frame");
-  if (frame) {
-    // Ya cargó — buscar si ya está en chino para volver a español
-    var combo = document.querySelector(".goog-te-combo");
-    if (combo) {
-      if (combo.value === "zh-CN") {
-        // Volver a español: borrar la cookie (todas las variantes) y recargar a
-        // la URL SIN el hash #googtrans(...) que Google lee al cargar.
-        _clearGoogTransCookie();
-        window.location.replace(location.pathname + location.search);
-      } else {
-        combo.value = "zh-CN";
-        combo.dispatchEvent(new Event("change"));
-      }
-      return;
-    }
+  if (/zh-CN/.test(_googtransVal())) {
+    // Está en chino -> volver a español: borrar la cookie (todas las variantes).
+    _clearGoogTransCookie();
+  } else {
+    // Está en español -> traducir a chino: setear la cookie.
+    document.cookie = "googtrans=/es/zh-CN; path=/";
+    document.cookie = "googtrans=/es/zh-CN; path=/; domain=" + location.hostname;
   }
-  // Primera vez: esperar a que el widget cargue y seleccionar chino
-  var tries = 0;
-  var iv = setInterval(function () {
-    var combo = document.querySelector(".goog-te-combo");
-    if (combo) {
-      clearInterval(iv);
-      combo.value = "zh-CN";
-      combo.dispatchEvent(new Event("change"));
-    }
-    if (++tries > 40) clearInterval(iv); // timeout 4s
-  }, 100);
+  // Recargar a la URL limpia (sin #googtrans que Google también lee).
+  window.location.replace(location.pathname + location.search);
 }
 window.toggleChineseTranslate = toggleChineseTranslate;
