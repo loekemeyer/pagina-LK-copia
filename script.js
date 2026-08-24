@@ -4341,6 +4341,32 @@ function cancelPendingFilters() {
   closeFiltersOverlay();
 }
 
+// Resetea TODOS los filtros del catálogo al default (surtido, nuevos,
+// categorías, orden y búsqueda) y re-renderiza. LK no tiene filtro por medida
+// (eso es de Elias/Cuadros), así que acá no se toca.
+function limpiarFiltros() {
+  filterMyAssortment = false;
+  filterNewOnly = false;
+  pendingFilterNewOnly = false;
+  filterAll = true;
+  pendingFilterAll = true;
+  filterCats = new Set();
+  pendingFilterCats = new Set();
+  sortMode = "category";
+  searchTerm = "";
+  var ns = $("navSearch");
+  if (ns) ns.value = "";
+  var ms = $("mobileSearch");
+  if (ms) ms.value = "";
+  if (typeof syncMyAssortmentBtn === "function") syncMyAssortmentBtn();
+  if (typeof applySortUI === "function") applySortUI();
+  if (typeof renderFiltersOverlayUI === "function") renderFiltersOverlayUI();
+  if (typeof renderCategoriasOverlayUI === "function") renderCategoriasOverlayUI();
+  renderProducts();
+  closeFiltersOverlay();
+}
+window.limpiarFiltros = limpiarFiltros;
+
 // Panel FILTROS (mobile): Mi surtido + Nuevos + Ordenamiento
 // (las categorías van en el panel separado renderCategoriasOverlayUI)
 function renderFiltersOverlayUI() {
@@ -13045,6 +13071,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     cancelPendingFilters(),
   );
   $("filtersApplyBtn")?.addEventListener("click", () => applyPendingFilters());
+  $("filtersClearBtn")?.addEventListener("click", () => limpiarFiltros());
 
   $("filtersOverlay")?.addEventListener("click", (e) => {
     if (e.target.id === "filtersOverlay") closeFiltersOverlay();
