@@ -9203,12 +9203,32 @@ function _expoScaleDtoFor(sub) {
 
 // Sincroniza el dto del cliente-expo/escala-activa con la escala según el carrito.
 // Lo escribe en customerProfile.dto_vol para que TODO el pricing lo lea igual.
+// Códigos de vend que somos NOSOTROS (fábrica / venta directa a supermercados),
+// sin comisión de vendedor: "7" nosotros, "20" súper, "18"/"80" fábrica.
+// El resto son vendedores con comisión (el vend vacío/null también, tiene 6-8%).
+var _ESCALA_VEND_NOSOTROS = { "7": 1, "18": 1, "20": 1, "80": 1 };
+
 function _expoSyncDto() {
   if (!(_expoClientMode || _escalaActiva) || !customerProfile) return;
-  // LK: la escala topea en 12% para TODOS (no hay escalón por comisión como en
-  // Chef). El factor queda en 1 y el dto es la escala base tal cual (máx 12%).
-  _escalaFactor = 1;
-  customerProfile.dto_vol = _expoScaleDtoFor(_expoListSubtotal());
+  // LK: tope de escala por dto x volumen definido por negocio:
+  //   nosotros (clientes propios) -> tope 12%
+  //   con vendedor                -> tope 8%  (la comisión deja menos margen)
+  var base = _expoScaleDtoFor(_expoListSubtotal());
+  var maxBase = 0;
+  if (_expoScale && _expoScale.length) {
+    _expoScale.forEach(function (t) {
+      var d = Number(t.dto) || 0;
+      if (d > maxBase) maxBase = d;
+    });
+  }
+  var _v = customerProfile.vend != null ? String(customerProfile.vend).trim() : "";
+  var esNosotros = !!_ESCALA_VEND_NOSOTROS[_v];
+  var tope = esNosotros ? 0.12 : 0.08;
+  _escalaFactor = maxBase > 0 ? tope / maxBase : 1;
+  // dto SIEMPRE redondo (entero %): con vendedor la curva se comprime al 8% y
+  // el redondeo evita decimales (ej. 5,33% -> 5%). Nosotros queda 2/4/…/12.
+  var raw = Math.min(base * _escalaFactor, tope);
+  customerProfile.dto_vol = Math.round(raw * 100) / 100;
   _expoRenderCheckpoints();
   // Escala activa self-service: renderizar checkpoints en el carrito
   if (_escalaActiva) _escalaRenderCheckpoints();

@@ -691,6 +691,12 @@ document.querySelectorAll(".nav-item").forEach(function (btn) {
       cargarEscalaExpo();
     }
     if (
+      btn.dataset.page === "acuerdo-vendedores" &&
+      typeof cargarAcuerdoVendedores === "function"
+    ) {
+      cargarAcuerdoVendedores();
+    }
+    if (
       btn.dataset.page === "clientes-pendientes" &&
       typeof cargarClientesPendientes === "function"
     ) {
@@ -14305,6 +14311,80 @@ function _gvTopInit() {
 // ===== ESCALA EXPO — editor de la escala de descuento por volumen =====
 // Aplica solo a clientes NUEVOS de expo (tabla expo_dto_escala, RLS admin).
 var _escalaExpoWired = false;
+
+var _acvWired = false;
+function _acvWireOnce() {
+  if (_acvWired) return;
+  _acvWired = true;
+  var sel = document.getElementById("acvMeses");
+  var btn = document.getElementById("acvReload");
+  if (sel) sel.addEventListener("change", cargarAcuerdoVendedores);
+  if (btn) btn.addEventListener("click", cargarAcuerdoVendedores);
+}
+
+function _acvMoney(n) {
+  var v = Number(n) || 0;
+  if (Math.abs(v) >= 1e9) return "$" + (v / 1e9).toFixed(2) + " MM";
+  if (Math.abs(v) >= 1e6) return "$" + (v / 1e6).toFixed(1) + " M";
+  if (Math.abs(v) >= 1e3) return "$" + Math.round(v / 1e3) + " k";
+  return "$" + Math.round(v);
+}
+
+async function cargarAcuerdoVendedores() {
+  var body = document.getElementById("acvBody");
+  if (!body) return;
+  _acvWireOnce();
+  var st = document.getElementById("acvStatus");
+  var selEl = document.getElementById("acvMeses");
+  var meses = selEl ? Number(selEl.value) : 12;
+  // p_meses null = todo el histórico (el <option> "0")
+  var pMeses = meses === 0 ? null : meses;
+  if (st) st.textContent = "Cargando…";
+  body.innerHTML = "";
+
+  var r = await sb.rpc("get_acuerdo_vendedores", { p_meses: pMeses });
+  if (r.error) {
+    if (st) st.textContent = "Error: " + r.error.message;
+    return;
+  }
+  var rows = r.data || [];
+  if (!rows.length) {
+    if (st) st.textContent = "Sin datos en el período.";
+    return;
+  }
+
+  var perdedores = 0;
+  rows.forEach(function (v) {
+    var acuerdo = Number(v.acuerdo);
+    var factor = Number(v.factor_nec);
+    var pierde = factor > 1.51;
+    if (pierde && !v.es_nosotros) perdedores++;
+    var cls = acuerdo < 0 ? "acv-neg" : "acv-pos";
+    var badge = v.es_nosotros
+      ? ' <span class="acv-badge">nosotros</span>'
+      : "";
+    var tr = document.createElement("tr");
+    if (v.es_nosotros) tr.className = "acv-row-nosotros";
+    tr.innerHTML =
+      "<td>" + (v.nombre || v.vend) + badge + "</td>" +
+      '<td class="acv-num">' + (v.clientes != null ? v.clientes : "—") + "</td>" +
+      '<td class="acv-num">' + _acvMoney(v.plata) + "</td>" +
+      '<td class="acv-num">' + Number(v.dto_pond).toFixed(2) + "%</td>" +
+      '<td class="acv-num">' + Number(v.com_pond).toFixed(2) + "%</td>" +
+      '<td class="acv-num ' + (pierde ? "acv-neg" : "") + '">' +
+      Number(v.factor_nec).toFixed(3) + "</td>" +
+      '<td class="acv-num">' + Number(v.neto_151).toFixed(1) + "</td>" +
+      '<td class="acv-num acv-acuerdo ' + cls + '">' +
+      (acuerdo > 0 ? "+" : "") + acuerdo.toFixed(1) + "</td>";
+    body.appendChild(tr);
+  });
+
+  if (st) {
+    st.textContent =
+      rows.length + " vendedores · " + perdedores +
+      " con factor > 1,51 (facturando a 151 no netean 100)";
+  }
+}
 
 async function cargarEscalaExpo() {
   var body = document.getElementById("escalaExpoBody");

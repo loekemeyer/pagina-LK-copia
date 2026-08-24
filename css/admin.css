@@ -4979,3 +4979,61 @@ input[type="number"].manual-cell {
 .gv-chart-box canvas { position: absolute; inset: 0; }
 @media (max-width: 640px) { .gv-chart-box { height: 200px; } }
 @media print { .gv-chart-box { height: 200px; } }
+
+/* ── Acuerdo por vendedor ─────────────────────────────────────────── */
+.acv-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.acv-toolbar label { font-size: 13px; color: #6b7280; }
+.acv-toolbar select {
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+}
+.acv-status { font-size: 13px; color: #6b7280; }
+.acv-card { padding: 0; overflow: hidden; }
+.acv-table-wrap { overflow-x: auto; }
+.acv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.acv-table th,
+.acv-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+  white-space: nowrap;
+}
+.acv-table thead th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+.acv-table .acv-num { text-align: right; font-variant-numeric: tabular-nums; }
+.acv-table tbody tr:hover { background: #f9fafb; }
+.acv-row-nosotros { background: #f1f5ff; }
+.acv-row-nosotros:hover { background: #e8efff; }
+.acv-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #1d4ed8;
+  background: #dbeafe;
+  padding: 1px 6px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.acv-acuerdo { font-weight: 700; }
+.acv-neg { color: #b91c1c; }
+.acv-pos { color: #15803d; }
