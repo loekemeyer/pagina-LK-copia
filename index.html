@@ -248,34 +248,45 @@
 
         function render(items) {
           if (!items || !items.length) return renderFallback();
-          var html = items
-            .slice(0, MAX_ITEMS)
-            .map(function (it) {
-              var src = thumb(it);
-              if (!src) return "";
-              var alt = (it.caption || "Publicación de @loekemeyer").slice(0, 120);
-              var badge =
-                it.media_type === "VIDEO"
-                  ? '<span class="ig-feed-badge" aria-hidden="true">▶</span>'
-                  : it.media_type === "CAROUSEL_ALBUM"
-                    ? '<span class="ig-feed-badge" aria-hidden="true">⧉</span>'
-                    : "";
-              return (
-                '<a class="ig-feed-item" href="' +
-                esc(it.permalink || PROFILE_URL) +
-                '" target="_blank" rel="noopener" aria-label="Ver en Instagram">' +
-                '<img loading="lazy" decoding="async" src="' +
-                esc(src) +
-                '" alt="' +
-                esc(alt) +
-                '">' +
-                badge +
-                "</a>"
-              );
-            })
-            .join("");
-          if (!html) return renderFallback();
-          root.innerHTML = html;
+          var frag = document.createDocumentFragment();
+          var count = 0;
+          items.slice(0, MAX_ITEMS).forEach(function (it) {
+            var src = thumb(it);
+            if (!src) return;
+            var a = document.createElement("a");
+            a.className = "ig-feed-item";
+            a.href = it.permalink || PROFILE_URL;
+            a.target = "_blank";
+            a.rel = "noopener";
+            a.setAttribute("aria-label", "Ver en Instagram");
+
+            var img = document.createElement("img");
+            img.loading = "lazy";
+            img.decoding = "async";
+            img.alt = (it.caption || "Publicación de @loekemeyer").slice(0, 120);
+            // Las URLs de fbcdn.net expiran; si la imagen no carga, se descarta
+            // el tile y, si caen todas, se muestra el link al perfil.
+            img.addEventListener("error", function () {
+              a.remove();
+              if (!root.querySelector(".ig-feed-item")) renderFallback();
+            });
+            img.src = src;
+            a.appendChild(img);
+
+            if (it.media_type === "VIDEO" || it.media_type === "CAROUSEL_ALBUM") {
+              var badge = document.createElement("span");
+              badge.className = "ig-feed-badge";
+              badge.setAttribute("aria-hidden", "true");
+              badge.textContent = it.media_type === "VIDEO" ? "▶" : "⧉";
+              a.appendChild(badge);
+            }
+
+            frag.appendChild(a);
+            count++;
+          });
+          if (!count) return renderFallback();
+          root.innerHTML = "";
+          root.appendChild(frag);
           root.setAttribute("aria-busy", "false");
         }
 
@@ -882,8 +893,8 @@
       </svg>
     </a>
 
-    <script src="./version.js?v=23276"></script>
-    <script src="script.index.js?v=23276"></script>
+    <script src="./version.js?v=23277"></script>
+    <script src="script.index.js?v=23277"></script>
 
     <!-- ================= MODAL LEGAL ================= -->
     <div class="modal-backdrop" id="legalModal" aria-hidden="true">
