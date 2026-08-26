@@ -7,6 +7,15 @@
 - **caveman (SIEMPRE activo)**: Cada conversación abre con caveman activo por defecto. Responder en modo caveman — frases cortas, directas, mínimas palabras, sin artículos, sin fluff. Solo aplica al **chat** (no al código, comentarios ni mensajes de commit). **"desactiva caveman"** = responder solo el **próximo mensaje** normal/completo, y después **volver solo** a caveman. **"caveman desactivacion total"** = apagar caveman por completo (queda desactivado hasta que se reactive).
 - **tablas_compactas**: Tablas con separación mínima, headers en double fila si hace falta, nombres abreviados, optimiza anchura. Siempre activo.
 
+## Acuse de recibo
+
+**OBLIGATORIO en TODA sesión.** Cada mensaje del usuario debe responderse empezando con
+**"✅ Leído"** seguido de un resumen ultra-corto de lo que dijo (máx 10 palabras).
+Ejemplo: `✅ Leído — sin cotizador sin método de pago, hardcodear "Prefiero no decidir"`.
+Esto va ANTES de cualquier otra respuesta. Si hay un agente corriendo en background y no
+puedo actuar todavía, igual poner el acuse. El usuario necesita saber que el mensaje
+llegó y fue procesado, no que se quedó en cola.
+
 ## Comandos especiales
 
 - **"resumen del día"**: Reporte del trabajo de hoy en bullet points. Estilo ejecutivo. Incluye: completadas, en progreso, bloqueeos, próximos pasos.
