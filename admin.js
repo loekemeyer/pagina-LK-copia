@@ -1044,13 +1044,22 @@ document
   .getElementById("importBtn")
   .addEventListener("click", async function () {
     if (!importData.length) return;
-    this.disabled = true;
+    var importBtn = this;
+    importBtn.disabled = true;
     try {
       for (var i = 0; i < importData.length; i++) {
         var row = importData[i];
-        var authId = await createAuthUser(row.cuit, row.pin);
-        if (authId) row.auth_user_id = authId;
+        importBtn.textContent = "Creando auth " + (i + 1) + "/" + importData.length + "...";
+        try {
+          var authId = await _createAuthWithRetry(row.cuit, row.pin);
+          if (authId) row.auth_user_id = authId;
+        } catch (e) {
+          toast("Auth falló para " + row.cod_cliente + ": " + e.message, "warning");
+        }
+        // Pausa entre llamadas para evitar rate limit
+        if (i < importData.length - 1) await _repairDelay(REPAIR_DELAY_MS);
       }
+      importBtn.textContent = "Guardando...";
       var insertedRows = await sbInsert(TABLE_CUSTOMERS, importData);
       // Vincular cada cliente importado a su vendedor
       for (var j = 0; j < insertedRows.length; j++) {
@@ -1065,7 +1074,8 @@ document
     } catch (err) {
       toast("Error: " + err.message, "error");
     } finally {
-      this.disabled = false;
+      importBtn.disabled = false;
+      importBtn.textContent = "Importar";
     }
   });
 
@@ -1570,7 +1580,11 @@ document
     }
   });
 
-// ---- REPARAR AUTH (clientes sin auth_user_id) ----
+// ---- REPARAR AUTH (clientes sin auth_user_id O con PIN desincronizado) ----
+// Cubre DOS casos:
+//   1. Sin auth_user_id → crea el user en auth.users y vincula
+//   2. Con auth_user_id pero PIN desincronizado → re-llama a la Edge Function
+//      que hace updateUserById con el PIN de customers
 // Delay entre llamadas para no gatillar el rate limit de Supabase Edge Functions.
 // Si falla por rate limit, reintenta con backoff exponencial (hasta 3 veces).
 function _repairDelay(ms) {
@@ -1598,37 +1612,88 @@ async function _createAuthWithRetry(cuit, pin) {
   return null;
 }
 
+// Verifica si el PIN guardado puede abrir la sesión del cliente.
+// Devuelve "ok", "fail" o "rate".
+async function _repairTestPin(cuit, pin) {
+  var tmpClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  var email = cleanCuit(cuit) + "@cuit.loekemeyer";
+  try {
+    var res = await tmpClient.auth.signInWithPassword({ email: email, password: String(pin) });
+    if (res.error) {
+      var msg = (res.error.message || "").toLowerCase();
+      if (msg.indexOf("rate") !== -1 || msg.indexOf("too many") !== -1 || res.error.status === 429) return "rate";
+      return "fail";
+    }
+    try { await tmpClient.auth.signOut(); } catch (_) {}
+    return "ok";
+  } catch (e) {
+    var m = (e && e.message ? e.message : "").toLowerCase();
+    if (m.indexOf("rate") !== -1 || m.indexOf("too many") !== -1) return "rate";
+    return "fail";
+  }
+}
+
 document
   .getElementById("repairAuthBtn")
   .addEventListener("click", async function () {
     var btn = this;
     btn.disabled = true;
-    btn.textContent = "Reparando...";
+    btn.textContent = "Analizando...";
     try {
+      // Fase 1: clientes sin auth_user_id
       var sinAuth = allClientes.filter(function (c) {
         return !c.auth_user_id && c.cuit && c.pin;
       });
-      if (!sinAuth.length) {
-        toast("Todos los clientes ya tienen auth_user_id", "success");
+
+      // Fase 2: clientes CON auth_user_id — detectar PINes rotos
+      var conAuth = allClientes.filter(function (c) {
+        return c.auth_user_id && c.cuit && c.pin && cleanCuit(c.cuit).length >= 10;
+      });
+      var pinRotos = [];
+      for (var k = 0; k < conAuth.length; k++) {
+        btn.textContent = "Verificando PINes " + (k + 1) + "/" + conAuth.length + "...";
+        var estado = await _repairTestPin(conAuth[k].cuit, conAuth[k].pin);
+        if (estado === "fail") {
+          pinRotos.push(conAuth[k]);
+        } else if (estado === "rate") {
+          // si pega rate limit en el test, esperar y reintentar una vez
+          await _repairDelay(3000);
+          estado = await _repairTestPin(conAuth[k].cuit, conAuth[k].pin);
+          if (estado === "fail") pinRotos.push(conAuth[k]);
+        }
+        // pausa corta entre verificaciones (120ms como en Verificar PINes)
+        if (k < conAuth.length - 1) await _repairDelay(120);
+      }
+
+      var totalArreglar = sinAuth.length + pinRotos.length;
+      if (!totalArreglar) {
+        toast("Todos los clientes tienen auth_user_id y PINes sincronizados", "success");
         return;
       }
+
       var reparados = 0,
         errores = 0;
-      var total = sinAuth.length;
+      var lista = sinAuth.concat(pinRotos);
+      var total = lista.length;
+
       for (var i = 0; i < total; i++) {
-        var c = sinAuth[i];
+        var c = lista[i];
+        var esSinAuth = !c.auth_user_id;
         btn.textContent = "Reparando " + (i + 1) + "/" + total + "...";
         try {
           var authId = await _createAuthWithRetry(c.cuit, String(c.pin));
           if (authId) {
-            await sbUpdate(TABLE_CUSTOMERS, c.id, "id", {
-              auth_user_id: authId,
-            });
+            if (esSinAuth) {
+              await sbUpdate(TABLE_CUSTOMERS, c.id, "id", {
+                auth_user_id: authId,
+              });
+              toast("Auth creado para " + c.cod_cliente + " (" + c.cuit + ")", "success");
+            } else {
+              toast("PIN sincronizado para " + c.cod_cliente + " (" + c.cuit + ")", "success");
+            }
             reparados++;
-            toast(
-              "Auth creado para " + c.cod_cliente + " (" + c.cuit + ")",
-              "success",
-            );
           } else {
             errores++;
           }
@@ -1642,7 +1707,9 @@ document
         }
       }
       toast(
-        "Reparacion completa: " + reparados + " OK, " + errores + " errores",
+        "Reparacion completa: " + reparados + " OK, " + errores + " errores" +
+        (sinAuth.length ? " (" + sinAuth.length + " sin auth" : "(") +
+        (pinRotos.length ? (sinAuth.length ? ", " : "") + pinRotos.length + " PINes rotos)" : ")"),
         reparados ? "success" : "warning",
       );
       loadClientes();
