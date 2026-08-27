@@ -449,6 +449,10 @@ async function createAuthUser(cuit, pin) {
     if (!res.ok || !data.id) {
       var em = data.error || "http_" + res.status;
       console.warn("createAuthUser crear-cliente-auth:", em);
+      // Rate limit: lanzar error especial para que el caller reintente
+      if (res.status === 429 || (em && em.toLowerCase().indexOf("rate limit") >= 0)) {
+        throw new Error("RATE_LIMIT");
+      }
       toast("Aviso: cliente se creará sin acceso login (" + em + ")", "warning");
       return null;
     }
@@ -1567,6 +1571,33 @@ document
   });
 
 // ---- REPARAR AUTH (clientes sin auth_user_id) ----
+// Delay entre llamadas para no gatillar el rate limit de Supabase Edge Functions.
+// Si falla por rate limit, reintenta con backoff exponencial (hasta 3 veces).
+function _repairDelay(ms) {
+  return new Promise(function (r) { setTimeout(r, ms); });
+}
+
+var REPAIR_DELAY_MS = 1500; // pausa entre clientes
+var REPAIR_MAX_RETRIES = 3; // reintentos por rate limit
+
+async function _createAuthWithRetry(cuit, pin) {
+  for (var attempt = 0; attempt <= REPAIR_MAX_RETRIES; attempt++) {
+    try {
+      var authId = await createAuthUser(cuit, pin);
+      return authId; // null = error no-retriable, string = éxito
+    } catch (e) {
+      if (e.message === "RATE_LIMIT" && attempt < REPAIR_MAX_RETRIES) {
+        var wait = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
+        toast("Rate limit, reintentando en " + (wait / 1000) + "s...", "warning");
+        await _repairDelay(wait);
+      } else {
+        throw e; // error no-retriable o ya agotó reintentos
+      }
+    }
+  }
+  return null;
+}
+
 document
   .getElementById("repairAuthBtn")
   .addEventListener("click", async function () {
@@ -1583,10 +1614,12 @@ document
       }
       var reparados = 0,
         errores = 0;
-      for (var i = 0; i < sinAuth.length; i++) {
+      var total = sinAuth.length;
+      for (var i = 0; i < total; i++) {
         var c = sinAuth[i];
+        btn.textContent = "Reparando " + (i + 1) + "/" + total + "...";
         try {
-          var authId = await createAuthUser(c.cuit, String(c.pin));
+          var authId = await _createAuthWithRetry(c.cuit, String(c.pin));
           if (authId) {
             await sbUpdate(TABLE_CUSTOMERS, c.id, "id", {
               auth_user_id: authId,
@@ -1602,6 +1635,10 @@ document
         } catch (err) {
           errores++;
           toast("Error en " + c.cod_cliente + ": " + err.message, "error");
+        }
+        // Pausa entre clientes para no saturar el rate limit
+        if (i < total - 1) {
+          await _repairDelay(REPAIR_DELAY_MS);
         }
       }
       toast(
