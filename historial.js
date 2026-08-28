@@ -14,6 +14,14 @@ const IMG_PARAMS = ``;
 // ================= CATALOGO ACTIVO =================
 let CATALOGO_CODES = new Set();
 
+// ================= ESTADO PARA EXPORTAR =================
+// La matriz que se está viendo en pantalla, para poder bajarla a Excel sin
+// volver a pedirle nada al servidor. La llena renderTabla().
+let ULTIMA_MATRIZ = null;
+// Cliente que se está viendo. Se setea en los tres caminos de init() (admin
+// embed, vendedor y cliente propio) vía setClienteActual().
+let CLIENTE_ACTUAL = null;
+
 function imgUrlByCod(cod) {
   const c = String(cod || "").trim();
   if (!c) return "img/no-image.jpg";
@@ -31,6 +39,20 @@ function setStatus(msg) {
   statusBox.style.display = "block";
   statusBox.innerText = msg;
   tabla.style.display = "none";
+  // Sin tabla en pantalla no hay nada que exportar
+  ULTIMA_MATRIZ = null;
+  const btn = $("btnHistExcel");
+  if (btn) btn.disabled = true;
+}
+
+// Deja el cliente en pantalla y en CLIENTE_ACTUAL (que usa el nombre del
+// archivo .xlsx). Los dos juntos para que no se puedan desincronizar.
+function setClienteActual(cliente) {
+  CLIENTE_ACTUAL = cliente || null;
+  $("cliente").innerText =
+    `Cliente: ${(cliente && cliente.business_name) || "(sin nombre)"} (${
+      (cliente && cliente.cod_cliente) || ""
+    })`;
 }
 
 async function getSession() {
@@ -336,7 +358,12 @@ function renderTabla(rows) {
     tbody.appendChild(tr);
   }
 
-  // 5) Mostrar y habilitar scroll horizontal
+  // 5) Guardar la matriz para el .xlsx (mismos datos, mismo orden que la tabla)
+  ULTIMA_MATRIZ = { meses: meses60, filas: arr };
+  const btnXlsx = $("btnHistExcel");
+  if (btnXlsx) btnXlsx.disabled = false;
+
+  // 6) Mostrar y habilitar scroll horizontal
   statusBox.style.display = "none";
   tabla.style.display = "table";
   tabla.style.width = "max-content";
@@ -471,8 +498,7 @@ async function init() {
       };
       console.log("[historial] ADMIN MODE — cliente:", cliente);
 
-      $("cliente").innerText =
-        `Cliente: ${cliente.business_name || "(sin nombre)"} (${cliente.cod_cliente})`;
+      setClienteActual(cliente);
 
       CATALOGO_CODES = await getCatalogCodes();
 
@@ -538,8 +564,7 @@ async function init() {
       if (!cliente) return;
     }
 
-    $("cliente").innerText =
-      `Cliente: ${cliente.business_name} (${cliente.cod_cliente})`;
+    setClienteActual(cliente);
 
     CATALOGO_CODES = await getCatalogCodes();
 
@@ -570,8 +595,7 @@ async function init() {
             );
           }
         } catch (e) {}
-        $("cliente").innerText =
-          `Cliente: ${cliente.business_name} (${cliente.cod_cliente})`;
+        setClienteActual(cliente);
         setStatus("Cargando...");
         const rows2 = await getHistory(cliente.cod_cliente);
         await renderTabla(rows2);
@@ -583,6 +607,108 @@ async function init() {
     setStatus("Error inesperado cargando historial. Ver consola.");
   }
 }
+
+// ====== Descargar la matriz a .xlsx ======
+// Sale de ULTIMA_MATRIZ, que es exactamente lo que está en pantalla: no vuelve
+// a consultar nada. Se omiten Imagen y Pedido (no tienen sentido en un Excel) y
+// la fila de año del encabezado: cada mes va como "jul-26", que ya lo lleva
+// adentro y deja la hoja con un solo encabezado, filtrable y pivoteable.
+function mesEtiquetaCorta(ym) {
+  const y = Number(ym.slice(0, 4));
+  const m = Number(ym.slice(5, 7));
+  const nombre = new Date(y, m - 1, 1)
+    .toLocaleString("es-AR", { month: "short" })
+    .replace(".", "")
+    .toLowerCase();
+  return `${nombre}-${ym.slice(2, 4)}`;
+}
+
+window.descargarHistorialExcel = function () {
+  if (!ULTIMA_MATRIZ || !ULTIMA_MATRIZ.filas.length) return;
+  if (typeof XLSX === "undefined") {
+    alert("No se pudo cargar la librería de Excel. Probá recargar la página.");
+    return;
+  }
+
+  const meses = ULTIMA_MATRIZ.meses;
+  const filas = ULTIMA_MATRIZ.filas;
+
+  const encabezados = ["Cod", "Descripción", "Total"].concat(
+    meses.map(mesEtiquetaCorta),
+  );
+
+  const aoa = [encabezados];
+  filas.forEach((p) => {
+    // El código va como TEXTO a propósito: hay códigos con letra ("529E") y
+    // otros con ceros a la izquierda ("031") que Excel comería como número.
+    const fila = [String(p.cod), p.desc, Number(p.total) || 0];
+    meses.forEach((ym) => {
+      // Mes sin compra: celda vacía, igual que en pantalla. Un 0 ensuciaría
+      // la lectura y no cambia ninguna suma.
+      fila.push(p.meses[ym] ? Number(p.meses[ym]) : "");
+    });
+    aoa.push(fila);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  ws["!cols"] = [{ wch: 9 }, { wch: 38 }, { wch: 10 }].concat(
+    meses.map(() => ({ wch: 8 })),
+  );
+
+  ws["!autofilter"] = {
+    ref: XLSX.utils.encode_range({
+      s: { r: 0, c: 0 },
+      e: { r: aoa.length - 1, c: encabezados.length - 1 },
+    }),
+  };
+
+  // Estilos celda por celda: xlsx-js-style guarda el estilo EN la celda, no
+  // hay forma de aplicarlo por columna. Mismo criterio que el panel admin.
+  const ultimaCol = encabezados.length - 1;
+  for (let c = 0; c <= ultimaCol; c++) {
+    const ref = XLSX.utils.encode_cell({ r: 0, c });
+    if (!ws[ref]) continue;
+    ws[ref].s = {
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "19222F" } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+    };
+  }
+  for (let f = 1; f < aoa.length; f++) {
+    for (let c = 2; c <= ultimaCol; c++) {
+      const ref = XLSX.utils.encode_cell({ r: f, c });
+      const cell = ws[ref];
+      if (!cell) continue;
+      cell.z = "#,##0";
+      cell.s = { alignment: { horizontal: "right" } };
+      if (c === 2) cell.s.font = { bold: true };
+    }
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Historial");
+
+  const cod = (CLIENTE_ACTUAL && CLIENTE_ACTUAL.cod_cliente) || "cliente";
+  const nombre = ((CLIENTE_ACTUAL && CLIENTE_ACTUAL.business_name) || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase()
+    .slice(0, 40);
+
+  const hoy = new Date();
+  const stamp =
+    hoy.getFullYear() +
+    String(hoy.getMonth() + 1).padStart(2, "0") +
+    String(hoy.getDate()).padStart(2, "0");
+
+  XLSX.writeFile(
+    wb,
+    `historial_${cod}${nombre ? "_" + nombre : ""}_${stamp}.xlsx`,
+  );
+};
 
 // ====== Cola de agregados desde Historial (por COD) ======
 const HISTORY_PENDING_KEY = "lk_pending_adds_cod_v1";

@@ -112,6 +112,42 @@ body {
   border: 1px solid #f6c8c1;
   box-shadow: 0 2px 6px rgba(192, 57, 43, 0.08);
 }
+/* ===== Botón "Descargar Excel" ===== */
+/* margin-left:auto lo empuja al extremo derecho del title-block, que ya es flex */
+.hist-xlsx-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.hist-xlsx-btn:hover:not(:disabled) {
+  background: #1d6f42;
+  color: #fff;
+  border-color: #1d6f42;
+  box-shadow: 0 4px 12px rgba(29, 111, 66, 0.2);
+}
+/* Deshabilitado mientras la tabla no está armada (no hay nada que exportar) */
+.hist-xlsx-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.hist-xlsx-btn span:first-child {
+  font-size: 15px;
+  line-height: 1;
+}
+
 .hist-title-text {
   display: flex;
   flex-direction: column;

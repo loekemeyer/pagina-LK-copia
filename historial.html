@@ -15,7 +15,9 @@
 
     <!-- Supabase UMD -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-    <link rel="stylesheet" href="css/historial.css?v=23280" />
+    <!-- xlsx-js-style: mismo fork de SheetJS que usa el panel admin -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <link rel="stylesheet" href="css/historial.css?v=23281" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.jpg" />
@@ -70,6 +72,17 @@
             <h1>Historial de compras</h1>
             <p class="hist-subtitle">Todos tus pedidos confirmados, mes a mes.</p>
           </div>
+
+          <button
+            class="hist-xlsx-btn"
+            type="button"
+            id="btnHistExcel"
+            onclick="descargarHistorialExcel()"
+            disabled
+          >
+            <span aria-hidden="true">⬇</span>
+            <span>Descargar Excel</span>
+          </button>
         </div>
 
         <div id="cliente"></div>
@@ -94,7 +107,7 @@
       </p>
     </div>
 
-    <script src="historial.js?v=23280"></script>
+    <script src="historial.js?v=23281"></script>
     <script>
       // Sincronizar scroll superior e inferior
       (function () {
