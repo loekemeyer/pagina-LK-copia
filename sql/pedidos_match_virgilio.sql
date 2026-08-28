@@ -1,6 +1,6 @@
 -- =============================================================================
 -- pedidos_match_virgilio.sql — String identificador de pedido web para cruzar
--- con Producción Virgilio, LK + CHEF (2026-08-28)
+-- con Producción Virgilio, LK + CHEF, con MÉTODO DE PAGO (2026-08-28)
 -- =============================================================================
 -- PROBLEMA: Virgilio no tiene la SUCURSAL DE ENTREGA de cada pedido; los
 -- portales web sí (sheets_payload.sucursal_entrega). Para cruzar sin número de
@@ -52,7 +52,8 @@ create foreign table if not exists public.chef_orders (
   created_at     timestamptz,
   customer_id    uuid,
   status         text,
-  sheets_payload jsonb
+  sheets_payload jsonb,
+  payment_method text
 ) server chef_db options (schema_name 'public', table_name 'orders');
 
 -- -----------------------------------------------------------------------------
@@ -68,6 +69,7 @@ with base as (
          (o.created_at at time zone 'America/Argentina/Buenos_Aires')::date as fecha_pedido,
          to_char(o.created_at at time zone 'America/Argentina/Buenos_Aires', 'HH24:MI:SS') as hora_pedido,
          nullif(o.sheets_payload->>'sucursal_entrega','') as sucursal_entrega,
+         o.payment_method as metodo_pago,
          (select string_agg(t.cod || 'x' ||
                    (case when t.suma = trunc(t.suma) then trunc(t.suma)::bigint::text else t.suma::text end),
                    ',' order by t.cod)
@@ -85,6 +87,7 @@ select 'lk'::text as empresa,
        hora_pedido,
        created_at,
        sucursal_entrega,
+       metodo_pago,
        items_string,
        cod_cliente || '|' || to_char(fecha_pedido,'YYYY-MM-DD') || '|' || items_string as match_string,
        count(*) over w > 1
@@ -109,6 +112,7 @@ with base as (
          (o.created_at at time zone 'America/Argentina/Buenos_Aires')::date as fecha_pedido,
          to_char(o.created_at at time zone 'America/Argentina/Buenos_Aires', 'HH24:MI:SS') as hora_pedido,
          nullif(o.sheets_payload->>'sucursal_entrega','') as sucursal_entrega,
+         o.payment_method as metodo_pago,
          (select string_agg(t.cod || 'x' ||
                    (case when t.suma = trunc(t.suma) then trunc(t.suma)::bigint::text else t.suma::text end),
                    ',' order by t.cod)
@@ -127,6 +131,7 @@ select 'chef'::text as empresa,
        hora_pedido,
        created_at,
        sucursal_entrega,
+       metodo_pago,
        items_string,
        cod_cliente || '|' || to_char(fecha_pedido,'YYYY-MM-DD') || '|' || items_string as match_string,
        count(*) over w > 1
@@ -152,6 +157,7 @@ create foreign table virgilio.lk_pedidos_match (
   hora_pedido      text,
   created_at       timestamptz,
   sucursal_entrega text,
+  metodo_pago      text,
   items_string     text,
   match_string     text,
   ambiguo          boolean,
@@ -181,9 +187,9 @@ begin
 
   insert into virgilio.lk_pedidos_match
     (empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-     sucursal_entrega, items_string, match_string, ambiguo, orden_en_dia)
+     sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia)
   select empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-         sucursal_entrega, items_string, match_string, ambiguo, orden_en_dia
+         sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia
     from public.v_pedidos_match
    where fecha_pedido >= v_corte;
 
@@ -197,9 +203,9 @@ begin
 
     insert into virgilio.lk_pedidos_match
       (empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-       sucursal_entrega, items_string, match_string, ambiguo, orden_en_dia)
+       sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia)
     select empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-           sucursal_entrega, items_string, match_string, ambiguo, orden_en_dia
+           sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia
       from public.v_pedidos_match_chef
      where fecha_pedido >= v_corte;
   exception when others then
