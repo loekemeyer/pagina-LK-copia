@@ -1541,8 +1541,8 @@
       suggestEl.querySelectorAll(".xkr-suggest-row").forEach(function (row) {
         row.addEventListener("pointerdown", function (e) {
           e.preventDefault();
-          var id = Number(row.dataset.id);
-          var c = merged.find(function (x) { return x.id === id; });
+          var id = row.dataset.id;
+          var c = merged.find(function (x) { return String(x.id) === id; });
           if (c) onPick(c);
         });
       });
