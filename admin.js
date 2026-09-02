@@ -4304,9 +4304,9 @@ async function cpCardSuggestCustomers(card, q) {
     card.suggestEl.querySelectorAll(".cp-suggest-row").forEach(function (row) {
       row.addEventListener("mousedown", function (e) {
         e.preventDefault(); // evitar blur antes del click
-        var id = Number(row.dataset.id);
+        var id = row.dataset.id;
         var c = merged.find(function (x) {
-          return x.id === id;
+          return String(x.id) === id;
         });
         if (c) {
           cpHideSuggest(card);
@@ -4375,9 +4375,9 @@ async function cpCardSearchCustomer(card) {
     card.customerWrap.style.display = "block";
     card.customerWrap.querySelectorAll(".cp-pick-row").forEach(function (row) {
       row.addEventListener("click", function () {
-        var id = Number(row.dataset.id);
+        var id = row.dataset.id;
         var c = result.data.find(function (x) {
-          return x.id === id;
+          return String(x.id) === id;
         });
         if (c) cpCardSelectCustomer(card, c);
       });
