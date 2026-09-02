@@ -20,6 +20,9 @@
 -- La definicion viva y comentada esta en el repo Produccion-Virgilio:
 -- sql/fn_proyeccion_oc_virgilio.sql, y el backup de lo anterior en
 -- sql/backups/backup_proyeccion_LK_20260902.sql.
+-- (d) 2026-09-02: `estadistica_madre` (la tabla del Excel) paso a ser una VISTA sobre
+--     esta cache. Ver CLAUDE.md, bullet "estadistica_madre es una VISTA". El importador
+--     de Excel se retiro del front.
 -- =====================================================================
 
 -- ============================================================================
