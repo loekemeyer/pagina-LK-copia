@@ -20,6 +20,10 @@
 -- La definicion viva y comentada esta en el repo Produccion-Virgilio:
 -- sql/fn_proyeccion_oc_virgilio.sql, y el backup de lo anterior en
 -- sql/backups/backup_proyeccion_LK_20260902.sql.
+-- (e) 2026-09-02 (mismo dia, mas tarde): refresh_estadistica_madre_cache YA NO CALCULA la
+--     proyeccion. La toma de fn_proyeccion_madre() -> _fn_proy_window(6): promedio simple 6m
+--     con piso en el 4.o mejor mes. Un solo criterio en todo el sistema. Se elimino
+--     fn_proy_descarte. Ver CLAUDE.md, bullet "UN solo criterio".
 -- (d) 2026-09-02: `estadistica_madre` (la tabla del Excel) paso a ser una VISTA sobre
 --     esta cache. Ver CLAUDE.md, bullet "estadistica_madre es una VISTA". El importador
 --     de Excel se retiro del front.
