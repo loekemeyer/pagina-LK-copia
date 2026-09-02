@@ -9084,7 +9084,7 @@ document.addEventListener("keydown", function (e) {
    - Renderiza tabla cod / desc / total / mes1...mesN
    ========================================================= */
 // Parámetros del cálculo de proyección. Tunear acá sin tocar la lógica.
-var EM_PROY_WINDOW = 24;        // Meses hacia atrás para calcular proyección
+var EM_PROY_WINDOW = 6;         // Meses hacia atrás para calcular proyección (v2496: era 24)
 var EM_DISRUPT_RATIO = 1.5;     // Mes con units > ratio × promedio crudo = candidato disruptivo
 var EM_RECURRING_SIM = 0.8;     // Si otro mes tiene ≥ ratio × monto del candidato → es recurrente, no disruptivo
 var EM_PROGRESSIVE_THR = 0.5;   // Si el mes previo tiene ≥ ratio × monto del candidato → es crecimiento progresivo, no disruptivo
@@ -9671,12 +9671,15 @@ window.setEstMadreSort = setEstMadreSort;
 // Per cada (cliente, item):
 //   1. Toma ventana de últimos EM_PROY_WINDOW meses (con ceros para meses sin compra).
 //   2. Encuentra primer mes con actividad. Si no hay, no aporta.
-//   3. N = meses desde primera actividad hasta el último mes de la ventana.
-//   4. raw_avg = sum(active) / N.
-//   5. Detecta meses disruptivos (units > 1.5*raw_avg) y los marca como tales,
-//      excepto si: (a) algún otro mes tiene ≥ EM_RECURRING_SIM × este monto (recurrente)
-//                  o (b) el mes anterior tiene ≥ EM_PROGRESSIVE_THR × este monto (crecimiento progresivo).
-//   6. per_customer_proj = (sum(active) - sum(disruptivos)) / N.
+//   3. raw_avg = sum(active) / W  (W = ventana completa, NO "meses desde la 1a compra").
+//   4. Detecta meses disruptivos (units > 1.5*raw_avg), excepto si: (a) algún otro mes
+//      tiene ≥ EM_RECURRING_SIM × este monto (recurrente) o (b) el mes anterior tiene
+//      ≥ EM_PROGRESSIVE_THR × este monto (crecimiento progresivo).
+//   5. El filtro NO corre si el cliente compró en un solo mes de la ventana.
+//   6. per_customer_proj = (sum(active) - sum(EXCEDENTES)) / W.
+//
+// ESPEJO del backend: la regla vive en fn_proy_descarte() del proyecto Supabase LK y
+// esto es una copia de fallback. Si cambia una, hay que cambiar la otra.
 //
 // Proyección del item = suma de per_customer_proj de todos sus clientes.
 //
@@ -9713,36 +9716,49 @@ function _computeEstMadreProjections(byCustItem, allYmsAsc) {
       var active = series.slice(firstIdx);
       var N = active.length;
       var sumActive = 0;
-      for (var s = 0; s < N; s++) sumActive += active[s];
+      var mesesConCompra = 0;
+      for (var s = 0; s < N; s++) {
+        sumActive += active[s];
+        if (active[s] > 0) mesesConCompra++;
+      }
       if (sumActive <= 0) return;
 
-      var rawAvg = sumActive / N;
+      // v2496 — denominador = VENTANA COMPLETA, no "meses desde la primera compra".
+      // Ese divisor hacía que un cliente estrenado el mes pasado contara su único
+      // pedido como ritmo mensual completo (+51% sobre el promedio real).
+      var rawAvg = sumActive / W;
       var disruptThr = rawAvg * EM_DISRUPT_RATIO;
 
-      // Detectar meses disruptivos
+      // Detectar meses disruptivos.
+      // v2496 — (A) el filtro NO se activa para clientes que compraron en un solo mes:
+      // ahí las tres condiciones se cumplían por construcción y se les anulaba el 100%
+      // del volumen. Comprar una vez cada tanto no es un pico, es su forma de comprar.
       var disruptiveSum = 0;
-      for (var idx = 0; idx < N; idx++) {
-        var val = active[idx];
-        if (val <= disruptThr) continue;
+      if (mesesConCompra >= 2) {
+        for (var idx = 0; idx < N; idx++) {
+          var val = active[idx];
+          if (val <= disruptThr) continue;
 
-        // Recurrente? otro mes con ≥ EM_RECURRING_SIM × val
-        var recurring = false;
-        var simThr = val * EM_RECURRING_SIM;
-        for (var j = 0; j < N; j++) {
-          if (j === idx) continue;
-          if (active[j] >= simThr) { recurring = true; break; }
+          // Recurrente? otro mes con ≥ EM_RECURRING_SIM × val
+          var recurring = false;
+          var simThr = val * EM_RECURRING_SIM;
+          for (var j = 0; j < N; j++) {
+            if (j === idx) continue;
+            if (active[j] >= simThr) { recurring = true; break; }
+          }
+          if (recurring) continue;
+
+          // Progresivo? mes previo con ≥ EM_PROGRESSIVE_THR × val
+          if (idx > 0 && active[idx - 1] >= val * EM_PROGRESSIVE_THR) continue;
+
+          // v2496 — (B) se descarta sólo el EXCEDENTE, no el mes entero: un pedido
+          // grande genuino conserva su parte normal.
+          disruptiveSum += (val - disruptThr);
         }
-        if (recurring) continue;
-
-        // Progresivo? mes previo con ≥ EM_PROGRESSIVE_THR × val
-        if (idx > 0 && active[idx - 1] >= val * EM_PROGRESSIVE_THR) continue;
-
-        // Disruptivo real
-        disruptiveSum += val;
       }
 
-      // Promedio crudo limpio (numerador sin disruptivos, denominador = N)
-      var perCustProj = (sumActive - disruptiveSum) / N;
+      // Promedio limpio (numerador sin el excedente, denominador = ventana completa)
+      var perCustProj = (sumActive - disruptiveSum) / W;
       itemProj += perCustProj;
     });
 

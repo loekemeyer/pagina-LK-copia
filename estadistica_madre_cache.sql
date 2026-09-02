@@ -1,3 +1,27 @@
+-- =====================================================================
+-- ACTUALIZADO 2026-09-02 (propuesta 2496) — LEER ANTES DE USAR ESTE ARCHIVO
+--
+-- (a) Lo que este archivo dice sobre "reusa fn_proyeccion_madre() -> NO reimplementa
+--     la logica de proyeccion" ERA FALSO en produccion: la funcion desplegada tenia la
+--     formula INLINEADA y desfasada. Se detecto comparando pg_proc contra el repo.
+--
+-- (b) La ventana paso de 24 a 6 meses (pedido del usuario: la estadistica madre tiene
+--     que mirar los ultimos 6 meses de venta).
+--
+-- (c) La regla de descarte de picos ahora vive en UNA sola funcion, fn_proy_descarte(),
+--     que comparten esta funcion y el motor de las OCs (_fn_proy_window). Antes estaba
+--     copiada en 4 funciones SQL y 2 archivos JS, y ya habian divergido: el art. 505
+--     mostraba 1667,6 en Virgilio, 2069,7 aca y 2500 en la tabla estadistica_madre.
+--
+--     La regla vieja descartaba el MES ENTERO y anulaba por construccion a todo cliente
+--     con una sola compra en la ventana. Ahora descarta solo el EXCEDENTE y no se activa
+--     si el cliente compro en menos de 2 meses. El divisor es la ventana completa.
+--
+-- La definicion viva y comentada esta en el repo Produccion-Virgilio:
+-- sql/fn_proyeccion_oc_virgilio.sql, y el backup de lo anterior en
+-- sql/backups/backup_proyeccion_LK_20260902.sql.
+-- =====================================================================
+
 -- ============================================================================
 -- estadistica_madre_cache.sql
 --
