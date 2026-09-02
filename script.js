@@ -141,6 +141,15 @@ function _expoNewSyncComplete() {
 const BASE_IMG = `${SUPABASE_URL}/storage/v1/object/public/products-images/`;
 const IMG_PARAMS = ``;
 
+// Overrides SOLO de display del código de artículo. NO cambia el cod real:
+// la imagen, el carrito y el pedido siguen usando el cod de la base. Pedido
+// puntual: mostrar 580 en lugar de 580E.
+const CODE_DISPLAY_OVERRIDES = { "580E": "580" };
+function codDisplay(cod) {
+  const c = String(cod == null ? "" : cod).trim();
+  return CODE_DISPLAY_OVERRIDES[c.toUpperCase()] || c;
+}
+
 /***********************
  * HISTORIAL DE RENAMES DE PRODUCTO
  * Cuando un cod cambia en DB, registramos acá para que los PDFs de pedidos
@@ -3039,7 +3048,7 @@ async function openVendorSuggestions(customerId, orderId) {
         '<div class="vs-info">' +
         (tag ? '<div class="vs-tag">' + tag + "</div>" : "") +
         '<div class="vs-cod">' +
-        escapeHtml(cod) +
+        escapeHtml(codDisplay(cod)) +
         "</div>" +
         '<div class="vs-desc">' +
         escapeHtml(desc) +
@@ -3577,7 +3586,7 @@ function renderProducts() {
 
         <div class="card-top">
           <div class="card-row">
-            <div class="card-cod">Cod: <span>${codSafe}</span></div>
+            <div class="card-cod">Cod: <span>${codDisplay(codSafe)}</span></div>
             <div class="card-uxb">UxB: <span>${p.uxb}</span></div>
           </div>
 
@@ -4157,7 +4166,7 @@ function _ncBuildCardHtml(p, logged, showListPriceOnly, cloneFlag) {
         <div class="nc-badge">NUEVO</div>
         <div class="nc-body">
           <div class="nc-meta">
-            <span class="nc-cod">Cod: <strong>${codSafe}</strong></span>
+            <span class="nc-cod">Cod: <strong>${codDisplay(codSafe)}</strong></span>
             <span class="nc-uxb">UxB: <strong>${p.uxb}</strong></span>
           </div>
           <div class="nc-desc" title="${descSafe}">${String(p.description || "")}</div>
@@ -6729,7 +6738,7 @@ function renderMissingAssortmentModule() {
         "</div>" +
         '<div class="missing-price-row">' +
         '<span class="missing-cod">' +
-        codSafe +
+        codDisplay(codSafe) +
         '</span>' +
         '<span class="missing-price-label">Tu precio contado:</span>' +
         '<span class="missing-price">$' +
@@ -6873,7 +6882,7 @@ function showUpsellPopup(upsellProducts) {
           '">' +
           '<div class="upsell-card-info">' +
           '<div class="upsell-cod">' +
-          codSafe +
+          codDisplay(codSafe) +
           "</div>" +
           '<div class="upsell-desc">' +
           String(p.description || "") +
@@ -12255,7 +12264,7 @@ function renderLokeProducts() {
       '<div class="card-top">' +
       '<div class="card-row">' +
       '<div class="card-cod">Cod: <span>' +
-      codSafe +
+      codDisplay(codSafe) +
       "</span></div>" +
       '<div class="card-uxb">UxB: <span>' +
       p.uxb +
