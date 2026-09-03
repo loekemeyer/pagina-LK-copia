@@ -424,6 +424,29 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   **Falta la fase 2**: botones inline *Sirvió / No sirvió*. Mandarlos es fácil
   (`reply_markup`), pero RECIBIR el click necesita un webhook público, o sea una
   Edge Function con `verify_jwt:false` que llame a `gv_marcar_utilidad`.
+- **Lo que realmente SALIÓ del depósito NO está en el Supabase de LK: está en el de
+  Virgilio** (`Facturacion_NP`, con `fecha_salida` al día). Se espeja a LK con
+  `sincronizar_ppp()` → `ppp_facturacion`. **Es lo que hace posible un número de
+  plata DIARIO**, porque `sales_lines` entra por lote mensual y no sirve para eso.
+  El reporte diario y el semanal muestran ese bloque como "DESPACHADO".
+- **`rep_despacho_diario` es una FOTO y no se puede reemplazar por una consulta.**
+  `ppp_base_pedidos` es amnésica (el sync la reemplaza entera), así que las líneas
+  de una NP vieja desaparecen y con ellas la posibilidad de valorizarla. Medido el
+  3/9/2026: septiembre 100% valorizable, agosto 95%, julio 66%, **junio 0%**. La
+  foto la toma `rep_snapshot_despacho()`, que llama `sincronizar_ppp()` apenas
+  refresca el espejo, y solo pisa un día si la corrida nueva tiene al menos tantas
+  NP valorizadas como la guardada — si no, una corrida tardía degradaría un dato
+  que ya estaba bien.
+- **El despacho se valoriza sobre las cajas PEDIDAS y se ajusta por lo entregado.**
+  `ppp_base_pedidos` es el único detalle por artículo que existe, pero Virgilio
+  despacha corto ~4,5%: sin el ajuste el número sobreestima. El ratio sale de
+  `vista_ppp_pedidos_entregados`, espejada como `ppp_entregas_np` (necesita
+  `grant select ... to lk_ppp_reader` del lado Virgilio).
+- **DESPACHADO y FACTURADO no son el mismo número y no se suman.** Agosto 2026:
+  Virgilio ajustado **$538,9 M**, ERP crudo **$477,0 M**, ERP corregido por las
+  cajas sin match **$586,0 M**; cajas 19.353 vs 22.556 (86%). Se corroboran, y las
+  diferencias tienen causa conocida: el ERP pierde el 18,6% de las cajas de agosto
+  en el join a `products`, y no todo lo que factura LK pasa por PPP.
 - **Los reportes de gerencia miden DOS RELOJES distintos y no se pueden mezclar.**
   `orders` (portal) es plata **pedida**, está EN VIVO. `sales_lines` (ERP) es plata
   **facturada**, y entra **por lote MENSUAL cargado a mano** (un `import_batch` por

@@ -332,10 +332,144 @@ revoke all on function public.rep_caidas(int, numeric) from public, anon, authen
 
 
 -- ---------------------------------------------------------------------------
+-- 4B. DESPACHADO POR DIA  (fuente: VIRGILIO, no LK)
+-- ---------------------------------------------------------------------------
+-- Lo que realmente SALIO del deposito NO esta en el Supabase de LK: vive en el
+-- de Virgilio (`Facturacion_NP`, con fecha_salida al dia). Se espeja a LK con
+-- sincronizar_ppp() -> public.ppp_facturacion.
+--
+-- Esto es lo que hace posible un numero de PLATA DIARIO. `sales_lines` (ERP)
+-- entra por lote mensual, asi que no sirve; `Facturacion_NP` se actualiza todos
+-- los dias. Verificado: fecha_salida llegaba a 2026-09-04 el 3/9.
+--
+-- POR QUE HACE FALTA UNA FOTO Y NO ALCANZA CON CONSULTAR
+--   `ppp_base_pedidos` es AMNESICA: el sync la reemplaza entera desde Virgilio,
+--   asi que las lineas de una NP vieja desaparecen y con ellas la posibilidad de
+--   valorizarla. Medido el 3/9/2026, % de NP todavia valorizables:
+--       septiembre 100%   agosto 95%   julio 66%   junio 0%
+--   Sin la foto, el historico de plata despachada se borra solo.
+--
+-- COMO SE VALORIZA
+--   Se valoriza sobre las cajas PEDIDAS (`ppp_base_pedidos`, unico detalle por
+--   articulo que existe) y despues se ajusta por la proporcion realmente
+--   entregada de esa NP: Virgilio despacha corto ~4,5% y sin el ajuste el numero
+--   sobreestima. Ese dato sale de `vista_ppp_pedidos_entregados`, espejada como
+--   `ppp_entregas_np`.
+--
+-- CONTRASTE CONTRA EL ERP (agosto 2026)
+--   Virgilio (con ajuste)                         $538,9 M
+--   ERP crudo (sales_lines)                       $477,0 M
+--   ERP corregido por las cajas sin match         $586,0 M
+--   Cajas: Virgilio 19.353 vs ERP 22.556 (86%)
+--   Los dos metodos se corroboran. Las diferencias tienen causa conocida: el ERP
+--   pierde el 18,6% de las cajas de agosto en el join a `products`, y no todo lo
+--   que factura LK pasa por PPP. NO son el mismo numero y no hay que sumarlos.
+
+create foreign table if not exists virgilio.entregas_np (
+  np               text,
+  tanda            text,
+  cod_cliente      text,
+  m3               numeric,
+  fecha_salida     date,
+  cajas_pedidas    numeric,
+  cajas_entregadas numeric,
+  cajas_falto      numeric
+) server virgilio_db
+  options (schema_name 'public', table_name 'vista_ppp_pedidos_entregados');
+-- Del lado VIRGILIO hace falta:  grant select on public.vista_ppp_pedidos_entregados to lk_ppp_reader;
+
+create table if not exists public.ppp_entregas_np (
+  np               text primary key,
+  cod_cliente      text,
+  fecha_salida     date,
+  cajas_pedidas    numeric,
+  cajas_entregadas numeric,
+  cajas_falto      numeric
+);
+alter table public.ppp_entregas_np enable row level security;
+revoke all on table public.ppp_entregas_np from public, anon, authenticated;
+
+create table if not exists public.rep_despacho_diario (
+  fecha            date primary key,
+  nps              int     not null,
+  np_valorizadas   int     not null,
+  m3               numeric,
+  plata            numeric,
+  cajas_pedidas    numeric,
+  cajas_entregadas numeric,
+  calculado_at     timestamptz not null default now()
+);
+alter table public.rep_despacho_diario enable row level security;
+revoke all on table public.rep_despacho_diario from public, anon, authenticated;
+
+-- La llama sincronizar_ppp() apenas termina de refrescar el espejo.
+create or replace function public.rep_snapshot_despacho(p_dias int default 30)
+returns int language plpgsql security definer
+set search_path to 'public','pg_temp'
+as $$
+declare n int;
+begin
+  with calc as (
+    select f.fecha_salida as fecha,
+           count(distinct f.np)::int as nps,
+           count(distinct f.np) filter (
+             where exists (select 1 from ppp_base_pedidos b where b.pedido = f.np))::int as np_val,
+           round(sum(f.m3)::numeric,2) as m3,
+           round(sum(v.plata * coalesce(e.ratio,1))) as plata,
+           round(sum(coalesce(e.cajas_pedidas,0))) as cj_ped,
+           round(sum(coalesce(e.cajas_entregadas,0))) as cj_ent
+    from ppp_facturacion f
+    join lateral (
+      select coalesce(sum(ppp_valor_linea(pr.cod, b.articulo, b.cajas)),0) as plata
+      from ppp_base_pedidos b
+      left join ppp_programacion pr on pr.np = f.np
+      where b.pedido = f.np
+    ) v on true
+    left join lateral (
+      select en.cajas_pedidas, en.cajas_entregadas,
+             case when coalesce(en.cajas_pedidas,0) > 0
+                  then en.cajas_entregadas / en.cajas_pedidas end as ratio
+      from ppp_entregas_np en where en.np = f.np
+    ) e on true
+    where left(f.np,1) = '9'
+      and f.fecha_salida is not null
+      and f.fecha_salida >= current_date - p_dias
+    group by 1
+  ),
+  ins as (
+    insert into public.rep_despacho_diario
+      (fecha, nps, np_valorizadas, m3, plata, cajas_pedidas, cajas_entregadas, calculado_at)
+    select fecha, nps, np_val, m3, plata, cj_ped, cj_ent, now() from calc
+    -- Solo pisa un dia si la foto nueva tiene AL MENOS tantas NP valorizadas como
+    -- la guardada: si no, una corrida tardia con las lineas ya perdidas
+    -- degradaria un dato que estaba bien.
+    on conflict (fecha) do update
+      set nps              = excluded.nps,
+          np_valorizadas   = excluded.np_valorizadas,
+          m3               = excluded.m3,
+          plata            = excluded.plata,
+          cajas_pedidas    = excluded.cajas_pedidas,
+          cajas_entregadas = excluded.cajas_entregadas,
+          calculado_at     = now()
+      where excluded.np_valorizadas >= public.rep_despacho_diario.np_valorizadas
+    returning 1
+  )
+  select count(*) into n from ins;
+  return n;
+end $$;
+
+revoke all on function public.rep_snapshot_despacho(int) from public, anon, authenticated;
+
+
+-- ---------------------------------------------------------------------------
 -- 5. TEXTOS DE LOS REPORTES
 -- ---------------------------------------------------------------------------
 
--- DIARIO. Mide pedido + backlog, NO facturado (ver cabecera del archivo).
+-- DIARIO. Cuatro numeros y cada uno mide otra cosa; ver cabecera del archivo.
+--   DESPACHADO -> Virgilio, lo unico que da plata al dia siguiente.
+--   PEDIDO     -> orders, portal, en vivo.
+--   POR FACTURAR -> backlog PPP.
+--   FACTURADO  -> ERP, ultimo mes cerrado, del mismo cache que el panel.
 create or replace function public.rep_texto_diario(p_fecha date default null)
 returns text language plpgsql stable security definer
 set search_path to 'public','pg_temp'
@@ -344,6 +478,7 @@ declare
   f     date := coalesce(p_fecha, (now() at time zone 'America/Argentina/Buenos_Aires')::date - 1);
   ayer  record;
   mes   record;
+  desp  record;
   ppp   jsonb;
   dash  jsonb;
   linea_mes text;
@@ -369,12 +504,25 @@ begin
             then rep_var(mes.actual, nullif(mes.ant_tramo,0)) || ' vs mismo tramo mes ant.'
             else ' (día ' || extract(day from f)::int || ', muy temprano para comparar)' end;
 
+  -- DESPACHADO: sale de Virgilio (Facturacion_NP), que es donde vive lo que
+  -- realmente salio. Es el unico numero de plata que existe al dia siguiente.
+  select coalesce(d.nps,0) as nps, coalesce(d.plata,0) as plata,
+         coalesce(d.cajas_entregadas,0) as cajas, coalesce(d.m3,0) as m3,
+         (select coalesce(sum(x.plata),0) from rep_despacho_diario x
+           where x.fecha >= date_trunc('month', f)::date and x.fecha <= f) as plata_mes
+    into desp
+  from rep_despacho_diario d where d.fecha = f;
+
   ppp := rep_ppp();
   -- El facturado sale del MISMO cache que el panel, para que no den numeros distintos.
   select d.data into dash from gv_dash_cache d where d.id = 1;
 
   return '📊 DIARIO · ' || to_char(f,'DD/MM/YYYY') || E'\n'
     || '━━━━━━━━━━━━━━━━━━' || E'\n\n'
+    || '🚚 DESPACHADO (depósito, ayer)' || E'\n'
+    || '  ' || rep_plata(coalesce(desp.plata,0))
+       || '  ·  ' || coalesce(desp.nps,0) || ' NP  ·  ' || round(coalesce(desp.cajas,0)) || ' cajas' || E'\n'
+    || '  Mes a la fecha: ' || rep_plata(coalesce(desp.plata_mes,0)) || E'\n\n'
     || '🛒 PEDIDO (portal, en vivo)' || E'\n'
     || '  Ayer: ' || rep_plata(ayer.monto) || '  ·  ' || ayer.pedidos || ' ped  ·  ' || ayer.clientes || ' cli' || E'\n'
     || linea_mes || E'\n\n'
@@ -399,18 +547,26 @@ declare
   hoy date := coalesce(p_fecha, (now() at time zone 'America/Argentina/Buenos_Aires')::date);
   ini date := date_trunc('week', hoy)::date - 7;   -- lunes de la semana pasada
   fin date := date_trunc('week', hoy)::date - 1;   -- domingo
-  sem record;
-  ppp jsonb;
-  top text;
+  sem  record;
+  desp record;
+  ppp  jsonb;
+  top  text;
 begin
-  select coalesce(sum(o.total) filter (where l.d between ini and fin),0)          as monto,
-         count(*) filter (where l.d between ini and fin)                          as pedidos,
-         count(distinct o.customer_id) filter (where l.d between ini and fin)     as clientes,
-         coalesce(sum(o.total) filter (where l.d between ini-7 and fin-7),0)      as monto_ant
+  select coalesce(sum(o.total) filter (where l.d between ini and fin),0)      as monto,
+         count(*) filter (where l.d between ini and fin)                      as pedidos,
+         count(distinct o.customer_id) filter (where l.d between ini and fin) as clientes,
+         coalesce(sum(o.total) filter (where l.d between ini-7 and fin-7),0)  as monto_ant
     into sem
   from orders o
   cross join lateral (select (o.created_at at time zone 'America/Argentina/Buenos_Aires')::date as d) l
   where l.d between ini-7 and fin;
+
+  select coalesce(sum(plata) filter (where fecha between ini and fin),0)      as plata,
+         coalesce(sum(nps)   filter (where fecha between ini and fin),0)      as nps,
+         coalesce(sum(cajas_entregadas) filter (where fecha between ini and fin),0) as cajas,
+         coalesce(sum(plata) filter (where fecha between ini-7 and fin-7),0)  as plata_ant
+    into desp
+  from rep_despacho_diario where fecha between ini-7 and fin;
 
   select string_agg('  ' || row_number || '. ' || cliente || ' — ' || plata, E'\n' order by row_number)
     into top
@@ -423,23 +579,24 @@ begin
     cross join lateral (select (o.created_at at time zone 'America/Argentina/Buenos_Aires')::date as d) l
     where l.d between ini and fin
     group by c.cod_cliente, c.business_name
-    order by sum(o.total) desc
-    limit 5
+    order by sum(o.total) desc limit 5
   ) x;
 
   ppp := rep_ppp();
 
   return '📈 SEMANAL · ' || to_char(ini,'DD/MM') || ' al ' || to_char(fin,'DD/MM/YYYY') || E'\n'
     || '━━━━━━━━━━━━━━━━━━' || E'\n\n'
+    || '🚚 DESPACHADO EN LA SEMANA' || E'\n'
+    || '  ' || rep_plata(desp.plata) || rep_var(desp.plata, nullif(desp.plata_ant,0)) || ' vs semana previa' || E'\n'
+    || '  ' || desp.nps || ' NP  ·  ' || round(desp.cajas) || ' cajas' || E'\n\n'
     || '🛒 PEDIDO EN LA SEMANA' || E'\n'
     || '  ' || rep_plata(sem.monto) || rep_var(sem.monto, nullif(sem.monto_ant,0)) || ' vs semana previa' || E'\n'
     || '  ' || sem.pedidos || ' pedidos  ·  ' || sem.clientes || ' clientes' || E'\n\n'
-    || '🏆 TOP 5 DE LA SEMANA' || E'\n' || coalesce(top,'  (sin pedidos)') || E'\n\n'
+    || '🏆 TOP 5 DE LA SEMANA (pedido)' || E'\n' || coalesce(top,'  (sin pedidos)') || E'\n\n'
     || '📦 POR FACTURAR (PPP en curso)' || E'\n'
     || '  ' || rep_plata((ppp->>'plata')::numeric)
        || '  ·  ' || (ppp->>'nps') || ' NP  ·  ' || (ppp->>'m3') || ' m³' || E'\n'
-    || '  Ritmo ' || (ppp->>'m3_dia') || ' m³/día → ' || (ppp->>'dias_ppp') || ' días de cola' || E'\n'
-    || '  Última salida: ' || coalesce(ppp->>'ultima_salida','—');
+    || '  Ritmo ' || (ppp->>'m3_dia') || ' m³/día → ' || (ppp->>'dias_ppp') || ' días de cola';
 end $$;
 
 
@@ -519,6 +676,9 @@ set search_path to 'public','pg_temp'
 as $$
 declare f date := (now() at time zone 'America/Argentina/Buenos_Aires')::date - 1;
 begin
+  -- Red de seguridad: sincronizar_ppp() ya la corre, pero si ese cron fallo el
+  -- reporte igual sale con la foto mas fresca que se pueda.
+  perform rep_snapshot_despacho(30);
   perform tg_enqueue_largo(rep_texto_diario(f), 'diario_' || to_char(f,'YYYYMMDD'));
 end $$;
 
