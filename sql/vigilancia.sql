@@ -12,6 +12,39 @@
 -- de "todo bien" se deja de leer, y el dia que dice algo tampoco se lee.
 -- ============================================================================
 
+-- ---------------------------------------------------------------------------
+-- MEMORIA DE VERIFICACION MANUAL
+-- ---------------------------------------------------------------------------
+-- Un cron arreglado a la tarde sigue mostrando la corrida fallida de la mañana
+-- hasta que le toque correr de nuevo. Sin esto la alerta grita por algo ya
+-- resuelto — y una alerta que grita de mas se deja de leer, que es exactamente
+-- lo que hay que evitar. Paso el primer dia: se arreglaron tres crons y la
+-- alerta los siguio reportando como caidos.
+--
+-- Uso, despues de arreglar y VERIFICAR corriendo la funcion a mano:
+--   select rep_cron_ok('sincronizar-ppp-diario', 'que se arreglo y como se verifico');
+-- Si el cron vuelve a fallar en su proxima corrida real, el filtro ya no aplica
+-- (la corrida nueva es posterior a la verificacion) y la alerta vuelve a salir.
+
+create table if not exists public.rep_cron_verificado (
+  jobname       text primary key,
+  verificado_at timestamptz not null default now(),
+  nota          text
+);
+alter table public.rep_cron_verificado enable row level security;
+revoke all on table public.rep_cron_verificado from public, anon, authenticated;
+
+create or replace function public.rep_cron_ok(p_jobname text, p_nota text default null)
+returns void language sql security definer
+set search_path to 'public','pg_temp'
+as $$
+  insert into public.rep_cron_verificado (jobname, verificado_at, nota)
+  values (p_jobname, now(), p_nota)
+  on conflict (jobname) do update set verificado_at = now(), nota = excluded.nota;
+$$;
+revoke all on function public.rep_cron_ok(text,text) from public, anon, authenticated;
+
+
 create or replace function public.rep_salud()
 returns table(severidad text, area text, detalle text)
 language sql stable security definer
@@ -29,8 +62,11 @@ as $$
                  where r.jobid = j.jobid order by r.start_time desc limit 1) ult on true
   left join lateral (select max(r2.start_time)::date as ultimo_ok from cron.job_run_details r2
                       where r2.jobid = j.jobid and r2.status = 'succeeded') ok on true
+  left join public.rep_cron_verificado v on v.jobname = j.jobname
   where j.active and ult.status = 'failed'
     and ult.start_time >= now() - interval '3 days'
+    -- Silencia lo arreglado y verificado a mano DESPUES de la corrida fallida.
+    and (v.verificado_at is null or v.verificado_at < ult.start_time)
 
   union all
   -- 2. Cache del dashboard viejo. Lo refresca gerente-ventas-diario.
