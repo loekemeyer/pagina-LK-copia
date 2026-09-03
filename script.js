@@ -141,6 +141,119 @@ function _expoNewSyncComplete() {
 const BASE_IMG = `${SUPABASE_URL}/storage/v1/object/public/products-images/`;
 const IMG_PARAMS = ``;
 
+/***********************
+ * CARRUSEL DE FOTOS POR PRODUCTO
+ * Cada producto puede tener varias fotos: la principal {cod}.webp más
+ * {cod}-2.webp, {cod}-3.webp, ... Se detectan listando el bucket UNA sola vez
+ * (products-images es público). Si products.images viene cargado en la base,
+ * mandan esos valores. Con 2+ fotos aparecen flechas en la card.
+ ***********************/
+let PRODUCT_IMG_SET = null; // Set de nombres de archivo del bucket (o null si no cargó)
+let _productImgLoading = null;
+
+async function loadProductImageManifest() {
+  if (PRODUCT_IMG_SET) return PRODUCT_IMG_SET;
+  if (_productImgLoading) return _productImgLoading;
+  _productImgLoading = (async () => {
+    const set = new Set();
+    try {
+      const pageSize = 1000;
+      let offset = 0;
+      for (let guard = 0; guard < 20; guard++) {
+        const resp = await fetch(
+          `${SUPABASE_URL}/storage/v1/object/list/products-images`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${
+                currentSession?.access_token || SUPABASE_ANON_KEY
+              }`,
+            },
+            body: JSON.stringify({
+              prefix: "",
+              limit: pageSize,
+              offset,
+              sortBy: { column: "name", order: "asc" },
+            }),
+          },
+        );
+        if (!resp.ok) break;
+        const rows = await resp.json();
+        if (!Array.isArray(rows) || rows.length === 0) break;
+        rows.forEach((r) => {
+          if (r && r.name) set.add(r.name);
+        });
+        if (rows.length < pageSize) break;
+        offset += pageSize;
+      }
+    } catch (e) {
+      // Silencioso: sin manifest, cada producto muestra solo su foto principal.
+    }
+    PRODUCT_IMG_SET = set;
+    return set;
+  })();
+  return _productImgLoading;
+}
+
+// Devuelve el array de URLs de fotos de un producto (mínimo la principal).
+function productImgUrls(p) {
+  const cod = String(p?.cod || "").trim();
+  // 1) Si products.images viene cargado en la base, mandan esos.
+  if (Array.isArray(p?.images) && p.images.length) {
+    const out = p.images
+      .map((x) => {
+        const s = String(x || "").trim();
+        if (!s) return "";
+        if (/^https?:\/\//i.test(s)) return s;
+        const name = /\.\w+$/.test(s) ? s : s + ".webp";
+        return BASE_IMG + encodeURIComponent(name) + IMG_PARAMS;
+      })
+      .filter(Boolean);
+    if (out.length) return out;
+  }
+  // 2) Derivar del manifest del storage: {cod}.webp + {cod}-2.webp + ...
+  const urls = [BASE_IMG + encodeURIComponent(cod) + ".webp" + IMG_PARAMS];
+  if (PRODUCT_IMG_SET && cod) {
+    for (let n = 2; n <= 12; n++) {
+      if (PRODUCT_IMG_SET.has(`${cod}-${n}.webp`)) {
+        urls.push(
+          BASE_IMG + encodeURIComponent(cod) + "-" + n + ".webp" + IMG_PARAMS,
+        );
+      } else break;
+    }
+  }
+  return urls;
+}
+
+// Mueve el carrusel de una card (dir: -1 anterior, +1 siguiente).
+function productImgStep(pid, dir, ev) {
+  if (ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
+  }
+  const card = document.getElementById("card-" + pid);
+  if (!card) return;
+  const media = card.querySelector(".pc-media");
+  const img = document.getElementById("img-" + pid);
+  if (!media || !img) return;
+  let urls;
+  try {
+    urls = JSON.parse(media.getAttribute("data-urls") || "[]");
+  } catch (e) {
+    urls = [];
+  }
+  if (urls.length < 2) return;
+  let idx = parseInt(media.getAttribute("data-idx") || "0", 10) || 0;
+  idx = (idx + dir + urls.length) % urls.length;
+  media.setAttribute("data-idx", String(idx));
+  img.src = urls[idx];
+  const dots = media.querySelectorAll(".pc-dot");
+  dots.forEach((d, i) => d.classList.toggle("on", i === idx));
+}
+window.productImgStep = productImgStep;
+
 // Overrides SOLO de display del código de artículo. NO cambia el cod real:
 // la imagen, el carrito y el pedido siguen usando el cod de la base. Pedido
 // puntual: mostrar 580 en lugar de 580E.
@@ -3479,6 +3592,16 @@ function renderProducts() {
   const container = $("productsContainer");
   if (!container) return;
 
+  // Carrusel: cargar el manifest de fotos del bucket una sola vez y, cuando
+  // llegue, re-renderizar para que aparezcan las flechas donde haya 2+ fotos.
+  if (!PRODUCT_IMG_SET && !_productImgLoading) {
+    loadProductImageManifest().then((set) => {
+      if (set && set.size && typeof renderProducts === "function") {
+        renderProducts();
+      }
+    });
+  }
+
   // Modo cliente-expo: recalcular el dto por escala según el carrito actual
   // antes de pintar los precios de cada card.
   _expoSyncDto();
@@ -3517,6 +3640,13 @@ function renderProducts() {
 
     const imgSrc = `${BASE_IMG}${encodeURIComponent(codSafe)}.webp${IMG_PARAMS}`;
     const imgFallback = "img/no-image.jpg";
+    // Carrusel: lista de fotos del producto (mínimo la principal).
+    const pcUrls = productImgUrls(p);
+    const pcMulti = pcUrls.length > 1;
+    const pcMainSrc = pcUrls[0] || imgSrc;
+    const pcUrlsAttr = pcMulti
+      ? ` data-urls='${JSON.stringify(pcUrls).replace(/'/g, "&#39;")}' data-idx="0"`
+      : "";
 
     // ✅ Tu precio normal (se sigue usando para carrito / subtotal, no se muestra en card)
     const tuPrecio = logged ? unitYourPrice(p.list_price) : 0;
@@ -3572,17 +3702,28 @@ function renderProducts() {
       <div class="product-card" id="card-${pid}">
       ${badgeHtml}
       ${assortmentStarHtml}
+        <div class="pc-media"${pcUrlsAttr}>
         <img
           id="img-${pid}"
-          src="${imgSrc}"
+          src="${pcMainSrc}"
           alt="${String(p.description || "")}"
           width="400"
           height="400"
           loading="lazy"
           style="cursor:zoom-in"
-          onclick="openImgZoom('${imgSrc}', this.alt)"
+          onclick="openImgZoom(this.src, this.alt)"
           onerror="this.onerror=null;this.src='${imgFallback}'"
         >
+        ${
+          pcMulti
+            ? `<button type="button" class="pc-arrow prev" aria-label="Foto anterior" onclick="productImgStep('${pid}', -1, event)">&#8249;</button>
+        <button type="button" class="pc-arrow next" aria-label="Foto siguiente" onclick="productImgStep('${pid}', 1, event)">&#8250;</button>
+        <div class="pc-dots">${pcUrls
+          .map((_, i) => `<span class="pc-dot${i === 0 ? " on" : ""}"></span>`)
+          .join("")}</div>`
+            : ""
+        }
+        </div>
 
         <div class="card-top">
           <div class="card-row">

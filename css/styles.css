@@ -622,6 +622,75 @@ body {
   transform-origin: center bottom;
   will-change: transform;
 }
+
+/* ---- Carrusel de fotos por producto (flechas + dots) ---- */
+.pc-media {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+.pc-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  color: #222;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transition: opacity 0.18s ease, background 0.18s ease;
+  z-index: 3;
+}
+.pc-arrow.prev {
+  left: 4px;
+}
+.pc-arrow.next {
+  right: 4px;
+}
+.pc-media:hover .pc-arrow {
+  opacity: 1;
+}
+.pc-arrow:hover {
+  background: #fff;
+}
+.pc-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  pointer-events: none;
+}
+.pc-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+}
+.pc-dot.on {
+  background: rgba(0, 0, 0, 0.7);
+}
+/* En touch no hay hover: las flechas quedan visibles siempre. */
+@media (hover: none) {
+  .pc-arrow {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.7);
+  }
+}
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .product-card:hover {
     transform: translateY(-4px);
