@@ -72,7 +72,19 @@ as $$
   ) x where pct >= 3
 
   union all
-  -- 6. Mensajes de Telegram que se rindieron despues de 60 intentos.
+  -- 6. Lineas de venta sin cantidad. No suman a ningun total y, peor, en un
+  --    ranking `ORDER BY sum(boxes) DESC` los NULL van PRIMEROS: un cliente sin
+  --    una sola caja contable encabezaba el top 20 de "principales".
+  select '🟠', 'datos', lineas || ' líneas de sales_lines con boxes NULL (' ||
+         clientes || ' cliente/s, desde ' || desde || ')'
+  from (
+    select count(*) as lineas, count(distinct customer_code) as clientes,
+           min(invoice_date) as desde
+    from sales_lines where empresa='lk' and boxes is null
+  ) x where lineas > 0
+
+  union all
+  -- 7. Mensajes de Telegram que se rindieron despues de 60 intentos.
   select '🟠', 'telegram', count(*) || ' mensajes fallidos en la cola'
   from telegram_outbox where status = 'failed'
   having count(*) > 0;

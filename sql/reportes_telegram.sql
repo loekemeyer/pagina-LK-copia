@@ -295,7 +295,7 @@ as $$
     from sales_lines sl
     cross join corte
     left join products p on p.cod = sl.item_code and p.active is true
-    where sl.empresa='lk' and sl.customer_code not in ('1','3878')
+    where sl.empresa='lk' and sl.boxes is not null and sl.customer_code not in ('1','3878')
       and sl.item_code <> all (array(select item_code from sales_excluded_items))
       and left(sl.invoice_date,7) > corte.c15 and left(sl.invoice_date,7) <= corte.ult
   ),
@@ -765,6 +765,13 @@ revoke all on public.v_item_canon from anon, authenticated;
 -- es el patron que Coto tuvo seis meses antes de desplomarse.
 -- Por eso el diagnostico no colapsa todo en un solo %.
 
+-- OJO CON DOS COSAS, las dos costaron un reporte mal mandado:
+--   `boxes` puede venir NULL (122 lineas del cliente 5000, con import_batch y
+--   row_hash tambien NULL: no vinieron del lote mensual del ERP). Hay que
+--   descartarlas: no suman a ningun total.
+--   Y `ORDER BY sum(boxes) DESC` en Postgres pone los NULL PRIMERO, asi que ese
+--   cliente sin una sola caja contable encabezaba el top 20 de "principales".
+--   Por eso va `nulls last`.
 create or replace function public.rep_top_clientes(p_top int default 20)
 returns table(cod text, cliente text, cj_base numeric, cj_rec numeric, var_vol int,
               arts_base int, arts_rec int, arts_perdidos int, cajas_perdidas numeric,
@@ -781,11 +788,11 @@ as $$
     from sales_lines sl
     join v_item_canon ic on ic.item_code = sl.item_code
     cross join corte
-    where sl.empresa='lk' and sl.customer_code not in ('1','3878')
+    where sl.empresa='lk' and sl.boxes is not null and sl.customer_code not in ('1','3878')
       and sl.item_code <> all (array(select item_code from sales_excluded_items))
       and left(sl.invoice_date,7) > corte.c15 and left(sl.invoice_date,7) <= corte.ult
   ),
-  top as (select m.cod, sum(m.boxes) as t from mov m group by 1 order by 2 desc limit p_top),
+  top as (select m.cod, sum(m.boxes) as t from mov m group by 1 order by 2 desc nulls last limit p_top),
   art as (
     select v.cod, v.item_code,
            coalesce(sum(v.boxes) filter (where v.mes >  c.c3),0)/3.0  as cj_rec,
@@ -839,7 +846,7 @@ as $$
     from sales_lines sl
     join v_item_canon ic on ic.item_code = sl.item_code
     cross join corte
-    where sl.empresa='lk' and sl.customer_code = p_cod
+    where sl.empresa='lk' and sl.boxes is not null and sl.customer_code = p_cod
       and sl.item_code <> all (array(select item_code from sales_excluded_items))
       and left(sl.invoice_date,7) > corte.c15 and left(sl.invoice_date,7) <= corte.ult
   ),
