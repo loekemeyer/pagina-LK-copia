@@ -724,3 +724,193 @@ select cron.schedule('reporte-semanal-telegram', '15 11 * * 1',        'select p
 -- Varios intentos: el lote mensual del ERP llega entre el 2 y el 14.
 -- El dedup por mes reportado hace que salga UNA sola vez.
 select cron.schedule('reporte-mensual-telegram', '30 11 3,5,8,12 * *', 'select public.rep_enviar_mensual()');
+
+
+-- ---------------------------------------------------------------------------
+-- 8. CODIGO CANONICO DE ARTICULO  (evita falsas alarmas de "articulo perdido")
+-- ---------------------------------------------------------------------------
+-- Un cambio de codigo se veia como una perdida. Relca (2444) figuraba perdiendo
+-- 22 articulos; perdio 6. Los otros 16 cambiaron de codigo: `031` deja de
+-- venderse el 28/02 y `031L` arranca el 08/07, y lo mismo con 123/123L,
+-- 102E/102EL, 315/315L, 544/544L.
+--
+-- OJO, el sufijo L NO es un renombre global: en 72 de los 75 pares el codigo
+-- base LE SIGUE VENDIENDO a otros clientes, y los 75 codigos con L tienen <=3
+-- clientes. Es una variante para un cliente puntual. Pero para responder "este
+-- cliente dejo de comprar este producto", base y variante son lo mismo.
+--
+-- Se usa SOLO para detectar caidas. NO para valorizar: el precio de la variante
+-- puede no ser el del base, y eso lo decide una persona.
+create or replace view public.v_item_canon as
+select i.item_code,
+       coalesce(
+         r.to_code,
+         case when i.item_code ~ 'L$'
+                   and not exists (select 1 from products px where px.cod = i.item_code)
+                   and exists (select 1 from products pb where pb.cod = regexp_replace(i.item_code,'L$',''))
+              then regexp_replace(i.item_code,'L$','')
+         end,
+         i.item_code) as canon
+from (select distinct item_code from sales_lines where item_code is not null) i
+left join sales_item_remap r on r.from_code = i.item_code;
+
+revoke all on public.v_item_canon from anon, authenticated;
+
+
+-- ---------------------------------------------------------------------------
+-- 9. TOP CLIENTES: volumen, surtido y abandono son TRES cosas distintas
+-- ---------------------------------------------------------------------------
+-- Medido sobre el top 20, perder articulos avisa ANTES que caer en volumen:
+-- Extralimp mantiene el volumen (-18%) concentrandose de 16 articulos a 4, que
+-- es el patron que Coto tuvo seis meses antes de desplomarse.
+-- Por eso el diagnostico no colapsa todo en un solo %.
+
+create or replace function public.rep_top_clientes(p_top int default 20)
+returns table(cod text, cliente text, cj_base numeric, cj_rec numeric, var_vol int,
+              arts_base int, arts_rec int, arts_perdidos int, cajas_perdidas numeric,
+              perdidos text, ultima text, dias_sin_comprar int, diagnostico text)
+language sql stable security definer
+set search_path to 'public','pg_temp'
+as $$
+  with lim as (select left(max(invoice_date),7) as ult from sales_lines where empresa='lk'),
+  corte as (select ult, to_char((ult||'-01')::date - interval '3 months','YYYY-MM')  as c3,
+                   to_char((ult||'-01')::date - interval '15 months','YYYY-MM') as c15 from lim),
+  mov as (
+    select sl.customer_code as cod, ic.canon as item_code,
+           left(sl.invoice_date,7) as mes, sl.boxes, sl.invoice_date
+    from sales_lines sl
+    join v_item_canon ic on ic.item_code = sl.item_code
+    cross join corte
+    where sl.empresa='lk' and sl.customer_code not in ('1','3878')
+      and sl.item_code <> all (array(select item_code from sales_excluded_items))
+      and left(sl.invoice_date,7) > corte.c15 and left(sl.invoice_date,7) <= corte.ult
+  ),
+  top as (select m.cod, sum(m.boxes) as t from mov m group by 1 order by 2 desc limit p_top),
+  art as (
+    select v.cod, v.item_code,
+           coalesce(sum(v.boxes) filter (where v.mes >  c.c3),0)/3.0  as cj_rec,
+           coalesce(sum(v.boxes) filter (where v.mes <= c.c3),0)/12.0 as cj_base,
+           count(distinct v.mes) filter (where v.mes <= c.c3) as meses_hist
+    from top t join mov v on v.cod = t.cod cross join corte c group by 1,2
+  ),
+  cli as (
+    select a.cod,
+           sum(a.cj_base) as cj_base, sum(a.cj_rec) as cj_rec,
+           count(*) filter (where a.cj_base > 0) as arts_base,
+           count(*) filter (where a.cj_rec  > 0) as arts_rec,
+           count(*) filter (where a.cj_rec = 0 and a.meses_hist >= 4 and a.cj_base >= 3) as arts_perd,
+           coalesce(sum(a.cj_base) filter (where a.cj_rec = 0 and a.meses_hist >= 4 and a.cj_base >= 3),0) as cj_perd,
+           string_agg(a.item_code || '(' || round(a.cj_base) || ')', ' ' order by a.cj_base desc)
+             filter (where a.cj_rec = 0 and a.meses_hist >= 4 and a.cj_base >= 3) as perdidos
+    from art a group by a.cod
+  )
+  select c.cod,
+         coalesce(nullif(btrim(cu.business_name),''), 'Cliente '||c.cod),
+         round(c.cj_base), round(c.cj_rec),
+         round(100*(c.cj_rec/nullif(c.cj_base,0) - 1))::int,
+         c.arts_base::int, c.arts_rec::int, c.arts_perd::int, round(c.cj_perd),
+         c.perdidos, u.ultima, (current_date - u.ultima::date)::int,
+         case
+           when c.cj_rec = 0                    then '🔴 DEJÓ DE COMPRAR'
+           when c.cj_rec < 0.5 * c.cj_base      then '🔴 volumen −' || round(100*(1-c.cj_rec/c.cj_base)) || '%'
+           when c.arts_perd >= 3                then '🟠 perdió ' || c.arts_perd || ' artículos'
+           when c.cj_rec < 0.8 * c.cj_base      then '🟠 volumen −' || round(100*(1-c.cj_rec/c.cj_base)) || '%'
+           when c.arts_rec < 0.75 * c.arts_base then '🟡 surtido −' || round(100*(1-c.arts_rec::numeric/c.arts_base)) || '%'
+           when c.cj_rec > 1.2 * c.cj_base      then '🟢 crece +' || round(100*(c.cj_rec/c.cj_base-1)) || '%'
+           else '⚪ estable' end
+  from cli c
+  left join customers cu on cu.cod_cliente::text = c.cod
+  left join lateral (select max(m2.invoice_date) as ultima from mov m2 where m2.cod = c.cod) u on true
+  order by c.cj_rec/nullif(c.cj_base,0) asc nulls first;
+$$;
+
+-- Detalle articulo por articulo de UN cliente, con nombre de producto.
+create or replace function public.rep_articulos_cliente(p_cod text)
+returns table(item_code text, descripcion text, cj_base numeric, cj_rec numeric,
+              var_pct int, meses_hist int, estado text)
+language sql stable security definer
+set search_path to 'public','pg_temp'
+as $$
+  with lim as (select left(max(invoice_date),7) as ult from sales_lines where empresa='lk'),
+  corte as (select ult, to_char((ult||'-01')::date - interval '3 months','YYYY-MM')  as c3,
+                   to_char((ult||'-01')::date - interval '15 months','YYYY-MM') as c15 from lim),
+  mov as (
+    select ic.canon as item_code, left(sl.invoice_date,7) as mes, sl.boxes
+    from sales_lines sl
+    join v_item_canon ic on ic.item_code = sl.item_code
+    cross join corte
+    where sl.empresa='lk' and sl.customer_code = p_cod
+      and sl.item_code <> all (array(select item_code from sales_excluded_items))
+      and left(sl.invoice_date,7) > corte.c15 and left(sl.invoice_date,7) <= corte.ult
+  ),
+  agg as (
+    select m.item_code,
+           coalesce(sum(m.boxes) filter (where m.mes <= c.c3),0)/12.0 as cj_base,
+           coalesce(sum(m.boxes) filter (where m.mes >  c.c3),0)/3.0  as cj_rec,
+           count(distinct m.mes) filter (where m.mes <= c.c3) as meses_hist
+    from mov m cross join corte c group by m.item_code
+  )
+  select a.item_code,
+         left(coalesce(p.description, lp.description, '(sin ficha)'), 34),
+         round(a.cj_base,1), round(a.cj_rec,1),
+         round(100*(a.cj_rec/nullif(a.cj_base,0) - 1))::int,
+         a.meses_hist::int,
+         case when a.cj_base = 0                       then 'NUEVO'
+              when a.cj_rec  = 0 and a.meses_hist >= 4 then 'PERDIDO'
+              when a.cj_rec  = 0                       then 'esporádico, sin compra'
+              when a.cj_rec  < 0.5 * a.cj_base         then 'CAE FUERTE'
+              when a.cj_rec  < 0.8 * a.cj_base         then 'baja'
+              when a.cj_rec  > 1.2 * a.cj_base         then 'sube'
+              else 'estable' end
+  from agg a
+  left join products p       on p.cod  = a.item_code
+  left join loke_products lp on lp.cod = a.item_code
+  order by (a.cj_base - a.cj_rec) desc;
+$$;
+
+create or replace function public.rep_texto_top20(p_top int default 20)
+returns text language plpgsql stable security definer
+set search_path to 'public','pg_temp'
+as $$
+declare alerta text; ok text; n_ok int;
+begin
+  -- Solo se detalla lo que necesita atencion. Un reporte de 20 fichas no lo lee nadie.
+  select string_agg(
+    '▸ ' || left(t.cliente,30) || '  ' || t.diagnostico || E'\n'
+    || '   ' || t.cj_rec || ' cj/mes vs ' || t.cj_base || ' hist.  ·  '
+    || t.arts_rec || ' arts vs ' || t.arts_base || E'\n'
+    || case when t.arts_perdidos > 0
+            then '   Dejó de comprar: ' || left(t.perdidos, 90) || E'\n' else '' end
+    || '   Última compra hace ' || t.dias_sin_comprar || ' días',
+    E'\n' order by t.cj_rec/nullif(t.cj_base,0) asc nulls first)
+  into alerta
+  from public.rep_top_clientes(p_top) t where t.diagnostico !~ '^(🟢|⚪)';
+
+  select count(*), string_agg(left(t.cliente,18) || ' ' ||
+           case when t.var_vol is null then ''
+                else (case when t.var_vol >= 0 then '+' else '' end) || t.var_vol || '%' end, ' · ')
+    into n_ok, ok
+  from public.rep_top_clientes(p_top) t where t.diagnostico ~ '^(🟢|⚪)';
+
+  return '👥 TOP ' || p_top || ' CLIENTES · revisión' || E'\n'
+    || '━━━━━━━━━━━━━━━━━━' || E'\n'
+    || '_Últimos 3 meses vs promedio de los 12 previos._' || E'\n\n'
+    || coalesce(alerta, 'Ninguno del top ' || p_top || ' necesita atención.') || E'\n\n'
+    || '✅ SIN PROBLEMA (' || n_ok || ')' || E'\n' || coalesce(ok,'—');
+end $$;
+
+create or replace function public.rep_enviar_top20()
+returns void language plpgsql security definer
+set search_path to 'public','pg_temp'
+as $$
+declare hoy date := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
+begin
+  perform tg_enqueue_largo(rep_texto_top20(20), 'top20_' || to_char(hoy,'IYYY_IW'));
+end $$;
+
+revoke all on function public.rep_top_clientes(int)        from public, anon, authenticated;
+revoke all on function public.rep_articulos_cliente(text)  from public, anon, authenticated;
+revoke all on function public.rep_texto_top20(int)         from public, anon, authenticated;
+revoke all on function public.rep_enviar_top20()           from public, anon, authenticated;
+
+select cron.schedule('reporte-top20-telegram', '20 11 * * 1', 'select public.rep_enviar_top20()');
