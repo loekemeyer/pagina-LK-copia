@@ -165,7 +165,7 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
 - **Tiempos de la pestaña Estadística Clientes** (medidos el 3/8/2026, contra un `statement_timeout` de ~8 s). Carga inicial: `customers` vía REST (1.245 filas, 204 kB, 2 viajes por el tope de 1000) y `get_estadistica_clientes_agg` **605 ms** (venía de 2.773). Ranking: `get_ranking_inactivos` 671 ms la hoja 1, 544 ms la del fondo con período de 3 meses (590 inactivos, el peor caso). Excel: `get_ranking_inactivos_export` 454 ms a 12 meses, 658 ms a 3. Nada cerca del límite.
 - **`get_estadistica_clientes_agg` se pagina de a 1000 desde el navegador y CADA página re-ejecuta la función entera** (PostgREST no guarda estado entre requests). Hoy devuelve 995 filas, así que entra en una sola llamada — pero está a **5 clientes** de cruzar el tope y pasar a dos ejecuciones por carga. Con los 605 ms de ahora eso son 1,2 s; con los 2.773 ms de antes habrían sido 5,5 s. Si molesta, la salida es agregar del lado del servidor: la pantalla solo usa estas filas para armar la tarjeta "Próximos pedidos".
 - **`sales_lines` mezcla artículos reales con códigos administrativos** (descuentos por pago `PAGO-25%`, notas de crédito, agregados de ISIS). Están en `sales_excluded_items` y toda RPC que calcule fechas de compra debe filtrarlos — si no, una línea de descuento cuenta como compra y corre la fecha de última compra del cliente. La comparación va SIN `upper()` (aplicar una función a `item_code` sobre 260k filas rompe el plan): la tabla guarda las variantes de grafía tal cual vienen del ERP.
-- Key RPCs: `submit_order_fast` (order submission), `get_my_assortment_18m`, `get_my_linked_customers`, `has_loke_access`, `get_customer_sales_history`, `sugerencias_cliente`, `novedades_marca`, `get_estadistica_clientes_agg`, `get_ranking_inactivos`, `get_customer_grupos`, `guardar_customer_grupo`, `quitar_de_customer_grupo`, `deshacer_customer_grupo`, `buscar_clientes_para_grupo`, `sugerir_customer_grupos`, `get_clientes_lk_ch`, `codigos_lk_excluidos_por_chef`, `set_lk_ch_excluido`, `reset_lk_ch_excluido`, `vincular_lk_ch`, `desvincular_lk_ch`, `buscar_clientes_lk_ch`, `get_ranking_inactivos_export`, `datos_cliente_empresa`, `refrescar_chef_padron`, `refrescar_lk_ch_excluidos`, `sincronizar_chef`.
+- Key RPCs: `submit_order_fast` (order submission), `get_my_assortment_18m`, `get_my_linked_customers`, `has_loke_access`, `get_customer_sales_history`, `sugerencias_cliente`, `novedades_marca`, `get_estadistica_clientes_agg`, `get_ranking_inactivos`, `get_customer_grupos`, `guardar_customer_grupo`, `quitar_de_customer_grupo`, `deshacer_customer_grupo`, `buscar_clientes_para_grupo`, `sugerir_customer_grupos`, `get_clientes_lk_ch`, `codigos_lk_excluidos_por_chef`, `set_lk_ch_excluido`, `reset_lk_ch_excluido`, `vincular_lk_ch`, `desvincular_lk_ch`, `buscar_clientes_lk_ch`, `get_ranking_inactivos_export`, `datos_cliente_empresa`, `refrescar_chef_padron`, `refrescar_lk_ch_excluidos`, `sincronizar_chef`, `krikos_inbox_list`, `krikos_inbox_resolver`.
 - **Todo Estadística Clientes mide solo Loekemeyer**: tanto `get_ranking_inactivos` como `get_estadistica_clientes_agg` (la tarjeta "Próximos pedidos") filtran `empresa = 'lk'`. Sin ese filtro los 243 códigos que operan únicamente en Chef aparecían como clientes de Loekemeyer —a recuperar en el ranking, o atrasados en próximos pedidos— sin haberle comprado nunca.
 - **`p_solo_excluidos = true` ignora la exclusión por Chef.** "Ver ocultos" es la única pantalla desde donde se restaura un cliente escondido a mano; si además estaba excluido por Chef, no aparecía ahí y quedaba inaccesible para siempre. Al pedir los ocultos se está pidiendo explícitamente esa lista, así que la otra exclusión no corresponde.
 - **El Ranking Inactivos mide solo Loekemeyer**: toda lectura de `sales_lines` filtra `empresa = 'lk'`. Antes mezclaba y los 243 códigos que operan únicamente en Chef figuraban como clientes a recuperar sin haberle comprado nunca. **No usar un CTE para ese filtro**: se probó (`WITH lk_lines AS (...)`) y como se referencia seis veces Postgres lo materializa — 189k filas y cada join pasa a seq scan, 2.163 ms contra 496 ms con el filtro inline. Hay un índice parcial `sales_lines_lk_cliente_idx ON sales_lines (customer_code) WHERE empresa = 'lk'`.
@@ -212,6 +212,48 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
 - Product images are served via Supabase public storage: `{SUPABASE_URL}/storage/v1/object/public/products-images/{cod}.webp`. The `BASE_IMG`/`IMG_PARAMS` pair is redeclared in `script.js`, `historial.js`, `sugerencias.js` and `admin.js`; keep them in sync. **Do not use** `/storage/v1/render/image/public/` — the image-transformations feature is disabled on this Supabase tenant (returns 403 "FeatureNotEnabled"). Photos are stored pre-rendered at 400x400 WebP, so `IMG_PARAMS` is an empty string.
 - `app_settings.web_order_discount` is read at load time as the web-order discount (fallback `0.02`).
 - **Los módulos de estadística valorizan en NETO, no a precio de lista.** `get_ranking_inactivos` y `get_ranking_inactivos_export` hacen `boxes * products.uxb * products.list_price * (1 - customers.dto_vol) * (1 - app_settings.web_order_discount)`. **`list_price` es el precio POR UNIDAD, no por caja**, así que el `uxb` NO es opcional: sin él el monto sale dividido por las unidades por caja (promedio 12,1, rango 1 a 100). Es el mismo cálculo que hace el carrito en `script.js` (`listUnit * (uxb * cajas)`) — la misma cadena multiplicativa que arma un pedido real en `script.js` (`listUnit * (1 - dtoVol) * (1 - webDiscountRate) * (1 - extraRate)`). El descuento por medio de pago queda afuera: depende de cómo se pagó cada pedido y `sales_lines` no lo guarda. Las dos RPC tienen que usar el MISMO factor: una alimenta la tabla en pantalla y la otra el Excel descargable del mismo módulo, así que si divergen muestran números distintos para el mismo cliente.
+
+## Integración Krikos (OC de supermercados por mail)
+
+- **Krikos360 es el portal EDI de Planexware** por el que las cadenas (Coto, Carrefour/INC, Día,
+  Diarco, La Anónima, Cencosud, Dorinka, Libertad, Alberdi, Abastecedor, Toledo, Messina) mandan
+  sus órdenes de compra. **No tiene API pública**; la integración formal es el servicio pago
+  "Servicios EDI" (SFTP/webservice/AS2, a cotizar con comercial@planexware.com — consulta enviada
+  el 3/9/2026, sin respuesta todavía). Se optó por la vía gratis: el mail.
+- **Cada OC llega a `ventas@loekemeyer.com` como mail de `noreply@planexware.com`** con asunto
+  "Notificación de recepción de Orden de Compra". El cuerpo trae Emisor (cadena + GLN + sucursal
+  + GLN + dirección), N° de Documento y fechas de emisión/entrega/cancelación, y **un link
+  firmado** `krikos360.planexware.net/Documentos/api/documento?token=<JWT>` que **devuelve el PDF
+  sin login** (verificado desde una Edge Function: `application/pdf`, 181 KB). El `id` del payload
+  del JWT es el `doc_id`, clave de deduplicación. **Los parsers de `admin-supercot.js` ya eran de
+  Krikos**: detectan `OrdCotoPlx`, `OrdIncPlx`, `OrdJumboPlx`… ("Plx" = Planexware). Lo único
+  que faltaba era el transporte.
+- **Flujo**: cron `krikos-ingest-10min` (pg_cron, `*/10`) → `net.http_post` a la Edge Function
+  **`krikos-ingest`** (header `x-krikos-secret`) → IMAP a la casilla → por cada mail nuevo baja el
+  PDF al bucket privado **`krikos-oc`** (`<año>/<doc_id>.pdf`) e inserta en **`krikos_oc_inbox`**
+  (`estado = 'pendiente'`) → el panel admin (PDF Krikos → **"Bandeja Krikos"**, arriba del grid de
+  cards) lista con `krikos_inbox_list` y "Abrir en card" baja el PDF y lo mete en la primera card
+  vacía por `handleFile`, o sea el mismo parser/match/submit de siempre; al subir el pedido la card
+  llama `krikos_inbox_resolver(id, 'cargado', order_id)`. Descartar/restaurar también van por esa
+  RPC. Todo en `sql/krikos_oc_inbox.sql` y `supabase/functions/krikos-ingest/index.ts`.
+- **La casilla es SmarterMail, IMAP4rev1 en el puerto 143 SIN TLS** (el 993 está cerrado; probado
+  desde la Edge Function el 3/9/2026 — desde una sesión de Claude no se puede, la red bloquea todo
+  lo que no sea HTTPS). No anuncia STARTTLS pero sí **`AUTH=CRAM-MD5`**, así que la Edge Function
+  autentica con HMAC-MD5 (`node:crypto`) y **la contraseña nunca viaja en claro**; el contenido
+  del mail sí. Conviene pedirle al hosting que habilite el 993 y pasar `KRIKOS_IMAP_TLS=true`,
+  `KRIKOS_IMAP_PORT=993`. El cliente IMAP está escrito a mano sobre `Deno.connect` (no hay
+  librería): `EXAMINE` (solo lectura) + `UID SEARCH FROM … SINCE …` + `UID FETCH … BODY.PEEK[]`,
+  así **nunca marca leído ni mueve nada** y Thunderbird ve la casilla igual. Dedupe por
+  `mail_uid = <UIDVALIDITY>:<UID>` y por `doc_id`.
+- **Secretos de la Edge Function** (Supabase → Edge Functions → Secrets; NUNCA en el repo, que
+  es público): `KRIKOS_INGEST_SECRET` (el mismo valor va en el header del cron — está en
+  `select command from cron.job where jobname = 'krikos-ingest-10min'`), `KRIKOS_IMAP_PASS`, y
+  opcionales `KRIKOS_IMAP_HOST/PORT/TLS/USER`, `KRIKOS_SENDER`. Sin `KRIKOS_INGEST_SECRET` la
+  función responde 503 y el cron no hace nada. Para probar credenciales sin escribir:
+  `{"action":"test_imap"}`; para ver qué haría: `{"action":"sync","dry_run":true}`.
+- `krikos_inbox_list` y `krikos_inbox_resolver` son `SECURITY DEFINER` con chequeo de `admins`
+  adentro y `EXECUTE` revocado a `PUBLIC`/`anon`. La tabla tiene RLS de solo lectura para admins
+  (escribe únicamente `service_role`) y el bucket es privado con policy de lectura para admins.
 
 ## Pages and their scripts
 
@@ -385,6 +427,22 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   módulo.** Para regenerarlo: volcar con `pg_get_functiondef` todo `gv_*` y el DDL de las
   tablas `gv_*`/`geo_*`.
 
+### Integración Krikos
+
+- **Faltan los secretos de `krikos-ingest`** (3/9/2026): `KRIKOS_INGEST_SECRET` (valor en el
+  comando del cron `krikos-ingest-10min`) y `KRIKOS_IMAP_PASS` (password de ventas@). Hasta que
+  estén, el cron corre cada 10 min y recibe 503: inocuo, pero la bandeja queda vacía. Después de
+  cargarlos, probar con `{"action":"test_imap"}` y luego `{"action":"sync","dry_run":true}`.
+- **Pedir al hosting que habilite IMAP con TLS (993)** en SmarterMail. Hoy el 143 va sin cifrar
+  (la contraseña no, por CRAM-MD5; el contenido sí). Luego `KRIKOS_IMAP_TLS=true`, `KRIKOS_IMAP_PORT=993`
+  y cambiar Thunderbird también.
+- **Planexware**: consulta de plan enviada a comercial@ y mesadeayuda@ el 3/9/2026 (si el plan
+  incluye SFTP/webservice, o descarga estructurada). Sin respuesta todavía.
+- **Espejo en Virgilio**: `admin-supercot.js` cambió (Bandeja Krikos) y hay que replicarlo a
+  `/admin/` de `Produccion-Virgilio`.
+- Toledo no tiene regex de detección de PDF en `detectSuper` (nota en `precios_super.cadena`):
+  una OC de Toledo desde la bandeja va a caer en "No se pudo identificar la cadena".
+
 ### Dashboard de ventas
 
 - **El importador de listas de súper detecta las columnas por ENCABEZADO, con `hoja_cod_col`/`hoja_price_col` como fallback.** Los índices de columna del Excel se corren cuando alguien mete una columna nueva en el medio, y ahí `hoja_price_col` terminaba apuntando a "Costo sin aportes" en vez de a "Lista Vigente" — un re-upload cargaba COSTOS como precios. Verificado 4/8/2026 contra `A_Costos_VIGENTES`: los índices que estaban en la config (col 2 = costo) NO coincidían con lo cargado (col "Lista Vigente"), o sea que los datos vivos se habían cargado desde un layout anterior. Se corrigieron los índices a los verificados y `admin-supercot.js` ahora busca "Cod"/"Lista Vigente"/"Lista a Enviar" por nombre (probado contra las 9 hojas). **La lista de Toledo se cargó ese día** (33 precios, hoja "Toledo Loeke"); dejó de valorizarse con la lista general.
@@ -392,8 +450,12 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
 - **Los SUPERMERCADOS tienen lista de precios propia y el dashboard los valoriza mal.**
   `precios_super.precio` (453 filas, 8 cadenas: abastecedor, alberdi, coto, dia, diarco,
   inc, laanonima, libertad) la usa solo el cotizador, y ahí el súper sale del **nombre de
-  la hoja del Excel** — **no hay ningún vínculo `cod_cliente` → `super_key` en la base**, y
-  `supermarket_branch_mapping` está vacía. Medido: 8 clientes de súper son el **14,4% de la
+  la hoja del Excel** — el vínculo por CADENA sí existe:
+  `precios_super.cadena.cod_cliente_lk` (Coto 801, INC 1651, Día 3947, Diarco 4112, Libertad 325,
+  Alberdi 2320, Abastecedor 4051, La Anónima 771, Toledo 1947, Messina 1573; Cencosud y Dorinka
+  van a Chef) y es lo que usa PDF Krikos para auto-elegir el cliente. Lo que está vacío es
+  `supermarket_branch_mapping`, el mapeo por SUCURSAL (0 filas al 3/9/2026). El dashboard no
+  usa ninguno de los dos. Medido: 8 clientes de súper son el **14,4% de la
   venta** ($750 M de $5.227 M en 12 meses), y la brecha contra la lista general va de
   **75%** (Abastecedor, Alberdi) a **118%** (Carrefour/INC), con Coto en 99%. Para
   arreglarlo hacen falta dos cosas del usuario: el mapeo cliente→cadena, y confirmar qué
