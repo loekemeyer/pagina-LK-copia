@@ -58,6 +58,26 @@
     ".scot-table td{padding:6px;border-bottom:1px solid var(--border,#f0f0f0);vertical-align:middle}",
     ".scot-table tr.scot-row-bad td{background:#fff0ee}",
     ".scot-table tr.scot-row-excluded td{opacity:.45}",
+    // Bandeja Krikos (OC recibidas por mail, bajadas por krikos-ingest)
+    ".scot-inbox{margin-bottom:16px}",
+    ".scot-inbox-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}",
+    ".scot-inbox-title{font-weight:700;font-size:14px;color:var(--text2,#222)}",
+    ".scot-inbox-badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;background:#fff5d4;color:#b8780f}",
+    ".scot-inbox-badge.zero{background:#eee;color:#666}",
+    ".scot-inbox-badge.err{background:#ffd9d4;color:#c0392b}",
+    ".scot-inbox-head select{padding:5px 8px;border:1px solid var(--border,#ddd);border-radius:6px;font-family:inherit;font-size:12px}",
+    ".scot-inbox-btn{font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--border,#ddd);background:#fff;cursor:pointer;color:var(--text2,#222);font-family:inherit}",
+    ".scot-inbox-btn:hover{background:var(--bg2,#fafafa)}",
+    ".scot-inbox-btn.primary{background:#22a861;color:#fff;border-color:#22a861}",
+    ".scot-inbox-btn.primary:hover{background:#1c8f52}",
+    ".scot-inbox-btn:disabled{opacity:.5;cursor:default}",
+    ".scot-inbox-msg{font-size:12px;color:var(--text3,#888);margin-left:auto}",
+    ".scot-inbox-msg.err{color:#c0392b}",
+    ".scot-inbox-empty{font-size:13px;color:var(--text3,#888);padding:10px 0 2px}",
+    ".scot-inbox-table td .sub{display:block;font-size:11px;color:var(--text3,#888)}",
+    ".scot-inbox-table td.acts{white-space:nowrap;text-align:right}",
+    ".scot-inbox-table td.acts .scot-inbox-btn{margin-left:4px}",
+    ".scot-inbox-table tr.scot-inbox-err td{background:#fff0ee}",
     ".scot-table input.scot-cajas-input{width:64px;padding:4px 6px;border:1px solid var(--border,#ddd);border-radius:4px;font-size:12px;text-align:right;font-family:inherit}",
     ".scot-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}",
     ".scot-pill.ok{background:#dff5e3;color:#1e7a31}",
@@ -2429,6 +2449,7 @@
       pdfTotal: null,
       fileHash: null, // SHA-256 del PDF, para detectar duplicados entre cards
       submitting: false,
+      krikosInboxId: null, // fila de krikos_oc_inbox de la que salio el PDF (Bandeja Krikos)
     };
 
   function renderInitial() {
@@ -3630,6 +3651,21 @@
       sendToEntregas(entregasPayload, authToken, entregasUrl, apiKey);
 
       window.toast && window.toast("Pedido " + orderId + " subido", "success");
+
+      // Si el PDF vino de la Bandeja Krikos, marcar la OC como cargada con el
+      // id del pedido. Best-effort: el pedido ya esta subido, esto es registro.
+      if (state.krikosInboxId) {
+        var kInboxId = state.krikosInboxId;
+        var kOrderId = /^\d+$/.test(String(orderId)) ? Number(orderId) : null;
+        resolverKrikosInbox(kInboxId, "cargado", kOrderId)
+          .then(function () {
+            state.krikosInboxId = null;
+            renderKrikosInbox();
+          })
+          .catch(function (e) {
+            console.warn("scot bandeja krikos: no se pudo marcar cargada", e);
+          });
+      }
       if (btn) {
         btn.disabled = true;
         btn.classList.add("submitted");
@@ -3741,6 +3777,7 @@
     state.pdfTotal = null;
     state.fileHash = null;
     state.submitting = false;
+    state.krikosInboxId = null;
   }
 
     // Render inicial al crear la instancia
@@ -3785,6 +3822,241 @@
   // ============================================================================
 
   // ============================================================================
+  // BANDEJA KRIKOS
+  // ============================================================================
+  // Las OC de supermercados llegan a ventas@loekemeyer.com como mail de
+  // Krikos360 (Planexware) con un link al PDF. La Edge Function `krikos-ingest`
+  // (cron cada 10 min) lee la casilla, baja el PDF al bucket `krikos-oc` y deja
+  // una fila en `krikos_oc_inbox`. Aca se listan las pendientes y "Abrir en
+  // card" mete el PDF en la primera card vacia como si se hubiera arrastrado:
+  // mismo parser, mismo match, mismo "Subir como pedido". Al subir, la card
+  // marca la fila como cargada (ver submit). Ver sql/krikos_oc_inbox.sql.
+  var krikosInboxMount = null;
+  var krikosInboxEstado = "pendiente";
+  var krikosInboxRows = [];
+  var krikosInboxTimer = null;
+
+  async function loadKrikosInbox(estado) {
+    var r = await window.sb.rpc("krikos_inbox_list", { p_estado: estado || "pendiente" });
+    if (r.error) throw new Error(r.error.message || "krikos_inbox_list");
+    return r.data || [];
+  }
+
+  async function resolverKrikosInbox(id, estado, orderId) {
+    var r = await window.sb.rpc("krikos_inbox_resolver", {
+      p_id: id,
+      p_estado: estado,
+      p_order_id: orderId == null ? null : orderId,
+    });
+    if (r.error) throw new Error(r.error.message || "krikos_inbox_resolver");
+    return r.data;
+  }
+
+  function fmtFechaIso_(iso) {
+    // "2026-09-08" -> "08/09/2026". Si ya viene dd/mm/yyyy (fecha_entrega) se deja.
+    if (!iso) return "";
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso));
+    return m ? m[3] + "/" + m[2] + "/" + m[1] : String(iso);
+  }
+
+  function fmtFechaHora_(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.toLocaleDateString("es-AR") + " " + d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function firstEmptyCardIdx_() {
+    for (var i = 0; i < cardInstances.length; i++) {
+      var s = cardInstances[i].getState();
+      if (!s.superKey && !s.rawText) return i;
+    }
+    return -1;
+  }
+
+  async function descargarPdfBandeja_(row) {
+    if (!row.storage_path) throw new Error("La OC no tiene PDF guardado (" + (row.error_msg || "sin storage_path") + ")");
+    var dl = await window.sb.storage.from("krikos-oc").download(row.storage_path);
+    if (dl.error) throw new Error("No se pudo bajar el PDF: " + (dl.error.message || dl.error));
+    return dl.data;
+  }
+
+  function nombrePdfBandeja_(row) {
+    var cad = String(row.cadena || "krikos").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    return (cad || "krikos") + "-" + (row.nro_documento || row.doc_id || row.id) + ".pdf";
+  }
+
+  async function abrirBandejaEnCard_(row, setMsg) {
+    var idx = firstEmptyCardIdx_();
+    if (idx < 0) {
+      window.alert("Las 9 cards están ocupadas. Liberá una (icono tacho) y volvé a intentar.");
+      return;
+    }
+    setMsg("Bajando PDF de " + (row.cadena || "la OC") + "…");
+    var blob = await descargarPdfBandeja_(row);
+    var file = new File([blob], nombrePdfBandeja_(row), { type: "application/pdf" });
+    var card = cardInstances[idx];
+    card.getState().krikosInboxId = row.id;
+    await card.handleFile(file);
+    setMsg("OC " + (row.nro_documento || "") + " abierta en card #" + (idx + 1), "ok");
+    var cardEl = document.querySelector('.scot-card-instance[data-idx="' + idx + '"]');
+    if (cardEl && cardEl.scrollIntoView) cardEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function verPdfBandeja_(row) {
+    var blob = await descargarPdfBandeja_(row);
+    var url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  }
+
+  function renderKrikosInboxTable_(rows) {
+    if (!rows.length) {
+      var vacio = {
+        pendiente: "No hay órdenes pendientes. La casilla ventas@ se revisa cada 10 minutos.",
+        cargado: "Todavía no hay órdenes cargadas desde la bandeja.",
+        descartado: "No hay órdenes descartadas.",
+        error: "No hay órdenes con error.",
+      };
+      return '<div class="scot-inbox-empty">' + escapeHtml(vacio[krikosInboxEstado] || "Sin filas.") + "</div>";
+    }
+    var h = '<div class="scot-table-wrap" style="margin-top:10px"><table class="scot-table scot-inbox-table"><thead><tr>' +
+      "<th>Cadena</th><th>Sucursal</th><th>N° OC</th><th>Emisión</th><th>Entrega</th><th>Recibido</th>" +
+      (krikosInboxEstado === "cargado" ? "<th>Pedido</th>" : "") +
+      '<th class="acts"></th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      var esErr = r.estado === "error";
+      h += '<tr data-id="' + r.id + '"' + (esErr ? ' class="scot-inbox-err"' : "") + ">";
+      h += "<td><strong>" + escapeHtml(r.cadena || "—") + "</strong>" +
+        (esErr && r.error_msg ? '<span class="sub">' + escapeHtml(r.error_msg) + "</span>" : "") + "</td>";
+      h += "<td>" + escapeHtml(r.sucursal || "—") +
+        (r.direccion ? '<span class="sub">' + escapeHtml(r.direccion) + "</span>" : "") + "</td>";
+      h += "<td>" + escapeHtml(r.nro_documento || "—") + "</td>";
+      h += "<td>" + escapeHtml(fmtFechaIso_(r.fecha_emision)) + "</td>";
+      h += "<td>" + escapeHtml(r.fecha_entrega || "") +
+        (r.fecha_cancelacion ? '<span class="sub">cancela ' + escapeHtml(fmtFechaIso_(r.fecha_cancelacion)) + "</span>" : "") + "</td>";
+      h += "<td>" + escapeHtml(fmtFechaHora_(r.mail_fecha || r.created_at)) + "</td>";
+      if (krikosInboxEstado === "cargado") {
+        h += "<td>" + (r.order_id ? "#" + escapeHtml(String(r.order_id)) : "—") +
+          (r.resuelto_at ? '<span class="sub">' + escapeHtml(fmtFechaHora_(r.resuelto_at)) + "</span>" : "") + "</td>";
+      }
+      h += '<td class="acts">';
+      if (r.storage_path) h += '<button type="button" class="scot-inbox-btn" data-act="pdf">PDF</button>';
+      if (r.link) h += '<a class="scot-inbox-btn" href="' + escapeHtml(r.link) + '" target="_blank" rel="noopener" title="Abrir en Krikos">Krikos</a>';
+      if (r.estado === "pendiente" && r.storage_path) {
+        h += '<button type="button" class="scot-inbox-btn primary" data-act="abrir">Abrir en card</button>';
+      }
+      if (r.estado === "pendiente" || r.estado === "error") {
+        h += '<button type="button" class="scot-inbox-btn" data-act="descartar" title="Sacar de la bandeja">Descartar</button>';
+      } else {
+        h += '<button type="button" class="scot-inbox-btn" data-act="pendiente" title="Volver a pendiente">Restaurar</button>';
+      }
+      h += "</td></tr>";
+    });
+    h += "</tbody></table></div>";
+    return h;
+  }
+
+  async function renderKrikosInbox() {
+    var mount = krikosInboxMount;
+    if (!mount) return;
+    if (!mount.querySelector(".scot-inbox")) {
+      mount.innerHTML =
+        '<div class="scot-card scot-inbox">' +
+          '<div class="scot-inbox-head">' +
+            '<span class="scot-inbox-title">📥 Bandeja Krikos</span>' +
+            '<span class="scot-inbox-badge zero" id="scotInboxBadge">…</span>' +
+            '<select id="scotInboxEstado" title="Estado">' +
+              '<option value="pendiente">Pendientes</option>' +
+              '<option value="cargado">Cargadas</option>' +
+              '<option value="descartado">Descartadas</option>' +
+              '<option value="error">Con error</option>' +
+            "</select>" +
+            '<button type="button" class="scot-inbox-btn" id="scotInboxRefresh">↻ Actualizar</button>' +
+            '<span class="scot-inbox-msg" id="scotInboxMsg"></span>' +
+          "</div>" +
+          '<div id="scotInboxBody"></div>' +
+        "</div>";
+      var sel = mount.querySelector("#scotInboxEstado");
+      sel.value = krikosInboxEstado;
+      sel.addEventListener("change", function () {
+        krikosInboxEstado = sel.value;
+        renderKrikosInbox();
+      });
+      mount.querySelector("#scotInboxRefresh").addEventListener("click", function () {
+        renderKrikosInbox();
+      });
+      mount.querySelector("#scotInboxBody").addEventListener("click", async function (e) {
+        var btn = e.target.closest("button[data-act]");
+        if (!btn) return;
+        var tr = btn.closest("tr[data-id]");
+        var id = tr ? Number(tr.dataset.id) : 0;
+        var row = krikosInboxRows.find(function (x) { return x.id === id; });
+        if (!row) return;
+        var act = btn.dataset.act;
+        var setMsg = krikosInboxSetMsg_;
+        btn.disabled = true;
+        try {
+          if (act === "abrir") {
+            await abrirBandejaEnCard_(row, setMsg);
+          } else if (act === "pdf") {
+            await verPdfBandeja_(row);
+          } else if (act === "descartar") {
+            if (!window.confirm("¿Descartar la OC " + (row.nro_documento || "") + " de " + (row.cadena || "") + "?\nNo se borra: queda en \"Descartadas\" y se puede restaurar.")) return;
+            await resolverKrikosInbox(id, "descartado", null);
+            setMsg("OC descartada", "ok");
+            await renderKrikosInbox();
+          } else if (act === "pendiente") {
+            await resolverKrikosInbox(id, "pendiente", null);
+            setMsg("OC restaurada a pendientes", "ok");
+            await renderKrikosInbox();
+          }
+        } catch (err) {
+          console.error("scot bandeja krikos:", err);
+          setMsg("Error: " + (err.message || err), "err");
+          window.toast && window.toast("Bandeja Krikos: " + (err.message || err), "error");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+    var body = mount.querySelector("#scotInboxBody");
+    var badge = mount.querySelector("#scotInboxBadge");
+    try {
+      krikosInboxRows = await loadKrikosInbox(krikosInboxEstado);
+      body.innerHTML = renderKrikosInboxTable_(krikosInboxRows);
+      var n = krikosInboxRows.length;
+      badge.textContent = n + (krikosInboxEstado === "pendiente" ? (n === 1 ? " pendiente" : " pendientes") : "");
+      badge.className = "scot-inbox-badge" + (n ? (krikosInboxEstado === "error" ? " err" : "") : " zero");
+    } catch (err) {
+      console.error("scot bandeja krikos load:", err);
+      body.innerHTML = '<div class="scot-inbox-empty" style="color:#c0392b">No se pudo leer la bandeja: ' + escapeHtml(err.message || String(err)) + "</div>";
+      badge.textContent = "!";
+      badge.className = "scot-inbox-badge err";
+    }
+  }
+
+  function krikosInboxSetMsg_(t, kind) {
+    var el = krikosInboxMount && krikosInboxMount.querySelector("#scotInboxMsg");
+    if (!el) return;
+    el.textContent = t || "";
+    el.className = "scot-inbox-msg" + (kind === "err" ? " err" : "");
+    if (kind === "ok") setTimeout(function () { if (el.textContent === t) el.textContent = ""; }, 6000);
+  }
+
+  // Refresco suave cada 2 min mientras la seccion esta visible: el cron trae
+  // OC nuevas cada 10 min y asi no hace falta tocar "Actualizar".
+  function startKrikosInboxAutoRefresh() {
+    if (krikosInboxTimer) return;
+    krikosInboxTimer = setInterval(function () {
+      var section = document.getElementById("cotizadores-super");
+      if (!section || !section.classList.contains("active") || document.hidden) return;
+      if (krikosInboxEstado !== "pendiente") return;
+      renderKrikosInbox();
+    }, 120000);
+  }
+
+  // ============================================================================
   // INIT
   // ============================================================================
   function init() {
@@ -3810,6 +4082,7 @@
         '<input type="file" id="scotUpdPricesFile" accept=".xlsx,.xls" style="display:none" />' +
         '<span id="scotUpdPricesMsg" style="font-size:12px;color:var(--text3,#888)"></span>' +
       '</div>' +
+      '<div id="scotKrikosInbox"></div>' +
       '<div class="scot-grid" id="scotGrid"></div>';
     var grid = mount.querySelector("#scotGrid");
     (function () {
@@ -3850,6 +4123,10 @@
     // Pre-cargar config de cadenas y precios super en background
     loadSuperCadenas();
     loadSuperPrices();
+    // Bandeja Krikos: OC que la Edge Function krikos-ingest bajo de la casilla
+    krikosInboxMount = mount.querySelector("#scotKrikosInbox");
+    renderKrikosInbox();
+    startKrikosInboxAutoRefresh();
   }
 
   function bootstrap() {
