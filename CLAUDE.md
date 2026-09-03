@@ -181,6 +181,33 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
 - **Todo Estadística Clientes mide solo Loekemeyer**: tanto `get_ranking_inactivos` como `get_estadistica_clientes_agg` (la tarjeta "Próximos pedidos") filtran `empresa = 'lk'`. Sin ese filtro los 243 códigos que operan únicamente en Chef aparecían como clientes de Loekemeyer —a recuperar en el ranking, o atrasados en próximos pedidos— sin haberle comprado nunca.
 - **`p_solo_excluidos = true` ignora la exclusión por Chef.** "Ver ocultos" es la única pantalla desde donde se restaura un cliente escondido a mano; si además estaba excluido por Chef, no aparecía ahí y quedaba inaccesible para siempre. Al pedir los ocultos se está pidiendo explícitamente esa lista, así que la otra exclusión no corresponde.
 - **El Ranking Inactivos mide solo Loekemeyer**: toda lectura de `sales_lines` filtra `empresa = 'lk'`. Antes mezclaba y los 243 códigos que operan únicamente en Chef figuraban como clientes a recuperar sin haberle comprado nunca. **No usar un CTE para ese filtro**: se probó (`WITH lk_lines AS (...)`) y como se referencia seis veces Postgres lo materializa — 189k filas y cada join pasa a seq scan, 2.163 ms contra 496 ms con el filtro inline. Hay un índice parcial `sales_lines_lk_cliente_idx ON sales_lines (customer_code) WHERE empresa = 'lk'`.
+- **El 3/9/2026 había CINCO crons fallando y nadie se había enterado**, porque
+  `pg_cron` marca la corrida como `failed` pero no avisa a ningún lado. Detalle
+  completo y cómo se arreglaron en `sql/fix_crons_20260903.sql`; backup de las
+  definiciones tocadas en la tabla `_backup_funcdefs_20260903`. Lo que importa
+  recordar: (1) **`app_settings.value` es `text`**, así que todo `COALESCE((SELECT
+  s.value ...), 0.02)::numeric` con el cast AFUERA revienta — el cast va ADENTRO
+  (`s.value::numeric`); estaban así 7 funciones y arrastraban a `sincronizar_chef`
+  y a `gv_generar_dia`. (2) **`PPP_Pedidos_Entregados` la borró Virgilio en su
+  v10.25 y LK nunca se enteró**; la reemplaza `PPP_Entregados_Meta`. (3)
+  **`gv_cobertura_provincia` tenía el guard estricto `gv_es_admin()`** y la llama
+  `gv_candidatos` (señal `zona_fria`), que corre desde el cron sin JWT: pasó a
+  `gv_es_admin_o_cron()`. Ese bug estaba TAPADO por el del COALESCE. (4) **El cron
+  `gerente-ventas-diario` eran seis `select` encadenados sin manejo de error**, y
+  `gv_generar_dia` es el primero: cuando reventaba, las tres del dashboard nunca
+  corrían. Ahora cada paso va aislado en su `BEGIN/EXCEPTION`. Lo mismo se hizo
+  dentro de `sincronizar_ppp()`, que era una sola transacción y por un paso roto
+  congelaba las seis tablas `ppp_*`.
+  **Sigue roto y no se puede arreglar desde LK**: `refresh-mvs-daily` necesita
+  `grant select on public.sales_lines to loke_reader;` **en el proyecto CHEF**
+  (mismo pendiente que ya existía para `orders`), y `pedidos-pdf-cleanup-30d`
+  necesita reescribirse contra la Storage API (Supabase bloquea el `DELETE` directo
+  sobre `storage.objects`).
+- **Un cron que falla es invisible.** Los cinco de arriba estuvieron caídos entre 7
+  y 51 días sin que nada lo avisara; el síntoma visible era el panel mostrando
+  julio cuando `sales_lines` ya tenía agosto. Al tocar cualquier cosa que corra por
+  cron, chequear después con:
+  `select j.jobname, r.status, r.start_time, r.return_message from cron.job_run_details r join cron.job j on j.jobid=r.jobid order by r.start_time desc limit 20;`
 - **Los archivos de `sql/` estuvieron al día el 31/7/2026, pero el inventario creció.** 14 archivos SQL en `sql/` al 24/8/2026: `arca_padron.sql`, `clientes_lk_ch.sql`, `customer_grupos.sql`, `expo.sql`, `fix_tipos_uuid_tracking_modulos.sql`, `gerente_ventas.sql`, `get_estadistica_clientes_agg.sql`, `get_ranking_inactivos.sql`, `order_items_source.sql`, `precios_super.sql`, `ranking_inactivos_excluidos.sql`, `sales_excluded_items_pseudo_articulos.sql`, `v_orders_origen.sql`; más `arca_padron.INSTRUCTIVO.md`. **La fuente de verdad sigue siendo la base**: los `.sql` no se ejecutan solos, se corren a mano en el SQL editor, así que un cambio hecho ahí y no volcado los desfasa. Para sacar la definición real: `select pg_get_functiondef(p.oid) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = '<nombre>';`. Para verificar un archivo contra la base, comparar el md5 del cuerpo normalizado (sin comentarios ni espacios) contra `md5(regexp_replace(regexp_replace(regexp_replace(prosrc,'/\*.*?\*/','','gs'),'--[^\n]*','','g'),'\s','','g'))`.
 - **El reparto de `sql/` para lo de clientes**: `customer_grupos.sql` tiene SOLO agrupar (razones sociales dentro de una empresa) y `clientes_lk_ch.sql` tiene todo lo de cruzar empresas (vínculos, switch, `chef_padron`, cache y cron). `datos_cliente_empresa` vive en `clientes_lk_ch.sql` porque es la pieza que abstrae los dos padrones, aunque la usen los dos módulos.
 - **Las cuatro RPC que refrescan `lk_ch_excluidos_cache` lo hacen con un `PERFORM` suelto al final del cuerpo, y ahí hay una trampa**: si queda DESPUÉS de un `RETURN` es código inalcanzable y Postgres no lo marca como error. `vincular_lk_ch` y `desvincular_lk_ch` estuvieron así hasta el 31/7/2026 (vincular no se veía en el ranking hasta el cron del día siguiente); se corrigió moviendo el `PERFORM` arriba del `RETURN`. `set_lk_ch_excluido` y `reset_lk_ch_excluido` siempre funcionaron, pero tienen el `PERFORM` con la misma indentación engañosa (pegado al margen antes del `END`). Al editar cualquiera de las cuatro, verificar que el `PERFORM` quede antes del `RETURN`.
@@ -377,25 +404,47 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
 
 ### Gerente de ventas
 
-- **INTEGRACIÓN CON TELEGRAM — pedido explícito del usuario (3/8/2026).** Quiere que las
-  5 acciones del día lleguen por Telegram, y pidió que se le recuerde a medida que el
-  módulo se desarrolle. **Hoy no hay NADA de Telegram en el proyecto**: 0 coincidencias en
-  el repo, 0 tablas o columnas en Supabase (las 11 `bot_*` son WhatsApp, con `telefono`
-  como clave), 0 de las 24 Edge Functions y 0 secretos en el vault. Si el bot existe, vive
-  en n8n, que no es alcanzable desde una sesión de Claude.
-  Falta que el usuario provea: (1) el **bot token**, que va en los secretos de Supabase
-  como `TELEGRAM_BOT_TOKEN` y **NUNCA en el repo** (es público y se sirve por GitHub
-  Pages), y (2) el **chat id** del grupo o de cada destinatario. Alternativa más corta si
-  el bot ya está en n8n: pegarle al webhook de n8n y no mover el token.
-  El transporte es lo único que falta —`gv_sugerencias` ya guarda las acciones y
-  `gv_agenda` las devuelve armadas— y el patrón ya existe cinco veces (`pg_cron` →
-  `net.http_post` → Edge Function: `retry-sheets`, `asoc-timeout-cron`,
-  `ig-token-refresh`, `notify-tracking-every-minute`). Sería una Edge Function
-  `gerente-ventas-telegram` más un cron a las 07:35 UTC-3, cinco minutos después del que
-  genera la agenda. **Dos decisiones para preguntarle cuando se encare**: si va a un grupo
-  único o segmentado por vendedor, y si quiere botones inline para marcar *Sirvió / No
-  sirvió* desde el propio Telegram — eso cerraría el ciclo de aprendizaje sin entrar al
-  panel, pero necesita un webhook con `verify_jwt: false` y su propio secreto.
+- **TELEGRAM YA ESTÁ ANDANDO (3/9/2026).** Se resolvió el pendiente. Bot
+  **@Lk_gerencia_bot**, token en el Vault de LK (`telegram_bot_token`), destinatario
+  el **chat privado** del usuario (`6282395816`), NO un grupo. El transporte es el
+  patrón `telegram_outbox` portado de Producción Virgilio: **pg_net + pg_cron +
+  Vault, sin Edge Function y sin n8n** — `sendMessage` es un POST JSON y `pg_net`
+  ya estaba instalado. Todo en `sql/reportes_telegram.sql`.
+  El CLAUDE.md decía antes que "si el bot existe, vive en n8n, que no es alcanzable
+  desde una sesión de Claude": era falso y hacía parecer difícil una tarea de una
+  tarde. Virgilio tenía el stack completo hecho en Postgres.
+  **`tg_enqueue` NO parte mensajes y Telegram corta en 4096 chars**: para cualquier
+  texto que pueda crecer (rankings, listados) usar `tg_enqueue_largo`, que parte por
+  líneas y sufija el `dedup_key`. Sin eso, Telegram devuelve 400 y el flush lo
+  reintenta 60 veces antes de rendirse.
+  **Las funciones `tg_*` y `rep_*` tienen `EXECUTE` revocado a `public`/`anon`/
+  `authenticated` y no es opcional**: son `SECURITY DEFINER` y la anon key de LK es
+  pública (va embebida en los `.js` que sirve GitHub Pages). Sin el revoke,
+  cualquiera puede inyectar mensajes al Telegram de gerencia.
+  **Falta la fase 2**: botones inline *Sirvió / No sirvió*. Mandarlos es fácil
+  (`reply_markup`), pero RECIBIR el click necesita un webhook público, o sea una
+  Edge Function con `verify_jwt:false` que llame a `gv_marcar_utilidad`.
+- **Los reportes de gerencia miden DOS RELOJES distintos y no se pueden mezclar.**
+  `orders` (portal) es plata **pedida**, está EN VIVO. `sales_lines` (ERP) es plata
+  **facturada**, y entra **por lote MENSUAL cargado a mano** (un `import_batch` por
+  mes, subido a principios del siguiente: `ago-26` se cargó el 2/9). Tiene fecha
+  diaria adentro, así que un diario retrospectivo se puede armar, pero **la
+  facturación de hoy no existe en la base hasta el mes que viene**. Por eso el
+  reporte diario y el semanal miden pedido + backlog PPP, y sólo el mensual mide
+  facturación real. Un diario de facturación en vivo exige cambiar la cadencia de
+  carga del Excel.
+- **El reporte mensual dedupea por MES REPORTADO, no por fecha de envío.** El cron
+  intenta los días 3, 5, 8 y 12 porque el lote del ERP llega entre el 2 y el 14;
+  mientras el mes del cache no cambie, el `on conflict do nothing` frena el envío.
+  El día que entra el lote, el mes es nuevo y sale solo. No tocar esa lógica
+  pensando que son envíos duplicados.
+- **La alerta de caída de clientes (`rep_caidas`) mide CAJAS, no unidades, a
+  propósito.** Unidades exige joinear `products`, y el % de cajas sin match viene
+  creciendo fuerte: 1,6% en abril 2026 contra **18,5% en agosto** (el CLAUDE.md
+  decía 4,2%, quedó viejo). Con unidades, una caída podría ser sólo un artículo dado
+  de baja del maestro. Las unidades se informan igual, marcadas como aproximadas.
+  Ventana: promedio mensual de los últimos 3 meses contra el de los 12 previos,
+  umbral 40% de caída y piso de 40 cajas/mes de base.
 - **La población por provincia cargada es PROVISORIA**: suma 46.082.944 contra los
   46.044.703 del Censo 2022 (~38.241 de más). Reemplazar con el dato oficial del INDEC vía
   `gv_set_poblacion(provincia, NULL, poblacion, fuente, anio)`.

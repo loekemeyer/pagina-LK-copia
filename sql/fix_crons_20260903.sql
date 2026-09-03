@@ -1,0 +1,173 @@
+-- ============================================================================
+-- ARREGLO DE CRONS CAIDOS  —  2026-09-03  (proyecto LK kwkclwhmoygunqmlegrg)
+-- ============================================================================
+-- Al 3/9/2026 habia CINCO crons fallando y nadie se habia enterado, porque
+-- pg_cron marca la corrida como failed pero no avisa a ningun lado.
+--
+--   gerente-ventas-diario    ultimo OK 04/08  (30 dias)  COALESCE text/numeric
+--   sincronizar-ppp-diario   ultimo OK 12/08  (22 dias)  tabla borrada en Virgilio
+--   sincronizar-chef-diario  ultimo OK 27/08  ( 7 dias)  mismo COALESCE
+--   refresh-mvs-daily        ultimo OK 14/07  (51 dias)  permiso en el FDW de Chef
+--   pedidos-pdf-cleanup-30d  nunca OK                     storage protegido
+--
+-- Efecto visible: gv_dash_cache con un mes de atraso (el panel mostraba julio
+-- cuando sales_lines ya tenia agosto) y las tablas ppp_* congeladas al 12/08,
+-- o sea el "por facturar" reportando un backlog de tres semanas atras.
+--
+-- Backup de todas las definiciones tocadas: tabla public._backup_funcdefs_20260903.
+-- ============================================================================
+
+
+-- ---------------------------------------------------------------------------
+-- BUG 1 — COALESCE types text and numeric cannot be matched  (7 funciones)
+-- ---------------------------------------------------------------------------
+-- `app_settings.value` es TEXT. El codigo hacia:
+--     COALESCE((SELECT s.value FROM app_settings s WHERE s.key='web_order_discount'), 0.02)::numeric
+-- con el cast AFUERA del COALESCE, asi que Postgres tiene que comparar text
+-- contra numeric y falla en el startup de la funcion. La fila existe y vale
+-- '0.02'; el problema es el tipo de la columna, no el dato.
+--
+-- Fix: mover el cast ADENTRO -> `s.value::numeric`. El ::numeric de afuera queda
+-- y es inofensivo.
+--
+-- Afectadas (verificado: 1 ocurrencia por funcion, todas la correcta):
+--   datos_cliente_empresa(text, text[])   <- arrastraba a sincronizar_chef()
+--   get_ranking_inactivos(...)
+--   get_ranking_inactivos_export(...)     <- arrastraba a gv_candidatos -> gv_generar_dia
+--   get_ranking_clientes(...)
+--   get_seguimiento_mensual(...)
+--   get_top_clientes_hist(...)
+--   bot_submit_order(...)                 <- COALESCE(s.value, 0.02) directo
+--
+-- Las que NO estaban rotas ya tenian el cast bien puesto (`value::numeric`
+-- adentro): gv_dashboard_calcular, gv_dashboard_calcular2, gv_drill, gv_rendimiento.
+--
+-- Se aplico con un regexp sobre pg_get_functiondef, no a mano. Para repetirlo:
+--
+--   do $fix$
+--   declare r record; nueva text;
+--   begin
+--     for r in select p.oid, p.proname, pg_get_functiondef(p.oid) as def
+--              from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+--              where n.nspname='public' and p.prosrc ~ 'web_order_discount'
+--                and (select count(*) from regexp_matches(p.prosrc,'(s\.value)(\s*(?:,|[Ff][Rr][Oo][Mm]))','g')) = 1
+--     loop
+--       nueva := regexp_replace(r.def, '(s\.value)(\s*(?:,|[Ff][Rr][Oo][Mm]))', '\1::numeric\2', 'g');
+--       if nueva = r.def then raise exception 'sin cambios en % — abortando', r.proname; end if;
+--       execute nueva;
+--     end loop;
+--   end $fix$;
+--
+-- Verificacion: select count(*) from get_ranking_inactivos_export(12,false);  -> 367 filas
+
+
+-- ---------------------------------------------------------------------------
+-- BUG 2 — sincronizar_ppp(): PPP_Pedidos_Entregados no existe
+-- ---------------------------------------------------------------------------
+-- Virgilio borro esa tabla en su v10.25 (su propio CLAUDE.md dice "no citarla").
+-- LK nunca se entero: la foreign table `virgilio.pedidos_entregados` le seguia
+-- apuntando y el INSERT reventaba. Como TODO el sync era UNA transaccion, la
+-- caida de ese unico paso congelaba las SEIS tablas ppp_*.
+--
+-- La reemplaza `PPP_Entregados_Meta` (np, cod, rs, tanda, m3, fecha_entrega).
+--
+-- Paso 1 — en VIRGILIO (hrxfctzncixxqmpfhskv), mismo patron que las otras tablas
+--          que ya lee LK: grant + policy propia para el rol de solo-lectura.
+--
+--   grant select on public."PPP_Entregados_Meta" to lk_ppp_reader;
+--   drop policy if exists lk_ppp_reader_sel on public."PPP_Entregados_Meta";
+--   create policy lk_ppp_reader_sel on public."PPP_Entregados_Meta"
+--     for select to lk_ppp_reader using (true);
+--
+-- Paso 2 — en LK, foreign table nueva AL LADO de la vieja (la vieja queda
+--          huerfana apuntando a una tabla inexistente; no se borro para no
+--          romper nada por el camino).
+--
+--   create foreign table if not exists virgilio.entregados_meta (
+--     np text, cod text, rs text, tanda text, m3 numeric, fecha_entrega text
+--   ) server virgilio_db
+--     options (schema_name 'public', table_name 'PPP_Entregados_Meta');
+--
+-- Paso 3 — sincronizar_ppp() reescrita con un BEGIN/EXCEPTION por bloque, para
+--          que una fuente rota no vuelva a congelar el resto del espejo, y
+--          devolviendo los errores en el jsonb en vez de abortar en silencio.
+--          El bloque de entregados ahora lee virgilio.entregados_meta y deriva
+--          `id` con row_number() (la fuente nueva no lo trae) y mapea m3 -> mt3.
+--          El unico consumidor de ppp_entregados es un EXISTS por tanda en
+--          bot_tracking_produccion, asi que el mapeo alcanza.
+--
+-- Verificacion: select public.sincronizar_ppp();
+--   -> {"ok": true, "programacion": 161, "base": 9398, "entregados": 2783,
+--       "facturacion": 1181, "etapa": 22, "telefonos": 610, "errores": {}}
+
+
+-- ---------------------------------------------------------------------------
+-- BUG 3 — guard estricto que mataba la generacion diaria
+-- ---------------------------------------------------------------------------
+-- Estaba TAPADO por el bug 1; aparecio recien al arreglarlo.
+--
+-- `gv_generar_dia` usa correctamente el guard permisivo gv_es_admin_o_cron(),
+-- pero llama a gv_candidatos, que para la senal `zona_fria` llama a
+-- gv_cobertura_provincia, que tenia el guard ESTRICTO gv_es_admin(). El cron
+-- corre como postgres SIN JWT, asi que auth.uid() es NULL y el guard estricto
+-- aborta la cadena entera.
+--
+--   update: gv_cobertura_provincia pasa a gv_es_admin_o_cron()
+--
+-- Es seguro: `anon` NO tiene EXECUTE sobre ella (verificado), y un `authenticated`
+-- no-admin tiene auth.uid() no nulo, asi que gv_es_admin() lo sigue bloqueando.
+--
+-- Verificacion: select public.gv_generar_dia(CURRENT_DATE, 12, false);  -> 5
+
+
+-- ---------------------------------------------------------------------------
+-- BUG 4 — el cron gerente-ventas-diario no toleraba un fallo parcial
+-- ---------------------------------------------------------------------------
+-- Eran seis `select` encadenados sin manejo de error. gv_generar_dia es el
+-- PRIMERO y el mas fragil (toca el ranking entero), asi que cuando reventaba,
+-- las tres funciones del dashboard NUNCA llegaban a correr. Ese es el motivo
+-- mecanico de que el cache quedara un mes viejo.
+--
+-- Ahora cada paso va aislado en su propio BEGIN/EXCEPTION y el cron termina
+-- siempre, dejando un WARNING por paso fallado en los logs.
+--
+--   select cron.alter_job(
+--     job_id  := (select jobid from cron.job where jobname='gerente-ventas-diario'),
+--     command := $cmd$
+--   do $ejecutar$
+--   declare pasos text[] := array[
+--     'select public.gv_generar_dia(CURRENT_DATE, 12, false)',
+--     'select public.gv_completar_vendedores(CURRENT_DATE)',
+--     'select public.gv_generar_preguntas()',
+--     'select public.gv_dashboard_calcular()',
+--     'select public.gv_dashboard_calcular2()',
+--     'select public.gv_dashboard_extra()'
+--   ];
+--     p text;
+--   begin
+--     foreach p in array pasos loop
+--       begin execute p;
+--       exception when others then
+--         raise warning 'gerente-ventas-diario: fallo [%] -> %', p, sqlerrm;
+--       end;
+--     end loop;
+--   end
+--   $ejecutar$;
+--     $cmd$);
+
+
+-- ---------------------------------------------------------------------------
+-- LO QUE QUEDO SIN ARREGLAR  (no se puede desde LK)
+-- ---------------------------------------------------------------------------
+-- refresh-mvs-daily — `permission denied for table sales_line`. La foreign table
+--   `chef_sales_lines` apunta a `public.sales_lines` del proyecto CHEF
+--   (nkhzocgdpwtgrmwleihr) y el rol lector no tiene SELECT ahi. Se arregla EN EL
+--   PROYECTO CHEF:
+--       grant select on public.sales_lines to loke_reader;
+--   (Es el mismo pendiente ya anotado en CLAUDE.md para `orders` de Chef.)
+--   Afecta a mv_loke_sales_agg / mv_chef_sales_loke, que solo alimentan
+--   get_all_sales_lines_admin_with_customer. NO afecta a los reportes.
+--
+-- pedidos-pdf-cleanup-30d — `Direct deletion from storage tables is not allowed`.
+--   Supabase bloquea el DELETE directo sobre storage.objects. Hay que reescribirlo
+--   contra la Storage API (Edge Function) o borrarlo. Nunca corrio OK.
