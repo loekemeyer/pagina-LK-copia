@@ -213,18 +213,24 @@ function productImgUrls(p) {
       .filter(Boolean);
     if (out.length) return out;
   }
-  // 2) Derivar del manifest del storage: {cod}.webp + {cod}-2.webp + ...
-  const urls = [BASE_IMG + encodeURIComponent(cod) + ".webp" + IMG_PARAMS];
+  // 2) Derivar del manifest del storage.
+  // ORDEN DE MOSTRADO: la 2ª foto ({cod}-2.webp) va PRIMERA (es la "con cartón",
+  // el default que se pide). La principal ({cod}.webp, "sin cartón") va después,
+  // y luego -3, -4... Si no hay -2, se muestra sola la principal.
+  const principal = BASE_IMG + encodeURIComponent(cod) + ".webp" + IMG_PARAMS;
+  const extras = [];
   if (PRODUCT_IMG_SET && cod) {
     for (let n = 2; n <= 12; n++) {
       if (PRODUCT_IMG_SET.has(`${cod}-${n}.webp`)) {
-        urls.push(
+        extras.push(
           BASE_IMG + encodeURIComponent(cod) + "-" + n + ".webp" + IMG_PARAMS,
         );
       } else break;
     }
   }
-  return urls;
+  if (!extras.length) return [principal];
+  // [-2 (con cartón), principal (sin cartón), -3, -4, ...]
+  return [extras[0], principal, ...extras.slice(1)];
 }
 
 // Muestra la foto `idx` de una card con crossfade suave. Re-entrante:
