@@ -921,3 +921,37 @@ revoke all on function public.rep_texto_top20(int)         from public, anon, au
 revoke all on function public.rep_enviar_top20()           from public, anon, authenticated;
 
 select cron.schedule('reporte-top20-telegram', '20 11 * * 1', 'select public.rep_enviar_top20()');
+
+-- ============================================================================
+-- SECCION 10 · AVISO POR ARTICULO  (4/9/2026)
+-- ============================================================================
+-- Motivo: Coto dejo de comprar el 505 (su articulo mas fuerte) y el reporte lo
+-- mostraba como "CAE FUERTE -52%", no como un corte. La causa es que
+-- rep_articulos_cliente compara el promedio de los ULTIMOS 3 MESES contra el de
+-- los 12 previos, y la ventana jun-jul-ago todavia contenia junio (332 cj):
+-- 332/3 = 110,7 contra una base de 228,3 da -52%. O sea que un articulo que se
+-- corto DEL TODO se lee como media caida. Es la misma leccion del drawdown que
+-- ya se habia aprendido para clientes, ahora a nivel articulo.
+--
+-- La correccion es agregar los MESES CONSECUTIVOS EN CERO como senal propia
+-- (`meses_sin_compra`), que es justo lo que el promedio tapa. Con eso el 505 de
+-- Coto pasa a "SE CORTO · hace 2 meses (ult. 2026-06)" y ademas aparece el 529E,
+-- que estaba tapado igual.
+--
+-- Se calcula como la distancia en meses entre la ultima compra y el ultimo mes
+-- cerrado del ERP, que por construccion ES la racha de ceros del final. No hace
+-- falta armar la rejilla de meses.
+--
+-- Umbral: >= 2 meses en cero y >= 6 meses de historia. Con 1 mes solo, el ritmo
+-- normal de reposicion de un supermercado ya da falsos positivos.
+--
+-- rep_articulos_cortados() barre los clientes VIVOS del top (los que compraron
+-- en los ultimos 2 meses) y devuelve sus articulos cortados valorizados: el que
+-- dejo de comprar del todo es otro reporte, no este. Llama a
+-- rep_articulos_cliente por LATERAL a proposito, para que el criterio este
+-- definido UNA sola vez y las dos vistas no puedan divergir.
+--
+-- Al 4/9/2026: 20 articulos, $35,4 M/mes en juego. Los tres primeros son
+-- 505 en Coto ($4,3 M/mes), 504 en Coto ($3,5 M) y 505 en OSA ($3,3 M).
+--
+-- Cron: reporte-articulos-telegram, lunes 11:30 UTC (08:30 ART).

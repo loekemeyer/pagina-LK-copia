@@ -461,6 +461,27 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   mientras el mes del cache no cambie, el `on conflict do nothing` frena el envío.
   El día que entra el lote, el mes es nuevo y sale solo. No tocar esa lógica
   pensando que son envíos duplicados.
+- **El aviso POR ARTÍCULO necesita los meses en cero, no el promedio.** Coto
+  dejó de comprar el **505** —su artículo más fuerte— y el reporte lo mostraba
+  como *"CAE FUERTE −52%"* en vez de un corte: `rep_articulos_cliente` compara el
+  promedio de los últimos 3 meses contra los 12 previos, y la ventana jun-jul-ago
+  todavía contenía junio (332 cj), así que 332/3 = 110,7 contra una base de 228,3
+  da −52%. **Un artículo que se cortó del todo se lee como media caída.** Es la
+  misma lección del drawdown que ya se había aprendido para clientes, ahora a
+  nivel artículo. Se agregó `meses_sin_compra` como señal propia y el estado
+  **`SE CORTÓ`** (≥ 2 meses en cero y ≥ 6 meses de historia; con 1 mes solo, el
+  ritmo de reposición de un súper ya da falsos positivos). Se calcula como la
+  distancia en meses entre la última compra y el último mes cerrado del ERP, que
+  por construcción ES la racha de ceros del final — no hace falta armar la
+  rejilla. Con eso el 505 de Coto pasa a "SE CORTÓ · hace 2 meses" y aparece
+  además el 529E, que estaba tapado igual.
+- **`rep_articulos_cortados` barre sólo clientes VIVOS** (los que compraron en
+  los últimos 2 meses): el que dejó de comprar del todo es el Ranking Inactivos,
+  no este reporte. Llama a `rep_articulos_cliente` por `LATERAL` **a propósito**,
+  para que el criterio esté definido una sola vez y las dos vistas no puedan
+  divergir. Al 4/9/2026: 20 artículos, **$35,4 M/mes en juego**, encabezados por
+  505 en Coto ($4,3 M/mes), 504 en Coto ($3,5 M) y 505 en OSA ($3,3 M). Cron
+  `reporte-articulos-telegram`, lunes 11:30 UTC.
 - **La alerta de caída de clientes (`rep_caidas`) mide CAJAS, no unidades, a
   propósito.** Unidades exige joinear `products`, y el % de cajas sin match viene
   creciendo fuerte: 1,6% en abril 2026 contra **18,5% en agosto** (el CLAUDE.md
