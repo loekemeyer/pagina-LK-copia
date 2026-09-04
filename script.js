@@ -245,12 +245,34 @@ function productImgStep(pid, dir, ev) {
     urls = [];
   }
   if (urls.length < 2) return;
+  // Evita encimar animaciones si se clickea rápido.
+  if (media.getAttribute("data-anim") === "1") return;
   let idx = parseInt(media.getAttribute("data-idx") || "0", 10) || 0;
   idx = (idx + dir + urls.length) % urls.length;
   media.setAttribute("data-idx", String(idx));
-  img.src = urls[idx];
   const dots = media.querySelectorAll(".pc-dot");
   dots.forEach((d, i) => d.classList.toggle("on", i === idx));
+
+  // Crossfade suave: baja opacidad → cambia src (invisible) → sube opacidad.
+  media.setAttribute("data-anim", "1");
+  const nextUrl = urls[idx];
+  const pre = new Image();
+  const doSwap = () => {
+    img.src = nextUrl;
+    requestAnimationFrame(() => {
+      img.style.opacity = "1";
+    });
+    setTimeout(() => media.setAttribute("data-anim", "0"), 210);
+  };
+  img.style.opacity = "0";
+  setTimeout(() => {
+    if (pre.complete) doSwap();
+    else {
+      pre.onload = doSwap;
+      pre.onerror = doSwap;
+    }
+  }, 200);
+  pre.src = nextUrl;
 }
 window.productImgStep = productImgStep;
 
