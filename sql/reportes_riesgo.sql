@@ -111,14 +111,24 @@ $$;
 --     15 dias. Sin dedup Coto daba 66%; con dedup da 82%.
 --  2. DESFASAJE. Se pide en mayo y se factura en junio. Por eso se compara
 --     ACUMULADO sobre una ventana larga, nunca mes a mes.
---  3. LA NORMA NO ES 100%. La cartera entera da ~102-108%: no todo lo facturado
---     entra por el portal (hay pedidos por telefono y por vendedor). El texto del
---     reporte informa la norma al lado del dato, para que el desvio se lea contra
---     algo y no contra una expectativa inventada.
+--  3. LA NORMA NO ES 100%. Los clientes con relacion continua dan ~107%: no todo
+--     lo facturado entra por el portal (hay pedidos por telefono y por vendedor).
+--     El texto del reporte informa la norma al lado del dato, para que el desvio
+--     se lea contra algo y no contra una expectativa inventada.
+--  4. SOLO CLIENTES CON RELACION CONTINUA (p_min_meses, 6 de los ultimos 12).
+--     En alguien que compra 2 o 3 veces al año, comparar 5 meses de pedidos contra
+--     5 meses de facturas da cualquier cosa: un pedido de diciembre facturado en
+--     enero lo hunde. Peor: un cliente que hizo UN pedido y nunca mas compro sale
+--     0% y parece un desastre de servicio. Eso paso con Dia Argentina — pidio 420
+--     cajas el 28/4/2026 y no compra desde abril de 2025 — y es lo que motivo
+--     partir la metrica en dos. Sin el filtro salian 8 clientes; con el, 4, y los
+--     4 son reales: Sauer 64%, OSA 72%, Coto 82%, Cuyana 89%.
 
-create or replace function public.rep_fill_rate(p_meses int default 5, p_min_cajas numeric default 300)
+create or replace function public.rep_fill_rate(p_meses int default 5,
+                                                p_min_cajas numeric default 300,
+                                                p_min_meses int default 6)
 returns table(cod text, cliente text, pedidas numeric, facturadas numeric, pct int,
-              pedidos int, resubmits int, ultimo_pedido text)
+              pedidos int, resubmits int, meses_activo int, ultimo_pedido text)
 language sql stable security definer
 set search_path to 'public','pg_temp'
 as $$
@@ -157,17 +167,84 @@ as $$
       and left(sl.invoice_date,7) between vent.desde and vent.hasta
       and sl.item_code <> all (array(select item_code from sales_excluded_items))
     group by 1
+  ),
+  actividad as (
+    select sl.customer_code as cod, count(distinct left(sl.invoice_date,7)) as meses
+    from sales_lines sl
+    where sl.empresa='lk' and sl.boxes is not null
+      and sl.invoice_date >= to_char(current_date - interval '12 months','YYYY-MM-DD')
+      and sl.item_code <> all (array(select item_code from sales_excluded_items))
+    group by 1
   )
   select p.cod,
          coalesce(nullif(btrim(c.business_name),''), 'Cliente '||p.cod),
          p.pedidas, coalesce(f.facturadas,0),
          round(100.0*coalesce(f.facturadas,0)/nullif(p.pedidas,0))::int,
-         p.pedidos::int, p.resubmits::int, p.ultimo
+         p.pedidos::int, p.resubmits::int, coalesce(a.meses,0)::int, p.ultimo
   from ped p
   left join fac f on f.cod = p.cod
+  left join actividad a on a.cod = p.cod
   left join customers c on c.cod_cliente::text = p.cod
   where p.pedidas >= p_min_cajas
+    and coalesce(a.meses,0) >= p_min_meses
   order by 5 asc nulls first;
+$$;
+
+
+-- ---------------------------------------------------------------------------
+-- 2B. PEDIDOS COLGADOS: entraron por el portal y nunca se facturaron
+-- ---------------------------------------------------------------------------
+-- Es OTRA COSA que el fill rate y pide otra accion: no es "le despachamos corto",
+-- es "este pedido no se proceso" o "el cliente lo anulo". Mezclarlos fue un error:
+-- Dia Argentina salia con 0% de fill rate como si le hubieramos fallado, cuando
+-- en realidad dejo de comprar en abril de 2025 y el pedido de abril de 2026 quedo
+-- colgado. Son dos llamadas distintas a dos personas distintas.
+-- Solo mira pedidos anteriores al ultimo mes cerrado del ERP: de los posteriores
+-- todavia no se puede saber si se facturaron.
+
+create or replace function public.rep_pedidos_colgados(p_dias_min int default 30,
+                                                       p_min_cajas numeric default 50)
+returns table(cod text, cliente text, fecha_pedido text, dias int, cajas numeric,
+              monto numeric, ultima_factura text, estado text)
+language sql stable security definer
+set search_path to 'public','pg_temp'
+as $$
+  with lim as (select (left(max(invoice_date),7)||'-01')::date + interval '1 month' - interval '1 day' as cierre
+               from sales_lines where empresa='lk'),
+  ped as (
+    select distinct on (c.cod_cliente, o.total)
+           c.cod_cliente::text as cod,
+           (o.created_at at time zone 'America/Argentina/Buenos_Aires')::date as f,
+           o.total,
+           (select sum(oi.cajas) from order_items oi where oi.order_id = o.id) as cajas
+    from orders o join customers c on c.id = o.customer_id
+    cross join lim
+    where c.cod_cliente::text not in ('1','3878')   -- 1 = Loekemeyer SRL, pedidos internos
+      and (o.created_at at time zone 'America/Argentina/Buenos_Aires')::date <= lim.cierre
+      and (o.created_at at time zone 'America/Argentina/Buenos_Aires')::date <= current_date - p_dias_min
+    order by c.cod_cliente, o.total, f      -- de un resubmit queda el primero
+  )
+  select p.cod,
+         coalesce(nullif(btrim(c.business_name),''),'Cliente '||p.cod),
+         p.f::text, (current_date - p.f)::int, p.cajas, p.total,
+         coalesce(uf.ultima,'nunca'),
+         case when uf.ultima is null then '🔴 nunca compró'
+              when uf.ultima < to_char(p.f - 180,'YYYY-MM-DD') then '🔴 inactivo hace más de 6 meses'
+              else '🟠 sin facturar desde el pedido' end
+  from ped p
+  left join customers c on c.cod_cliente::text = p.cod
+  left join lateral (
+    select max(sl.invoice_date) as ultima from sales_lines sl
+    where sl.empresa='lk' and sl.customer_code = p.cod and sl.boxes is not null
+      and sl.item_code <> all (array(select item_code from sales_excluded_items))
+  ) uf on true
+  where p.cajas >= p_min_cajas
+    and not exists (
+      select 1 from sales_lines sl
+      where sl.empresa='lk' and sl.customer_code = p.cod and sl.boxes is not null
+        and sl.invoice_date >= to_char(p.f,'YYYY-MM-DD')
+        and sl.item_code <> all (array(select item_code from sales_excluded_items)))
+  order by p.total desc;
 $$;
 
 
@@ -179,7 +256,7 @@ create or replace function public.rep_texto_riesgo()
 returns text language plpgsql stable security definer
 set search_path to 'public','pg_temp'
 as $$
-declare dd text; fr text; norma int;
+declare dd text; fr text; col text; norma int; n_fr int;
 begin
   select string_agg(
     '▸ ' || left(d.cliente,30) || case when d.es_top20 then ' ⭐' else '' end || E'\n'
@@ -189,26 +266,40 @@ begin
     E'\n' order by (d.mejor_trim - d.trim_actual) desc)
   into dd from public.rep_drawdown() d;
 
-  -- Sin la norma al lado, un 82% parece malo y puede ser perfectamente normal.
-  select round(100.0*sum(facturadas)/nullif(sum(pedidas),0))::int into norma
-  from public.rep_fill_rate(5, 0);
+  -- La norma sale de los MISMOS clientes que se listan (relación continua), no de
+  -- la cartera entera: si no, se compara contra otra población.
+  select round(100.0*sum(facturadas)/nullif(sum(pedidas),0))::int, count(*)
+    into norma, n_fr
+  from public.rep_fill_rate(5, 0, 6);
 
   select string_agg(
     '▸ ' || left(f.cliente,30) || '  ' || f.pct || '%' || E'\n'
     || '   pidió ' || f.pedidas || ' cj, se facturaron ' || f.facturadas
-    || case when f.resubmits > 0 then '  (' || f.resubmits || ' resubmit)' else '' end,
+    || '  ·  ' || f.meses_activo || '/12 meses activo',
     E'\n' order by f.pct asc)
-  into fr from public.rep_fill_rate(5, 300) f where f.pct < 75;
+  into fr from public.rep_fill_rate(5, 300, 6) f where f.pct < 90;
+
+  select string_agg(
+    '▸ ' || left(p.cliente,30) || '  ' || p.estado || E'\n'
+    || '   ' || p.cajas || ' cj · ' || rep_plata(p.monto) || ' · pedido ' || p.fecha_pedido
+    || ' (hace ' || p.dias || ' días)' || E'\n'
+    || '   última factura: ' || p.ultima_factura,
+    E'\n' order by p.monto desc)
+  into col from public.rep_pedidos_colgados() p;
 
   return '🚨 CLIENTES EN RIESGO' || E'\n'
     || '━━━━━━━━━━━━━━━━━━' || E'\n\n'
     || '📉 SE ESTÁN CAYENDO (trimestre actual vs su propio pico)' || E'\n'
     || '_Solo los que todavía compran. El que ya se fue está en Ranking Inactivos._' || E'\n'
     || coalesce(dd, '  Ninguno.') || E'\n\n'
-    || '📦 PIDIERON Y NO SE LES FACTURÓ' || E'\n'
-    || '_Últimos 5 meses. La cartera entera está en ' || norma || '%: no todo lo'
-    || ' facturado entra por el portal, así que la norma no es 100._' || E'\n'
-    || coalesce(fr, '  Ninguno por debajo del 75%.') || E'\n\n'
+    || '📦 SE LES FACTURA MENOS DE LO QUE PIDEN' || E'\n'
+    || '_Solo clientes con relación continua (6+ meses activos de 12): en uno que'
+    || ' compra 2 veces al año el número es ruido. Esos ' || n_fr || ' clientes'
+    || ' promedian ' || norma || '%, así que la norma no es 100._' || E'\n'
+    || coalesce(fr, '  Ninguno por debajo del 90%.') || E'\n\n'
+    || '⏳ PEDIDOS QUE NUNCA SE FACTURARON' || E'\n'
+    || '_Entraron por el portal y el cliente no tuvo ninguna factura desde entonces._' || E'\n'
+    || coalesce(col, '  Ninguno.') || E'\n\n'
     || '_Deduplicado de resubmits (mismo cliente, mismo monto, 15 días)._';
 end $$;
 
@@ -222,7 +313,8 @@ begin
 end $$;
 
 revoke all on function public.rep_drawdown(numeric,numeric,numeric,int) from public, anon, authenticated;
-revoke all on function public.rep_fill_rate(int,numeric)                from public, anon, authenticated;
+revoke all on function public.rep_fill_rate(int,numeric,int)            from public, anon, authenticated;
+revoke all on function public.rep_pedidos_colgados(int,numeric)         from public, anon, authenticated;
 revoke all on function public.rep_texto_riesgo()                        from public, anon, authenticated;
 revoke all on function public.rep_enviar_riesgo()                       from public, anon, authenticated;
 

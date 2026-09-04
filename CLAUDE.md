@@ -509,8 +509,19 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   días. (2) **Desfasaje**: se pide en mayo y se factura en junio, así que se compara
   acumulado sobre una ventana larga, nunca mes a mes. (3) **La norma NO es 100%**:
   la cartera entera da 102-108% porque no todo lo facturado entra por el portal, y
-  sin ese número al lado un 82% parece grave. Casos abiertos al 3/9: Día Argentina
-  pidió 420 cajas y se le facturaron **0**; El Rápido 10%; Y Bazar 15%; Avalis 24%.
+  sin ese número al lado un 82% parece grave. (4) **Sólo clientes con RELACIÓN
+  CONTINUA** (6+ meses activos de 12): en alguien que compra 2 o 3 veces al año,
+  comparar 5 meses de pedidos contra 5 meses de facturas da cualquier cosa. Peor,
+  un cliente que hizo UN pedido y nunca más compró sale 0% y parece un desastre de
+  servicio — **eso pasó con Día Argentina**, que pidió 420 cajas el 28/4/2026 y no
+  compra desde abril de 2025. Sin el filtro salían 8 clientes; con él, 4, y los 4
+  son reales: Sauer 64%, OSA 72%, Coto 82%, Cuyana 89%.
+- **Un pedido que nunca se facturó NO es fill-rate: es `rep_pedidos_colgados()`.**
+  Son dos llamadas distintas a dos personas distintas — una es "le despachamos
+  corto", la otra es "este pedido no se procesó o el cliente lo anuló". Hoy hay dos:
+  Día Argentina (420 cj, $5,3 M, pedido el 28/4, inactivo desde abril 2025) y
+  Alberdi (100 cj, $2,0 M). Excluye el código `1` (Loekemeyer SRL), que son pedidos
+  internos de prueba y eran 3 de los 6 que salían al principio.
 - **`rep_salud()` existe porque un cron que falla es invisible** y ya costó cinco
   caídos entre 7 y 51 días. Manda por Telegram **sólo si hay algo** (08:05 ART): un
   aviso diario de "todo bien" se deja de leer. **`rep_cron_verificado` +
