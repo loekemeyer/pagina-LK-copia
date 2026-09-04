@@ -300,11 +300,13 @@ function _abrirFotosPopup() {
   const m = document.getElementById("fotosPopup");
   if (!m) return;
   m.classList.remove("hidden");
+  m.classList.add("open"); // .modal es display:none por defecto; .open lo muestra
   m.setAttribute("aria-hidden", "false");
 }
 function cerrarFotosPopup() {
   const m = document.getElementById("fotosPopup");
   if (m) {
+    m.classList.remove("open");
     m.classList.add("hidden");
     m.setAttribute("aria-hidden", "true");
   }
