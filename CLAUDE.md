@@ -428,9 +428,27 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   `authenticated` y no es opcional**: son `SECURITY DEFINER` y la anon key de LK es
   pública (va embebida en los `.js` que sirve GitHub Pages). Sin el revoke,
   cualquiera puede inyectar mensajes al Telegram de gerencia.
-  **Falta la fase 2**: botones inline *Sirvió / No sirvió*. Mandarlos es fácil
-  (`reply_markup`), pero RECIBIR el click necesita un webhook público, o sea una
-  Edge Function con `verify_jwt:false` que llame a `gv_marcar_utilidad`.
+  **La fase 2 (botones inline) está hecha** (4/9/2026). Mandarlos era la parte
+  fácil (`reply_markup` + la columna nueva `telegram_outbox.reply_markup`); lo
+  que faltaba era RECIBIR el click, que necesita un endpoint público: la Edge
+  Function **`gv-telegram-webhook`** (`verify_jwt=off`), en
+  `supabase/functions/` con su README de deploy. Falta que el usuario la
+  deployee, cargue `telegram_webhook_secret` y corra el `setWebhook`.
+  **Va UN MENSAJE POR SUGERENCIA, no uno solo con todo**: el `callback_data`
+  tiene que llevar el id y Telegram lo topea en 64 bytes; además así cada
+  respuesta edita su propio mensaje y en el historial queda qué se contestó.
+  **El gate NO es el JWT: es el `secret_token`** que Telegram devuelve en el
+  header `X-Telegram-Bot-Api-Secret-Token`. La URL de una Edge Function es
+  pública y adivinable, así que sin ese chequeo cualquiera podría inyectar
+  feedback falso y torcer el aprendizaje del agente. Un request que no pasa el
+  gate devuelve **200 y no 401**, porque a Telegram un error le hace reintentar
+  la misma update en loop.
+  **`gv_marcar_utilidad` y `gv_marcar_resultado` pasaron a `gv_es_admin_o_cron()`**:
+  el webhook entra con `service_role` y sin JWT, así que `auth.uid()` es NULL y
+  el guard estricto lo mataría. No abre nada — `anon` ya tenía el `EXECUTE`
+  revocado y un `authenticated` que no sea admin sigue rechazado. Verificado de
+  punta a punta: un click movió el peso de `ticket_bajo` de 0,5000 a 0,6667 y
+  dejó `acc_trab` en 0, o sea que los dos ejes siguen separados.
 - **Lo que realmente SALIÓ del depósito NO está en el Supabase de LK: está en el de
   Virgilio** (`Facturacion_NP`, con `fecha_salida` al día). Se espeja a LK con
   `sincronizar_ppp()` → `ppp_facturacion`. **Es lo que hace posible un número de

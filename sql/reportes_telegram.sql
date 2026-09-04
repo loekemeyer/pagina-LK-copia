@@ -955,3 +955,125 @@ select cron.schedule('reporte-top20-telegram', '20 11 * * 1', 'select public.rep
 -- 505 en Coto ($4,3 M/mes), 504 en Coto ($3,5 M) y 505 en OSA ($3,3 M).
 --
 -- Cron: reporte-articulos-telegram, lunes 11:30 UTC (08:30 ART).
+
+-- ============================================================================
+-- SECCION 11 · BOTONES INLINE  (fase 2, 4/9/2026)
+-- ============================================================================
+-- gv_senales aprende de UN solo eje: `utilidad`. Hasta ahora solo se podia
+-- cargar desde el panel admin, asi que en la practica el peso de casi todas las
+-- senales seguia en el 0,50 inicial y la priorizacion no mejoraba nunca. Estos
+-- botones son lo que hace arrancar la automejora.
+--
+-- Mandarlos era la parte facil (reply_markup). Lo que faltaba era RECIBIR el
+-- click, que necesita un endpoint publico: la Edge Function
+-- `gv-telegram-webhook` (verify_jwt=off), en supabase/functions/, con su README
+-- de deploy.
+--
+-- UN MENSAJE POR SUGERENCIA y no uno solo con todo: el callback_data tiene que
+-- llevar el id de la sugerencia y Telegram lo topea en 64 bytes. Ademas asi
+-- cada respuesta edita su propio mensaje y en el historial queda que se
+-- contesto y con que.
+
+alter table public.telegram_outbox add column if not exists reply_markup jsonb;
+-- tg_outbox_flush agrega reply_markup al body del sendMessage cuando no es null.
+
+create or replace function public.tg_enqueue_botones(
+  p_text text, p_dedup text, p_markup jsonb,
+  p_chat text default '6282395816', p_parse_mode text default null)
+returns void language sql security definer set search_path to 'public','pg_temp'
+as $$
+  insert into public.telegram_outbox (chat_id, text, dedup_key, parse_mode, reply_markup)
+  values (p_chat, p_text, p_dedup, p_parse_mode, p_markup)
+  on conflict (dedup_key) do nothing;
+$$;
+
+create or replace function public.gv_enviar_agenda_telegram(p_fecha date default current_date)
+returns int language plpgsql security definer set search_path to 'public','pg_temp'
+as $$
+declare r record; n int := 0; v_txt text;
+begin
+  perform gv_es_admin_o_cron();
+
+  for r in
+    select g.id, g.tipo, s.etiqueta, g.cod_cliente, g.titulo, g.motivo, g.accion,
+           g.score, g.payload, g.vendedor
+    from gv_sugerencias g
+    join gv_senales s on s.tipo = g.tipo
+    where g.fecha = p_fecha and g.utilidad = 'sin_opinion'
+    order by g.score desc, g.id
+  loop
+    v_txt := '🎯 *' || replace(r.etiqueta,'*','') || '*' || E'\n' ||
+             replace(coalesce(r.titulo,''),'*','') || E'\n\n' ||
+             coalesce(r.motivo,'') || E'\n\n' ||
+             '👉 ' || coalesce(r.accion,'');
+
+    -- la evidencia son los 2-3 numeros crudos que dispararon la senal: sin
+    -- ellos la sugerencia hay que creerla, con ellos se puede discutir.
+    if r.payload ? 'evidencia' then
+      v_txt := v_txt || E'\n';
+      select v_txt || string_agg('   · ' || (e->>'k') || ': ' || (e->>'v'), E'\n')
+        into v_txt
+        from jsonb_array_elements(r.payload->'evidencia') e;
+    end if;
+
+    perform tg_enqueue_botones(
+      v_txt,
+      'gv_' || to_char(p_fecha,'YYYYMMDD') || '_' || r.id::text,
+      jsonb_build_object('inline_keyboard', jsonb_build_array(
+        jsonb_build_array(
+          jsonb_build_object('text','👍 Sirvió',   'callback_data','u:'||r.id||':util'),
+          jsonb_build_object('text','👎 No sirvió','callback_data','u:'||r.id||':no_util')),
+        jsonb_build_array(
+          jsonb_build_object('text','✅ Se concretó','callback_data','r:'||r.id||':gano'),
+          jsonb_build_object('text','❌ Se perdió',  'callback_data','r:'||r.id||':perdio'))
+      )),
+      '6282395816', 'Markdown');
+    n := n + 1;
+  end loop;
+
+  return n;
+end $$;
+
+-- El parseo del callback_data vive ACA y no en la Edge Function: asi el
+-- criterio esta definido una sola vez y se puede re-escribir la funcion sin
+-- tocar la logica.
+create or replace function public.gv_telegram_callback(p_data text)
+returns text language plpgsql security definer set search_path to 'public','pg_temp'
+as $$
+declare
+  v_eje  text; v_id bigint; v_val text; v_tit text;
+begin
+  v_eje := split_part(p_data, ':', 1);
+  v_id  := nullif(split_part(p_data, ':', 2), '')::bigint;
+  v_val := split_part(p_data, ':', 3);
+  if v_id is null then return 'callback inválido'; end if;
+
+  select titulo into v_tit from gv_sugerencias where id = v_id;
+  if v_tit is null then return 'esa sugerencia ya no existe'; end if;
+
+  if v_eje = 'u' and v_val in ('util','no_util') then
+    perform gv_marcar_utilidad(v_id, v_val, false);
+    return case when v_val = 'util' then '👍 Anotado: te sirvió'
+                else '👎 Anotado: no te sirvió' end;
+  elsif v_eje = 'r' and v_val in ('gano','perdio') then
+    perform gv_marcar_resultado(v_id, v_val, null);
+    return case when v_val = 'gano' then '✅ Anotado: se concretó'
+                else '❌ Anotado: se perdió' end;
+  end if;
+  return 'acción desconocida';
+end $$;
+
+revoke execute on function public.tg_enqueue_botones(text,text,jsonb,text,text) from public, anon, authenticated;
+revoke execute on function public.gv_enviar_agenda_telegram(date)              from public, anon, authenticated;
+revoke execute on function public.gv_telegram_callback(text)                   from public, anon, authenticated;
+grant  execute on function public.gv_telegram_callback(text)                   to service_role;
+
+-- gv_marcar_utilidad y gv_marcar_resultado pasaron de gv_es_admin() a
+-- gv_es_admin_o_cron(): el webhook entra con service_role y sin JWT, asi que
+-- auth.uid() es NULL y el guard estricto lo mataria. NO abre nada: anon ya
+-- tenia el EXECUTE revocado, y un authenticated que no sea admin sigue
+-- rechazado por gv_es_admin().
+--
+-- Verificado de punta a punta el 4/9/2026: gv_telegram_callback('u:27:util')
+-- movio el peso de ticket_bajo de 0,5000 a 0,6667 y dejo acc_trab en 0 (los dos
+-- ejes siguen separados). Se revirtio el voto de prueba.
