@@ -563,6 +563,24 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
 
 - **El importador de listas de súper detecta las columnas por ENCABEZADO, con `hoja_cod_col`/`hoja_price_col` como fallback.** Los índices de columna del Excel se corren cuando alguien mete una columna nueva en el medio, y ahí `hoja_price_col` terminaba apuntando a "Costo sin aportes" en vez de a "Lista Vigente" — un re-upload cargaba COSTOS como precios. Verificado 4/8/2026 contra `A_Costos_VIGENTES`: los índices que estaban en la config (col 2 = costo) NO coincidían con lo cargado (col "Lista Vigente"), o sea que los datos vivos se habían cargado desde un layout anterior. Se corrigieron los índices a los verificados y `admin-supercot.js` ahora busca "Cod"/"Lista Vigente"/"Lista a Enviar" por nombre (probado contra las 9 hojas). **La lista de Toledo se cargó ese día** (33 precios, hoja "Toledo Loeke"); dejó de valorizarse con la lista general.
 - **`precios_super.cadena.usa_lista_general` separa dos casos que antes se confundían.** Una cadena sin lista propia caía en la lista general EN SILENCIO, y eso mezclaba "está bien así" con "le falta la lista". Decisión del usuario (4/8/2026): **Messina va con lista general** (`true`), **Toledo con lista especial propia** (`false`, todavía sin cargar). `gv_cadenas_sin_lista()` devuelve las que necesitan lista propia y no la tienen, o la tienen sin fecha o con más de 10 meses — hoy son 9 cadenas con **$1.159 M de venta anual** mal o dudosamente valorizada, encabezadas por Coto ($455 M con lista SIN FECHA).
+- **LAS LISTAS DE PRECIOS VIVEN EN EL PROYECTO `Costos`** (`fxyhvacysnqzzsdvmplx`),
+  en `listas_vigentes` (cliente, cod_art, descripcion, precio, fecha). Son **14
+  listas**: `Propio` (la de LK, 197 códigos), Abastecedor, Libertad, Jumbo,
+  `Inc s/TTC`, Walmart Chef, `Toledo LK`, Coto, Alberdi, Anónima, Día, Diarco,
+  La Luguenze y Gigot. **Verificado: la lista `Propio` coincide exacto con
+  `products.list_price` de LK en 15 de 15 códigos** (031 $820, 506 $1.190,
+  504 $3.290, 513 $2.375…), o sea que es la misma fuente.
+  **Esto resuelve el mapeo cliente→cadena que el CLAUDE.md daba por inexistente**
+  y que hacía que el 14,4% de la venta (los supermercados) se valorizara con
+  lista general. El nombre de la lista es la cadena.
+  **Pero está desactualizada**: las listas son del 26/9/2025 y del 3/10/2025. Los
+  artículos que empezaron a venderse el 1/7/2026 no están, y por eso el precio de
+  LK de esos 81 códigos **no existe en ninguno de los cuatro proyectos Supabase**
+  (se buscó en `loekemeyer's web`, Chef, Costos y Virgilio).
+  Otras tablas útiles de ese proyecto: `costos` (cod, familia, `uni_por_caja`,
+  desglose de costo por componente), `costos_vivos_diarios` (13.464 filas),
+  `renta_lineas` (cod × cliente × mes con `lista_prom`), `importados`,
+  `web_products_espejo` (espejo del catálogo web de LK).
 - **Los SUPERMERCADOS tienen lista de precios propia y el dashboard los valoriza mal.**
   `precios_super.precio` (453 filas, 8 cadenas: abastecedor, alberdi, coto, dia, diarco,
   inc, laanonima, libertad) la usa solo el cotizador, y ahí el súper sale del **nombre de
