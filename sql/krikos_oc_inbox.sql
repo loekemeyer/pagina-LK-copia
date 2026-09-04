@@ -126,6 +126,22 @@ revoke execute on function public.krikos_inbox_resolver(bigint, text, bigint) fr
 grant execute on function public.krikos_inbox_list(text) to authenticated, service_role;
 grant execute on function public.krikos_inbox_resolver(bigint, text, bigint) to authenticated, service_role;
 
+-- ── Secretos desde el Vault (fallback del env de la Edge Function) ────
+-- Permite cargar KRIKOS_IMAP_PASS / KRIKOS_INGEST_SECRET desde el SQL editor:
+--   select vault.create_secret('<valor>', 'KRIKOS_IMAP_PASS');
+-- La Edge Function prioriza la variable de entorno y cae acá si no existe.
+-- Solo service_role puede llamarla. Aplicado el 4/9/2026 (migración
+-- `krikos_secret_vault`).
+create or replace function public.krikos_secret(p_name text)
+returns text
+language sql security definer set search_path = public, vault as $$
+  select decrypted_secret from vault.decrypted_secrets
+  where name = p_name
+  order by created_at desc limit 1
+$$;
+revoke execute on function public.krikos_secret(text) from public, anon, authenticated;
+grant execute on function public.krikos_secret(text) to service_role;
+
 -- ── Cron: leer la casilla cada 10 minutos ─────────────────────────────
 -- Requiere que la Edge Function tenga los secretos KRIKOS_IMAP_HOST/PORT/
 -- USER/PASS y KRIKOS_INGEST_SECRET (el mismo valor va acá en el header).

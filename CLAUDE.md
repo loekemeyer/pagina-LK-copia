@@ -260,11 +260,14 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
   librería): `EXAMINE` (solo lectura) + `UID SEARCH FROM … SINCE …` + `UID FETCH … BODY.PEEK[]`,
   así **nunca marca leído ni mueve nada** y Thunderbird ve la casilla igual. Dedupe por
   `mail_uid = <UIDVALIDITY>:<UID>` y por `doc_id`.
-- **Secretos de la Edge Function** (Supabase → Edge Functions → Secrets; NUNCA en el repo, que
-  es público): `KRIKOS_INGEST_SECRET` (el mismo valor va en el header del cron — está en
-  `select command from cron.job where jobname = 'krikos-ingest-10min'`), `KRIKOS_IMAP_PASS`, y
-  opcionales `KRIKOS_IMAP_HOST/PORT/TLS/USER`, `KRIKOS_SENDER`. Sin `KRIKOS_INGEST_SECRET` la
-  función responde 503 y el cron no hace nada. Para probar credenciales sin escribir:
+- **Secretos de la Edge Function**: `KRIKOS_INGEST_SECRET` (el mismo valor va en el header del
+  cron — está en `select command from cron.job where jobname = 'krikos-ingest-10min'`),
+  `KRIKOS_IMAP_PASS`, y opcionales `KRIKOS_IMAP_HOST/PORT/TLS/USER`, `KRIKOS_SENDER`. La función
+  los lee primero del env (Supabase → Edge Functions → Secrets) y, si no están, **del Vault de
+  Postgres** vía `krikos_secret(p_name)` (solo `service_role`): se cargan con
+  `select vault.create_secret('<valor>', 'KRIKOS_IMAP_PASS');` desde el SQL editor, sin pasar
+  por el dashboard. `KRIKOS_INGEST_SECRET` ya está en el Vault desde el 4/9/2026. NUNCA en el
+  repo, que es público. Sin `KRIKOS_INGEST_SECRET` la función responde 503 y el cron no hace nada. Para probar credenciales sin escribir:
   `{"action":"test_imap"}`; para ver qué haría: `{"action":"sync","dry_run":true}`.
 - `krikos_inbox_list` y `krikos_inbox_resolver` son `SECURITY DEFINER` con chequeo de `admins`
   adentro y `EXECUTE` revocado a `PUBLIC`/`anon`. La tabla tiene RLS de solo lectura para admins
@@ -470,10 +473,11 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
 
 ### Integración Krikos
 
-- **Faltan los secretos de `krikos-ingest`** (3/9/2026): `KRIKOS_INGEST_SECRET` (valor en el
-  comando del cron `krikos-ingest-10min`) y `KRIKOS_IMAP_PASS` (password de ventas@). Hasta que
-  estén, el cron corre cada 10 min y recibe 503: inocuo, pero la bandeja queda vacía. Después de
-  cargarlos, probar con `{"action":"test_imap"}` y luego `{"action":"sync","dry_run":true}`.
+- **Falta `KRIKOS_IMAP_PASS`** (password de ventas@; 4/9/2026). `KRIKOS_INGEST_SECRET` ya está
+  en el Vault. Cargar con `select vault.create_secret('<password>', 'KRIKOS_IMAP_PASS');`. Hasta
+  entonces el cron corre cada 10 min y falla con "KRIKOS_IMAP_PASS no configurado": inocuo, pero
+  la bandeja queda vacía. Después, probar con `{"action":"test_imap"}` y luego
+  `{"action":"sync","dry_run":true}`.
 - **Pedir al hosting que habilite IMAP con TLS (993)** en SmarterMail. Hoy el 143 va sin cifrar
   (la contraseña no, por CRAM-MD5; el contenido sí). Luego `KRIKOS_IMAP_TLS=true`, `KRIKOS_IMAP_PORT=993`
   y cambiar Thunderbird también.
