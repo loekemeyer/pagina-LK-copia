@@ -1012,6 +1012,9 @@ async function login() {
   await loadProductsFromDB();
   normalizeCartAgainstProducts();
   myAssortmentIds = await loadMyAssortmentIds();
+  // El botón "Mi surtido" solo se muestra si el cliente tiene surtido; hay que
+  // re-sincronizarlo acá porque el sync inicial corrió antes de cargarlo.
+  if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
 
   renderCategoriesMenu();
   renderCategoriesSidebar();
