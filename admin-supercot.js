@@ -512,6 +512,20 @@
     return dd + "/" + mm + "/" + yy;
   }
 
+  // Fecha de ENTREGA generica (para las cadenas cuyo parser no la devuelve):
+  // label inline "Fecha (de) Entrega: dd/mm/yyyy" o "Fecha Prometida", y si no,
+  // la fecha mas cercana a un label de entrega. Es distinta de dueDate, que es
+  // el VENCIMIENTO (cuando hay que cobrar), no cuando hay que entregar.
+  function findDeliveryDateGeneric_(lines) {
+    var inline = findFieldRegex_(
+      lines,
+      /Fecha\s*(?:de\s*)?(?:Entrega|Prometida|Recepci[oó]n)\s*:?\s*(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})/i
+    );
+    if (inline) return normalizeDueDate_(inline);
+    var near = findDateNearLabel_(lines, /Fecha\s*(?:de\s*)?(?:Entrega|Prometida)/i, { window: 4, preferAfter: true });
+    return normalizeDueDate_(near);
+  }
+
   // Busca primer match de regex en lines y devuelve el grupo 1 capturado.
   function findFieldRegex_(lines, regex) {
     for (var i = 0; i < lines.length; i++) {
@@ -886,6 +900,7 @@
       branchName: branchName,
       paymentTermRaw: paymentTermRaw,
       dueDate: dueDate,
+      deliveryDate: normalizeDueDate_(fechaEntrega),
     };
   }
 
@@ -949,6 +964,9 @@
     // "Fecha OC / Fecha Entrega / Fecha Cancelación". La 3ra (Cancelación) = vto.
     var dueDate = normalizeDueDate_(findNthDateBeforeLabel_(lines, /Fecha\s*OC/i, 3));
     if (!dueDate) dueDate = normalizeDueDate_(findDateNearLabel_(lines, /Fecha\s*Cancelaci[óÛo]n/i, { window: 8, preferAfter: false }));
+    // Fecha de entrega: la 2da de las 3 fechas (OC / Entrega / Cancelación).
+    var deliveryDate = normalizeDueDate_(findNthDateBeforeLabel_(lines, /Fecha\s*OC/i, 2));
+    if (!deliveryDate) deliveryDate = normalizeDueDate_(findDateNearLabel_(lines, /Fecha\s*Entrega/i, { window: 8, preferAfter: false }));
 
     return {
       items: items,
@@ -957,6 +975,7 @@
       branchName: branchName,
       paymentTermRaw: paymentTermRaw,
       dueDate: dueDate,
+      deliveryDate: deliveryDate,
     };
   }
 
@@ -1261,6 +1280,7 @@
       branchName: branchName,
       paymentTermRaw: paymentTermRaw,
       dueDate: dueDate,
+      deliveryDate: normalizeDueDate_(fechaEnt),
     };
   }
 
@@ -1332,6 +1352,15 @@
         findDateNearLabel_(lines, /Fecha\s*Vto/i, { window: 6, preferAfter: true })
       );
     }
+    // Fecha de entrega: 2do valor del mismo bloque de 3 labels.
+    var deliveryDate = normalizeDueDate_(
+      findNthDateAfterLabels_(lines, /Fecha\s*OC:?\s*$/i, /Fecha\s*(?:OC|Entrega|Vto):?\s*$/i, 2)
+    );
+    if (!deliveryDate) {
+      deliveryDate = normalizeDueDate_(
+        findDateNearLabel_(lines, /Fecha\s*Entrega/i, { window: 6, preferAfter: true })
+      );
+    }
 
     return {
       items: items,
@@ -1340,6 +1369,7 @@
       branchName: branchName,
       paymentTermRaw: paymentTermRaw,
       dueDate: dueDate,
+      deliveryDate: deliveryDate,
     };
   }
 
@@ -1430,6 +1460,7 @@
     // Fecha vencimiento: Abastecedor no la trae explicita. "Fecha Prometida" + 30 dias.
     var dueDate = "";
     var fechaProm = findFieldRegex_(lines, /Fecha\s+Prometida:?\s*(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})/i);
+    var deliveryDate = normalizeDueDate_(fechaProm); // "Fecha Prometida" = fecha de entrega
     if (!fechaProm) fechaProm = findFieldRegex_(lines, /Fecha\s+Emision:?\s*(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})/i);
     if (fechaProm) dueDate = addDaysToDate_(fechaProm, 30) + " (aprox)";
 
@@ -1440,6 +1471,7 @@
       branchName: branchName,
       paymentTermRaw: paymentTermRaw,
       dueDate: dueDate,
+      deliveryDate: deliveryDate,
     };
   }
 
@@ -1582,11 +1614,11 @@
       lines,
       /Fecha\s*Vigencia\s*:?\s*(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})/i
     );
+    var entrega = findFieldRegex_(
+      lines,
+      /Fecha\s*Entrega\s*:?\s*(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})/i
+    );
     if (!dueDate) {
-      var entrega = findFieldRegex_(
-        lines,
-        /Fecha\s*Entrega\s*:?\s*(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})/i
-      );
       var diasM = paymentTermRaw.match(/(\d+)\s*DIAS/i);
       if (entrega && diasM) dueDate = addDaysToDate_(entrega, parseInt(diasM[1], 10)) + " (aprox)";
     }
@@ -1598,6 +1630,7 @@
       branchName: branchName,
       paymentTermRaw: paymentTermRaw,
       dueDate: dueDate,
+      deliveryDate: normalizeDueDate_(entrega),
     };
   }
 
@@ -2450,6 +2483,9 @@
       fileHash: null, // SHA-256 del PDF, para detectar duplicados entre cards
       submitting: false,
       krikosInboxId: null, // fila de krikos_oc_inbox de la que salio el PDF (Bandeja Krikos)
+      krikosDeliveryDate: "", // "Fecha Entrega" del mail de Krikos (dd/mm/yyyy [hh:mm]), la fuente mas confiable
+      deliveryDate: "", // fecha de entrega resuelta: mail Krikos > parser de la cadena > generico
+      deliveryDateSrc: "", // "Krikos" | "PDF"
     };
 
   function renderInitial() {
@@ -2565,6 +2601,16 @@
       state.paymentTermRaw = parsed.paymentTermRaw || "";
       state.paymentTermEdited = state.paymentTermRaw;
       state.dueDate = parsed.dueDate || "";
+      // Fecha de entrega: el mail de Krikos (estructurado) manda; si no vino
+      // de la bandeja, lo que saco el parser de la cadena; si no, el generico.
+      if (state.krikosDeliveryDate) {
+        state.deliveryDate = state.krikosDeliveryDate;
+        state.deliveryDateSrc = "Krikos";
+      } else {
+        var pdfDelivery = parsed.deliveryDate || findDeliveryDateGeneric_(splitLines(text)) || "";
+        state.deliveryDate = pdfDelivery;
+        state.deliveryDateSrc = pdfDelivery ? "PDF" : "";
+      }
       state.pdfTotal = extractPdfTotal(text, key);
 
       if (!parsed.items.length) {
@@ -2741,6 +2787,14 @@
         " — sin mapear</span></div>";
     }
 
+    // F. Entrega — del mail de Krikos o del PDF. Es lo que el super EXIGE.
+    var entregaMeta = state.deliveryDate
+      ? '<div class="scot-meta-line ok"><span class="lbl">F. ENTREGA</span><span class="val">🚚 ' +
+        escapeHtml(state.deliveryDate) +
+        (state.deliveryDateSrc ? ' <span style="opacity:.6;font-weight:400">(' + escapeHtml(state.deliveryDateSrc) + ")</span>" : "") +
+        "</span></div>"
+      : '<div class="scot-meta-line warn"><span class="lbl">F. ENTREGA</span><span class="val">— no detectada</span></div>';
+
     // F. Vencimiento (lectura) — extraida del PDF, debajo de Sucursal
     var vtoMeta = state.dueDate
       ? '<div class="scot-meta-line ok"><span class="lbl">F. VENCIMIENTO</span><span class="val">' +
@@ -2771,6 +2825,7 @@
         "</span></div>" +
         cliMeta +
         sucMeta +
+        entregaMeta +
         vtoMeta +
         (missCount
           ? '<div class="scot-meta-line warn"><span class="lbl">ALERTA</span><span class="val">⚠ ' +
@@ -3508,6 +3563,8 @@
         payment_term: state.customer.payment_term == null ? null : Number(state.customer.payment_term),
         credit_limit: state.customer.credit_limit == null ? null : Number(state.customer.credit_limit),
         due_date: String(state.dueDate || ""),
+        fecha_entrega: String(state.deliveryDate || ""),
+        fecha_entrega_origen: String(state.deliveryDateSrc || ""),
         source: "Krikos",
         items: validItems.map(function (it) {
           return {
@@ -3636,6 +3693,7 @@
         vendedor: state.customer.vend || "",
         direccion_entrega: deliveryDireccion,
         barrio_entrega: deliveryZona,
+        fecha_entrega: String(state.deliveryDate || ""),
         empresa: isChef ? "CH" : "LK",
         is_promo: false,
         extra_discount: 0,
@@ -3778,6 +3836,9 @@
     state.fileHash = null;
     state.submitting = false;
     state.krikosInboxId = null;
+    state.krikosDeliveryDate = "";
+    state.deliveryDate = "";
+    state.deliveryDateSrc = "";
   }
 
     // Render inicial al crear la instancia
@@ -3897,6 +3958,7 @@
     var file = new File([blob], nombrePdfBandeja_(row), { type: "application/pdf" });
     var card = cardInstances[idx];
     card.getState().krikosInboxId = row.id;
+    card.getState().krikosDeliveryDate = String(row.fecha_entrega || "");
     await card.handleFile(file);
     setMsg("OC " + (row.nro_documento || "") + " abierta en card #" + (idx + 1), "ok");
     var cardEl = document.querySelector('.scot-card-instance[data-idx="' + idx + '"]');

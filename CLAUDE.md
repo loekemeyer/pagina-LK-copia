@@ -269,6 +269,17 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
   por el dashboard. `KRIKOS_INGEST_SECRET` ya está en el Vault desde el 4/9/2026. NUNCA en el
   repo, que es público. Sin `KRIKOS_INGEST_SECRET` la función responde 503 y el cron no hace nada. Para probar credenciales sin escribir:
   `{"action":"test_imap"}`; para ver qué haría: `{"action":"sync","dry_run":true}`.
+- **La FECHA DE ENTREGA que exige el súper se parsea aparte del vencimiento.** En
+  `admin-supercot.js` `dueDate` es el VENCIMIENTO (cuándo cobrar: "Fecha Tope", "Vto", o
+  entrega + N días "(aprox)") y **`deliveryDate` es la ENTREGA** (cuándo hay que estar en el
+  depósito). Prioridad: `fecha_entrega` del mail de Krikos (viene estructurada, con hora a veces,
+  en las 4 cadenas verificadas) > lo que saca el parser de la cadena (Día, Diarco, La Anónima,
+  Alberdi, Abastecedor "Fecha Prometida", Messina) > `findDeliveryDateGeneric_` (label "Fecha de
+  Entrega/Prometida/Recepción" inline o fecha cercana). La card la muestra como "F. ENTREGA" con
+  el origen (Krikos/PDF) y viaja en `sheets_payload.fecha_entrega` (+ `fecha_entrega_origen`) y
+  en el payload de Entregas. **El Apps Script del Sheet y el Excel del ERP todavía no tienen
+  columna para esto**: queda persistido en `orders.sheets_payload` y en `krikos_oc_inbox`, listo
+  para empujarlo a Virgilio (`lk_pedidos_match`) cuando producción lo quiera usar.
 - `krikos_inbox_list` y `krikos_inbox_resolver` son `SECURITY DEFINER` con chequeo de `admins`
   adentro y `EXECUTE` revocado a `PUBLIC`/`anon`. La tabla tiene RLS de solo lectura para admins
   (escribe únicamente `service_role`) y el bucket es privado con policy de lectura para admins.
