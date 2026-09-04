@@ -23,7 +23,9 @@
 //   { action: "status" }
 //       → conteo por estado de la bandeja.
 //
-// Secretos (Supabase → Edge Functions → Secrets):
+// Secretos: primero variable de entorno (Supabase → Edge Functions → Secrets) y,
+// si no está, el Vault de Postgres vía la RPC `krikos_secret` (solo service_role):
+//   select vault.create_secret('<valor>', 'KRIKOS_IMAP_PASS');
 //   KRIKOS_INGEST_SECRET   obligatorio; el mismo valor va en el header del cron
 //   KRIKOS_IMAP_PASS       obligatorio; password de la casilla
 //   KRIKOS_IMAP_HOST       default mail.loekemeyer.com
@@ -38,17 +40,33 @@ import { createHmac } from "node:crypto";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const SECRET = Deno.env.get("KRIKOS_INGEST_SECRET") ?? "";
 const IMAP_HOST = Deno.env.get("KRIKOS_IMAP_HOST") ?? "mail.loekemeyer.com";
 const IMAP_PORT = Number(Deno.env.get("KRIKOS_IMAP_PORT") ?? "143");
 const IMAP_TLS = (Deno.env.get("KRIKOS_IMAP_TLS") ?? "false") === "true";
 const IMAP_USER = Deno.env.get("KRIKOS_IMAP_USER") ?? "ventas@loekemeyer.com";
-const IMAP_PASS = Deno.env.get("KRIKOS_IMAP_PASS") ?? "";
 const SENDER = Deno.env.get("KRIKOS_SENDER") ?? "noreply@planexware.com";
 const BUCKET = "krikos-oc";
 const LINK_RE = /https:\/\/krikos360\.planexware\.net\/Documentos\/api\/documento\?token=([A-Za-z0-9_\-.]+)/;
 
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+
+// Env primero, Vault después. Cacheado por instancia (la función vive poco).
+const _secretCache: Record<string, string> = {};
+async function getSecret(name: string): Promise<string> {
+  const env = Deno.env.get(name);
+  if (env) return env;
+  if (name in _secretCache) return _secretCache[name];
+  try {
+    const { data, error } = await sb.rpc("krikos_secret", { p_name: name });
+    if (error) console.warn("krikos_secret", name, error.message);
+    const v = typeof data === "string" ? data : "";
+    _secretCache[name] = v;
+    return v;
+  } catch (e) {
+    console.warn("krikos_secret", name, e);
+    return "";
+  }
+}
 
 function json(o: unknown, status = 200) {
   return new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json" } });
@@ -348,10 +366,11 @@ function internalDateToIso(s: string): string | null {
 
 // ── Acciones ──────────────────────────────────────────────────────────────────
 async function openMailbox(): Promise<{ imap: Imap; auth: string; exists: number; uidvalidity: string }> {
-  if (!IMAP_PASS) throw new Error("KRIKOS_IMAP_PASS no configurado");
+  const pass = await getSecret("KRIKOS_IMAP_PASS");
+  if (!pass) throw new Error("KRIKOS_IMAP_PASS no configurado (ni env ni Vault)");
   const imap = await Imap.connect(IMAP_HOST, IMAP_PORT, IMAP_TLS);
   await imap.capability();
-  const auth = await imap.login(IMAP_USER, IMAP_PASS);
+  const auth = await imap.login(IMAP_USER, pass);
   const { exists, uidvalidity } = await imap.examine("INBOX");
   return { imap, auth, exists, uidvalidity };
 }
@@ -476,8 +495,9 @@ async function actionSync(days: number, dryRun: boolean) {
 // ── Handler ───────────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: false, error: "method not allowed" }, 405);
-  if (!SECRET) return json({ ok: false, error: "KRIKOS_INGEST_SECRET no configurado" }, 503);
-  if ((req.headers.get("x-krikos-secret") ?? "") !== SECRET) return json({ ok: false, error: "forbidden" }, 403);
+  const secret = await getSecret("KRIKOS_INGEST_SECRET");
+  if (!secret) return json({ ok: false, error: "KRIKOS_INGEST_SECRET no configurado (ni env ni Vault)" }, 503);
+  if ((req.headers.get("x-krikos-secret") ?? "") !== secret) return json({ ok: false, error: "forbidden" }, 403);
 
   let body: { action?: string; days?: number; dry_run?: boolean } = {};
   try { body = await req.json(); } catch { return json({ ok: false, error: "bad json" }, 400); }
