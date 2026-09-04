@@ -152,9 +152,115 @@ on conflict (cod) do update
 -- articulos con list_price pero es otro catalogo: de 102 codigos compartidos con
 -- LK ninguno coincide en precio y el ratio va de 0,13x a 22x.
 --
--- Falta ademas migrar las funciones de valorizacion para que usen `v_item_precio`
--- en vez de joinear `products` con `active is true`. Sube el monto reportado
--- ~9,5% en agosto, asi que conviene hacerlo de una vez y avisando.
--- Afectadas: gv_dashboard_calcular, gv_dashboard_calcular2, gv_dashboard_extra,
--- gv_drill, get_ranking_inactivos, get_ranking_inactivos_export, rep_caidas,
--- datos_cliente_empresa, ppp_valor_linea.
+-- ============================================================================
+-- MIGRACION DE LAS FUNCIONES DE VALORIZACION  (hecha el 4/9/2026)
+-- ============================================================================
+-- Las 15 funciones que valorizaban joineando `products` por codigo pasaron a
+-- `v_item_precio`. Agosto 2026 subio de $477,0 M a $522.387.667 (+9,5%) y la
+-- cobertura de 81,4% a 89,7% de las cajas. El ranking de inactivos quedo con
+-- los MISMOS 368 clientes (0 altas, 0 bajas) y +2,0% de valor historico;
+-- pantalla y Excel siguen coincidiendo al peso ($1.795.114.112 los dos).
+--
+--   gv_dashboard_calcular, gv_dashboard_calcular2, gv_dashboard_extra, gv_drill,
+--   get_ranking_inactivos, get_ranking_inactivos_export, rep_caidas,
+--   datos_cliente_empresa, ppp_valor_linea, get_acuerdo_vendedores,
+--   get_ranking_clientes, get_seguimiento_mensual, get_top_clientes_hist,
+--   gv_cadenas_sin_lista, gv_rendimiento
+--
+-- Backup de las definiciones previas en `_backup_funcdefs_20260904`.
+--
+-- DOS joins NO se migraron, a proposito:
+--   * los de `order_items` (`p.id = oi.product_id`): la vista no tiene `id`, y
+--     un pedido web solo puede referenciar articulos que estan en `products`.
+--   * el de `arts_cnt` en get_ranking_inactivos (`p.cod = a.item`): cuenta
+--     articulos DISCONTINUADOS del cliente. Es un diagnostico de CATALOGO, asi
+--     que tiene que seguir mirando `products.active`.
+--
+-- `rep_salud()` tambien pasa a medir contra `v_item_precio`: si no, avisaba
+-- 16,1% de cajas sin ficha mientras los reportes ya valorizaban 89,7% de ellas.
+
+-- ============================================================================
+-- CACHE:  la vista NO se puede consultar directo desde el camino caliente
+-- ============================================================================
+-- `v_item_precio` como UNION ALL de tres origenes le saca el indice al planner:
+-- get_ranking_inactivos(12, 25) paso de 671 ms a 4.305 ms, y con p_limit alto
+-- ni siquiera termino en 60 s. Con el cache y su PK baja a 462 ms, o sea MEJOR
+-- que el original, porque tambien recupera los articulos discontinuados que el
+-- `active is true` descartaba.
+--
+-- El ANALYZE del final NO es opcional: sin el, el planner pierde el indice y la
+-- misma llamada cuesta 1.405 ms en vez de 462 ms.
+--
+-- Se refresca solo por trigger en los tres origenes (se editan a mano y muy de
+-- vez en cuando), asi que no hay ventana de desactualizacion ni cron que vigilar.
+
+create or replace view public.v_item_precio_calc as
+select p.cod, p.description, p.uxb, p.list_price, p.category, 'products'::text as fuente
+from products p
+where coalesce(p.uxb,0) > 0 and coalesce(p.list_price,0) > 0
+union all
+select lp.cod, lp.description, lp.uxb, lp.list_price, lp.category, 'loke_products'
+from loke_products lp
+where coalesce(lp.uxb,0) > 0 and coalesce(lp.list_price,0) > 0
+  and not exists (select 1 from products p2 where p2.cod = lp.cod)
+union all
+select i.cod, i.description, i.uxb, i.list_price, i.category, 'item_precios:'||i.origen
+from item_precios i
+where not exists (select 1 from products p3 where p3.cod = i.cod)
+  and not exists (select 1 from loke_products l3 where l3.cod = i.cod);
+
+create table if not exists public.item_precio_cache (
+  cod           text primary key,
+  description   text,
+  uxb           integer,
+  list_price    numeric,
+  category      text,
+  fuente        text,
+  refrescado_at timestamptz not null default now()
+);
+alter table public.item_precio_cache enable row level security;
+
+create or replace function public.refrescar_item_precio_cache()
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  -- supautils bloquea DELETE sin WHERE para roles no superusuario
+  delete from item_precio_cache where cod is not null;
+  insert into item_precio_cache (cod, description, uxb, list_price, category, fuente)
+  select cod, description, uxb, list_price, category, fuente from v_item_precio_calc;
+  -- sin esto get_ranking_inactivos pasa de 462 ms a 1.405 ms
+  analyze item_precio_cache;
+end $$;
+
+create or replace function public.trg_refrescar_item_precio_cache()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  perform public.refrescar_item_precio_cache();
+  return null;
+end $$;
+
+drop trigger if exists tg_item_precio_products on public.products;
+create trigger tg_item_precio_products
+  after insert or update or delete or truncate on public.products
+  for each statement execute function public.trg_refrescar_item_precio_cache();
+
+drop trigger if exists tg_item_precio_loke on public.loke_products;
+create trigger tg_item_precio_loke
+  after insert or update or delete or truncate on public.loke_products
+  for each statement execute function public.trg_refrescar_item_precio_cache();
+
+drop trigger if exists tg_item_precio_manual on public.item_precios;
+create trigger tg_item_precio_manual
+  after insert or update or delete or truncate on public.item_precios
+  for each statement execute function public.trg_refrescar_item_precio_cache();
+
+-- v_item_precio deja de ser la union y pasa a leer el cache (mismas columnas)
+create or replace view public.v_item_precio as
+select cod, description, uxb, list_price, category, fuente from public.item_precio_cache;
+
+-- solo la usan funciones SECURITY DEFINER; la anon key de LK es publica
+revoke all on public.item_precio_cache  from public, anon, authenticated;
+revoke all on public.v_item_precio      from public, anon, authenticated;
+revoke all on public.v_item_precio_calc from public, anon, authenticated;
+revoke execute on function public.refrescar_item_precio_cache() from public, anon, authenticated;
+
+select public.refrescar_item_precio_cache();

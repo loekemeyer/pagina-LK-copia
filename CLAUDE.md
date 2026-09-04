@@ -482,6 +482,44 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   de las cajas** y el contraste contra el despacho de Virgilio bajó de 119% a
   **97%**. Falta el precio de LK de esos 103; ver más abajo por qué el de Chef no
   sirve para taparlo.
+- **Las 15 funciones que valorizan leen `v_item_precio`, no `products`** (migradas
+  el 4/9/2026; backup de las definiciones previas en `_backup_funcdefs_20260904`).
+  Agosto 2026 pasó de $477,0 M a **$522.387.667** (+9,5%) y la cobertura de 81,4%
+  a 89,7% de las cajas. El Ranking Inactivos quedó con los **mismos 368 clientes**
+  (0 altas, 0 bajas) y +2,0% de valor histórico; pantalla y Excel siguen
+  coincidiendo al peso. Son `gv_dashboard_calcular`, `_calcular2`, `_extra`,
+  `gv_drill`, `get_ranking_inactivos`, `get_ranking_inactivos_export`,
+  `rep_caidas`, `datos_cliente_empresa`, `ppp_valor_linea`,
+  `get_acuerdo_vendedores`, `get_ranking_clientes`, `get_seguimiento_mensual`,
+  `get_top_clientes_hist`, `gv_cadenas_sin_lista` y `gv_rendimiento`. **Al agregar
+  una función que valorice, joinear la vista y NO `products`**: si la mitad usa una
+  y la mitad la otra, el mismo cliente muestra plata distinta según la pantalla.
+  Como efecto secundario desaparece el pendiente de los **artículos
+  discontinuados**: el `active is true` los descartaba (0% en 2024, 1,4% en 2025,
+  4,2% en 2026) y la vista no filtra por `active` a propósito — eso es catálogo,
+  no valorización.
+- **DOS joins NO se migraron y no hay que "arreglarlos"**: los de `order_items`
+  (`p.id = oi.product_id`), porque la vista no tiene `id` y un pedido web sólo
+  puede referenciar artículos que están en `products`; y el de `arts_cnt` en
+  `get_ranking_inactivos` (`p.cod = a.item`), que cuenta artículos
+  **discontinuados** del cliente y por eso tiene que seguir mirando
+  `products.active`.
+- **`v_item_precio` NO se puede consultar como `UNION ALL` desde el camino
+  caliente: lee `item_precio_cache`.** La unión de tres orígenes le sacaba el
+  índice al planner — `get_ranking_inactivos(12, 25)` pasó de 671 ms a **4.305 ms**,
+  y con `p_limit` alto no terminaba en 60 s. Con el cache y su PK baja a **462 ms**,
+  mejor que el original. La unión sobrevive como `v_item_precio_calc`, que es la
+  definición y lo único que lee el refresco. **El `ANALYZE` del final de
+  `refrescar_item_precio_cache()` no es opcional**: sin él el planner pierde el
+  índice y la misma llamada cuesta 1.405 ms en vez de 462 ms. Se refresca solo por
+  trigger `AFTER ... FOR EACH STATEMENT` en `products`, `loke_products` e
+  `item_precios` (se editan a mano y muy de vez en cuando), así que no hay ventana
+  de desactualización ni cron que vigilar.
+- **`rep_salud()` mide la cobertura contra `v_item_precio`, no contra `products`.**
+  Mientras midió el catálogo avisaba 16,1% de cajas sin ficha cuando los reportes
+  ya valorizaban el 89,7% de ellas. Hoy dice **10,3% (81 códigos)**, que es el
+  número real. Si se cambia de dónde sale el precio, hay que cambiarlo también acá
+  o la alerta vuelve a mentir.
 - **El sufijo `L` en un código NO es un renombre global: es una variante para un
   cliente puntual.** 75 pares medidos, todos con ≤3 clientes, y en **72 de los 75 el
   código base le sigue vendiendo a los demás**. Pero para el cliente que la usa, el
@@ -648,9 +686,10 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   (volumen y mix), no nominales. Verificado contra plata real: julio dio $410,7 M
   reconstruido contra $412,8 M facturados en el portal, 0,5% de diferencia. Para tener
   nominal propio habría que empezar a poblar `order_items.unit_list_price`.
-- **El join contra `products` descarta líneas de artículos discontinuados**: 0% en 2024,
-  1,4% en 2025 y 4,2% en 2026. Como la pérdida crece, el interanual queda levemente
-  SUBESTIMADO.
+- **Las líneas de artículos discontinuados ya NO se descartan** (resuelto el
+  4/9/2026 con la migración a `v_item_precio`, que no filtra por `active`). El
+  `join products ... and p.active is true` las perdía —0% en 2024, 1,4% en 2025 y
+  4,2% en 2026— y como la pérdida crecía, subestimaba el interanual.
 
 - **La PPP en curso se espeja de Virgilio por `postgres_fdw`** (proyecto `hrxfctzncixxqmpfhskv`), calcado del FDW de Chef. LK TIRA con el rol de solo-lectura `lk_ppp_reader` (creado en Virgilio: `SELECT` sobre 4 tablas + una policy propia por tabla, RLS estaba activo). Las foráneas viven en el esquema `virgilio`; `sincronizar_ppp()` las copia a tablas locales `ppp_*` (reemplazo total, la fuente es amnésica) y el cron `sincronizar-ppp-diario` (10:00 UTC) las refresca. **Nunca joinear el FDW en el camino caliente** (lección de Chef). Las tablas `ppp_*` no tienen policy para anon/authenticated; se leen por RPC con chequeo de admin.
 - **El string identificador de pedido web viaja AL REVÉS: LK EMPUJA a Virgilio** (2026-08-28). Virgilio no tiene la sucursal de entrega de los pedidos; LK sí (`sheets_payload.sucursal_entrega`). La vista **`v_pedidos_match`** (revocada de anon/authenticated) arma por pedido `match_string = cod_cliente|fecha ART|items` con items = `cod_art`x`cajas` ordenado por código y cajas sumadas por código repetido — sale de `sheets_payload.items`, exactamente lo que viajó al Sheet/ERP. `sync_pedidos_match_virgilio()` (cron `sync-pedidos-match-virgilio`, cada 15 min, ventana móvil de 14 días con delete+insert) la copia a la tabla **`lk_pedidos_match`** de Virgilio escribiendo a través del MISMO FDW/rol `lk_ppp_reader`, que ahora tiene INSERT/UPDATE/DELETE **solo sobre esa tabla** (el resto sigue solo-lectura). Se eligió empujar en vez de que Virgilio tire porque reusa la credencial existente y deja a Virgilio leyendo una tabla local (cero FDW en su camino caliente). `ambiguo=true` marca el único caso que el string no resuelve (mismo cliente, mismo día, mismos ítems, distinta sucursal: 17 de 977 pedidos históricos; los strings repetidos hacia la MISMA sucursal —resubmits— no molestan) y `orden_en_dia` desempata por hora. **Cubre también CHEF** (2026-08-28): sus pedidos web viven en el proyecto Supabase de Chef (portal gemelo, misma `orders`/`sheets_payload`) y LK los lee por el FDW `chef_db` (foreign table `chef_orders` + vista `v_pedidos_match_chef`, cod del payload con fallback a `chef_customers` por `customer_id`) y los reenvía con `empresa='chef'` — la tabla de Virgilio lleva `empresa` en la PK porque numeraciones de cliente y `order_id` chocan entre portales (NP 9xxxx = lk, 4xxxx = chef). ⚠ **Pendiente un grant en el proyecto Chef**: `grant select on public.orders to loke_reader;` — hasta entonces el sync saltea Chef con un NOTICE (visible en los logs del cron) y LK sigue normal; una vez corrido, el próximo cron hace el backfill completo solo. Todo en `sql/pedidos_match_virgilio.sql`; el DDL del lado Virgilio en `sql/lk_pedidos_match.sql` del repo Produccion-Virgilio.
