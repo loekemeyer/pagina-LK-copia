@@ -13525,6 +13525,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   maybeShowOsaFormatChooser();
   await loadProductsFromDB();
 
+  // En RECARGA con sesión ya activa, cargar el surtido acá para que aparezcan
+  // el botón "Mi surtido", el ítem "Descargar fotos" y las estrellas. El login
+  // fresco (enter) y la selección de cliente vinculado ya lo cargan por su lado;
+  // el guard evita recargarlo si otro flujo ya lo hizo.
+  if (currentSession && !(myAssortmentIds instanceof Set)) {
+    myAssortmentIds = await loadMyAssortmentIds();
+    if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
+    if (typeof syncFotosMenuItem === "function") syncFotosMenuItem();
+    renderProducts();
+    maybeShowFotosPopup();
+  }
+
   // =============================
   // ✅ Importar agregados desde HISTORIAL
   // =============================
