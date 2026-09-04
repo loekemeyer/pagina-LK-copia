@@ -468,6 +468,56 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   de baja del maestro. Las unidades se informan igual, marcadas como aproximadas.
   Ventana: promedio mensual de los últimos 3 meses contra el de los 12 previos,
   umbral 40% de caída y piso de 40 cajas/mes de base.
+- **UNA LÍNEA ENTERA DE PRODUCTOS SE VENDE Y NO ESTÁ EN `products`.** Es la causa
+  del salto del 0,1% de cajas sin ficha en mayo al **16,1% en agosto**: 89 códigos
+  empezaron a venderse el **1/7/2026** y nunca se cargaron (`706` a 32 clientes,
+  `713` a 30, `701` a 29, `099`, `702E`…). Aparte, el **`574`** vende desde enero a
+  **41 clientes** y tampoco está — ése es un agujero viejo, no de la tanda de julio.
+  Mientras no se carguen, **todo monto de plata sale ~16% corto**, y por eso el
+  contraste con el despacho de Virgilio da 119% en vez de ~100%. Son 171 códigos y
+  7.138 cajas en 12 meses; la lista completa se saca con el `LEFT JOIN products
+  ... WHERE p.cod IS NULL AND lp.cod IS NULL`. `rep_salud()` lo vigila.
+- **El sufijo `L` en un código NO es un renombre global: es una variante para un
+  cliente puntual.** 75 pares medidos, todos con ≤3 clientes, y en **72 de los 75 el
+  código base le sigue vendiendo a los demás**. Pero para el cliente que la usa, el
+  código base deja de aparecer y la variante arranca (`031` termina el 28/2, `031L`
+  empieza el 8/7). Sin unificarlos, Relca figuraba **perdiendo 22 artículos cuando
+  perdió 6 y encima creció 38%**. Los une la vista **`v_item_canon`**, que aplica
+  primero `sales_item_remap` (la tabla de equivalencias que ya existía, con 3 filas)
+  y después el sufijo. **Se usa SOLO para detectar caídas, nunca para valorizar**:
+  el precio de la variante puede no ser el del base y eso lo decide una persona.
+- **`boxes` puede venir NULL, y `ORDER BY sum(boxes) DESC` pone los NULL PRIMERO.**
+  Un cliente nuevo y chico (Gigot, cod 5000) encabezó el ranking de "principales"
+  justamente por no tener una sola caja contable, y encima salió marcado como
+  "dejó de comprar". Son 122 líneas, un solo cliente, un solo día (9/4/2026), y con
+  `import_batch` y `row_hash` también NULL: **no vinieron del lote mensual del ERP**.
+  Toda función que rankee por volumen necesita `and boxes is not null` y
+  `nulls last`. `rep_salud()` lo vigila.
+- **"Cliente en caída" se mide con DRAWDOWN sobre el pico, no con 3m vs 12m.**
+  El criterio viejo es un promedio contra un promedio y llega tarde: simulado mes a
+  mes sobre Coto, el drawdown (trimestre móvil actual contra el mejor trimestre
+  móvil de 15 meses) cruza el umbral con datos de **mayo** y el criterio viejo con
+  datos de **julio** — dos meses, y en esos dos meses Coto pasó de 1.544 cajas/mes a
+  435. Umbral **25% para el top 20** y 35% para el resto. `rep_drawdown()` excluye a
+  los que ya se fueron (ésos son del Ranking Inactivos) y **completa la rejilla de
+  meses con ceros**: sin eso el trimestre móvil saltea los huecos y el que dejó de
+  comprar se ve igual que el que compra siempre.
+- **El fill-rate (pedido por portal vs facturado por ERP) necesita tres cuidados o
+  manda a llamar al cliente equivocado.** (1) **Resubmits**: el portal deja mandar
+  dos veces el mismo pedido — Coto tiene dos idénticos de 853 cajas el 28/4, y sin
+  deduplicar daba 66% en vez de **82%**. Se deduplica por cliente+total dentro de 15
+  días. (2) **Desfasaje**: se pide en mayo y se factura en junio, así que se compara
+  acumulado sobre una ventana larga, nunca mes a mes. (3) **La norma NO es 100%**:
+  la cartera entera da 102-108% porque no todo lo facturado entra por el portal, y
+  sin ese número al lado un 82% parece grave. Casos abiertos al 3/9: Día Argentina
+  pidió 420 cajas y se le facturaron **0**; El Rápido 10%; Y Bazar 15%; Avalis 24%.
+- **`rep_salud()` existe porque un cron que falla es invisible** y ya costó cinco
+  caídos entre 7 y 51 días. Manda por Telegram **sólo si hay algo** (08:05 ART): un
+  aviso diario de "todo bien" se deja de leer. **`rep_cron_verificado` +
+  `rep_cron_ok(jobname, nota)`** silencian un cron arreglado a mano hasta su próxima
+  corrida real — sin eso la primera alerta reportó como caídos los tres crons que se
+  habían arreglado ese mismo día. Si vuelve a fallar, la corrida nueva es posterior a
+  la verificación, el filtro deja de aplicar y la alerta sale sola.
 - **La población por provincia cargada es PROVISORIA**: suma 46.082.944 contra los
   46.044.703 del Censo 2022 (~38.241 de más). Reemplazar con el dato oficial del INDEC vía
   `gv_set_poblacion(provincia, NULL, poblacion, fuente, anio)`.
