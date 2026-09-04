@@ -111,18 +111,50 @@ on conflict (cod) do nothing;
 
 
 -- ---------------------------------------------------------------------------
+-- CARGA 2: el codigo 574
+-- ---------------------------------------------------------------------------
+-- Se vende desde 2023-04 a 72 clientes y nunca estuvo en el maestro. El usuario
+-- confirmo el 4/9/2026 que es el mismo articulo que 574E y vale lo mismo
+-- ("Corta Queso Blandos Mango Alambre", uxb 12).
+-- OJO: `sales_item_remap` tiene la fila 574E -> 574, o sea que mapea el codigo
+-- que SI existe hacia el que no existia. Con 574 ya cargado deja de importar,
+-- pero conviene revisar esa fila: la direccion parece invertida.
+
+insert into public.item_precios (cod, description, uxb, list_price, category, origen, base_cod, nota)
+select '574', p.description, p.uxb, p.list_price, p.category, 'manual', '574E',
+       'Mismo articulo que 574E, mismo precio (confirmado por el usuario, 4/9/2026).'
+from products p where p.cod = '574E'
+on conflict (cod) do update
+  set description=excluded.description, uxb=excluded.uxb, list_price=excluded.list_price,
+      category=excluded.category, nota=excluded.nota, actualizado_at=now();
+
+
+-- ---------------------------------------------------------------------------
 -- PENDIENTE
 -- ---------------------------------------------------------------------------
--- 1. Faltan ~89 codigos de la linea que empezo a venderse el 1/7/2026 (706, 713,
---    099, 701, 836, 702E, 097, 824...) mas el 574, que vende a 41 clientes desde
---    2023. De 81 de ellos hay descripcion, uxb y categoria en el catalogo de CHEF
---    (chef_ext.products, por FDW); lo unico que falta es el PRECIO DE LISTA DE LK,
---    que no existe en ninguna tabla del proyecto (se busco en products,
---    loke_products, milver_products, estadistica_madre_cache, pa/osa/tyl_articulos,
---    precios_super y order_items).
--- 2. Migrar las funciones de valorizacion para que usen `v_item_precio` en vez de
---    joinear `products` con `active is true`. Sube el monto reportado ~9,5% en
---    agosto, asi que conviene hacerlo de una sola vez y avisando.
---    Afectadas: gv_dashboard_calcular, gv_dashboard_calcular2, gv_dashboard_extra,
---    gv_drill, get_ranking_inactivos, get_ranking_inactivos_export, rep_caidas,
---    datos_cliente_empresa, ppp_valor_linea.
+-- Quedan 102 codigos sin precio (6.061 cajas en 12 meses), en cuatro grupos:
+--
+--   C  80 cod · 3.458 cj (57%) · tienen ficha en el catalogo de CHEF
+--                                (chef_ext.products): descripcion, uxb y
+--                                categoria resueltas. Falta el PRECIO DE LK.
+--   A   3 cod · 1.643 cj (27%) · estan en loke_products con list_price = 0:
+--                                186 "Pelador Ergonomico" (1.426 cj, 1 cliente),
+--                                193 "Tostador Enlozado", 120 "Filtro De Cafe".
+--                                Falta solo el PRECIO.
+--   D  12 cod ·   745 cj (12%) · sin ficha en ningun lado: 198E, 55215, 838E,
+--                                702EN... Faltan descripcion, uxb y precio.
+--   B   7 cod ·   215 cj ( 4%) · en products con list_price = 0, discontinuados
+--                                (029 "Colador N16", 563, 030...).
+--
+-- El precio de lista de LK para estos codigos NO EXISTE en el proyecto. Se busco
+-- en products, loke_products, milver_products, estadistica_madre_cache,
+-- pa/osa/tyl_articulos, precios_super y order_items. milver_products tiene 5.076
+-- articulos con list_price pero es otro catalogo: de 102 codigos compartidos con
+-- LK ninguno coincide en precio y el ratio va de 0,13x a 22x.
+--
+-- Falta ademas migrar las funciones de valorizacion para que usen `v_item_precio`
+-- en vez de joinear `products` con `active is true`. Sube el monto reportado
+-- ~9,5% en agosto, asi que conviene hacerlo de una vez y avisando.
+-- Afectadas: gv_dashboard_calcular, gv_dashboard_calcular2, gv_dashboard_extra,
+-- gv_drill, get_ranking_inactivos, get_ranking_inactivos_export, rep_caidas,
+-- datos_cliente_empresa, ppp_valor_linea.
