@@ -290,6 +290,173 @@ function productImgHover(pid, entra) {
 }
 window.productImgHover = productImgHover;
 
+/***********************
+ * POPUP: descargar fotos del surtido
+ * Aparece 1 vez al cliente logueado que TIENE surtido y todavía no descargó.
+ * Fondo Blanco = {cod}.webp (principal, sin cartón). Con Cartón = {cod}-2.webp.
+ * Ambas = las dos, en carpetas. Solo 400x400 (lo que hay en el storage).
+ ***********************/
+function _abrirFotosPopup() {
+  const m = document.getElementById("fotosPopup");
+  if (!m) return;
+  m.classList.remove("hidden");
+  m.setAttribute("aria-hidden", "false");
+}
+function cerrarFotosPopup() {
+  const m = document.getElementById("fotosPopup");
+  if (m) {
+    m.classList.add("hidden");
+    m.setAttribute("aria-hidden", "true");
+  }
+  try {
+    sessionStorage.setItem("lk_fotos_popup_seen", "1");
+  } catch (e) {}
+}
+window.cerrarFotosPopup = cerrarFotosPopup;
+
+async function maybeShowFotosPopup() {
+  try {
+    if (!currentSession) return;
+    if (typeof isAdmin !== "undefined" && isAdmin) return;
+    if (typeof isVendorProfileBrowseMode === "function" && isVendorProfileBrowseMode())
+      return;
+    const cod = String(customerProfile?.cod_cliente || "").trim();
+    if (!cod) return;
+    // Guard: solo si tiene "Mi Surtido".
+    if (!(myAssortmentIds instanceof Set) || myAssortmentIds.size === 0) return;
+    // Ya lo cerró/descargó en esta sesión de navegador.
+    if (sessionStorage.getItem("lk_fotos_popup_seen") === "1") return;
+    // Chequear una sola vez por carga (evita doble RPC desde dos flujos de login).
+    if (window._fotosPopupChecked) return;
+    window._fotosPopupChecked = true;
+    // Ya descargó alguna vez (persistido): no mostrar más.
+    const { data, error } = await supabaseClient.rpc("fotos_descarga_estado", {
+      p_cod_cliente: cod,
+    });
+    if (!error && data === true) return;
+    _abrirFotosPopup();
+  } catch (e) {}
+}
+window.maybeShowFotosPopup = maybeShowFotosPopup;
+
+// Descarga en ZIP las fotos del surtido del cliente.
+// tipo: 'blanco' | 'carton' | 'ambas'.
+async function descargarFotosSurtido(tipo) {
+  if (typeof JSZip === "undefined") {
+    alert("No se pudo cargar el compresor. Recargá la página e intentá de nuevo.");
+    return;
+  }
+  const cod = String(customerProfile?.cod_cliente || "").trim();
+  const btns = document.querySelectorAll("#fotosPopup .fotos-popup-btn");
+  const prog = document.getElementById("fotosPopupProgress");
+  const fill = document.getElementById("fotosPopupBarFill");
+  const statusEl = document.getElementById("fotosPopupStatus");
+  const setStatus = (t) => {
+    if (statusEl) statusEl.textContent = t;
+  };
+  const setBar = (pct) => {
+    if (fill) fill.style.width = Math.max(0, Math.min(100, pct)) + "%";
+  };
+  btns.forEach((b) => (b.disabled = true));
+  if (prog) prog.hidden = false;
+  setStatus("Preparando…");
+  setBar(2);
+  try {
+    await loadProductImageManifest();
+    const set = PRODUCT_IMG_SET || new Set();
+    const cods = (products || [])
+      .filter(
+        (p) => myAssortmentIds instanceof Set && myAssortmentIds.has(String(p.id)),
+      )
+      .map((p) => String(p.cod || "").trim())
+      .filter(Boolean);
+
+    const tasks = [];
+    let faltan = 0;
+    const wantBlanco = tipo === "blanco" || tipo === "ambas";
+    const wantCarton = tipo === "carton" || tipo === "ambas";
+    cods.forEach((c) => {
+      const enc = encodeURIComponent(c);
+      const hasBlanco = set.has(c + ".webp");
+      const hasCarton = set.has(c + "-2.webp");
+      if (wantBlanco && hasBlanco) {
+        tasks.push({
+          url: BASE_IMG + enc + ".webp" + IMG_PARAMS,
+          path: (tipo === "ambas" ? "fondo-blanco/" : "") + c + ".webp",
+        });
+      }
+      if (wantCarton && hasCarton) {
+        tasks.push({
+          url: BASE_IMG + enc + "-2.webp" + IMG_PARAMS,
+          path: (tipo === "ambas" ? "con-carton/" : "") + c + ".webp",
+        });
+      }
+      if (tipo === "blanco" && !hasBlanco) faltan++;
+      else if (tipo === "carton" && !hasCarton) faltan++;
+      else if (tipo === "ambas" && !hasBlanco && !hasCarton) faltan++;
+    });
+
+    if (!tasks.length) {
+      setStatus("No hay fotos disponibles para tu surtido.");
+      btns.forEach((b) => (b.disabled = false));
+      return;
+    }
+
+    const zip = new JSZip();
+    let done = 0,
+      ok = 0;
+    for (const t of tasks) {
+      setStatus("Descargando fotos… " + (done + 1) + "/" + tasks.length);
+      try {
+        const r = await fetch(t.url);
+        if (r.ok) {
+          const b = await r.blob();
+          zip.file(t.path, b);
+          ok++;
+        }
+      } catch (e) {}
+      done++;
+      setBar((done / tasks.length) * 85);
+    }
+
+    setStatus("Comprimiendo el ZIP…");
+    const blob = await zip.generateAsync({ type: "blob" }, (meta) =>
+      setBar(85 + meta.percent * 0.15),
+    );
+    setBar(100);
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "fotos-loekemeyer-" + tipo + ".zip";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+
+    setStatus(
+      "¡Listo! " +
+        ok +
+        " fotos descargadas" +
+        (faltan ? " · " + faltan + " sin foto disponible" : "") +
+        ".",
+    );
+    try {
+      await supabaseClient.rpc("registrar_descarga_fotos", {
+        p_cod_cliente: cod,
+        p_tipo: tipo,
+      });
+    } catch (e) {}
+    try {
+      sessionStorage.setItem("lk_fotos_popup_seen", "1");
+    } catch (e) {}
+    setTimeout(cerrarFotosPopup, 2000);
+  } catch (e) {
+    setStatus("Hubo un error al armar el ZIP. Probá de nuevo.");
+    btns.forEach((b) => (b.disabled = false));
+  }
+}
+window.descargarFotosSurtido = descargarFotosSurtido;
+
 // Overrides SOLO de display del código de artículo. NO cambia el cod real:
 // la imagen, el carrito y el pedido siguen usando el cod de la base. Pedido
 // puntual: mostrar 580 en lugar de 580E.
@@ -1019,6 +1186,7 @@ async function login() {
   // El botón "Mi surtido" solo se muestra si el cliente tiene surtido; hay que
   // re-sincronizarlo acá porque el sync inicial corrió antes de cargarlo.
   if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
+  maybeShowFotosPopup();
 
   renderCategoriesMenu();
   renderCategoriesSidebar();
@@ -12156,6 +12324,7 @@ async function onLinkedCustomerSelected(opts) {
   await loadDeliveryOptions();
   myAssortmentIds = await loadMyAssortmentIds();
   if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
+  maybeShowFotosPopup();
   renderProducts();
   updateCart();
   fillProfileSummaryUI();

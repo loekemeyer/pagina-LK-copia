@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23294" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23294" />
+    <link rel="stylesheet" href="css/styles.css?v=23295" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23295" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -2001,6 +2001,28 @@
       </div>
     </div>
 
+    <!-- Popup: descargar fotos del surtido (aparece 1 vez al cliente con surtido) -->
+    <div id="fotosPopup" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" id="fotosPopupBackdrop" onclick="cerrarFotosPopup()"></div>
+      <div class="modal-card fotos-popup-card" role="dialog" aria-modal="true" aria-labelledby="fotosPopupTitle">
+        <button type="button" class="fotos-popup-close" aria-label="Cerrar" onclick="cerrarFotosPopup()">&times;</button>
+        <img src="img/logo.png" alt="Loekemeyer" class="fotos-popup-logo" />
+        <div class="fotos-popup-title" id="fotosPopupTitle">¿Querés actualizar las fotos de tu web?</div>
+        <div class="fotos-popup-text">
+          Descargá las fotos de los productos de tu surtido en alta calidad para usarlas en tu tienda online.
+        </div>
+        <div class="fotos-popup-actions">
+          <button type="button" class="fotos-popup-btn" onclick="descargarFotosSurtido('blanco')">Descargar Fotos Fondo Blanco</button>
+          <button type="button" class="fotos-popup-btn" onclick="descargarFotosSurtido('carton')">Descargar Fotos con Cartón</button>
+          <button type="button" class="fotos-popup-btn primary" onclick="descargarFotosSurtido('ambas')">Descargar Ambas</button>
+        </div>
+        <div class="fotos-popup-progress" id="fotosPopupProgress" hidden>
+          <div class="fotos-popup-bar"><span id="fotosPopupBarFill"></span></div>
+          <div class="fotos-popup-status" id="fotosPopupStatus"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js (necesario para gráfico de evolución del módulo análisis cliente) -->
@@ -2009,6 +2031,7 @@
          Drop-in replacement: misma API XLSX, mismo global. -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js"></script>
 
     <!-- Botón "volver arriba" — aparece al scrollear hacia abajo
@@ -2042,14 +2065,14 @@
     ></div>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23294"></script>
-    <script src="script.js?v=23294"></script>
+    <script src="./version.js?v=23295"></script>
+    <script src="script.js?v=23295"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23294"></script>
+    <script src="analisis-venta-cliente.js?v=23295"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23294"></script>
-    <script src="admin-excel-krikos.js?v=23294"></script>
-    <script src="vendor-import-excel.js?v=23294"></script>
+    <script src="scotapi-shim.js?v=23295"></script>
+    <script src="admin-excel-krikos.js?v=23295"></script>
+    <script src="vendor-import-excel.js?v=23295"></script>
   </body>
 </html>
