@@ -477,6 +477,11 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   contraste con el despacho de Virgilio da 119% en vez de ~100%. Son 171 códigos y
   7.138 cajas en 12 meses; la lista completa se saca con el `LEFT JOIN products
   ... WHERE p.cod IS NULL AND lp.cod IS NULL`. `rep_salud()` lo vigila.
+  **Al 4/9/2026 quedan 103 códigos sin precio** (las 78 variantes `L` ya se
+  resolvieron en `item_precios`): la cobertura de agosto subió de 81,4% a **89,7%
+  de las cajas** y el contraste contra el despacho de Virgilio bajó de 119% a
+  **97%**. Falta el precio de LK de esos 103; ver más abajo por qué el de Chef no
+  sirve para taparlo.
 - **El sufijo `L` en un código NO es un renombre global: es una variante para un
   cliente puntual.** 75 pares medidos, todos con ≤3 clientes, y en **72 de los 75 el
   código base le sigue vendiendo a los demás**. Pero para el cliente que la usa, el
@@ -581,6 +586,51 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   desglose de costo por componente), `costos_vivos_diarios` (13.464 filas),
   `renta_lineas` (cod × cliente × mes con `lista_prom`), `importados`,
   `web_products_espejo` (espejo del catálogo web de LK).
+- **El repo `paginach` es el portal web de CHEF, y NO tiene precios adentro.** Se
+  incorporó a la sesión el 4/9/2026 (`/home/user/paginach`, HEAD `67870b9`). Es el
+  gemelo del sitio de LK —mismos `admin.js`, `script.js`, `mayorista.html`, mismos
+  módulos— apuntando a **otro** Supabase: `nkhzocgdpwtgrmwleihr` (declarado en
+  `config.js` como `LK_CONFIG.SUPABASE_URL`, con la URL/anon key de LK al lado para
+  el sync de PIN por CUIT). No hay ni un `.xlsx`, `.csv` ni dump de precios: el
+  catálogo entero vive en la base. O sea que **traer el repo no aporta precios** —
+  lo que aporta es dejar documentado dónde está cada portal.
+  **El acceso programático a los precios de Chef ya existía y no hace falta el repo
+  ni la anon key**: LK tiene la foreign table **`chef_ext.products`** por el FDW
+  `chef_db` (152 filas, las 152 con `list_price`). El proxy de red del contenedor
+  **bloquea `nkhzocgdpwtgrmwleihr.supabase.co`** (CONNECT 403), así que el REST
+  directo no es una vía; el FDW sí.
+- **Los precios de Chef NO sirven como proxy de los de LK, y está medido.** De los
+  **103** códigos que facturaron en 12 meses sin ficha en `v_item_precio`, **81
+  tienen precio en `chef_ext.products`** y 22 no. Tentador cargarlos, pero:
+  (1) sólo **3 códigos** existen con precio en las dos empresas, muy poco para
+  validar, y ni siquiera coinciden (ratio chef/lk 0,74 / 1,11 / 1,11 — el `uxb` sí
+  coincide en los 3, así que **el `uxb` de Chef sí es confiable**);
+  (2) el contraste contra el despacho de Virgilio, que es independiente, los
+  descarta. Agosto 2026: **20.242 cajas (89,7%) con ficha = $522,4 M**, **1.834
+  cajas (8,1%) sólo con precio Chef = $48,2 M**, **480 cajas (2,1%) sin nada**.
+  Hoy el ERP da 97% del despacho ajustado ($522,4 M contra $538,9 M); cargando los
+  precios de Chef pasaría a **$570,6 M = 106%**, o sea que se pasa de largo. El
+  faltante real implícito es ~$9.000/caja contra los ~$26.264/caja que valen en
+  Chef. **Decisión: no cargarlos.** Falta el precio de LK de verdad.
+- **De los 22 sin precio en ningún lado, 9 son variantes de un código base que sí
+  tiene precio** y se pueden resolver con una fila en `item_precios` — pero **hay
+  que confirmarlas una por una, no derivarlas**: ya se comprobó que `809`/`809E`
+  son dos artículos distintos, así que el sufijo no garantiza el mismo producto.
+  Con base priceada: `599EZ`→`599E` $2.990, `441Z`→`441` $1.690, `525`→`525E`
+  $1.845, `590ES`→`590E` $550, `256zz`→`256` $16.990, `809`→`809E` $4.060 (LK),
+  `702EN`→`702E`, `727EN`→`727E`, `865ED`→`865E`, `730D`→`730` (estos cuatro sólo
+  con precio de Chef, o sea que arrastran el problema de arriba).
+  **Los 12 que no tienen absolutamente nada**, por cajas de 12 meses: `186` (1.426
+  cajas, 1 cliente), `198E` (211, 1), `55215` (208, 1), **`029` (177 cajas y 82
+  clientes** — el más transversal de todos), `193` (130, 1), `120` (87, 1), `838E`
+  (80, 1 — figura en Chef con precio 0, que es lo mismo que nada), `563` (17, 14),
+  `030` (6), `228` (3), `657` (3), `877E` (22 cajas, precio 0 en Chef).
+- **Ningún código sin ficha puede haber entrado por el portal.** `order_items` se
+  ata al catálogo por `product_id` (uuid) contra `products`/`loke_products`, no por
+  código de texto, así que un artículo sin ficha es literalmente inseleccionable en
+  la web. Por eso `order_items.unit_list_price` no es una vía para recuperar el
+  precio de estos 103: no tienen ni una línea ahí. Vinieron todos por el lote
+  mensual del ERP.
 - **Los SUPERMERCADOS tienen lista de precios propia y el dashboard los valoriza mal.**
   `precios_super.precio` (453 filas, 8 cadenas: abastecedor, alberdi, coto, dia, diarco,
   inc, laanonima, libertad) la usa solo el cotizador, y ahí el súper sale del **nombre de
