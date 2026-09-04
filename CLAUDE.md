@@ -198,11 +198,18 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
   corrían. Ahora cada paso va aislado en su `BEGIN/EXCEPTION`. Lo mismo se hizo
   dentro de `sincronizar_ppp()`, que era una sola transacción y por un paso roto
   congelaba las seis tablas `ppp_*`.
+  **`pedidos-pdf-cleanup-30d` se reescribió el 4/9/2026** contra la Storage API
+  (`limpiar_pedidos_pdf`, pg_net + la `service_role_key` del Vault). El trigger
+  `storage.protect_delete` **se puede saltear** con `set local
+  storage.allow_delete_query = 'true'`, pero **es el arreglo equivocado**: borra la
+  fila del índice y deja el archivo HUÉRFANO en S3 —sigue ocupando y ya no se puede
+  ni listar—, así que la única vía que borra los bytes es la API. Falta cargar
+  `service_role_key` en el Vault: hasta entonces la función devuelve 0 con un
+  `notice` (el cron termina bien) y **`rep_salud` avisa del backlog con la acción
+  concreta** (508 PDFs, 236 MB) en vez del error críptico.
   **Sigue roto y no se puede arreglar desde LK**: `refresh-mvs-daily` necesita
   `grant select on public.sales_lines to loke_reader;` **en el proyecto CHEF**
-  (mismo pendiente que ya existía para `orders`), y `pedidos-pdf-cleanup-30d`
-  necesita reescribirse contra la Storage API (Supabase bloquea el `DELETE` directo
-  sobre `storage.objects`).
+  (mismo pendiente que ya existía para `orders`).
 - **Un cron que falla es invisible.** Los cinco de arriba estuvieron caídos entre 7
   y 51 días sin que nada lo avisara; el síntoma visible era el panel mostrando
   julio cuando `sales_lines` ya tenía agosto. Al tocar cualquier cosa que corra por
@@ -612,16 +619,13 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
 - **Capa de redacción con LLM (opcional).** `CLAUDE_API_KEY` ya está en el vault, así que
   el mensaje diario podría salir en prosa en vez de lista estructurada sin tocar el motor
   de señales, que es determinístico y no debe depender de un modelo.
-- **`sql/gerente_ventas.sql` está INCOMPLETO y desfasado.** Se escribió antes de la segunda
-  tanda de trabajo, así que le faltan por completo: el esquema de los dos ejes
-  (`resultado`/`utilidad`, `util_si`/`util_no`/`acc_*`, `tope_dia`), `gv_marcar_resultado`,
-  `gv_marcar_utilidad`, `gv_preguntas` + `gv_generar_preguntas` + `gv_responder_pregunta` +
-  `gv_preguntas_abiertas`, `gv_silenciados`, `gv_rendimiento`, `gv_agenda_rango`,
-  `gv_vendedor_de`, `gv_completar_vendedores`, y las tres señales nuevas de `gv_candidatos`.
-  Tampoco da md5 idéntico para lo que sí tiene (varias funciones se desplegaron parcheando
-  `prosrc`). **La base es la fuente de verdad; el archivo hoy NO sirve para recrear el
-  módulo.** Para regenerarlo: volcar con `pg_get_functiondef` todo `gv_*` y el DDL de las
-  tablas `gv_*`/`geo_*`.
+- **`sql/gerente_ventas.sql` se regeneró el 4/9/2026 desde la base** con
+  `pg_get_functiondef` y el DDL de `pg_catalog`: 8 tablas, 33 funciones,
+  **33/33 con md5 normalizado idéntico** a lo que corre. Antes se había escrito
+  antes de la segunda tanda de trabajo y no servía para recrear el módulo. **La base
+  sigue siendo la fuente de verdad**: el archivo no se ejecuta solo, así que un
+  cambio hecho en el SQL editor y no volcado lo vuelve a desfasar; para
+  re-verificarlo, comparar el md5 del cuerpo normalizado contra el de `prosrc`.
 
 ### Dashboard de ventas
 
@@ -730,9 +734,12 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
 
 ### Seguridad
 
-- **`get_customer_sales_history` sigue abierta a cualquier `authenticated`**: un mayorista
-  logueado puede leer el histórico de compras de otro pasando su código. Solo la llaman
-  pantallas de admin, así que se arregla agregándole el chequeo de `admins` adentro.
+- **`get_customer_sales_history` ya lleva el chequeo de `admins` adentro** (4/9/2026).
+  Cualquier `authenticated` podía leer el histórico de compras de otro cliente pasando
+  su código: el gate de `analisis-venta-cliente.js` es solo del navegador y no frena una
+  llamada directa con la anon key, que es pública. Los tres llamadores legítimos
+  (`admin.js`, `analisis-venta-cliente.js`, `carga-pedidos.html`) son pantallas de admin,
+  así que no rompió nada. Se le revocó además el `EXECUTE` a `anon`.
 - **`sales-agent` (Edge Function) le pasa SQL generado por un LLM a `exec_raw_sql` con el
   cliente `service_role`**, o sea que saltea el revoke de `anon`/`authenticated` hecho el
   31/7. El filtro es un match de texto (`startsWith("SELECT")` y rechaza si aparece
