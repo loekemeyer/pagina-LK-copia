@@ -316,6 +316,32 @@ function cerrarFotosPopup() {
 }
 window.cerrarFotosPopup = cerrarFotosPopup;
 
+// Abre el popup a demanda (desde el menú de usuario), aunque ya lo haya
+// cerrado o descargado antes. Resetea el estado del progreso.
+function abrirFotosPopupManual() {
+  const prog = document.getElementById("fotosPopupProgress");
+  if (prog) prog.hidden = true;
+  const st = document.getElementById("fotosPopupStatus");
+  if (st) st.textContent = "";
+  const fill = document.getElementById("fotosPopupBarFill");
+  if (fill) fill.style.width = "0%";
+  document
+    .querySelectorAll("#fotosPopup .fotos-popup-btn")
+    .forEach((b) => (b.disabled = false));
+  if (typeof closeUserMenu === "function") closeUserMenu();
+  _abrirFotosPopup();
+}
+window.abrirFotosPopupManual = abrirFotosPopupManual;
+
+// Muestra el ítem "Descargar fotos" del menú solo si el cliente tiene surtido.
+function syncFotosMenuItem() {
+  const el = document.getElementById("menuDescargarFotos");
+  if (!el) return;
+  const tiene = myAssortmentIds instanceof Set && myAssortmentIds.size > 0;
+  el.style.display = tiene ? "" : "none";
+}
+window.syncFotosMenuItem = syncFotosMenuItem;
+
 async function maybeShowFotosPopup() {
   try {
     if (!currentSession) return;
@@ -1189,6 +1215,7 @@ async function login() {
   // re-sincronizarlo acá porque el sync inicial corrió antes de cargarlo.
   if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
   maybeShowFotosPopup();
+  syncFotosMenuItem();
 
   renderCategoriesMenu();
   renderCategoriesSidebar();
@@ -12327,6 +12354,7 @@ async function onLinkedCustomerSelected(opts) {
   myAssortmentIds = await loadMyAssortmentIds();
   if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
   maybeShowFotosPopup();
+  syncFotosMenuItem();
   renderProducts();
   updateCart();
   fillProfileSummaryUI();
