@@ -227,12 +227,9 @@ function productImgUrls(p) {
   return urls;
 }
 
-// Mueve el carrusel de una card (dir: -1 anterior, +1 siguiente).
-function productImgStep(pid, dir, ev) {
-  if (ev) {
-    ev.stopPropagation();
-    ev.preventDefault();
-  }
+// Muestra la foto `idx` de una card con crossfade suave. Re-entrante:
+// si el índice cambia de nuevo antes de terminar, el swap viejo se descarta.
+function _pcShow(pid, idx) {
   const card = document.getElementById("card-" + pid);
   if (!card) return;
   const media = card.querySelector(".pc-media");
@@ -245,36 +242,47 @@ function productImgStep(pid, dir, ev) {
     urls = [];
   }
   if (urls.length < 2) return;
-  // Evita encimar animaciones si se clickea rápido.
-  if (media.getAttribute("data-anim") === "1") return;
-  let idx = parseInt(media.getAttribute("data-idx") || "0", 10) || 0;
-  idx = (idx + dir + urls.length) % urls.length;
+  idx = ((idx % urls.length) + urls.length) % urls.length;
+  const cur = parseInt(media.getAttribute("data-idx") || "0", 10) || 0;
+  if (idx === cur) return;
   media.setAttribute("data-idx", String(idx));
   const dots = media.querySelectorAll(".pc-dot");
   dots.forEach((d, i) => d.classList.toggle("on", i === idx));
-
-  // Crossfade suave: baja opacidad → cambia src (invisible) → sube opacidad.
-  media.setAttribute("data-anim", "1");
-  const nextUrl = urls[idx];
+  // Precarga en paralelo para que el fade-in no muestre un hueco.
   const pre = new Image();
-  const doSwap = () => {
-    img.src = nextUrl;
+  pre.src = urls[idx];
+  // Crossfade: baja opacidad → (tras el fade-out) cambia src → sube opacidad.
+  img.style.opacity = "0";
+  setTimeout(() => {
+    // Si el índice cambió otra vez mientras animaba, este swap ya no aplica.
+    if ((parseInt(media.getAttribute("data-idx") || "0", 10) || 0) !== idx) return;
+    img.src = urls[idx];
     requestAnimationFrame(() => {
       img.style.opacity = "1";
     });
-    setTimeout(() => media.setAttribute("data-anim", "0"), 210);
-  };
-  img.style.opacity = "0";
-  setTimeout(() => {
-    if (pre.complete) doSwap();
-    else {
-      pre.onload = doSwap;
-      pre.onerror = doSwap;
-    }
-  }, 200);
-  pre.src = nextUrl;
+  }, 180);
+}
+
+// Flechas (táctil / navegación manual): mueve al anterior/siguiente.
+function productImgStep(pid, dir, ev) {
+  if (ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
+  }
+  const media = document.querySelector("#card-" + pid + " .pc-media");
+  if (!media) return;
+  const cur = parseInt(media.getAttribute("data-idx") || "0", 10) || 0;
+  _pcShow(pid, cur + dir);
 }
 window.productImgStep = productImgStep;
+
+// Hover (solo mouse): al entrar muestra la 2ª foto (sin cartón), al salir
+// vuelve a la principal (con cartón). En táctil no hay hover → usa las flechas.
+function productImgHover(pid, entra) {
+  if (!window.matchMedia || !window.matchMedia("(hover: hover)").matches) return;
+  _pcShow(pid, entra ? 1 : 0);
+}
+window.productImgHover = productImgHover;
 
 // Overrides SOLO de display del código de artículo. NO cambia el cod real:
 // la imagen, el carrito y el pedido siguen usando el cod de la base. Pedido
@@ -3667,7 +3675,8 @@ function renderProducts() {
     const pcMulti = pcUrls.length > 1;
     const pcMainSrc = pcUrls[0] || imgSrc;
     const pcUrlsAttr = pcMulti
-      ? ` data-urls='${JSON.stringify(pcUrls).replace(/'/g, "&#39;")}' data-idx="0"`
+      ? ` data-urls='${JSON.stringify(pcUrls).replace(/'/g, "&#39;")}' data-idx="0"` +
+        ` onmouseenter="productImgHover('${pid}', 1)" onmouseleave="productImgHover('${pid}', 0)"`
       : "";
 
     // ✅ Tu precio normal (se sigue usando para carrito / subtotal, no se muestra en card)
