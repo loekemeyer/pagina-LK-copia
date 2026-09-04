@@ -142,6 +142,359 @@ const BASE_IMG = `${SUPABASE_URL}/storage/v1/object/public/products-images/`;
 const IMG_PARAMS = ``;
 
 /***********************
+ * CARRUSEL DE FOTOS POR PRODUCTO
+ * Cada producto puede tener varias fotos: la principal {cod}.webp más
+ * {cod}-2.webp, {cod}-3.webp, ... Se detectan listando el bucket UNA sola vez
+ * (products-images es público). Si products.images viene cargado en la base,
+ * mandan esos valores. Con 2+ fotos aparecen flechas en la card.
+ ***********************/
+let PRODUCT_IMG_SET = null; // Set de nombres de archivo del bucket (o null si no cargó)
+let _productImgLoading = null;
+
+async function loadProductImageManifest() {
+  if (PRODUCT_IMG_SET) return PRODUCT_IMG_SET;
+  if (_productImgLoading) return _productImgLoading;
+  _productImgLoading = (async () => {
+    const set = new Set();
+    try {
+      const pageSize = 1000;
+      let offset = 0;
+      for (let guard = 0; guard < 20; guard++) {
+        const resp = await fetch(
+          `${SUPABASE_URL}/storage/v1/object/list/products-images`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${
+                currentSession?.access_token || SUPABASE_ANON_KEY
+              }`,
+            },
+            body: JSON.stringify({
+              prefix: "",
+              limit: pageSize,
+              offset,
+              sortBy: { column: "name", order: "asc" },
+            }),
+          },
+        );
+        if (!resp.ok) break;
+        const rows = await resp.json();
+        if (!Array.isArray(rows) || rows.length === 0) break;
+        rows.forEach((r) => {
+          if (r && r.name) set.add(r.name);
+        });
+        if (rows.length < pageSize) break;
+        offset += pageSize;
+      }
+    } catch (e) {
+      // Silencioso: sin manifest, cada producto muestra solo su foto principal.
+    }
+    PRODUCT_IMG_SET = set;
+    return set;
+  })();
+  return _productImgLoading;
+}
+
+// Devuelve el array de URLs de fotos de un producto (mínimo la principal).
+function productImgUrls(p) {
+  const cod = String(p?.cod || "").trim();
+  // 1) Si products.images viene cargado en la base, mandan esos.
+  if (Array.isArray(p?.images) && p.images.length) {
+    const out = p.images
+      .map((x) => {
+        const s = String(x || "").trim();
+        if (!s) return "";
+        if (/^https?:\/\//i.test(s)) return s;
+        const name = /\.\w+$/.test(s) ? s : s + ".webp";
+        return BASE_IMG + encodeURIComponent(name) + IMG_PARAMS;
+      })
+      .filter(Boolean);
+    if (out.length) return out;
+  }
+  // 2) Derivar del manifest del storage.
+  // ORDEN DE MOSTRADO: la 2ª foto ({cod}-2.webp) va PRIMERA (es la "con cartón",
+  // el default que se pide). La principal ({cod}.webp, "sin cartón") va después,
+  // y luego -3, -4... Si no hay -2, se muestra sola la principal.
+  const principal = BASE_IMG + encodeURIComponent(cod) + ".webp" + IMG_PARAMS;
+  const extras = [];
+  if (PRODUCT_IMG_SET && cod) {
+    for (let n = 2; n <= 12; n++) {
+      if (PRODUCT_IMG_SET.has(`${cod}-${n}.webp`)) {
+        extras.push(
+          BASE_IMG + encodeURIComponent(cod) + "-" + n + ".webp" + IMG_PARAMS,
+        );
+      } else break;
+    }
+  }
+  if (!extras.length) return [principal];
+  // [-2 (con cartón), principal (sin cartón), -3, -4, ...]
+  return [extras[0], principal, ...extras.slice(1)];
+}
+
+// Muestra la foto `idx` de una card con crossfade suave. Re-entrante:
+// si el índice cambia de nuevo antes de terminar, el swap viejo se descarta.
+function _pcShow(pid, idx) {
+  const card = document.getElementById("card-" + pid);
+  if (!card) return;
+  const media = card.querySelector(".pc-media");
+  const img = document.getElementById("img-" + pid);
+  if (!media || !img) return;
+  let urls;
+  try {
+    urls = JSON.parse(media.getAttribute("data-urls") || "[]");
+  } catch (e) {
+    urls = [];
+  }
+  if (urls.length < 2) return;
+  idx = ((idx % urls.length) + urls.length) % urls.length;
+  const cur = parseInt(media.getAttribute("data-idx") || "0", 10) || 0;
+  if (idx === cur) return;
+  media.setAttribute("data-idx", String(idx));
+  const dots = media.querySelectorAll(".pc-dot");
+  dots.forEach((d, i) => d.classList.toggle("on", i === idx));
+  // Precarga en paralelo para que el fade-in no muestre un hueco.
+  const pre = new Image();
+  pre.src = urls[idx];
+  // Crossfade: baja opacidad → (tras el fade-out) cambia src → sube opacidad.
+  img.style.opacity = "0";
+  setTimeout(() => {
+    // Si el índice cambió otra vez mientras animaba, este swap ya no aplica.
+    if ((parseInt(media.getAttribute("data-idx") || "0", 10) || 0) !== idx) return;
+    img.src = urls[idx];
+    requestAnimationFrame(() => {
+      img.style.opacity = "1";
+    });
+  }, 180);
+}
+
+// Flechas (táctil / navegación manual): mueve al anterior/siguiente.
+function productImgStep(pid, dir, ev) {
+  if (ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
+  }
+  const media = document.querySelector("#card-" + pid + " .pc-media");
+  if (!media) return;
+  const cur = parseInt(media.getAttribute("data-idx") || "0", 10) || 0;
+  _pcShow(pid, cur + dir);
+}
+window.productImgStep = productImgStep;
+
+// Hover (solo mouse): al entrar muestra la 2ª foto (sin cartón), al salir
+// vuelve a la principal (con cartón). En táctil no hay hover → usa las flechas.
+function productImgHover(pid, entra) {
+  if (!window.matchMedia || !window.matchMedia("(hover: hover)").matches) return;
+  _pcShow(pid, entra ? 1 : 0);
+}
+window.productImgHover = productImgHover;
+
+/***********************
+ * POPUP: descargar fotos del surtido
+ * Aparece 1 vez al cliente logueado que TIENE surtido y todavía no descargó.
+ * Fondo Blanco = {cod}.webp (principal, sin cartón). Con Cartón = {cod}-2.webp.
+ * Ambas = las dos, en carpetas. Solo 400x400 (lo que hay en el storage).
+ ***********************/
+function _abrirFotosPopup() {
+  const m = document.getElementById("fotosPopup");
+  if (!m) return;
+  m.classList.remove("hidden");
+  m.classList.add("open"); // .modal es display:none por defecto; .open lo muestra
+  m.setAttribute("aria-hidden", "false");
+}
+function cerrarFotosPopup() {
+  const m = document.getElementById("fotosPopup");
+  if (m) {
+    m.classList.remove("open");
+    m.classList.add("hidden");
+    m.setAttribute("aria-hidden", "true");
+  }
+  try {
+    sessionStorage.setItem("lk_fotos_popup_seen", "1");
+  } catch (e) {}
+}
+window.cerrarFotosPopup = cerrarFotosPopup;
+
+// Abre el popup a demanda (desde el menú de usuario), aunque ya lo haya
+// cerrado o descargado antes. Resetea el estado del progreso.
+function abrirFotosPopupManual() {
+  const prog = document.getElementById("fotosPopupProgress");
+  if (prog) prog.hidden = true;
+  const st = document.getElementById("fotosPopupStatus");
+  if (st) st.textContent = "";
+  const fill = document.getElementById("fotosPopupBarFill");
+  if (fill) fill.style.width = "0%";
+  document
+    .querySelectorAll("#fotosPopup .fotos-popup-btn")
+    .forEach((b) => (b.disabled = false));
+  if (typeof closeUserMenu === "function") closeUserMenu();
+  _abrirFotosPopup();
+}
+window.abrirFotosPopupManual = abrirFotosPopupManual;
+
+// Muestra el ítem "Descargar fotos" del menú solo si el cliente tiene surtido.
+function syncFotosMenuItem() {
+  const el = document.getElementById("menuDescargarFotos");
+  if (!el) return;
+  const tiene = myAssortmentIds instanceof Set && myAssortmentIds.size > 0;
+  el.style.display = tiene ? "" : "none";
+}
+window.syncFotosMenuItem = syncFotosMenuItem;
+
+async function maybeShowFotosPopup() {
+  try {
+    if (!currentSession) return;
+    if (typeof isAdmin !== "undefined" && isAdmin) return;
+    if (typeof isVendorProfileBrowseMode === "function" && isVendorProfileBrowseMode())
+      return;
+    const cod = String(customerProfile?.cod_cliente || "").trim();
+    if (!cod) return;
+    // Guard: solo si tiene "Mi Surtido".
+    if (!(myAssortmentIds instanceof Set) || myAssortmentIds.size === 0) return;
+    // Ya lo cerró/descargó en esta sesión de navegador.
+    if (sessionStorage.getItem("lk_fotos_popup_seen") === "1") return;
+    // Chequear una sola vez por carga (evita doble RPC desde dos flujos de login).
+    if (window._fotosPopupChecked) return;
+    window._fotosPopupChecked = true;
+    // Ya descargó alguna vez (persistido): no mostrar más.
+    const { data, error } = await supabaseClient.rpc("fotos_descarga_estado", {
+      p_cod_cliente: cod,
+    });
+    if (!error && data === true) return;
+    _abrirFotosPopup();
+  } catch (e) {}
+}
+window.maybeShowFotosPopup = maybeShowFotosPopup;
+
+// Descarga en ZIP las fotos del surtido del cliente.
+// tipo: 'blanco' | 'carton' | 'ambas'.
+async function descargarFotosSurtido(tipo) {
+  if (typeof JSZip === "undefined") {
+    alert("No se pudo cargar el compresor. Recargá la página e intentá de nuevo.");
+    return;
+  }
+  const cod = String(customerProfile?.cod_cliente || "").trim();
+  const btns = document.querySelectorAll("#fotosPopup .fotos-popup-btn");
+  const prog = document.getElementById("fotosPopupProgress");
+  const fill = document.getElementById("fotosPopupBarFill");
+  const statusEl = document.getElementById("fotosPopupStatus");
+  const setStatus = (t) => {
+    if (statusEl) statusEl.textContent = t;
+  };
+  const setBar = (pct) => {
+    if (fill) fill.style.width = Math.max(0, Math.min(100, pct)) + "%";
+  };
+  btns.forEach((b) => (b.disabled = true));
+  if (prog) prog.hidden = false;
+  setStatus("Preparando…");
+  setBar(2);
+  try {
+    await loadProductImageManifest();
+    const set = PRODUCT_IMG_SET || new Set();
+    const cods = (products || [])
+      .filter(
+        (p) => myAssortmentIds instanceof Set && myAssortmentIds.has(String(p.id)),
+      )
+      .map((p) => String(p.cod || "").trim())
+      .filter(Boolean);
+
+    const tasks = [];
+    let faltan = 0;
+    const wantBlanco = tipo === "blanco" || tipo === "ambas";
+    const wantCarton = tipo === "carton" || tipo === "ambas";
+    cods.forEach((c) => {
+      const enc = encodeURIComponent(c);
+      const hasBlanco = set.has(c + ".webp");
+      const hasCarton = set.has(c + "-2.webp");
+      if (wantBlanco && hasBlanco) {
+        tasks.push({
+          url: BASE_IMG + enc + ".webp" + IMG_PARAMS,
+          path: (tipo === "ambas" ? "fondo-blanco/" : "") + c + ".webp",
+        });
+      }
+      if (wantCarton && hasCarton) {
+        tasks.push({
+          url: BASE_IMG + enc + "-2.webp" + IMG_PARAMS,
+          path: (tipo === "ambas" ? "con-carton/" : "") + c + ".webp",
+        });
+      }
+      if (tipo === "blanco" && !hasBlanco) faltan++;
+      else if (tipo === "carton" && !hasCarton) faltan++;
+      else if (tipo === "ambas" && !hasBlanco && !hasCarton) faltan++;
+    });
+
+    if (!tasks.length) {
+      setStatus("No hay fotos disponibles para tu surtido.");
+      btns.forEach((b) => (b.disabled = false));
+      return;
+    }
+
+    const zip = new JSZip();
+    let done = 0,
+      ok = 0;
+    for (const t of tasks) {
+      setStatus("Descargando fotos… " + (done + 1) + "/" + tasks.length);
+      try {
+        const r = await fetch(t.url);
+        if (r.ok) {
+          const b = await r.blob();
+          zip.file(t.path, b);
+          ok++;
+        }
+      } catch (e) {}
+      done++;
+      setBar((done / tasks.length) * 85);
+    }
+
+    setStatus("Comprimiendo el ZIP…");
+    const blob = await zip.generateAsync({ type: "blob" }, (meta) =>
+      setBar(85 + meta.percent * 0.15),
+    );
+    setBar(100);
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "fotos-loekemeyer-" + tipo + ".zip";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+
+    setStatus(
+      "¡Listo! " +
+        ok +
+        " fotos descargadas" +
+        (faltan ? " · " + faltan + " sin foto disponible" : "") +
+        ".",
+    );
+    try {
+      await supabaseClient.rpc("registrar_descarga_fotos", {
+        p_cod_cliente: cod,
+        p_tipo: tipo,
+      });
+    } catch (e) {}
+    try {
+      sessionStorage.setItem("lk_fotos_popup_seen", "1");
+    } catch (e) {}
+    setTimeout(cerrarFotosPopup, 2000);
+  } catch (e) {
+    setStatus("Hubo un error al armar el ZIP. Probá de nuevo.");
+    btns.forEach((b) => (b.disabled = false));
+  }
+}
+window.descargarFotosSurtido = descargarFotosSurtido;
+
+// Overrides SOLO de display del código de artículo. NO cambia el cod real:
+// la imagen, el carrito y el pedido siguen usando el cod de la base. Pedido
+// puntual: mostrar 580 en lugar de 580E.
+const CODE_DISPLAY_OVERRIDES = { "580E": "580" };
+function codDisplay(cod) {
+  const c = String(cod == null ? "" : cod).trim();
+  return CODE_DISPLAY_OVERRIDES[c.toUpperCase()] || c;
+}
+
+/***********************
  * HISTORIAL DE RENAMES DE PRODUCTO
  * Cuando un cod cambia en DB, registramos acá para que los PDFs de pedidos
  * VIEJOS (created_at < renamed_at) sigan mostrando el cod viejo (tal cual lo
@@ -243,7 +596,7 @@ function isListPriceOnlyClient() {
 // entrada + sus tablas <prefix>_* + su página <prefix>/index.html con la config.
 const FORMATO_CLIENTES = [
   { cod: "2533", cuit: "30715175017", nombre: "OSA", page: "osa/index.html" },
-  { cod: "288",  cuit: "33534724239", nombre: "Torres y Liva", page: "tyl/index.html" },
+  { cod: "288",  cuit: "33534724239", nombre: "Torres y Liva", page: "tyl/index.html", noChooser: true },
 ];
 // Devuelve la config de formato del cliente logueado (o null si no tiene).
 function getFormatoCliente() {
@@ -666,7 +1019,11 @@ function elegirFormato(which) {
 // siempre accesible además desde el menú de usuario → "Formato <cliente>".
 function maybeShowOsaFormatChooser(opts) {
   opts = opts || {};
-  if (!isFormatoCliente()) return;
+  const f = getFormatoCliente();
+  if (!f) return;
+  // Clientes con noChooser (p. ej. Torres y Liva): NO se les ofrece el selector
+  // de formato al entrar. Igual acceden desde el menú de usuario → "Formato …".
+  if (f.noChooser) return;
   const modal = $("osaFormatModal");
   if (modal && modal.classList.contains("open")) return; // ya está abierto
   try {
@@ -854,6 +1211,11 @@ async function login() {
   await loadProductsFromDB();
   normalizeCartAgainstProducts();
   myAssortmentIds = await loadMyAssortmentIds();
+  // El botón "Mi surtido" solo se muestra si el cliente tiene surtido; hay que
+  // re-sincronizarlo acá porque el sync inicial corrió antes de cargarlo.
+  if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
+  maybeShowFotosPopup();
+  syncFotosMenuItem();
 
   renderCategoriesMenu();
   renderCategoriesSidebar();
@@ -3039,7 +3401,7 @@ async function openVendorSuggestions(customerId, orderId) {
         '<div class="vs-info">' +
         (tag ? '<div class="vs-tag">' + tag + "</div>" : "") +
         '<div class="vs-cod">' +
-        escapeHtml(cod) +
+        escapeHtml(codDisplay(cod)) +
         "</div>" +
         '<div class="vs-desc">' +
         escapeHtml(desc) +
@@ -3470,6 +3832,16 @@ function renderProducts() {
   const container = $("productsContainer");
   if (!container) return;
 
+  // Carrusel: cargar el manifest de fotos del bucket una sola vez y, cuando
+  // llegue, re-renderizar para que aparezcan las flechas donde haya 2+ fotos.
+  if (!PRODUCT_IMG_SET && !_productImgLoading) {
+    loadProductImageManifest().then((set) => {
+      if (set && set.size && typeof renderProducts === "function") {
+        renderProducts();
+      }
+    });
+  }
+
   // Modo cliente-expo: recalcular el dto por escala según el carrito actual
   // antes de pintar los precios de cada card.
   _expoSyncDto();
@@ -3508,6 +3880,14 @@ function renderProducts() {
 
     const imgSrc = `${BASE_IMG}${encodeURIComponent(codSafe)}.webp${IMG_PARAMS}`;
     const imgFallback = "img/no-image.jpg";
+    // Carrusel: lista de fotos del producto (mínimo la principal).
+    const pcUrls = productImgUrls(p);
+    const pcMulti = pcUrls.length > 1;
+    const pcMainSrc = pcUrls[0] || imgSrc;
+    const pcUrlsAttr = pcMulti
+      ? ` data-urls='${JSON.stringify(pcUrls).replace(/'/g, "&#39;")}' data-idx="0"` +
+        ` onmouseenter="productImgHover('${pid}', 1)" onmouseleave="productImgHover('${pid}', 0)"`
+      : "";
 
     // ✅ Tu precio normal (se sigue usando para carrito / subtotal, no se muestra en card)
     const tuPrecio = logged ? unitYourPrice(p.list_price) : 0;
@@ -3563,21 +3943,32 @@ function renderProducts() {
       <div class="product-card" id="card-${pid}">
       ${badgeHtml}
       ${assortmentStarHtml}
+        <div class="pc-media"${pcUrlsAttr}>
         <img
           id="img-${pid}"
-          src="${imgSrc}"
+          src="${pcMainSrc}"
           alt="${String(p.description || "")}"
           width="400"
           height="400"
           loading="lazy"
           style="cursor:zoom-in"
-          onclick="openImgZoom('${imgSrc}', this.alt)"
+          onclick="openImgZoom(this.src, this.alt)"
           onerror="this.onerror=null;this.src='${imgFallback}'"
         >
+        ${
+          pcMulti
+            ? `<button type="button" class="pc-arrow prev" aria-label="Foto anterior" onclick="productImgStep('${pid}', -1, event)">&#8249;</button>
+        <button type="button" class="pc-arrow next" aria-label="Foto siguiente" onclick="productImgStep('${pid}', 1, event)">&#8250;</button>
+        <div class="pc-dots">${pcUrls
+          .map((_, i) => `<span class="pc-dot${i === 0 ? " on" : ""}"></span>`)
+          .join("")}</div>`
+            : ""
+        }
+        </div>
 
         <div class="card-top">
           <div class="card-row">
-            <div class="card-cod">Cod: <span>${codSafe}</span></div>
+            <div class="card-cod">Cod: <span>${codDisplay(codSafe)}</span></div>
             <div class="card-uxb">UxB: <span>${p.uxb}</span></div>
           </div>
 
@@ -4157,7 +4548,7 @@ function _ncBuildCardHtml(p, logged, showListPriceOnly, cloneFlag) {
         <div class="nc-badge">NUEVO</div>
         <div class="nc-body">
           <div class="nc-meta">
-            <span class="nc-cod">Cod: <strong>${codSafe}</strong></span>
+            <span class="nc-cod">Cod: <strong>${codDisplay(codSafe)}</strong></span>
             <span class="nc-uxb">UxB: <strong>${p.uxb}</strong></span>
           </div>
           <div class="nc-desc" title="${descSafe}">${String(p.description || "")}</div>
@@ -6729,7 +7120,7 @@ function renderMissingAssortmentModule() {
         "</div>" +
         '<div class="missing-price-row">' +
         '<span class="missing-cod">' +
-        codSafe +
+        codDisplay(codSafe) +
         '</span>' +
         '<span class="missing-price-label">Tu precio contado:</span>' +
         '<span class="missing-price">$' +
@@ -6873,7 +7264,7 @@ function showUpsellPopup(upsellProducts) {
           '">' +
           '<div class="upsell-card-info">' +
           '<div class="upsell-cod">' +
-          codSafe +
+          codDisplay(codSafe) +
           "</div>" +
           '<div class="upsell-desc">' +
           String(p.description || "") +
@@ -11962,6 +12353,8 @@ async function onLinkedCustomerSelected(opts) {
   await loadDeliveryOptions();
   myAssortmentIds = await loadMyAssortmentIds();
   if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
+  maybeShowFotosPopup();
+  syncFotosMenuItem();
   renderProducts();
   updateCart();
   fillProfileSummaryUI();
@@ -12255,7 +12648,7 @@ function renderLokeProducts() {
       '<div class="card-top">' +
       '<div class="card-row">' +
       '<div class="card-cod">Cod: <span>' +
-      codSafe +
+      codDisplay(codSafe) +
       "</span></div>" +
       '<div class="card-uxb">UxB: <span>' +
       p.uxb +
@@ -13131,6 +13524,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Cliente OSA que abre la página ya logueado: ofrecer el selector de formato.
   maybeShowOsaFormatChooser();
   await loadProductsFromDB();
+
+  // En RECARGA con sesión ya activa, cargar el surtido acá para que aparezcan
+  // el botón "Mi surtido", el ítem "Descargar fotos" y las estrellas. El login
+  // fresco (enter) y la selección de cliente vinculado ya lo cargan por su lado;
+  // el guard evita recargarlo si otro flujo ya lo hizo.
+  if (currentSession && !(myAssortmentIds instanceof Set)) {
+    myAssortmentIds = await loadMyAssortmentIds();
+    if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
+    if (typeof syncFotosMenuItem === "function") syncFotosMenuItem();
+    renderProducts();
+    maybeShowFotosPopup();
+  }
 
   // =============================
   // ✅ Importar agregados desde HISTORIAL

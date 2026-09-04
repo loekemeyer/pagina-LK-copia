@@ -9083,11 +9083,11 @@ document.addEventListener("keydown", function (e) {
    - Agrupa por (item_code, ym) sumando boxes × uxb = unidades
    - Renderiza tabla cod / desc / total / mes1...mesN
    ========================================================= */
-// Parámetros del cálculo de proyección. Tunear acá sin tocar la lógica.
-var EM_PROY_WINDOW = 6;         // Meses hacia atrás para calcular proyección (v2496: era 24)
-var EM_DISRUPT_RATIO = 1.5;     // Mes con units > ratio × promedio crudo = candidato disruptivo
-var EM_RECURRING_SIM = 0.8;     // Si otro mes tiene ≥ ratio × monto del candidato → es recurrente, no disruptivo
-var EM_PROGRESSIVE_THR = 0.5;   // Si el mes previo tiene ≥ ratio × monto del candidato → es crecimiento progresivo, no disruptivo
+// v2496 (2026-09-02) — la proyección NO se calcula en JS. Hay UNA sola estadística madre y
+// vive en el backend (LK: _fn_proy_window -> promedio simple 6m con piso en el 4.º mejor mes).
+// Este panel sólo la LEE del caché (get_estadistica_madre_cache). Antes había acá tres
+// fórmulas de fallback (por cliente con descarte de picos; "promedio de los últimos 3
+// meses") y daban números distintos a los de las OCs de Virgilio. Se eliminaron.
 // Clientes a EXCLUIR de todos los cálculos: cuentas internas / de prueba
 // (1 = Loekemeyer SRL, 3878 = Tierra Nativa SA — usadas para tests en la web).
 // Se aplica a TODAS las fuentes en addRow para consistencia.
@@ -9097,7 +9097,7 @@ var _estMadreData = null; // [{ cod, desc, totalUnits, byYm: { "YYYY-MM": units 
 var _estMadreYms = [];    // array de ym de la vista actual (desc, mes reciente primero)
 var _estMadreFullByCod = null; // cache: data completa indexada por item_code (todos los meses)
 var _estMadreFullYms = null;   // cache: lista completa de ym ordenada asc
-var _estMadreFullProjByItem = null; // cache: proyección por item calculada server-side cliente-a-cliente. null = no data por cliente, fallback a fórmula vieja.
+var _estMadreFullProjByItem = null; // proyección por item, SOLO del caché server-side. null = sin caché → no hay proyección (no se calcula en JS).
 var _estMadreSource = "";      // último dataSource exitoso (para mostrar en status)
 var _estMadreSourceHasCustomer = false; // true si la fuente que respondió incluyó cod_cliente
 var _estMadreLoadedAt = null;  // timestamp del último fetch exitoso
@@ -9513,14 +9513,9 @@ async function cargarEstadisticaMadre(forceReload) {
     _estMadreSourceHasCustomer = hasCustomer;
     _estMadreLoadedAt = new Date();
 
-    // Precomputar proyección por item — una sola vez por fetch.
-    // Si la fuente tiene cliente, usa algoritmo nuevo (24 meses, disruptivos excluidos).
-    // Si no, deja null y aplicarRangoEstadisticaMadre cae a la fórmula vieja.
-    if (hasCustomer) {
-      _estMadreFullProjByItem = _computeEstMadreProjections(byCustItem, _estMadreFullYms);
-    } else {
-      _estMadreFullProjByItem = null;
-    }
+    // v2496 — sin caché NO hay proyección: no se recalcula en JS (una sola estadística madre,
+    // en el backend). La tabla muestra el histórico mensual y la columna de proyección vacía.
+    _estMadreFullProjByItem = null;
 
     aplicarRangoEstadisticaMadre();
   } catch (e) {
@@ -9558,21 +9553,12 @@ function aplicarRangoEstadisticaMadre() {
   // Array de items
   var items = Object.values(_estMadreFullByCod);
 
-  // Proyección: usar la cacheada (algoritmo por cliente, ventana fija de 24 meses) si está.
-  // Si no (fuente customer-blind), fallback a fórmula vieja: avg de últimos 3 meses visibles.
-  if (_estMadreFullProjByItem) {
-    items.forEach(function (it) {
-      var key = String(it.cod || "").trim().toUpperCase();
-      it._proy = Number(_estMadreFullProjByItem[key]) || 0;
-    });
-  } else {
-    var last3 = sortedYms.slice(0, 3);
-    items.forEach(function (it) {
-      var sum = 0;
-      last3.forEach(function (ym) { sum += Number(it.byYm[ym] || 0); });
-      it._proy = last3.length > 0 ? sum / last3.length : 0;
-    });
-  }
+  // Proyección: SOLO la del caché server-side (v2496: una sola estadística madre, en el backend).
+  // Sin caché no se inventa un número: queda 0 y el ranking no es significativo.
+  items.forEach(function (it) {
+    var key = String(it.cod || "").trim().toUpperCase();
+    it._proy = _estMadreFullProjByItem ? (Number(_estMadreFullProjByItem[key]) || 0) : 0;
+  });
 
   // Ranking estable basado en proy DESC — se computa siempre, no depende del sort del display.
   // Ranking 1 = el que más vende (mayor proyección).
@@ -9663,110 +9649,6 @@ function setEstMadreSort(col) {
   aplicarRangoEstadisticaMadre();
 }
 window.setEstMadreSort = setEstMadreSort;
-
-// Calcula proyección mensual por item usando la ventana de EM_PROY_WINDOW meses
-// hacia atrás, por cliente, restando meses disruptivos del numerador
-// (denominador = N = meses desde primera compra de ese cliente).
-//
-// Per cada (cliente, item):
-//   1. Toma ventana de últimos EM_PROY_WINDOW meses (con ceros para meses sin compra).
-//   2. Encuentra primer mes con actividad. Si no hay, no aporta.
-//   3. raw_avg = sum(active) / W  (W = ventana completa, NO "meses desde la 1a compra").
-//   4. Detecta meses disruptivos (units > 1.5*raw_avg), excepto si: (a) algún otro mes
-//      tiene ≥ EM_RECURRING_SIM × este monto (recurrente) o (b) el mes anterior tiene
-//      ≥ EM_PROGRESSIVE_THR × este monto (crecimiento progresivo).
-//   5. El filtro NO corre si el cliente compró en un solo mes de la ventana.
-//   6. per_customer_proj = (sum(active) - sum(EXCEDENTES)) / W.
-//
-// ESPEJO del backend: la regla vive en fn_proy_descarte() del proyecto Supabase LK y
-// esto es una copia de fallback. Si cambia una, hay que cambiar la otra.
-//
-// Proyección del item = suma de per_customer_proj de todos sus clientes.
-//
-// Retorna: { itemKey: projection }. itemKey = item_code uppercase.
-function _computeEstMadreProjections(byCustItem, allYmsAsc) {
-  if (!byCustItem || !allYmsAsc || allYmsAsc.length === 0) return {};
-
-  // Ventana de meses (los últimos EM_PROY_WINDOW de la lista asc, padded si hay menos).
-  var ymsWindow = allYmsAsc.slice(-EM_PROY_WINDOW);
-  var W = ymsWindow.length;
-
-  var projByItem = {};
-
-  Object.keys(byCustItem).forEach(function (item) {
-    var perCustomer = byCustItem[item];
-    var itemProj = 0;
-
-    Object.keys(perCustomer).forEach(function (customer) {
-      var byYm = perCustomer[customer];
-
-      // Build series para la ventana (oldest to newest)
-      var series = new Array(W);
-      for (var i = 0; i < W; i++) {
-        series[i] = Number(byYm[ymsWindow[i]] || 0);
-      }
-
-      // Encontrar primer índice con actividad
-      var firstIdx = -1;
-      for (var k = 0; k < W; k++) {
-        if (series[k] > 0) { firstIdx = k; break; }
-      }
-      if (firstIdx < 0) return; // sin compras en la ventana — no aporta
-
-      var active = series.slice(firstIdx);
-      var N = active.length;
-      var sumActive = 0;
-      var mesesConCompra = 0;
-      for (var s = 0; s < N; s++) {
-        sumActive += active[s];
-        if (active[s] > 0) mesesConCompra++;
-      }
-      if (sumActive <= 0) return;
-
-      // v2496 — denominador = VENTANA COMPLETA, no "meses desde la primera compra".
-      // Ese divisor hacía que un cliente estrenado el mes pasado contara su único
-      // pedido como ritmo mensual completo (+51% sobre el promedio real).
-      var rawAvg = sumActive / W;
-      var disruptThr = rawAvg * EM_DISRUPT_RATIO;
-
-      // Detectar meses disruptivos.
-      // v2496 — (A) el filtro NO se activa para clientes que compraron en un solo mes:
-      // ahí las tres condiciones se cumplían por construcción y se les anulaba el 100%
-      // del volumen. Comprar una vez cada tanto no es un pico, es su forma de comprar.
-      var disruptiveSum = 0;
-      if (mesesConCompra >= 2) {
-        for (var idx = 0; idx < N; idx++) {
-          var val = active[idx];
-          if (val <= disruptThr) continue;
-
-          // Recurrente? otro mes con ≥ EM_RECURRING_SIM × val
-          var recurring = false;
-          var simThr = val * EM_RECURRING_SIM;
-          for (var j = 0; j < N; j++) {
-            if (j === idx) continue;
-            if (active[j] >= simThr) { recurring = true; break; }
-          }
-          if (recurring) continue;
-
-          // Progresivo? mes previo con ≥ EM_PROGRESSIVE_THR × val
-          if (idx > 0 && active[idx - 1] >= val * EM_PROGRESSIVE_THR) continue;
-
-          // v2496 — (B) se descarta sólo el EXCEDENTE, no el mes entero: un pedido
-          // grande genuino conserva su parte normal.
-          disruptiveSum += (val - disruptThr);
-        }
-      }
-
-      // Promedio limpio (numerador sin el excedente, denominador = ventana completa)
-      var perCustProj = (sumActive - disruptiveSum) / W;
-      itemProj += perCustProj;
-    });
-
-    projByItem[item] = itemProj;
-  });
-
-  return projByItem;
-}
 
 function _renderEstMadreTable(items, yms) {
   var table = document.getElementById("estMadreTable");

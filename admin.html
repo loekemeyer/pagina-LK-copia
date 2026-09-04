@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin - Loekemeyer</title>
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg?v=2" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23285" />
-    <link rel="stylesheet" href="css/admin.css?v=23285" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23300" />
+    <link rel="stylesheet" href="css/admin.css?v=23300" />
     <link
       href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
       rel="stylesheet"
@@ -2769,141 +2769,10 @@
           </div>
 
           <main class="avc-main" style="max-width: none; padding: 0">
-            <!-- ESTADÍSTICA MADRE — IMPORTADOR (movido arriba de la búsqueda) -->
-            <section class="avc-search-section" style="padding: 0">
-              <details>
-                <summary
-                  style="
-                    cursor: pointer;
-                    padding: 14px 20px;
-                    font-weight: 600;
-                    font-size: 14px;
-                    user-select: none;
-                  "
-                >
-                  Estadística Madre — Importador
-                  <span
-                    id="emLastImport"
-                    style="
-                      font-weight: 400;
-                      font-size: 12px;
-                      color: var(--text2);
-                      margin-left: 8px;
-                    "
-                  ></span>
-                </summary>
-                <div style="padding: 4px 20px 18px 20px">
-                  <p
-                    style="
-                      font-size: 13px;
-                      color: var(--text2);
-                      margin-bottom: 14px;
-                    "
-                  >
-                    Importa el xlsx de tendencia mensual por SKU
-                    (<code>Y:\AA  VENTAS\A7 Estadistica MADRE\…</code>) y
-                    actualiza la tabla <code>estadistica_madre</code>.
-                    Re-importar cada vez que se actualice el archivo
-                    (cada ~3 meses).
-                  </p>
-
-                  <div
-                    style="
-                      display: flex;
-                      gap: 12px;
-                      align-items: center;
-                      flex-wrap: wrap;
-                      margin-bottom: 12px;
-                    "
-                  >
-                    <input
-                      type="file"
-                      id="emFileInput"
-                      accept=".xlsx,.xlsm,.xls"
-                      style="display: none"
-                    />
-                    <button
-                      type="button"
-                      class="avc-btn avc-btn-primary"
-                      onclick="document.getElementById('emFileInput').click()"
-                    >
-                      Elegir archivo xlsx
-                    </button>
-                    <span
-                      id="emFileName"
-                      style="font-size: 13px; color: var(--text2)"
-                    >
-                      Ningún archivo seleccionado
-                    </span>
-                    <button
-                      type="button"
-                      class="avc-btn"
-                      id="emBtnImportar"
-                      disabled
-                      style="margin-left: auto"
-                    >
-                      Importar a Supabase
-                    </button>
-                  </div>
-
-                  <div
-                    id="emStatus"
-                    style="
-                      font-size: 13px;
-                      color: var(--text);
-                      margin-bottom: 8px;
-                      min-height: 18px;
-                    "
-                  ></div>
-
-                  <div
-                    id="emPreview"
-                    style="
-                      max-height: 400px;
-                      overflow: auto;
-                      border: 1px solid var(--border);
-                      border-radius: var(--radius-sm);
-                      display: none;
-                    "
-                  ></div>
-
-                  <details
-                    style="
-                      margin-top: 14px;
-                      font-size: 13px;
-                      color: var(--text2);
-                    "
-                  >
-                    <summary style="cursor: pointer; font-weight: 600">
-                      Detalles técnicos
-                    </summary>
-                    <ul style="margin: 8px 0; padding-left: 20px">
-                      <li>
-                        Hoja esperada: <code>Loeke Madre - &lt;fecha&gt;</code>
-                        (fallback: primera hoja con
-                        <em>"loeke madre"</em> en el nombre)
-                      </li>
-                      <li>
-                        Encabezado en fila 5. Columnas leídas:
-                        <code>Cat. Art</code>, <code>Ranking</code>,
-                        <code>Descripcion</code>,
-                        <code>Cod Nuevo Isis</code>,
-                        <code>E.Madre Uni x Mes</code>,
-                        <code>Tendencia en UNI</code>,
-                        <code>uni x Caja</code>,
-                        <code>E.Madre en Cajas</code>,
-                        <code>Proveedor</code>
-                      </li>
-                      <li>Upsert por <code>cod</code> en lotes de 500</li>
-                      <li>
-                        La fecha de última importación se guarda en
-                        localStorage <code>lastImport_em</code>
-                      </li>
-                    </ul>
-                  </details>
-                </div>
-              </details>
-            </section>
+            <!-- ESTADÍSTICA MADRE — el importador de Excel se RETIRÓ el 2026-09-02 (propuesta 2496).
+                 `estadistica_madre` ya no es una tabla importada a mano: es una VISTA sobre
+                 `estadistica_madre_cache`, que se calcula a diario desde sales_lines.
+                 El Excel histórico quedó en la tabla `estadistica_madre_import_20260506`. -->
 
             <!-- RAZÓN SOCIAL DEL CLIENTE BUSCADO (aparece al cargar) -->
             <div id="clienteRazonSocial" class="avc-cliente-rs" hidden></div>
@@ -3588,15 +3457,15 @@
       </div>
     </div>
 
-    <script src="./version.js?v=23285"></script>
+    <script src="./version.js?v=23300"></script>
     <script src="excel-parser-smart.js"></script>
-    <script src="argentina-map-data.js?v=23285"></script>
-    <script src="admin.js?v=23285"></script>
-    <script src="admin-supercot.js?v=23285"></script>
-    <script src="admin-excel-krikos.js?v=23285"></script>
-    <script src="analisis-venta-cliente.js?v=23285"></script>
+    <script src="argentina-map-data.js?v=23300"></script>
+    <script src="admin.js?v=23300"></script>
+    <script src="admin-supercot.js?v=23300"></script>
+    <script src="admin-excel-krikos.js?v=23300"></script>
+    <script src="analisis-venta-cliente.js?v=23300"></script>
     <!-- OSA: reusa la capa de datos del Formato OSA (parsers + escritura a Supabase) -->
-    <script src="osa/js/store.js?v=23285"></script>
-    <script src="admin-osa.js?v=23285"></script>
+    <script src="osa/js/store.js?v=23300"></script>
+    <script src="admin-osa.js?v=23300"></script>
   </body>
 </html>
