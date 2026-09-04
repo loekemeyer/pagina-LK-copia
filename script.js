@@ -401,7 +401,7 @@ function isListPriceOnlyClient() {
 // entrada + sus tablas <prefix>_* + su página <prefix>/index.html con la config.
 const FORMATO_CLIENTES = [
   { cod: "2533", cuit: "30715175017", nombre: "OSA", page: "osa/index.html" },
-  { cod: "288",  cuit: "33534724239", nombre: "Torres y Liva", page: "tyl/index.html" },
+  { cod: "288",  cuit: "33534724239", nombre: "Torres y Liva", page: "tyl/index.html", noChooser: true },
 ];
 // Devuelve la config de formato del cliente logueado (o null si no tiene).
 function getFormatoCliente() {
@@ -824,7 +824,11 @@ function elegirFormato(which) {
 // siempre accesible además desde el menú de usuario → "Formato <cliente>".
 function maybeShowOsaFormatChooser(opts) {
   opts = opts || {};
-  if (!isFormatoCliente()) return;
+  const f = getFormatoCliente();
+  if (!f) return;
+  // Clientes con noChooser (p. ej. Torres y Liva): NO se les ofrece el selector
+  // de formato al entrar. Igual acceden desde el menú de usuario → "Formato …".
+  if (f.noChooser) return;
   const modal = $("osaFormatModal");
   if (modal && modal.classList.contains("open")) return; // ya está abierto
   try {
