@@ -266,7 +266,7 @@ function _pcShow(pid, idx) {
     requestAnimationFrame(() => {
       img.style.opacity = "1";
     });
-  }, 180);
+  }, 110);
 }
 
 // Flechas (táctil / navegación manual): mueve al anterior/siguiente.
