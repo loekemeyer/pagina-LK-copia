@@ -368,6 +368,36 @@ Varias personas y sesiones de Claude editan este proyecto sobre el mismo share d
 - `admin.js` uses `var` / function-scoped old-style JS, `script.js` / `historial.js` / `sugerencias.js` use `const`/`let`/arrow functions. Don't "modernize" `admin.js` opportunistically — it's consistent within its file.
 - Paths in HTML use a mix of `./css/...` and `css/...` — both resolve the same way under IIS; no need to normalize unless fixing a real bug.
 
+## Reportes por Telegram (`rep_*`) — viven SOLO en la base
+
+El reporte **diario / semanal / mensual** no está en el repo: son funciones de Supabase LK que
+dispara `pg_cron` y salen por Telegram vía `tg_enqueue_largo` → `tg_outbox_flush` (cron 28, cada
+minuto). Los crons: **29** diario (`rep_enviar_diario`, lun–sáb 08:00 ART), **30** semanal (lun
+08:15), **31** mensual (días 3/5/8/12, 08:30), más **32** top20, **33** salud, **34** riesgo y
+**35** artículos. El texto lo arman `rep_texto_diario` / `_semanal` / `_mensual`; los helpers son
+`rep_plata` y `rep_var`. Son `SECURITY DEFINER` y mandan Telegram: **no exponerlas a `anon`**.
+
+**El depósito sale de Gestión Virgilio, no se recalcula acá.** `sincronizar_ppp()` (cron 19, 07:00
+ART) espeja por FDW la vista `gv_lk_np_feed` a la tabla local **`ppp_np_feed`**: una fila por NP,
+ISIS y web juntas, con el **neto facturado** que calcula Gestión y el **valor de lista** de lo
+pendiente. De ahí salen los dos números del reporte:
+
+- **$ facturada por día** → `rep_snapshot_despacho(30)` guarda la foto en `rep_despacho_diario`.
+  La columna que manda es **`plata_neto`**; `plata` es el valor viejo (LK reconstruía sobre lo
+  *pedido* y corregía con un ratio de cajas: daba de +0,5% a +14,5% de más) y **se conserva como
+  historia**. Los textos leen `coalesce(plata_neto, plata)`. La foto es imprescindible:
+  `ppp_base_pedidos` es amnésica y las líneas de una NP vieja desaparecen de Virgilio.
+- **$ pendiente de facturar** → `rep_ppp()`. Backlog = `ppp_np_feed` no facturada, empresa `lk`.
+  Las NP de ISIS se valorizan línea por línea con `ppp_valor_linea` (contempla la lista propia de
+  los súper); las **NP web** no tienen líneas acá, así que usan `valor_lista × (1−dto_vol) × 0,98`.
+
+**Nunca filtrar la empresa con `left(np,1)='9'`.** La NP web de Gestión es un contador propio con
+etiqueta `LK 0001` / `CH 0002`; usar la columna `empresa` del feed. Y **no separar ISIS de web en
+pantalla**: regla del dueño (Gestión v13.64), `rep_ppp()` devuelve `nps_web` pero no se imprime.
+
+Definiciones y medición en `sql/reporte_deposito_gestion.sql`; el lado Virgilio en el repo
+`Gestion-Virgilio`, `sql/gv_lk_np_feed.sql` y §3.bk de `docs/SUPABASE-GESTION-VIRGILIO.md`.
+
 ## Pendientes — AVISAR AL USUARIO
 
 **Instrucción para Claude, no es una nota suelta:** cuando una sesión toque alguno de
