@@ -278,8 +278,12 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
   Entrega/Prometida/Recepción" inline o fecha cercana). La card la muestra como "F. ENTREGA" con
   el origen (Krikos/PDF) y viaja en `sheets_payload.fecha_entrega` (+ `fecha_entrega_origen`) y
   en el payload de Entregas. **El Apps Script del Sheet y el Excel del ERP todavía no tienen
-  columna para esto**: queda persistido en `orders.sheets_payload` y en `krikos_oc_inbox`, listo
-  para empujarlo a Virgilio (`lk_pedidos_match`) cuando producción lo quiera usar.
+  columna para esto**: queda persistido en `orders.sheets_payload` y en `krikos_oc_inbox`.
+  **Desde el 7/9/2026 además viaja a Virgilio**: `v_pedidos_match` expone `fecha_entrega_txt`
+  (el texto crudo) y `fecha_entrega` (parseada: primera `dd/mm/yyyy` del texto, separador
+  normalizado, así que "15.09.2026 08:00" también entra) y `sync_pedidos_match_virgilio()` las
+  copia a `lk_pedidos_match` por el FDW. Chef va `NULL` (su portal no carga OC de súper).
+  `sql/pedidos_match_fecha_entrega.sql`, backup en `sql/backups/`.
 - `krikos_inbox_list` y `krikos_inbox_resolver` son `SECURITY DEFINER` con chequeo de `admins`
   adentro y `EXECUTE` revocado a `PUBLIC`/`anon`. La tabla tiene RLS de solo lectura para admins
   (escribe únicamente `service_role`) y el bucket es privado con policy de lectura para admins.
@@ -494,8 +498,9 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   y cambiar Thunderbird también.
 - **Planexware**: consulta de plan enviada a comercial@ y mesadeayuda@ el 3/9/2026 (si el plan
   incluye SFTP/webservice, o descarga estructurada). Sin respuesta todavía.
-- **Espejo en Virgilio**: `admin-supercot.js` cambió (Bandeja Krikos) y hay que replicarlo a
-  `/admin/` de `Produccion-Virgilio`.
+- ~~**Espejo en Virgilio**~~ ✅ replicado el 7/9/2026 a `/admin/admin-supercot.js` de
+  `Gestion-Virgilio` (mismo archivo, byte a byte; el espejo no tiene ajustes propios en ese
+  archivo). Bump de `?v=` en `admin/admin.html` a mano, que ahí no hay hook.
 - Toledo no tiene regex de detección de PDF en `detectSuper` **ni parser propio** (nota en
   `precios_super.cadena`): una OC de Toledo desde la bandeja cae en "No se pudo identificar la
   cadena". **No agregar la regex sin el parser**: `PARSERS[key]` quedaría `undefined`. Desde el

@@ -69,6 +69,7 @@ with base as (
          (o.created_at at time zone 'America/Argentina/Buenos_Aires')::date as fecha_pedido,
          to_char(o.created_at at time zone 'America/Argentina/Buenos_Aires', 'HH24:MI:SS') as hora_pedido,
          nullif(o.sheets_payload->>'sucursal_entrega','') as sucursal_entrega,
+         nullif(o.sheets_payload->>'fecha_entrega','')     as fecha_entrega_txt,
          o.payment_method as metodo_pago,
          (select string_agg(t.cod || 'x' ||
                    (case when t.suma = trunc(t.suma) then trunc(t.suma)::bigint::text else t.suma::text end),
@@ -92,7 +93,15 @@ select 'lk'::text as empresa,
        cod_cliente || '|' || to_char(fecha_pedido,'YYYY-MM-DD') || '|' || items_string as match_string,
        count(*) over w > 1
          and min(coalesce(sucursal_entrega,'~')) over w <> max(coalesce(sucursal_entrega,'~')) over w as ambiguo,
-       row_number() over (partition by cod_cliente, fecha_pedido, items_string order by created_at, order_id) as orden_en_dia
+       row_number() over (partition by cod_cliente, fecha_pedido, items_string order by created_at, order_id) as orden_en_dia,
+       -- Fecha que el SUPER exige en el deposito (2026-09-07, integracion Krikos).
+       -- La escribe admin-supercot.js en sheets_payload.fecha_entrega; es texto
+       -- dd/mm/yyyy y a veces trae la hora pegada. Viajan las dos: cruda y parseada.
+       -- OJO: no es due_date, que es el vencimiento de cobro.
+       fecha_entrega_txt,
+       case when fecha_entrega_txt ~ '\d{1,2}[/.-]\d{1,2}[/.-]\d{4}'
+            then to_date(translate(substring(fecha_entrega_txt from '\d{1,2}[/.-]\d{1,2}[/.-]\d{4}'), '.-', '//'), 'DD/MM/YYYY')
+       end as fecha_entrega
 from base
 window w as (partition by cod_cliente, fecha_pedido, items_string);
 
@@ -161,7 +170,9 @@ create foreign table virgilio.lk_pedidos_match (
   items_string     text,
   match_string     text,
   ambiguo          boolean,
-  orden_en_dia     bigint
+  orden_en_dia     bigint,
+  fecha_entrega     date,
+  fecha_entrega_txt text
 ) server virgilio_db options (schema_name 'public', table_name 'lk_pedidos_match');
 
 -- -----------------------------------------------------------------------------
@@ -187,9 +198,11 @@ begin
 
   insert into virgilio.lk_pedidos_match
     (empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-     sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia)
+     sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia,
+     fecha_entrega, fecha_entrega_txt)
   select empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-         sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia
+         sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia,
+         fecha_entrega, fecha_entrega_txt
     from public.v_pedidos_match
    where fecha_pedido >= v_corte;
 
@@ -203,9 +216,12 @@ begin
 
     insert into virgilio.lk_pedidos_match
       (empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-       sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia)
+       sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia,
+       fecha_entrega, fecha_entrega_txt)
     select empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-           sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia
+           sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia,
+           -- Chef no tiene Krikos: su portal no carga OC de supermercado.
+           null::date, null::text
       from public.v_pedidos_match_chef
      where fecha_pedido >= v_corte;
   exception when others then
