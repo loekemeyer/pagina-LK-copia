@@ -1484,6 +1484,16 @@
       findDateNearLabel_(lines, /Fecha\s*de\s*cancelaci[óÛo]n/i, { window: 5, preferAfter: true })
     );
 
+    // Fecha de TURNO de entrega: SOLO INC la trae en la OC. El rótulo es "Fecha entrega:"
+    // (sin "de"; el valor cae unas líneas después, en el bloque de valores de Planexware).
+    // Es la que Gestión usa para programar el pedido DIRECTO al día del turno (súper aparte
+    // de clientes). Ojo: NO es "Fecha de cancelación" (vencimiento) ni "Fecha OC" (emisión)
+    // ni "Hora de entrega". El regex exige "Fecha" delante de "entrega", así que "Hora de
+    // entrega" y el "ENTREGA:" de la sucursal no matchean.
+    var fechaTurno = normalizeDueDate_(
+      findDateNearLabel_(lines, /Fecha\s*(?:de\s*)?entrega\s*:/i, { window: 8, preferAfter: true })
+    );
+
     return {
       items: items,
       orderNumber: orderNumber,
@@ -1491,6 +1501,7 @@
       branchName: branchName,
       paymentTermRaw: paymentTermRaw,
       dueDate: dueDate,
+      fechaTurno: fechaTurno,
     };
   }
 
@@ -2423,6 +2434,7 @@
       branchName: "",
       paymentTermRaw: "",
       paymentTermEdited: "",
+      fechaTurno: "",   // sólo INC: fecha de turno de la OC → programación directa
       customer: null,
       mappingExisted: false,
       deliveryAddress: null,
@@ -2544,6 +2556,8 @@
       state.paymentTermRaw = parsed.paymentTermRaw || "";
       state.paymentTermEdited = state.paymentTermRaw;
       state.dueDate = parsed.dueDate || "";
+      // Sólo INC trae fecha de turno; el resto queda "" → Gestión los deja en A Programar.
+      state.fechaTurno = parsed.fechaTurno || "";
       state.pdfTotal = extractPdfTotal(text, key);
 
       if (!parsed.items.length) {
@@ -3487,6 +3501,10 @@
         payment_term: state.customer.payment_term == null ? null : Number(state.customer.payment_term),
         credit_limit: state.customer.credit_limit == null ? null : Number(state.customer.credit_limit),
         due_date: String(state.dueDate || ""),
+        // Fecha de turno de entrega (DD/MM/YYYY). Mismo campo canónico `fecha_entrega` que ya
+        // usa el panel de Gestión (v14.13). Sólo INC la trae acá; viaja a Virgilio por
+        // v_pedidos_match → lk_pedidos_match. Gestión programa directo SÓLO a INC (cod 1651).
+        fecha_entrega: String(state.fechaTurno || ""),
         source: "Krikos",
         items: validItems.map(function (it) {
           return {
