@@ -16,6 +16,14 @@ Esto va ANTES de cualquier otra respuesta. Si hay un agente corriendo en backgro
 puedo actuar todavía, igual poner el acuse. El usuario necesita saber que el mensaje
 llegó y fue procesado, no que se quedó en cola.
 
+## Respuestas concisas (OBLIGATORIO)
+
+Por más análisis interno que se haga, la respuesta al usuario tiene que terminar
+con un **resumen corto y legible**: pocas líneas, lo esencial y los próximos pasos.
+El usuario NO quiere leer todo el proceso de análisis. Si hace falta el detalle
+(tablas largas, listados, razonamiento), va aparte o se ofrece; el mensaje default
+es breve. Regla: si no se puede leer de un vistazo, es demasiado largo.
+
 ## Comandos especiales
 
 - **"resumen del día"**: Reporte del trabajo de hoy en bullet points. Estilo ejecutivo. Incluye: completadas, en progreso, bloqueeos, próximos pasos.
