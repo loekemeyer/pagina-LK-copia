@@ -3952,7 +3952,7 @@ function renderProducts() {
           height="400"
           loading="lazy"
           style="cursor:zoom-in"
-          onclick="openImgZoom(this.src, this.alt)"
+          onclick="openImgZoom(this.src, this.alt, this.parentNode.dataset.urls)"
           onerror="this.onerror=null;this.src='${imgFallback}'"
         >
         ${
@@ -14029,7 +14029,7 @@ window.addEventListener("load", function () {
 /* ============================================================
    LIGHTBOX — zoom de imagen al hacer click en cualquier producto
    ============================================================ */
-function openImgZoom(src, alt) {
+function openImgZoom(src, alt, urls) {
   if (!src) return;
   var overlay = document.getElementById("imgZoomOverlay");
   if (!overlay) {
@@ -14045,6 +14045,14 @@ function openImgZoom(src, alt) {
       'style="position:absolute;top:18px;right:24px;background:rgba(255,255,255,0.15);' +
       'color:white;border:none;border-radius:50%;width:44px;height:44px;font-size:28px;' +
       'line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">&times;</button>' +
+      '<button type="button" id="imgZoomPrev" aria-label="Anterior" ' +
+      'style="position:absolute;top:50%;left:16px;transform:translateY(-50%);background:rgba(255,255,255,0.15);' +
+      'color:white;border:none;border-radius:50%;width:48px;height:48px;font-size:30px;line-height:1;cursor:pointer;' +
+      'display:none;align-items:center;justify-content:center;z-index:3">&#8249;</button>' +
+      '<button type="button" id="imgZoomNext" aria-label="Siguiente" ' +
+      'style="position:absolute;top:50%;right:16px;transform:translateY(-50%);background:rgba(255,255,255,0.15);' +
+      'color:white;border:none;border-radius:50%;width:48px;height:48px;font-size:30px;line-height:1;cursor:pointer;' +
+      'display:none;align-items:center;justify-content:center;z-index:3">&#8250;</button>' +
       '<div id="imgZoomScroll" style="max-width:96vw;max-height:92vh;overflow:hidden;border-radius:8px;' +
       'box-shadow:0 20px 60px rgba(0,0,0,0.5)">' +
       '<img id="imgZoomPic" src="" alt="" ' +
@@ -14061,6 +14069,14 @@ function openImgZoom(src, alt) {
     overlay.querySelector("#imgZoomClose").addEventListener("click", function (e) {
       e.stopPropagation();
       closeImgZoom();
+    });
+    overlay.querySelector("#imgZoomPrev").addEventListener("click", function (e) {
+      e.stopPropagation();
+      _imgZoomStep(-1);
+    });
+    overlay.querySelector("#imgZoomNext").addEventListener("click", function (e) {
+      e.stopPropagation();
+      _imgZoomStep(1);
     });
     // Click en la imagen → toggle zoom 2x (no cierra el popup)
     overlay.querySelector("#imgZoomPic").addEventListener("click", function (e) {
@@ -14098,7 +14114,23 @@ function openImgZoom(src, alt) {
   picEl.style.cursor = "zoom-in";
   picEl.dataset.zoomed = "0";
   if (scrollEl) scrollEl.style.overflow = "hidden";
-  picEl.src = src;
+  // Lista de fotos del producto para navegar con flechas (con cartón primero).
+  var _list = [];
+  try {
+    if (Array.isArray(urls)) _list = urls.slice();
+    else if (typeof urls === "string" && urls.trim()) _list = JSON.parse(urls);
+  } catch (e) {
+    _list = [];
+  }
+  if (!Array.isArray(_list) || !_list.length) _list = src ? [src] : [];
+  overlay._imgs = _list;
+  overlay._idx = 0; // empieza en la primera del array = con cartón (portada)
+  var _hasNav = _list.length > 1;
+  var _prevBtn = overlay.querySelector("#imgZoomPrev");
+  var _nextBtn = overlay.querySelector("#imgZoomNext");
+  if (_prevBtn) _prevBtn.style.display = _hasNav ? "flex" : "none";
+  if (_nextBtn) _nextBtn.style.display = _hasNav ? "flex" : "none";
+  picEl.src = _list[0] || src;
   picEl.alt = alt || "";
   // Estado inicial de animación (oculto + chico)
   picEl.style.transform = "scale(0.7)";
@@ -14114,6 +14146,25 @@ function openImgZoom(src, alt) {
       picEl.style.opacity = "1";
     });
   });
+}
+// Navega entre las fotos del producto dentro del zoom (dir: -1 / +1).
+function _imgZoomStep(dir) {
+  var overlay = document.getElementById("imgZoomOverlay");
+  if (!overlay || !overlay._imgs || overlay._imgs.length < 2) return;
+  overlay._idx = (overlay._idx + dir + overlay._imgs.length) % overlay._imgs.length;
+  var picEl = document.getElementById("imgZoomPic");
+  var scrollEl = document.getElementById("imgZoomScroll");
+  if (picEl) {
+    // resetear el zoom 2x al cambiar de foto
+    picEl.style.maxWidth = "90vw";
+    picEl.style.maxHeight = "88vh";
+    picEl.style.width = "";
+    picEl.style.height = "";
+    picEl.style.cursor = "zoom-in";
+    picEl.dataset.zoomed = "0";
+    picEl.src = overlay._imgs[overlay._idx];
+  }
+  if (scrollEl) scrollEl.style.overflow = "hidden";
 }
 function closeImgZoom() {
   var overlay = document.getElementById("imgZoomOverlay");
@@ -14132,10 +14183,11 @@ function closeImgZoom() {
 window.openImgZoom = openImgZoom;
 window.closeImgZoom = closeImgZoom;
 document.addEventListener("keydown", function (e) {
-  if (e.key === "Escape") {
-    var overlay = document.getElementById("imgZoomOverlay");
-    if (overlay && overlay.style.display !== "none") closeImgZoom();
-  }
+  var overlay = document.getElementById("imgZoomOverlay");
+  if (!overlay || overlay.style.display === "none") return;
+  if (e.key === "Escape") closeImgZoom();
+  else if (e.key === "ArrowLeft") _imgZoomStep(-1);
+  else if (e.key === "ArrowRight") _imgZoomStep(1);
 });
 
 // =====================================================================
