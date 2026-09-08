@@ -16,6 +16,13 @@ Esto va ANTES de cualquier otra respuesta. Si hay un agente corriendo en backgro
 puedo actuar todavía, igual poner el acuse. El usuario necesita saber que el mensaje
 llegó y fue procesado, no que se quedó en cola.
 
+## Git: commitear a main por defecto (OBLIGATORIO)
+
+Salvo que el usuario aclare otra branch, **todo commit y push va a `main`**.
+No usar branches de trabajo por defecto. `main` es la branch de deploy
+(GitHub Pages), así que pushear ahí publica el cambio. Si el usuario pide una
+branch puntual, respetarla solo para ese pedido y volver a `main` después.
+
 ## Respuestas concisas (OBLIGATORIO)
 
 Por más análisis interno que se haga, la respuesta al usuario tiene que terminar
