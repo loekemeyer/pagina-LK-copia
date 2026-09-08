@@ -4448,7 +4448,7 @@ function renderProducts() {
       <div class="product-card" id="card-${pid}">
       ${badgeHtml}
       ${assortmentStarHtml}
-        <div class="pc-media${pcBack ? " pc-persiana" : ""}"${pcUrlsAttr} onclick="openImgZoom(this.querySelector('.pc-front').src, this.querySelector('.pc-front').alt, this.dataset.urls)">
+        <div class="pc-media${pcBack ? " pc-persiana" : ""}"${pcUrlsAttr} onclick="openProdPreview('${pid}')">
         ${
           pcBack
             ? `<img class="pc-back" src="${pcBack}" alt="" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='${imgFallback}'">`
@@ -14724,6 +14724,67 @@ function closeImgZoom() {
 }
 window.openImgZoom = openImgZoom;
 window.closeImgZoom = closeImgZoom;
+
+/* ============================================================
+   PRUEBA — popup de producto al clickear la foto: imagen grande +
+   nombre + código + Precio Lista + botón "Elegir razón social".
+   ============================================================ */
+function openProdPreview(pid) {
+  const p = (Array.isArray(products) ? products : []).find(
+    (x) => String(x.id) === String(pid),
+  );
+  if (!p) return;
+  const m = document.getElementById("prodPreviewModal");
+  if (!m) return;
+  let urls = [];
+  try {
+    urls = productImgUrls(p);
+  } catch (e) {
+    urls = [];
+  }
+  const img = document.getElementById("ppImg");
+  if (img) {
+    img.src = urls[0] || "img/no-image.jpg";
+    img.alt = String(p.description || "");
+    img.onerror = function () {
+      this.onerror = null;
+      this.src = "img/no-image.jpg";
+    };
+  }
+  const nameEl = document.getElementById("ppName");
+  if (nameEl) nameEl.textContent = String(p.description || "");
+  const codEl = document.getElementById("ppCod");
+  if (codEl)
+    codEl.textContent =
+      "Cod: " + (typeof codDisplay === "function" ? codDisplay(p.cod) : p.cod);
+  const priceEl = document.getElementById("ppPrice");
+  if (priceEl) {
+    priceEl.innerHTML = currentSession
+      ? 'Precio Lista: <strong>$' +
+        formatMoney(p.list_price) +
+        '</strong> <span class="pp-iva">+ IVA</span>'
+      : "";
+  }
+  m.classList.remove("hidden");
+  m.classList.add("open");
+  m.setAttribute("aria-hidden", "false");
+}
+window.openProdPreview = openProdPreview;
+
+function cerrarProdPreview() {
+  const m = document.getElementById("prodPreviewModal");
+  if (!m) return;
+  m.classList.remove("open");
+  m.classList.add("hidden");
+  m.setAttribute("aria-hidden", "true");
+}
+window.cerrarProdPreview = cerrarProdPreview;
+
+function ppElegirRazonSocial() {
+  cerrarProdPreview();
+  if (typeof scrollToCustomerSelector === "function") scrollToCustomerSelector();
+}
+window.ppElegirRazonSocial = ppElegirRazonSocial;
 document.addEventListener("keydown", function (e) {
   var overlay = document.getElementById("imgZoomOverlay");
   if (!overlay || overlay.style.display === "none") return;

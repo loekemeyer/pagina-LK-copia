@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23312" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23312" />
+    <link rel="stylesheet" href="css/styles.css?v=23313" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23313" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -2068,6 +2068,19 @@
       </div>
     </div>
 
+    <!-- PRUEBA: popup de producto al clickear la foto -->
+    <div id="prodPreviewModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-overlay" onclick="cerrarProdPreview()"></div>
+      <div class="modal-card pp-card" role="dialog" aria-modal="true" aria-labelledby="ppName">
+        <button type="button" class="fotos-popup-close" aria-label="Cerrar" onclick="cerrarProdPreview()">&times;</button>
+        <div class="pp-imgwrap"><img id="ppImg" src="" alt="" /></div>
+        <div class="pp-name" id="ppName"></div>
+        <div class="pp-cod" id="ppCod"></div>
+        <div class="pp-price" id="ppPrice"></div>
+        <button type="button" class="pp-btn" id="ppBtn" onclick="ppElegirRazonSocial()">Elegir razón social</button>
+      </div>
+    </div>
+
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js (necesario para gráfico de evolución del módulo análisis cliente) -->
@@ -2110,14 +2123,14 @@
     ></div>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23312"></script>
-    <script src="script.js?v=23312"></script>
+    <script src="./version.js?v=23313"></script>
+    <script src="script.js?v=23313"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23312"></script>
+    <script src="analisis-venta-cliente.js?v=23313"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23312"></script>
-    <script src="admin-excel-krikos.js?v=23312"></script>
-    <script src="vendor-import-excel.js?v=23312"></script>
+    <script src="scotapi-shim.js?v=23313"></script>
+    <script src="admin-excel-krikos.js?v=23313"></script>
+    <script src="vendor-import-excel.js?v=23313"></script>
   </body>
 </html>

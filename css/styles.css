@@ -15519,3 +15519,89 @@ body { top: 0 !important; }
 .product-card:hover .pc-persiana img.pc-back {
   transform: none;
 }
+
+/* ============================================================
+   PRUEBA — popup de producto (imagen grande + info + razón social)
+   ============================================================ */
+.pp-card {
+  position: relative;
+  background: #fff;
+  border-radius: 14px;
+  padding: 22px 22px 20px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+.modal .pp-card {
+  width: 92vw;
+  max-width: 600px;
+}
+.pp-imgwrap {
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 1 / 1;
+  background: #f6f6f6;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pp-imgwrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.pp-name {
+  font-size: 19px;
+  font-weight: 800;
+  color: #1a1a1a;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+.pp-cod {
+  font-size: 14px;
+  color: #777;
+}
+.pp-price {
+  font-size: 16px;
+  color: #222;
+}
+.pp-price strong {
+  font-size: 20px;
+  color: #1a1a1a;
+}
+.pp-price .pp-iva {
+  font-size: 12px;
+  color: #999;
+}
+.pp-btn {
+  margin-top: 8px;
+  border: none;
+  background: #e3000f;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  border-radius: 10px;
+  padding: 12px 26px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.pp-btn:hover {
+  background: #c60010;
+}
+.pp-btn:active {
+  transform: translateY(1px);
+}
+#prodPreviewModal .modal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+#prodPreviewModal .pp-card {
+  z-index: 1;
+}
