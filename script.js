@@ -254,19 +254,54 @@ function _pcShow(pid, idx) {
   media.setAttribute("data-idx", String(idx));
   const dots = media.querySelectorAll(".pc-dot");
   dots.forEach((d, i) => d.classList.toggle("on", i === idx));
-  // Precarga en paralelo para que el fade-in no muestre un hueco.
-  const pre = new Image();
-  pre.src = urls[idx];
-  // Crossfade: baja opacidad → (tras el fade-out) cambia src → sube opacidad.
-  img.style.opacity = "0";
-  setTimeout(() => {
-    // Si el índice cambió otra vez mientras animaba, este swap ya no aplica.
+
+  const target = urls[idx];
+  // Crossfade REAL (dissolve): una capa superpuesta muestra la foto nueva
+  // fundiéndose ENCIMA de la imagen base, que sigue mostrando la anterior.
+  // Así no hay salto de blanco entre foto y foto. Al terminar, la base toma
+  // la nueva y la capa vuelve a opacity 0, lista para el próximo fundido.
+  let fx = document.getElementById("imgfx-" + pid);
+  if (!fx) {
+    fx = document.createElement("img");
+    fx.id = "imgfx-" + pid;
+    fx.className = "pc-img-fade";
+    fx.setAttribute("aria-hidden", "true");
+    media.appendChild(fx);
+  }
+  const FADE = 420; // ms — difuminado leve y perceptible
+  let started = false;
+  const start = () => {
+    if (started) return;
+    started = true;
+    // Si el índice cambió otra vez mientras precargaba, este fundido no aplica.
     if ((parseInt(media.getAttribute("data-idx") || "0", 10) || 0) !== idx) return;
-    img.src = urls[idx];
-    requestAnimationFrame(() => {
-      img.style.opacity = "1";
-    });
-  }, 110);
+    // Alinea la capa exactamente sobre la imagen base (robusto a los tamaños
+    // que cambian por breakpoint: se leen del box real de la imagen).
+    fx.style.left = img.offsetLeft + "px";
+    fx.style.top = img.offsetTop + "px";
+    fx.style.width = img.offsetWidth + "px";
+    fx.style.height = img.offsetHeight + "px";
+    fx.style.transition = "none";
+    fx.style.opacity = "0";
+    fx.src = target;
+    void fx.offsetWidth; // fuerza reflow: el opacity:0 queda aplicado antes de animar
+    fx.style.transition =
+      "opacity " + FADE + "ms ease, transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1)";
+    fx.style.opacity = "1";
+    setTimeout(() => {
+      if ((parseInt(media.getAttribute("data-idx") || "0", 10) || 0) === idx) {
+        img.src = target;
+      }
+      fx.style.transition = "none";
+      fx.style.opacity = "0";
+    }, FADE + 40);
+  };
+  // Precarga: recién funde cuando la foto nueva está lista (sin hueco).
+  const pre = new Image();
+  pre.onload = start;
+  pre.onerror = start;
+  pre.src = target;
+  if (pre.complete) start();
 }
 
 // Flechas (táctil / navegación manual): mueve al anterior/siguiente.

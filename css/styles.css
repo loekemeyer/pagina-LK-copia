@@ -632,6 +632,19 @@ body {
   max-width: 100%;
   margin: 0 auto;
 }
+/* Capa superior para el crossfade (dissolve) entre la 1ª y la 2ª foto:
+   se posiciona por JS exactamente sobre la imagen base y se funde encima,
+   así nunca se ve el fondo blanco entre foto y foto. */
+.pc-img-fade {
+  position: absolute;
+  object-fit: cover;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+  border-radius: inherit;
+  transform-origin: center bottom;
+  will-change: opacity, transform;
+}
 .pc-arrow {
   position: absolute;
   top: 50%;
@@ -13602,10 +13615,10 @@ textarea:focus-visible,
 
 /* (3) Hover zoom en imágenes de product card del catálogo principal */
 .product-card img {
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.3s ease;
 }
 .product-card:hover img {
-  transform: scale(1.06);
+  transform: scale(1.035);
 }
 
 /* (14) Sticky header shrink — al scrollear, el header se achica para dar
