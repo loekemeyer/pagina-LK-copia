@@ -14170,20 +14170,22 @@ function openImgZoom(src, alt, urls) {
       'style="position:absolute;top:18px;right:24px;background:rgba(255,255,255,0.15);' +
       'color:white;border:none;border-radius:50%;width:44px;height:44px;font-size:28px;' +
       'line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">&times;</button>' +
+      '<div id="imgZoomStage" style="position:relative;display:inline-block;max-width:96vw;max-height:92vh">' +
       '<button type="button" id="imgZoomPrev" aria-label="Anterior" ' +
-      'style="position:absolute;top:50%;left:16px;transform:translateY(-50%);background:rgba(255,255,255,0.15);' +
-      'color:white;border:none;border-radius:50%;width:48px;height:48px;font-size:30px;line-height:1;cursor:pointer;' +
-      'display:none;align-items:center;justify-content:center;z-index:3">&#8249;</button>' +
+      'style="position:absolute;top:50%;left:8px;transform:translateY(-50%);background:rgba(0,0,0,0.45);' +
+      'color:white;border:none;border-radius:50%;width:44px;height:44px;font-size:28px;line-height:1;cursor:pointer;' +
+      'display:none;align-items:center;justify-content:center;z-index:5">&#8249;</button>' +
       '<button type="button" id="imgZoomNext" aria-label="Siguiente" ' +
-      'style="position:absolute;top:50%;right:16px;transform:translateY(-50%);background:rgba(255,255,255,0.15);' +
-      'color:white;border:none;border-radius:50%;width:48px;height:48px;font-size:30px;line-height:1;cursor:pointer;' +
-      'display:none;align-items:center;justify-content:center;z-index:3">&#8250;</button>' +
+      'style="position:absolute;top:50%;right:8px;transform:translateY(-50%);background:rgba(0,0,0,0.45);' +
+      'color:white;border:none;border-radius:50%;width:44px;height:44px;font-size:28px;line-height:1;cursor:pointer;' +
+      'display:none;align-items:center;justify-content:center;z-index:5">&#8250;</button>' +
       '<div id="imgZoomScroll" style="max-width:96vw;max-height:92vh;overflow:hidden;border-radius:8px;' +
       'box-shadow:0 20px 60px rgba(0,0,0,0.5)">' +
       '<img id="imgZoomPic" src="" alt="" ' +
       'style="display:block;max-width:90vw;max-height:88vh;object-fit:contain;cursor:zoom-in;' +
       'transform:scale(0.7);opacity:0;transition:transform 0.28s cubic-bezier(0.34,1.56,0.64,1),opacity 0.2s ease-out" ' +
       'data-zoomed="0">' +
+      '</div>' +
       '</div>';
     // Click en overlay o en el scroll wrapper (fuera de imagen) cierra
     overlay.addEventListener("click", function (e) {
