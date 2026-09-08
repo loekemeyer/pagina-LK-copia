@@ -371,11 +371,373 @@ window.abrirFotosPopupManual = abrirFotosPopupManual;
 // Muestra el ítem "Descargar fotos" del menú solo si el cliente tiene surtido.
 function syncFotosMenuItem() {
   const el = document.getElementById("menuDescargarFotos");
-  if (!el) return;
-  const tiene = myAssortmentIds instanceof Set && myAssortmentIds.size > 0;
-  el.style.display = tiene ? "" : "none";
+  if (el) {
+    const tiene = myAssortmentIds instanceof Set && myAssortmentIds.size > 0;
+    el.style.display = tiene ? "" : "none";
+  }
+  syncContenidoRedesMenuItem();
 }
 window.syncFotosMenuItem = syncFotosMenuItem;
+
+/* ============================================================
+   CONTENIDO PARA TUS REDES — videos por producto
+   - Cliente: ve/descarga videos del catálogo (filtro Todos / Favoritos).
+   - Admin: además sube/reemplaza/borra el video de cada producto.
+   Los videos viven en el bucket público products-videos, nombrados {cod}.<ext>.
+   ============================================================ */
+const VIDEO_BUCKET = "products-videos";
+const VIDEO_BASE = `${SUPABASE_URL}/storage/v1/object/public/${VIDEO_BUCKET}/`;
+let PRODUCT_VIDEO_MAP = null; // Map cod -> nombre de archivo (o null si no cargó)
+let _productVideoLoading = null;
+let _crFavs = new Set(); // cods marcados como favoritos por este usuario
+let _crFiltro = "todos"; // 'todos' | 'favoritos'
+
+// Lista el bucket de videos y arma el mapa cod -> archivo (prefiere .mp4).
+async function loadProductVideoManifest(force) {
+  if (PRODUCT_VIDEO_MAP && !force) return PRODUCT_VIDEO_MAP;
+  if (_productVideoLoading && !force) return _productVideoLoading;
+  _productVideoLoading = (async () => {
+    const map = new Map();
+    try {
+      const pageSize = 1000;
+      let offset = 0;
+      for (let guard = 0; guard < 20; guard++) {
+        const resp = await fetch(
+          `${SUPABASE_URL}/storage/v1/object/list/${VIDEO_BUCKET}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${
+                currentSession?.access_token || SUPABASE_ANON_KEY
+              }`,
+            },
+            body: JSON.stringify({
+              prefix: "",
+              limit: pageSize,
+              offset,
+              sortBy: { column: "name", order: "asc" },
+            }),
+          },
+        );
+        if (!resp.ok) break;
+        const rows = await resp.json();
+        if (!Array.isArray(rows) || rows.length === 0) break;
+        rows.forEach((r) => {
+          const name = r && r.name;
+          if (!name || !/\.\w+$/.test(name)) return; // ignora carpetas / placeholders
+          const cod = name.replace(/\.\w+$/, "").trim();
+          if (!cod) return;
+          const prev = map.get(cod);
+          // Si ya hay uno, priorizar .mp4 sobre otros formatos.
+          if (!prev || (/\.mp4$/i.test(name) && !/\.mp4$/i.test(prev))) {
+            map.set(cod, name);
+          }
+        });
+        if (rows.length < pageSize) break;
+        offset += pageSize;
+      }
+    } catch (e) {
+      // Silencioso: sin manifest la galería queda vacía.
+    }
+    PRODUCT_VIDEO_MAP = map;
+    return map;
+  })();
+  return _productVideoLoading;
+}
+
+function videoUrlDeCod(cod) {
+  const name = PRODUCT_VIDEO_MAP && PRODUCT_VIDEO_MAP.get(String(cod));
+  return name ? VIDEO_BASE + encodeURIComponent(name) : null;
+}
+
+// Muestra "Contenido para tus redes" a cualquier usuario logueado.
+function syncContenidoRedesMenuItem() {
+  const el = document.getElementById("menuContenidoRedes");
+  if (!el) return;
+  el.style.display = currentSession ? "" : "none";
+}
+window.syncContenidoRedesMenuItem = syncContenidoRedesMenuItem;
+
+// Carga los favoritos del usuario logueado desde Supabase.
+async function crCargarFavoritos() {
+  _crFavs = new Set();
+  if (!currentSession) return _crFavs;
+  try {
+    const { data, error } = await supabaseClient
+      .from("content_video_favoritos")
+      .select("cod");
+    if (!error && Array.isArray(data)) {
+      data.forEach((r) => r && r.cod && _crFavs.add(String(r.cod)));
+    }
+  } catch (e) {}
+  return _crFavs;
+}
+
+async function abrirContenidoRedes() {
+  if (typeof closeUserMenu === "function") closeUserMenu();
+  const m = document.getElementById("contenidoRedesModal");
+  if (!m) return;
+  m.classList.remove("hidden");
+  m.classList.add("open");
+  m.setAttribute("aria-hidden", "false");
+  const hint = document.getElementById("crAdminHint");
+  if (hint) hint.hidden = !isAdmin;
+  const grid = document.getElementById("crGrid");
+  if (grid) grid.innerHTML = '<div class="cr-loading">Cargando…</div>';
+  await Promise.all([loadProductVideoManifest(), crCargarFavoritos()]);
+  crRender();
+}
+window.abrirContenidoRedes = abrirContenidoRedes;
+
+function cerrarContenidoRedes() {
+  const m = document.getElementById("contenidoRedesModal");
+  if (!m) return;
+  m.classList.remove("open");
+  m.classList.add("hidden");
+  m.setAttribute("aria-hidden", "true");
+  // Frena cualquier video que haya quedado reproduciéndose.
+  m.querySelectorAll("video").forEach((v) => {
+    try { v.pause(); } catch (e) {}
+  });
+}
+window.cerrarContenidoRedes = cerrarContenidoRedes;
+
+function crSetFiltro(f) {
+  _crFiltro = f === "favoritos" ? "favoritos" : "todos";
+  document.querySelectorAll("#contenidoRedesModal .cr-chip").forEach((c) => {
+    c.classList.toggle("on", c.getAttribute("data-cr-filter") === _crFiltro);
+  });
+  crRender();
+}
+window.crSetFiltro = crSetFiltro;
+
+// Arma la grilla. Cliente: solo productos CON video. Admin: todos (para cargar).
+function crRender() {
+  const grid = document.getElementById("crGrid");
+  if (!grid) return;
+  const q = (document.getElementById("crBuscar")?.value || "")
+    .trim()
+    .toLowerCase();
+  const base = Array.isArray(products) ? products : [];
+  let list = base.filter((p) => {
+    if (!p || p.active === false) return false;
+    const cod = String(p.cod || "").trim();
+    if (!cod) return false;
+    const tieneVideo = !!(PRODUCT_VIDEO_MAP && PRODUCT_VIDEO_MAP.get(cod));
+    if (!isAdmin && !tieneVideo) return false; // el cliente solo ve los que tienen video
+    if (_crFiltro === "favoritos" && !_crFavs.has(cod)) return false;
+    if (q) {
+      const hay = (cod + " " + String(p.description || "")).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  // Orden: primero los que tienen video, luego por código.
+  list.sort((a, b) => {
+    const va = PRODUCT_VIDEO_MAP && PRODUCT_VIDEO_MAP.get(String(a.cod)) ? 0 : 1;
+    const vb = PRODUCT_VIDEO_MAP && PRODUCT_VIDEO_MAP.get(String(b.cod)) ? 0 : 1;
+    if (va !== vb) return va - vb;
+    return String(a.cod).localeCompare(String(b.cod), "es", { numeric: true });
+  });
+
+  const empty = document.getElementById("crEmpty");
+  if (!list.length) {
+    grid.innerHTML = "";
+    if (empty) empty.hidden = false;
+    return;
+  }
+  if (empty) empty.hidden = true;
+
+  grid.innerHTML = list
+    .map((p) => {
+      const cod = String(p.cod).trim();
+      const vUrl = videoUrlDeCod(cod);
+      const thumb = (function () {
+        try {
+          const u = productImgUrls(p);
+          return (u && u[0]) || "";
+        } catch (e) {
+          return "";
+        }
+      })();
+      const fav = _crFavs.has(cod);
+      const nombre = String(p.description || "").replace(/"/g, "&quot;");
+      const media = vUrl
+        ? `<video class="cr-video" controls preload="none" playsinline${
+            thumb ? ` poster="${thumb}"` : ""
+          } src="${vUrl}"></video>`
+        : `<div class="cr-novideo">${
+            thumb ? `<img src="${thumb}" alt="" loading="lazy">` : ""
+          }<span>Sin video</span></div>`;
+      const favBtn = `<button type="button" class="cr-fav${fav ? " on" : ""}" title="${
+        fav ? "Quitar de favoritos" : "Marcar favorito"
+      }" aria-pressed="${fav}" onclick="crToggleFav('${cod}', this)">★</button>`;
+      const dlBtn = vUrl
+        ? `<button type="button" class="cr-dl" onclick="crDescargarVideo('${cod}', this)">Descargar</button>`
+        : "";
+      const adminBox = isAdmin
+        ? `<div class="cr-admin">
+             <label class="cr-upload">
+               <input type="file" accept="video/mp4,video/quicktime,video/webm" onchange="crSubirVideo('${cod}', this)">
+               <span>${vUrl ? "Reemplazar" : "Subir video"}</span>
+             </label>
+             ${vUrl ? `<button type="button" class="cr-del" onclick="crEliminarVideo('${cod}', this)">Borrar</button>` : ""}
+           </div>`
+        : "";
+      return `
+        <div class="cr-item" data-cod="${cod}">
+          <div class="cr-media">${media}${favBtn}</div>
+          <div class="cr-info">
+            <div class="cr-cod">Cod: <span>${codDisplay ? codDisplay(cod) : cod}</span></div>
+            <div class="cr-name">${nombre}</div>
+          </div>
+          <div class="cr-actions">${dlBtn}${adminBox}</div>
+        </div>`;
+    })
+    .join("");
+}
+window.crRender = crRender;
+
+// Marca/desmarca favorito (persiste por usuario en Supabase).
+async function crToggleFav(cod, btn) {
+  cod = String(cod);
+  if (!currentSession) {
+    if (typeof showToast === "function") showToast("Iniciá sesión para guardar favoritos.");
+    return;
+  }
+  const yaEra = _crFavs.has(cod);
+  // Optimista: refleja el cambio en pantalla ya mismo.
+  if (yaEra) _crFavs.delete(cod);
+  else _crFavs.add(cod);
+  if (btn) {
+    btn.classList.toggle("on", !yaEra);
+    btn.setAttribute("aria-pressed", String(!yaEra));
+  }
+  try {
+    if (yaEra) {
+      await supabaseClient
+        .from("content_video_favoritos")
+        .delete()
+        .eq("cod", cod);
+    } else {
+      await supabaseClient
+        .from("content_video_favoritos")
+        .upsert(
+          { cod, auth_user_id: currentSession.user.id },
+          { onConflict: "auth_user_id,cod" },
+        );
+    }
+  } catch (e) {
+    // Revertir si falló.
+    if (yaEra) _crFavs.add(cod);
+    else _crFavs.delete(cod);
+    if (btn) {
+      btn.classList.toggle("on", yaEra);
+      btn.setAttribute("aria-pressed", String(yaEra));
+    }
+  }
+  if (_crFiltro === "favoritos") crRender();
+}
+window.crToggleFav = crToggleFav;
+
+// Descarga el video con nombre {cod}.<ext> (fetch a blob por ser cross-origin).
+async function crDescargarVideo(cod, btn) {
+  const url = videoUrlDeCod(cod);
+  if (!url) return;
+  const nombre = (PRODUCT_VIDEO_MAP.get(String(cod)) || String(cod) + ".mp4");
+  const prev = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "Descargando…"; }
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const blob = await resp.blob();
+    const a = document.createElement("a");
+    const obj = URL.createObjectURL(blob);
+    a.href = obj;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(obj), 4000);
+  } catch (e) {
+    if (typeof showToast === "function") showToast("No se pudo descargar el video.");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = prev || "Descargar"; }
+  }
+}
+window.crDescargarVideo = crDescargarVideo;
+
+// ---- Admin: subir / reemplazar / borrar ----
+async function crSubirVideo(cod, input) {
+  if (!isAdmin) return;
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const ext = (file.name.match(/\.\w+$/) || [".mp4"])[0].toLowerCase();
+  const dest = String(cod) + ext;
+  const item = input.closest(".cr-item");
+  if (item) item.classList.add("cr-busy");
+  try {
+    // Si ya había un video con otra extensión, borrarlo para no dejar duplicados.
+    const prev = PRODUCT_VIDEO_MAP && PRODUCT_VIDEO_MAP.get(String(cod));
+    if (prev && prev !== dest) {
+      await supabaseClient.storage.from(VIDEO_BUCKET).remove([prev]);
+    }
+    const { error } = await supabaseClient.storage
+      .from(VIDEO_BUCKET)
+      .upload(dest, file, { upsert: true, contentType: file.type || undefined });
+    if (error) throw error;
+    if (!PRODUCT_VIDEO_MAP) PRODUCT_VIDEO_MAP = new Map();
+    PRODUCT_VIDEO_MAP.set(String(cod), dest);
+    if (typeof showToast === "function") showToast("Video subido: " + cod);
+    crRender();
+  } catch (e) {
+    if (typeof showToast === "function")
+      showToast("Error al subir: " + (e?.message || e));
+    if (item) item.classList.remove("cr-busy");
+  }
+}
+window.crSubirVideo = crSubirVideo;
+
+async function crEliminarVideo(cod, btn) {
+  if (!isAdmin) return;
+  const name = PRODUCT_VIDEO_MAP && PRODUCT_VIDEO_MAP.get(String(cod));
+  if (!name) return;
+  if (!window.confirm("¿Borrar el video del producto " + cod + "?")) return;
+  try {
+    const { error } = await supabaseClient.storage
+      .from(VIDEO_BUCKET)
+      .remove([name]);
+    if (error) throw error;
+    PRODUCT_VIDEO_MAP.delete(String(cod));
+    if (typeof showToast === "function") showToast("Video borrado: " + cod);
+    crRender();
+  } catch (e) {
+    if (typeof showToast === "function")
+      showToast("Error al borrar: " + (e?.message || e));
+  }
+}
+window.crEliminarVideo = crEliminarVideo;
+
+// Toast mínimo (fallback global) para dar feedback de subida/descarga.
+if (typeof window.showToast !== "function") {
+  window.showToast = function (msg) {
+    try {
+      let t = document.getElementById("crToast");
+      if (!t) {
+        t = document.createElement("div");
+        t.id = "crToast";
+        t.className = "cr-toast";
+        document.body.appendChild(t);
+      }
+      t.textContent = String(msg || "");
+      t.classList.add("show");
+      clearTimeout(window._crToastTimer);
+      window._crToastTimer = setTimeout(() => t.classList.remove("show"), 3200);
+    } catch (e) {}
+  };
+}
 
 async function maybeShowFotosPopup() {
   try {

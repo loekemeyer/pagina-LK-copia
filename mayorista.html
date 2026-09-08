@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23305" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23305" />
+    <link rel="stylesheet" href="css/styles.css?v=23306" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23306" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -234,6 +234,16 @@
                 style="display: none"
               >
                 <span class="user-menu-label">Descargar fotos de productos</span>
+              </a>
+              <a
+                class="user-menu-item"
+                id="menuContenidoRedes"
+                href="#contenido-redes"
+                onclick="event.preventDefault(); abrirContenidoRedes()"
+                style="display: none"
+              >
+                <span class="user-menu-label">Contenido para tus redes</span>
+                <span class="user-menu-new-badge" aria-label="Nuevo">NUEVO</span>
               </a>
               <a
                 class="user-menu-item"
@@ -2032,6 +2042,31 @@
       </div>
     </div>
 
+    <!-- CONTENIDO PARA TUS REDES (videos por producto) -->
+    <div id="contenidoRedesModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-overlay" onclick="cerrarContenidoRedes()"></div>
+      <div class="modal-card cr-card" role="dialog" aria-modal="true" aria-labelledby="crTitle">
+        <button type="button" class="fotos-popup-close" aria-label="Cerrar" onclick="cerrarContenidoRedes()">&times;</button>
+        <div class="cr-header">
+          <img src="img/logo.png" alt="Loekemeyer" class="cr-logo" />
+          <div>
+            <div class="cr-title" id="crTitle">Contenido para tus redes</div>
+            <div class="cr-sub">Descargá videos de nuestros productos para tus redes sociales.</div>
+          </div>
+        </div>
+        <div class="cr-toolbar">
+          <div class="cr-filters" role="tablist">
+            <button type="button" class="cr-chip on" data-cr-filter="todos" onclick="crSetFiltro('todos')">Todos</button>
+            <button type="button" class="cr-chip" data-cr-filter="favoritos" onclick="crSetFiltro('favoritos')">Favoritos</button>
+          </div>
+          <input type="search" id="crBuscar" class="cr-search" placeholder="Buscar por código o nombre…" oninput="crRender()" autocomplete="off" />
+        </div>
+        <div class="cr-admin-hint" id="crAdminHint" hidden>Modo admin: subí o reemplazá el video de cada producto.</div>
+        <div class="cr-grid" id="crGrid"></div>
+        <div class="cr-empty" id="crEmpty" hidden>No hay videos que coincidan.</div>
+      </div>
+    </div>
+
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js (necesario para gráfico de evolución del módulo análisis cliente) -->
@@ -2074,14 +2109,14 @@
     ></div>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23305"></script>
-    <script src="script.js?v=23305"></script>
+    <script src="./version.js?v=23306"></script>
+    <script src="script.js?v=23306"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23305"></script>
+    <script src="analisis-venta-cliente.js?v=23306"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23305"></script>
-    <script src="admin-excel-krikos.js?v=23305"></script>
-    <script src="vendor-import-excel.js?v=23305"></script>
+    <script src="scotapi-shim.js?v=23306"></script>
+    <script src="admin-excel-krikos.js?v=23306"></script>
+    <script src="vendor-import-excel.js?v=23306"></script>
   </body>
 </html>
