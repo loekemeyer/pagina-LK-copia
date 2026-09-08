@@ -15690,3 +15690,21 @@ body { top: 0 !important; }
     height: 300px;
   }
 }
+
+/* Popup de producto: precios y acción (reusa .card-price-line / .add-btn) */
+.pp-prices {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+.pp-actions {
+  margin-top: 8px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.pp-actions .add-btn {
+  min-width: 240px;
+  max-width: 100%;
+}

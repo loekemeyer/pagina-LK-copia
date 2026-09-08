@@ -14765,13 +14765,58 @@ function openProdPreview(pid) {
   if (codEl)
     codEl.textContent =
       "Cod: " + (typeof codDisplay === "function" ? codDisplay(p.cod) : p.cod);
-  const priceEl = document.getElementById("ppPrice");
-  if (priceEl) {
-    priceEl.innerHTML = currentSession
-      ? 'Precio Lista: <strong>$' +
+  // Precios + botón: MISMA lógica que la card (cliente logueado ve Precio Lista
+  // y Tu Precio Contado + botón negro "Agregar al pedido"; vendedor en browse ve
+  // "Elegir razón social"; sin login, "Iniciar sesión").
+  const logged = !!currentSession;
+  const vendorBrowse =
+    typeof isVendorProfileBrowseMode === "function" && isVendorProfileBrowseMode();
+  const showListPriceOnly =
+    (typeof isListPriceOnlyClient === "function" && isListPriceOnlyClient()) ||
+    vendorBrowse;
+  const tuPrecio = logged ? unitYourPrice(p.list_price) : 0;
+  const tuPrecioContado = logged
+    ? showListPriceOnly
+      ? Number(p.list_price || 0)
+      : tuPrecio * (1 - WEB_ORDER_DISCOUNT) * (1 - 0.25)
+    : 0;
+  const pricesEl = document.getElementById("ppPrices");
+  if (pricesEl) {
+    if (!logged) {
+      pricesEl.innerHTML = "";
+    } else {
+      pricesEl.innerHTML =
+        '<div class="card-price-line">Precio Lista: <strong>$' +
         formatMoney(p.list_price) +
-        '</strong> <span class="pp-iva">+ IVA</span>'
-      : "";
+        '</strong><span class="card-iva">+ IVA</span></div>' +
+        (showListPriceOnly
+          ? ""
+          : '<div class="card-price-line">Tu Precio Contado: <strong>$' +
+            formatMoney(tuPrecioContado) +
+            '</strong><span class="card-iva">+ IVA</span></div>');
+    }
+  }
+  const badgePP = String(p.badge_status || "").trim().toUpperCase();
+  const actionsEl = document.getElementById("ppActions");
+  if (actionsEl) {
+    let btn;
+    if (badgePP === "SIN STOCK") {
+      btn = '<button class="add-btn disabled" disabled>Sin stock</button>';
+    } else if (badgePP === "PROXIMAMENTE" || badgePP === "PRÓXIMAMENTE") {
+      btn = '<button class="add-btn disabled" disabled>Próximamente</button>';
+    } else if (!logged) {
+      btn =
+        '<button class="add-btn add-login-btn" onclick="openLogin()">Iniciar sesión para ver precios</button>';
+    } else if (vendorBrowse) {
+      btn =
+        '<button class="add-btn add-vendor-browse" onclick="ppElegirRazonSocial()">Elegir razón social</button>';
+    } else {
+      btn =
+        '<button class="add-btn" onclick="addFirstBox(\'' +
+        pid +
+        "','catalogo'); cerrarProdPreview();\">Agregar al pedido</button>";
+    }
+    actionsEl.innerHTML = btn;
   }
   m.classList.remove("hidden");
   m.classList.add("open");
