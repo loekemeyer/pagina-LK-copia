@@ -579,7 +579,7 @@ function crRender() {
       const fav = _crFavs.has(cod);
       const nombre = String(p.description || "").replace(/"/g, "&quot;");
       const media = vUrl
-        ? `<video class="cr-video" controls preload="none" playsinline${
+        ? `<video class="cr-video" controls autoplay muted loop playsinline preload="metadata"${
             thumb ? ` poster="${thumb}"` : ""
           } src="${vUrl}"></video>`
         : `<div class="cr-novideo">${
@@ -660,7 +660,17 @@ window.crToggleFav = crToggleFav;
 async function crDescargarVideo(cod, btn) {
   const url = videoUrlDeCod(cod);
   if (!url) return;
-  const nombre = (PRODUCT_VIDEO_MAP.get(String(cod)) || String(cod) + ".mp4");
+  // Nombre de descarga: "Video redes Loekemeyer <producto>.<ext>"
+  const archivo = PRODUCT_VIDEO_MAP.get(String(cod)) || String(cod) + ".mp4";
+  const ext = (archivo.match(/\.\w+$/) || [".mp4"])[0].toLowerCase();
+  const prod = (Array.isArray(products) ? products : []).find(
+    (p) => String(p.cod).trim() === String(cod),
+  );
+  const desc = String((prod && prod.description) || cod)
+    .replace(/[\\/:*?"<>|]+/g, " ") // saca caracteres inválidos en nombre de archivo
+    .replace(/\s+/g, " ")
+    .trim();
+  const nombre = `Video redes Loekemeyer ${desc}${ext}`;
   const prev = btn ? btn.textContent : "";
   if (btn) { btn.disabled = true; btn.textContent = "Descargando…"; }
   try {

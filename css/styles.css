@@ -15479,3 +15479,14 @@ body { top: 0 !important; }
 #contenidoRedesModal .cr-card {
   z-index: 1;
 }
+/* Aviso "en proceso de carga" entre los filtros y la grilla de videos */
+.cr-notice {
+  background: #eaf4ff;
+  border: 1px solid #cfe4fb;
+  color: #17558a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
