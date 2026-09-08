@@ -660,17 +660,14 @@ window.crToggleFav = crToggleFav;
 async function crDescargarVideo(cod, btn) {
   const url = videoUrlDeCod(cod);
   if (!url) return;
-  // Nombre de descarga: "Video redes Loekemeyer <producto>.<ext>"
+  // Nombre de descarga: "Video redes Loekemeyer <código>.<ext>"
   const archivo = PRODUCT_VIDEO_MAP.get(String(cod)) || String(cod) + ".mp4";
   const ext = (archivo.match(/\.\w+$/) || [".mp4"])[0].toLowerCase();
-  const prod = (Array.isArray(products) ? products : []).find(
-    (p) => String(p.cod).trim() === String(cod),
-  );
-  const desc = String((prod && prod.description) || cod)
+  const codLimpio = String(cod)
     .replace(/[\\/:*?"<>|]+/g, " ") // saca caracteres inválidos en nombre de archivo
     .replace(/\s+/g, " ")
     .trim();
-  const nombre = `Video redes Loekemeyer ${desc}${ext}`;
+  const nombre = `Video redes Loekemeyer ${codLimpio}${ext}`;
   const prev = btn ? btn.textContent : "";
   if (btn) { btn.disabled = true; btn.textContent = "Descargando…"; }
   try {
