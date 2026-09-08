@@ -4386,12 +4386,13 @@ function renderProducts() {
     const imgFallback = "img/no-image.jpg";
     // Carrusel: lista de fotos del producto (mínimo la principal).
     const pcUrls = productImgUrls(p);
-    const pcMulti = pcUrls.length > 1;
-    const pcMainSrc = pcUrls[0] || imgSrc;
-    const pcUrlsAttr = pcMulti
-      ? ` data-urls='${JSON.stringify(pcUrls).replace(/'/g, "&#39;")}' data-idx="0"` +
-        ` onmouseenter="productImgHover('${pid}', 1)" onmouseleave="productImgHover('${pid}', 0)"`
-      : "";
+    const pcFront = pcUrls[0] || imgSrc; // portada = con cartón
+    const pcBack = pcUrls.length > 1 ? pcUrls[1] : null; // 2ª foto = sin cartón
+    const pcUrlsAttr =
+      pcUrls.length > 1
+        ? ` data-urls='${JSON.stringify(pcUrls).replace(/'/g, "&#39;")}'`
+        : "";
+    const altAttr = String(p.description || "").replace(/"/g, "&quot;");
 
     // ✅ Tu precio normal (se sigue usando para carrito / subtotal, no se muestra en card)
     const tuPrecio = logged ? unitYourPrice(p.list_price) : 0;
@@ -4447,27 +4448,23 @@ function renderProducts() {
       <div class="product-card" id="card-${pid}">
       ${badgeHtml}
       ${assortmentStarHtml}
-        <div class="pc-media"${pcUrlsAttr}>
+        <div class="pc-media${pcBack ? " pc-persiana" : ""}"${pcUrlsAttr} onclick="openImgZoom(this.querySelector('.pc-front').src, this.querySelector('.pc-front').alt, this.dataset.urls)">
+        ${
+          pcBack
+            ? `<img class="pc-back" src="${pcBack}" alt="" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='${imgFallback}'">`
+            : ""
+        }
         <img
           id="img-${pid}"
-          src="${pcMainSrc}"
-          alt="${String(p.description || "")}"
+          class="pc-front"
+          src="${pcFront}"
+          alt="${altAttr}"
           width="400"
           height="400"
           loading="lazy"
           style="cursor:zoom-in"
-          onclick="openImgZoom(this.src, this.alt, this.parentNode.dataset.urls)"
           onerror="this.onerror=null;this.src='${imgFallback}'"
         >
-        ${
-          pcMulti
-            ? `<button type="button" class="pc-arrow prev" aria-label="Foto anterior" onclick="productImgStep('${pid}', -1, event)">&#8249;</button>
-        <button type="button" class="pc-arrow next" aria-label="Foto siguiente" onclick="productImgStep('${pid}', 1, event)">&#8250;</button>
-        <div class="pc-dots">${pcUrls
-          .map((_, i) => `<span class="pc-dot${i === 0 ? " on" : ""}"></span>`)
-          .join("")}</div>`
-            : ""
-        }
         </div>
 
         <div class="card-top">
