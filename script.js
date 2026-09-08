@@ -14784,16 +14784,18 @@ function openProdPreview(pid) {
   if (pricesEl) {
     if (!logged) {
       pricesEl.innerHTML = "";
-    } else {
+    } else if (showListPriceOnly) {
+      // Clientes solo-precio-lista / vendedor en browse: no tienen "contado".
       pricesEl.innerHTML =
         '<div class="card-price-line">Precio Lista: <strong>$' +
         formatMoney(p.list_price) +
-        '</strong><span class="card-iva">+ IVA</span></div>' +
-        (showListPriceOnly
-          ? ""
-          : '<div class="card-price-line">Tu Precio Contado: <strong>$' +
-            formatMoney(tuPrecioContado) +
-            '</strong><span class="card-iva">+ IVA</span></div>');
+        '</strong><span class="card-iva">+ IVA</span></div>';
+    } else {
+      // Cliente normal: SOLO Tu Precio Contado.
+      pricesEl.innerHTML =
+        '<div class="card-price-line">Tu Precio Contado: <strong>$' +
+        formatMoney(tuPrecioContado) +
+        '</strong><span class="card-iva">+ IVA</span></div>';
     }
   }
   const badgePP = String(p.badge_status || "").trim().toUpperCase();
