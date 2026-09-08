@@ -513,20 +513,25 @@ function crSetFiltro(f) {
 }
 window.crSetFiltro = crSetFiltro;
 
-// Arma la grilla. Cliente: solo productos CON video. Admin: todos (para cargar).
+// Arma la grilla. Por defecto (sin buscar) muestra SOLO los productos CON video
+// —el "contenido disponible"— con la portada del producto como poster, para los
+// dos roles. El admin ve el catálogo completo SOLO al buscar por código, para
+// poder subirle video a un producto que todavía no tiene.
 function crRender() {
   const grid = document.getElementById("crGrid");
   if (!grid) return;
   const q = (document.getElementById("crBuscar")?.value || "")
     .trim()
     .toLowerCase();
+  const adminBuscando = isAdmin && !!q; // admin buscando => catálogo completo
   const base = Array.isArray(products) ? products : [];
   let list = base.filter((p) => {
     if (!p || p.active === false) return false;
     const cod = String(p.cod || "").trim();
     if (!cod) return false;
     const tieneVideo = !!(PRODUCT_VIDEO_MAP && PRODUCT_VIDEO_MAP.get(cod));
-    if (!isAdmin && !tieneVideo) return false; // el cliente solo ve los que tienen video
+    // Por defecto solo los que tienen video. El admin, al buscar, ve todos.
+    if (!tieneVideo && !adminBuscando) return false;
     if (_crFiltro === "favoritos" && !_crFavs.has(cod)) return false;
     if (q) {
       const hay = (cod + " " + String(p.description || "")).toLowerCase();
@@ -545,7 +550,16 @@ function crRender() {
   const empty = document.getElementById("crEmpty");
   if (!list.length) {
     grid.innerHTML = "";
-    if (empty) empty.hidden = false;
+    if (empty) {
+      if (q) empty.textContent = "No hay resultados para “" + q + "”.";
+      else if (_crFiltro === "favoritos")
+        empty.textContent = "Todavía no marcaste ningún favorito.";
+      else if (isAdmin)
+        empty.textContent =
+          "Todavía no hay videos. Buscá un producto por código para subir el primero.";
+      else empty.textContent = "Todavía no hay videos disponibles.";
+      empty.hidden = false;
+    }
     return;
   }
   if (empty) empty.hidden = true;
