@@ -1,0 +1,4 @@
+-- Backup 2026-09-05 — edit_order_fast ANTES del candado "facturado en Gestión" (idea 8743).
+-- Es la versión de sql/edit_order_solo_agregar.sql (v2.3.300): la misma función sin el bloque
+--   if exists (select 1 from virgilio.gv_pedido_web_estado_pagina ...) then raise ...
+-- Restore: ejecutar sql/edit_order_solo_agregar.sql tal cual.

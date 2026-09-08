@@ -2000,12 +2000,41 @@ async function loadMyOrdersUI() {
         console.warn("[orders] no se pudo leer order_tracking:", e);
       }
     }
+    // Idea 8743 (2026-09-05) — estado REAL del pedido en Gestión Virgilio (programado,
+    // en preparación, facturado, entregado) por la RPC gv_estado_mis_pedidos (FDW a la
+    // vista gv_pedido_web_estado_pagina de Virgilio). Cuando existe, manda sobre
+    // order_tracking. Si falla, el tracking de siempre queda igual.
+    const gvByOrder = {};
+    if (orderIds.length) {
+      try {
+        const { data: gv } = await supabaseClient.rpc("gv_estado_mis_pedidos", { p_ids: orderIds });
+        (gv || []).forEach((g) => (gvByOrder[String(g.order_id)] = g));
+      } catch (e) {
+        console.warn("[orders] no se pudo leer el estado de Gestión:", e);
+      }
+    }
 
-    // Calcula la etapa (0..2) y label de un pedido según order_tracking.status:
-    //  0 Recibido   — sin fila en order_tracking, o status "recibido"
-    //  1 Programado — status "programado"
-    //  2 Entregado  — status "entregado"
+    // Calcula la etapa (0..3) y label de un pedido:
+    //  0 Recibido   — sin estado en Gestión ni fila en order_tracking
+    //  1 Programado / En preparación — programado, en picking o en armado en Gestión
+    //  2 Facturado  — facturado en Gestión (ya no se puede modificar)
+    //  3 Entregado  — control de remito en Gestión, o status "entregado" del tracking
     function getOrderStage(orderId) {
+      const g = gvByOrder[String(orderId)];
+      if (g) {
+        const f = g.fecha_entrega
+          ? new Date(String(g.fecha_entrega).slice(0, 10) + "T12:00:00").toLocaleDateString("es-AR")
+          : "";
+        if (g.entregado) {
+          const fe = g.entregado_at ? new Date(g.entregado_at).toLocaleDateString("es-AR") : f;
+          return { stage: 3, label: "Entregado", subtitle: fe ? "el " + fe : "" };
+        }
+        if (g.facturado) return { stage: 2, label: "Facturado", subtitle: "ya no se puede modificar" };
+        if (g.estado === "sin_programar") return { stage: 0, label: "Recibido", subtitle: "" };
+        if (g.estado === "programado") return { stage: 1, label: "Programado", subtitle: f ? "para " + f : "" };
+        return { stage: 1, label: "En preparación", subtitle: f ? "sale el " + f : "" };
+      }
+
       const t = trackByNp[String(orderId)];
       if (!t) return { stage: 0, label: "Recibido", subtitle: "" };
 
@@ -2015,7 +2044,7 @@ async function loadMyOrdersUI() {
 
       if (t.status === "entregado") {
         return {
-          stage: 2,
+          stage: 3,
           label: "Entregado",
           subtitle: fechaStr ? "el " + fechaStr : "",
         };
@@ -2033,7 +2062,7 @@ async function loadMyOrdersUI() {
 
     function renderStepper(st) {
       const parts = [];
-      for (let i = 0; i <= 2; i++) {
+      for (let i = 0; i <= 3; i++) {
         if (i > 0) {
           parts.push(
             '<span class="o-line ' + (i <= st.stage ? "done" : "") + '"></span>',
@@ -2044,7 +2073,7 @@ async function loadMyOrdersUI() {
             (i <= st.stage ? "done" : "") +
             (i === st.stage ? " current" : "") +
             '" title="' +
-            ["Recibido", "Programado", "Entregado"][i] +
+            ["Recibido", "Programado", "Facturado", "Entregado"][i] +
             '"></span>',
         );
       }
@@ -2083,12 +2112,16 @@ async function loadMyOrdersUI() {
           Repetir Pedido
         </button>
 ${
-  isOrderEditable(order)
+  isOrderEditable(order, gvByOrder[String(order.id)])
     ? `        <div class="hist-edit-wrap">
-          <span class="hist-edit-hint">Pod&eacute;s editar hasta las 12:30 hs sin avisarnos.</span>
+          <span class="hist-edit-hint">Pod&eacute;s agregar art&iacute;culos hasta que el pedido se facture.</span>
           <button class="hist-edit-link" data-edit="${order.id}">&#9998; Editar pedido</button>
         </div>`
-    : ""
+    : (gvByOrder[String(order.id)] && (gvByOrder[String(order.id)].facturado || gvByOrder[String(order.id)].entregado)
+        ? `        <div class="hist-edit-wrap">
+          <span class="hist-edit-hint">Pedido ${gvByOrder[String(order.id)].entregado ? "entregado" : "facturado"}: ya no se puede modificar.</span>
+        </div>`
+        : "")
 }
       </div>
     </div>
@@ -2151,38 +2184,70 @@ let editingOrderId = null;
 // indica que estás editando un pedido (confundía al usuario).
 const EDITING_LS_KEY = "lk_editing_order_v1";
 
-function setEditingOrderId(orderId) {
+// Editar un pedido es SÓLO AGREGAR (idea 4990): se puede subir cantidad y sumar
+// productos nuevos, pero no bajar ni sacar lo que el pedido ya tenía. Acá vive la
+// foto de lo que tenía al abrirlo — el piso de cada línea.
+//
+// El candado de verdad NO es éste: es la RPC `edit_order_fast`, que compara contra
+// order_items y rechaza cualquier línea que baje (ver sql/edit_order_solo_agregar.sql).
+// Esto es la mitad de UX: que el cliente vea el piso ANTES de mandar, en vez de
+// llenar el carrito y comerse un error recién al confirmar.
+let editBaseQty = {};   // { productId: cajas que ya tenía el pedido }
+const EDITING_BASE_LS_KEY = "lk_editing_base_v1";
+
+function setEditingOrderId(orderId, baseQty) {
   editingOrderId = orderId ? String(orderId) : null;
+  editBaseQty = editingOrderId ? (baseQty || {}) : {};
   try {
     if (editingOrderId) {
       localStorage.setItem(EDITING_LS_KEY, editingOrderId);
+      localStorage.setItem(EDITING_BASE_LS_KEY, JSON.stringify(editBaseQty));
     } else {
       localStorage.removeItem(EDITING_LS_KEY);
+      localStorage.removeItem(EDITING_BASE_LS_KEY);
     }
   } catch (e) {}
 }
 
+/* El piso de una línea: cuántas cajas NO se pueden bajar. Devuelve 0 si no estamos
+   editando, o si el producto no estaba en el pedido original — ése se puede sacar
+   libremente, porque lo agregó el cliente en esta misma edición. */
+function editMinQty(productId) {
+  if (!editingOrderId) return 0;
+  return Number(editBaseQty[String(productId)]) || 0;
+}
+
+/* Un solo lugar para el aviso, así dice lo mismo lo toque quien lo toque: el −,
+   escribir la cantidad a mano, o la ✕. */
+function avisoSoloAgregar(min) {
+  try {
+    alert(
+      "A un pedido ya mandado sólo se le puede AGREGAR.\n\n" +
+      "Este producto ya está en el pedido con " + min + " caja(s): no se puede bajar ni sacar.\n\n" +
+      "Si necesitás sacar algo, escribinos y lo hacemos nosotros."
+    );
+  } catch (e) {}
+}
+
 // Un pedido es editable mientras NO haya salido a compras (enviado_a_compras_at
-// == null) y antes del corte de las 12:30 que se lo llevaría. Esto es solo UI;
-// la RPC vuelve a validar el flag server-side.
-function isOrderEditable(order) {
+// == null) y NO esté facturado ni entregado en Gestión Virgilio. Esto es solo UI;
+// la RPC edit_order_fast vuelve a validar las dos cosas server-side.
+//
+// Idea 8743 (2026-09-05): el mail de las 12:30 se apagó — los pedidos van directo a
+// Gestión Virgilio y el corte de las 12:30 dejó de existir. El candado pasa a ser la
+// FACTURACIÓN. Sin estado de Gestión todavía (pedido sin programar) se puede editar:
+// sólo agregar, como siempre.
+function isOrderEditable(order, gv) {
   if (!order || order.enviado_a_compras_at) return false;
-  const created = new Date(order.created_at);
-  if (isNaN(created.getTime())) return false;
-  const cutoff = new Date(created);
-  cutoff.setHours(12, 30, 0, 0);
-  const afterCutoff =
-    created.getHours() > 12 ||
-    (created.getHours() === 12 && created.getMinutes() >= 30);
-  if (afterCutoff) cutoff.setDate(cutoff.getDate() + 1);
-  return Date.now() < cutoff.getTime();
+  if (gv && (gv.facturado || gv.entregado)) return false;
+  return true;
 }
 
 async function editOrder(orderId) {
   try {
     const { data, error } = await supabaseClient
       .from("order_items")
-      .select("product_id, cajas, source")
+      .select("product_id, loke_product_id, cajas, source")
       .eq("order_id", orderId);
 
     if (error) throw error;
@@ -2191,18 +2256,38 @@ async function editOrder(orderId) {
       return;
     }
 
-    cart.splice(0, cart.length);
+    // Se SUMAN las cajas por producto y se trae también lo Loke.
+    //
+    // Los dos motivos, y los dos son de romper:
+    //  · `loke_product_id`: antes se pedía sólo `product_id`, así que las líneas
+    //    Loke no entraban al carrito y al confirmar se BORRABAN del pedido, en
+    //    silencio. Con el candado "sólo agregar" ya no se borrarían — pero el
+    //    pedido pasaría a ser inescapablemente inelegible: la RPC lo rechazaría
+    //    siempre. O sea que traerlas dejó de ser un lujo.
+    //  · la suma: un mismo producto puede estar en DOS filas del mismo pedido
+    //    (hay 18 casos reales). Sin sumar, el carrito mostraba la línea dos veces
+    //    y el piso de cada una se comparaba contra el total → el − quedaba
+    //    trabado de entrada. La RPC también suma, así que acá se hace igual.
+    const porProd = new Map();
     data.forEach((it) => {
+      const pid = it.product_id || it.loke_product_id;
       const cajas = Number(it.cajas || 0);
-      if (!it.product_id || !cajas) return;
-      cart.push({
-        productId: it.product_id,
-        qtyCajas: Math.max(1, Math.round(cajas)),
-        source: it.source || "catalogo",
-      });
+      if (!pid || !cajas) return;
+      const k = String(pid);
+      const prev = porProd.get(k);
+      if (prev) prev.qtyCajas += Math.round(cajas);
+      else porProd.set(k, { productId: pid, qtyCajas: Math.round(cajas), source: it.source || "catalogo" });
     });
 
-    setEditingOrderId(orderId);
+    cart.splice(0, cart.length);
+    const base = {};
+    for (const it of porProd.values()) {
+      it.qtyCajas = Math.max(1, it.qtyCajas);
+      cart.push({ productId: it.productId, qtyCajas: it.qtyCajas, source: it.source });
+      base[String(it.productId)] = it.qtyCajas;   // el piso de esta línea
+    }
+
+    setEditingOrderId(orderId, base);
     updateCart();
     renderProducts();
     setEditBanner(editingOrderId);
@@ -2238,7 +2323,8 @@ function setEditBanner(orderId) {
   banner.innerHTML =
     "<span>Estás editando el pedido <strong>#" +
     orderId +
-    "</strong>. Podés editar hasta las 12:30 hs sin avisarnos.</span>" +
+    "</strong>. Podés <strong>agregar</strong> hasta las 12:30 hs sin avisarnos. " +
+    "Lo que ya está en el pedido no se puede sacar ni bajar — si necesitás sacar algo, escribinos.</span>" +
     '<button type="button" id="cancelEditBtn" class="hist-btn subtle">Cancelar edición</button>';
   const cancel = document.getElementById("cancelEditBtn");
   if (cancel) cancel.onclick = cancelEdit;
@@ -5593,9 +5679,17 @@ function loadCartFromLS() {
     const savedEditing = localStorage.getItem(EDITING_LS_KEY);
     if (savedEditing && savedCart.length) {
       editingOrderId = String(savedEditing);
+      // …y con él el piso de cada línea (idea 4990). Si esto no se restaura, tras
+      // un F5 el carrito vuelve en modo edición pero SIN pisos: reaparece la ✕ y
+      // el cliente saca una línea creyendo que se puede, para que recién la RPC lo
+      // frene al confirmar. Si el parseo falla se queda en {} — el candado del
+      // server sigue estando igual, sólo se pierde el aviso temprano.
+      try { editBaseQty = JSON.parse(localStorage.getItem(EDITING_BASE_LS_KEY) || "{}") || {}; }
+      catch (e2) { editBaseQty = {}; }
     } else if (!savedCart.length) {
       // Carrito vacío → no tiene sentido conservar el flag.
       localStorage.removeItem(EDITING_LS_KEY);
+      localStorage.removeItem(EDITING_BASE_LS_KEY);
     }
   } catch (e) {}
 })();
@@ -6380,6 +6474,13 @@ function changeQty(productId, delta) {
   const item = cart.find((i) => i.productId === productId);
   if (!item) return;
 
+  // Sólo agregar (idea 4990): no se baja de lo que el pedido ya tenía.
+  const min = editMinQty(productId);
+  if (delta < 0 && item.qtyCajas + delta < min) {
+    avisoSoloAgregar(min);
+    return;
+  }
+
   item.qtyCajas += delta;
 
   if (item.qtyCajas <= 0) {
@@ -6403,6 +6504,17 @@ function manualQty(productId, value) {
   const item = cart.find((i) => i.productId === productId);
   if (!item) return;
 
+  // Sólo agregar (idea 4990). Se avisa y se devuelve el input a su valor, porque
+  // acá el cliente ya tipeó el número: dejarlo escrito haría creer que quedó.
+  const min = editMinQty(productId);
+  if (qty < min) {
+    avisoSoloAgregar(min);
+    const inp = document.querySelector(`#qty-${CSS.escape(String(productId))} input`);
+    if (inp) inp.value = item.qtyCajas;
+    updateCart();
+    return;
+  }
+
   if (qty <= 0) {
     removeItem(productId);
     return;
@@ -6414,6 +6526,12 @@ function manualQty(productId, value) {
 }
 
 function removeItem(productId) {
+  // Sólo agregar (idea 4990). Éste es el cuello de botella de TODOS los caminos que
+  // sacan una línea (la ✕, el − hasta 0, escribir 0), así que el chequeo va acá
+  // además de en cada uno: si mañana aparece otro camino, ya queda cubierto.
+  const min = editMinQty(productId);
+  if (min > 0) { avisoSoloAgregar(min); return; }
+
   const idx = cart.findIndex((i) => i.productId === productId);
   if (idx >= 0) cart.splice(idx, 1);
 
@@ -6571,18 +6689,25 @@ function updateCart() {
       const lineTotal = t.logged ? tuPrecioUnit * totalUni : 0;
 
       const pidAttr = String(item.productId).replace(/'/g, "\\'");
+      // Sólo agregar (idea 4990): si esta línea ya venía en el pedido, no se baja
+      // de ahí. La ✕ desaparece —no se muestra apagada, porque un botón gris que
+      // no hace nada invita a insistir— y el − queda deshabilitado al llegar al
+      // piso. Fuera del modo edición `min` es 0 y todo queda igual que siempre.
+      const min = editMinQty(item.productId);
+      const enElPiso = min > 0 && totalCajas <= min;
       rows += `
         <tr class="${loke ? "loke-row" : ""}${item.isUpsellPromo ? " promo-row" : ""}">
           <td><strong>${String(p.cod || "")}</strong></td>
           <td class="desc">${loke ? '<span class="loke-cart-tag">LOKE</span>' : ""}${item.isUpsellPromo ? '<span class="promo-cart-tag" style="display:inline-block;background:#ffebb3;color:#7a5100;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:6px;">PROMO 30% (pedido aparte)</span>' : ""}${splitTwoWords(p.description)}</td>
           <td>
             <div class="cart-step">
-              <button type="button" class="cart-step-btn" onclick="changeQty('${pidAttr}', -1)" aria-label="Restar una caja">−</button>
-              <input type="number" min="0" class="cart-step-input" value="${totalCajas}" onchange="manualQty('${pidAttr}', this.value)" aria-label="Cantidad de cajas" />
+              <button type="button" class="cart-step-btn" onclick="changeQty('${pidAttr}', -1)" aria-label="Restar una caja"${enElPiso ? ' disabled title="Ya está en el pedido: sólo se puede agregar"' : ""}>−</button>
+              <input type="number" min="${min || 0}" class="cart-step-input" value="${totalCajas}" onchange="manualQty('${pidAttr}', this.value)" aria-label="Cantidad de cajas" />
               <button type="button" class="cart-step-btn" onclick="changeQty('${pidAttr}', 1)" aria-label="Sumar una caja">+</button>
-              <button type="button" class="cart-step-remove" onclick="removeItem('${pidAttr}')" aria-label="Eliminar del pedido" title="Eliminar">✕</button>
+              ${min > 0 ? "" : `<button type="button" class="cart-step-remove" onclick="removeItem('${pidAttr}')" aria-label="Eliminar del pedido" title="Eliminar">✕</button>`}
             </div>
             ${cajasHintHtml(totalCajas, p.uxb)}
+            ${min > 0 ? `<div class="cart-min-hint">Ya en el pedido: ${min} — sólo se puede agregar</div>` : ""}
           </td>
           <td>${formatMoney(totalUni)}</td>
           <td>${t.logged ? "$" + formatMoney(tuPrecioUnit) + "<br><span class='cart-iva'>+ IVA</span>" : "—"}</td>
