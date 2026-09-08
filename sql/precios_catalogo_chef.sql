@@ -173,3 +173,34 @@ UNION ALL
                       WHERE c3.cod = i.cod AND COALESCE(c3.uxb,0) > 0 AND COALESCE(c3.list_price,0) > 0));
 
 select public.refrescar_item_precio_cache();
+
+-- ══════════════════════════════════════════════════════════════════════════════════════════
+-- TERCERA PASADA — cierre
+-- ══════════════════════════════════════════════════════════════════════════════════════════
+-- El dueño pasó el uxb de 55215 (24) y confirmó el de 865ED (12), que yo había deducido de la
+-- descripción de la factura ("x12"). Con eso:
+--
+--                              cajas sin ficha    %      códigos
+--   al empezar                     2.322        10.3%       81
+--   + catálogo de Chef               480         2.1%       10
+--   + los 8 a mano                   264         1.2%        4
+--   + el arreglo de la cascada       215         1.0%        2
+--   + 55215                            7         0.0%        1
+--
+-- Queda UNO: `877E`, 7 cajas del mes. Está en el catálogo de Chef con uxb 12 pero **precio 0
+-- del lado de Chef**. Lo correcto es cargarle el precio allá (entra solo por el FDW), no
+-- taparlo a mano acá.
+
+insert into public.item_precios (cod, description, uxb, list_price, category, origen, nota, actualizado_at)
+values ('55215', 'Palo de Amasar 40 cm', 24, 1990, null, 'manual',
+        'uxb del dueño (08/09). Precio: última factura Loeke 26/08/2026. No está en ningún catálogo.', now())
+on conflict (cod) do update
+  set description = excluded.description, uxb = excluded.uxb, list_price = excluded.list_price,
+      origen = excluded.origen, nota = excluded.nota, actualizado_at = now();
+
+update public.item_precios
+   set nota = 'uxb CONFIRMADO por el dueño (08/09); coincide con el "x12" de la descripción de la factura. Precio: última factura Chef 02/09/2026.',
+       actualizado_at = now()
+ where cod = '865ED';
+
+select public.refrescar_item_precio_cache();
