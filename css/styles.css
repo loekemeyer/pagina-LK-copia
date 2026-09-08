@@ -15638,3 +15638,55 @@ body { top: 0 !important; }
 .pp-arrow.next {
   right: 8px;
 }
+
+/* ============================================================
+   Toggle de densidad de grilla (4 / 3 columnas) — barra de filtros desktop
+   ============================================================ */
+.grid-view-toggle {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: 6px;
+}
+.gv-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid #d8d8d8;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.gv-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.gv-btn svg rect {
+  fill: #9a9a9a;
+}
+.gv-btn:hover {
+  border-color: #b9b9b9;
+}
+.gv-btn.on {
+  border-color: #e3000f;
+  background: #fff5f5;
+}
+.gv-btn.on svg rect {
+  fill: #e3000f;
+}
+
+/* 3 columnas: mismo ancho total que las 4, imágenes más grandes.
+   Solo desktop (a <1200px la grilla ya baja sola a 3/2/1). */
+@media (min-width: 1200px) {
+  #productsContainer.grid-3col .products-grid {
+    grid-template-columns: repeat(3, minmax(0, 382px));
+  }
+  #productsContainer.grid-3col .product-card img {
+    width: 300px;
+    height: 300px;
+  }
+}

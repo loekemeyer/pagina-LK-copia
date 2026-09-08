@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23314" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23314" />
+    <link rel="stylesheet" href="css/styles.css?v=23315" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23315" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -506,6 +506,15 @@
                     Menor a mayor precio
                   </button>
                 </div>
+              </div>
+              <!-- Cambiar densidad de la grilla (solo desktop) -->
+              <div id="gridViewToggle" class="grid-view-toggle" aria-label="Vista de grilla">
+                <button type="button" id="btnGrid4" class="gv-btn on" title="Ver 4 por fila" aria-label="Ver 4 por fila" onclick="setGridView(4)">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="1" y="1" width="8" height="8"/><rect x="11" y="1" width="8" height="8"/><rect x="1" y="11" width="8" height="8"/><rect x="11" y="11" width="8" height="8"/></svg>
+                </button>
+                <button type="button" id="btnGrid3" class="gv-btn" title="Ver 3 por fila (imágenes más grandes)" aria-label="Ver 3 por fila" onclick="setGridView(3)">
+                  <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="1" y="4" width="5.5" height="12"/><rect x="7.25" y="4" width="5.5" height="12"/><rect x="13.5" y="4" width="5.5" height="12"/></svg>
+                </button>
               </div>
             </div>
 
@@ -2127,14 +2136,14 @@
     ></div>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23314"></script>
-    <script src="script.js?v=23314"></script>
+    <script src="./version.js?v=23315"></script>
+    <script src="script.js?v=23315"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23314"></script>
+    <script src="analisis-venta-cliente.js?v=23315"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23314"></script>
-    <script src="admin-excel-krikos.js?v=23314"></script>
-    <script src="vendor-import-excel.js?v=23314"></script>
+    <script src="scotapi-shim.js?v=23315"></script>
+    <script src="admin-excel-krikos.js?v=23315"></script>
+    <script src="vendor-import-excel.js?v=23315"></script>
   </body>
 </html>

@@ -14805,6 +14805,32 @@ function ppStep(dir, ev) {
   if (img) img.src = m._ppImgs[m._ppIdx];
 }
 window.ppStep = ppStep;
+
+/* ============================================================
+   Densidad de la grilla del catálogo: 4 columnas (default) o 3 columnas
+   (mismo ancho total, imágenes más grandes). Solo tiene efecto en desktop.
+   La clase vive en #productsContainer y sobrevive a cada re-render.
+   ============================================================ */
+function setGridView(cols) {
+  const c = cols === 3 ? 3 : 4;
+  const cont = document.getElementById("productsContainer");
+  if (cont) cont.classList.toggle("grid-3col", c === 3);
+  const b3 = document.getElementById("btnGrid3");
+  const b4 = document.getElementById("btnGrid4");
+  if (b3) b3.classList.toggle("on", c === 3);
+  if (b4) b4.classList.toggle("on", c === 4);
+  try {
+    localStorage.setItem("lk_grid_cols", String(c));
+  } catch (e) {}
+}
+window.setGridView = setGridView;
+document.addEventListener("DOMContentLoaded", function () {
+  let saved = "4";
+  try {
+    saved = localStorage.getItem("lk_grid_cols") || "4";
+  } catch (e) {}
+  setGridView(saved === "3" ? 3 : 4);
+});
 document.addEventListener("keydown", function (e) {
   var overlay = document.getElementById("imgZoomOverlay");
   if (!overlay || overlay.style.display === "none") return;
