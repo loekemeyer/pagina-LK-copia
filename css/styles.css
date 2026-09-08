@@ -15605,3 +15605,36 @@ body { top: 0 !important; }
 #prodPreviewModal .pp-card {
   z-index: 1;
 }
+
+/* Flechas dentro del popup de producto (navegar entre fotos) */
+.pp-imgwrap {
+  position: relative;
+}
+.pp-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: background 0.15s ease;
+}
+.pp-arrow:hover {
+  background: rgba(0, 0, 0, 0.68);
+}
+.pp-arrow.prev {
+  left: 8px;
+}
+.pp-arrow.next {
+  right: 8px;
+}

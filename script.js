@@ -14742,15 +14742,23 @@ function openProdPreview(pid) {
   } catch (e) {
     urls = [];
   }
+  // Lista de fotos para navegar con flechas (con cartón primero).
+  m._ppImgs = Array.isArray(urls) && urls.length ? urls.slice() : ["img/no-image.jpg"];
+  m._ppIdx = 0;
   const img = document.getElementById("ppImg");
   if (img) {
-    img.src = urls[0] || "img/no-image.jpg";
+    img.src = m._ppImgs[0];
     img.alt = String(p.description || "");
     img.onerror = function () {
       this.onerror = null;
       this.src = "img/no-image.jpg";
     };
   }
+  const hayNav = m._ppImgs.length > 1;
+  const prevB = document.getElementById("ppPrev");
+  const nextB = document.getElementById("ppNext");
+  if (prevB) prevB.style.display = hayNav ? "" : "none";
+  if (nextB) nextB.style.display = hayNav ? "" : "none";
   const nameEl = document.getElementById("ppName");
   if (nameEl) nameEl.textContent = String(p.description || "");
   const codEl = document.getElementById("ppCod");
@@ -14785,6 +14793,18 @@ function ppElegirRazonSocial() {
   if (typeof scrollToCustomerSelector === "function") scrollToCustomerSelector();
 }
 window.ppElegirRazonSocial = ppElegirRazonSocial;
+
+// Navega entre las fotos del producto dentro del popup (dir: -1 / +1).
+function ppStep(dir, ev) {
+  if (ev) ev.stopPropagation();
+  const m = document.getElementById("prodPreviewModal");
+  if (!m || !Array.isArray(m._ppImgs) || m._ppImgs.length < 2) return;
+  const n = m._ppImgs.length;
+  m._ppIdx = ((m._ppIdx + dir) % n + n) % n;
+  const img = document.getElementById("ppImg");
+  if (img) img.src = m._ppImgs[m._ppIdx];
+}
+window.ppStep = ppStep;
 document.addEventListener("keydown", function (e) {
   var overlay = document.getElementById("imgZoomOverlay");
   if (!overlay || overlay.style.display === "none") return;
