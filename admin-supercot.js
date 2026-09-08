@@ -3501,9 +3501,10 @@
         payment_term: state.customer.payment_term == null ? null : Number(state.customer.payment_term),
         credit_limit: state.customer.credit_limit == null ? null : Number(state.customer.credit_limit),
         due_date: String(state.dueDate || ""),
-        // Fecha de turno de entrega (DD/MM/YYYY). Sólo INC la trae; viaja a Virgilio por
-        // v_pedidos_match → lk_pedidos_match para programar el súper directo a ese día.
-        fecha_turno: String(state.fechaTurno || ""),
+        // Fecha de turno de entrega (DD/MM/YYYY). Mismo campo canónico `fecha_entrega` que ya
+        // usa el panel de Gestión (v14.13). Sólo INC la trae acá; viaja a Virgilio por
+        // v_pedidos_match → lk_pedidos_match. Gestión programa directo SÓLO a INC (cod 1651).
+        fecha_entrega: String(state.fechaTurno || ""),
         source: "Krikos",
         items: validItems.map(function (it) {
           return {
