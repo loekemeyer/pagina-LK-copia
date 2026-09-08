@@ -14172,11 +14172,11 @@ function openImgZoom(src, alt, urls) {
       'line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">&times;</button>' +
       '<div id="imgZoomStage" style="position:relative;display:inline-block;max-width:96vw;max-height:92vh">' +
       '<button type="button" id="imgZoomPrev" aria-label="Anterior" ' +
-      'style="position:absolute;top:50%;left:8px;transform:translateY(-50%);background:rgba(0,0,0,0.45);' +
+      'style="position:absolute;top:50%;left:0;transform:translate(calc(-100% - 12px),-50%);background:rgba(255,255,255,0.18);' +
       'color:white;border:none;border-radius:50%;width:44px;height:44px;font-size:28px;line-height:1;cursor:pointer;' +
       'display:none;align-items:center;justify-content:center;z-index:5">&#8249;</button>' +
       '<button type="button" id="imgZoomNext" aria-label="Siguiente" ' +
-      'style="position:absolute;top:50%;right:8px;transform:translateY(-50%);background:rgba(0,0,0,0.45);' +
+      'style="position:absolute;top:50%;right:0;transform:translate(calc(100% + 12px),-50%);background:rgba(255,255,255,0.18);' +
       'color:white;border:none;border-radius:50%;width:44px;height:44px;font-size:28px;line-height:1;cursor:pointer;' +
       'display:none;align-items:center;justify-content:center;z-index:5">&#8250;</button>' +
       '<div id="imgZoomScroll" style="max-width:96vw;max-height:92vh;overflow:hidden;border-radius:8px;' +
