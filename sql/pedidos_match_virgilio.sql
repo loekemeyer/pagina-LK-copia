@@ -1,6 +1,11 @@
 -- =============================================================================
 -- pedidos_match_virgilio.sql — String identificador de pedido web para cruzar
 -- con Producción Virgilio, LK + CHEF, con MÉTODO DE PAGO (2026-08-28)
+-- + FECHA DE ENTREGA/TURNO del súper (2026-09-08): la LK v_pedidos_match expone
+--   fecha_entrega_txt (crudo DD/MM/YYYY de sheets_payload.fecha_entrega) y
+--   fecha_entrega (parseada a date); viajan a lk_pedidos_match. Hoy sólo INC
+--   (cod 1651, LK) la trae de su OC; Chef inserta null. (Archivo alineado con la
+--   base viva de LK el 2026-09-08.)
 -- =============================================================================
 -- PROBLEMA: Virgilio no tiene la SUCURSAL DE ENTREGA de cada pedido; los
 -- portales web sí (sheets_payload.sucursal_entrega). Para cruzar sin número de
@@ -69,6 +74,10 @@ with base as (
          (o.created_at at time zone 'America/Argentina/Buenos_Aires')::date as fecha_pedido,
          to_char(o.created_at at time zone 'America/Argentina/Buenos_Aires', 'HH24:MI:SS') as hora_pedido,
          nullif(o.sheets_payload->>'sucursal_entrega','') as sucursal_entrega,
+         -- Fecha de TURNO/entrega del súper (v14.17+): la deja el cotizador en sheets_payload.fecha_entrega
+         -- (DD/MM/YYYY). Sólo INC (Carrefour) la trae de su OC; el resto queda null. Viaja a Virgilio para
+         -- que la administrativa programe el súper a ese día (lk_pedidos_match.fecha_entrega).
+         nullif(o.sheets_payload->>'fecha_entrega','') as fecha_entrega_txt,
          o.payment_method as metodo_pago,
          (select string_agg(t.cod || 'x' ||
                    (case when t.suma = trunc(t.suma) then trunc(t.suma)::bigint::text else t.suma::text end),
@@ -92,7 +101,12 @@ select 'lk'::text as empresa,
        cod_cliente || '|' || to_char(fecha_pedido,'YYYY-MM-DD') || '|' || items_string as match_string,
        count(*) over w > 1
          and min(coalesce(sucursal_entrega,'~')) over w <> max(coalesce(sucursal_entrega,'~')) over w as ambiguo,
-       row_number() over (partition by cod_cliente, fecha_pedido, items_string order by created_at, order_id) as orden_en_dia
+       row_number() over (partition by cod_cliente, fecha_pedido, items_string order by created_at, order_id) as orden_en_dia,
+       fecha_entrega_txt,
+       -- DD/MM/YYYY (o D.M.YYYY / D-M-YYYY) → date; cualquier otra cosa → null
+       case when fecha_entrega_txt ~ '\d{1,2}[/.-]\d{1,2}[/.-]\d{4}'
+            then to_date(translate(substring(fecha_entrega_txt from '\d{1,2}[/.-]\d{1,2}[/.-]\d{4}'), '.-', '//'), 'DD/MM/YYYY')
+            else null::date end as fecha_entrega
 from base
 window w as (partition by cod_cliente, fecha_pedido, items_string);
 
@@ -101,6 +115,9 @@ revoke all on public.v_pedidos_match from public, anon, authenticated;
 -- -----------------------------------------------------------------------------
 -- Vista fuente CHEF (misma lógica sobre chef_orders; cod_cliente del payload
 -- con fallback al padrón por customer_id)
+-- NOTA: la vista de Chef NO expone fecha_entrega (hoy sólo INC, que es LK, la trae).
+-- El sync inserta null::date/null::text para Chef; si mañana un súper de Chef la
+-- necesita, agregar acá las mismas columnas que en v_pedidos_match.
 -- -----------------------------------------------------------------------------
 drop view if exists public.v_pedidos_match_chef;
 create view public.v_pedidos_match_chef as
@@ -161,7 +178,9 @@ create foreign table virgilio.lk_pedidos_match (
   items_string     text,
   match_string     text,
   ambiguo          boolean,
-  orden_en_dia     bigint
+  orden_en_dia     bigint,
+  fecha_entrega     date,      -- turno del súper parseado a date (sólo INC hoy; Chef null)
+  fecha_entrega_txt text       -- el crudo DD/MM/YYYY tal como vino en sheets_payload
 ) server virgilio_db options (schema_name 'public', table_name 'lk_pedidos_match');
 
 -- -----------------------------------------------------------------------------
@@ -187,9 +206,11 @@ begin
 
   insert into virgilio.lk_pedidos_match
     (empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-     sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia)
+     sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia,
+     fecha_entrega, fecha_entrega_txt)
   select empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-         sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia
+         sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia,
+         fecha_entrega, fecha_entrega_txt
     from public.v_pedidos_match
    where fecha_pedido >= v_corte;
 
@@ -203,9 +224,11 @@ begin
 
     insert into virgilio.lk_pedidos_match
       (empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-       sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia)
+       sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia,
+       fecha_entrega, fecha_entrega_txt)
     select empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
-           sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia
+           sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia,
+           null::date, null::text
       from public.v_pedidos_match_chef
      where fecha_pedido >= v_corte;
   exception when others then
