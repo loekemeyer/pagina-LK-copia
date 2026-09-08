@@ -4679,6 +4679,13 @@ input[type="number"].manual-cell {
 .gv-dot-fri { background: #ef4444; }
 .gv-leyenda-nota { font-style: italic; }
 
+.gv-vend-zona {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  align-self: center;
+}
+
 /* ---- Ratio ---- */
 .gv-nivel-switch { display: flex; gap: 6px; margin-bottom: 14px; }
 

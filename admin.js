@@ -11709,6 +11709,7 @@ function toggleEstCard(bodyId, headEl) {
   // cobertura por localidad son consultas caras que no hacen falta si nadie
   // despliega la tarjeta.
   if (estabaOculto && bodyId === "gvMapaBody") cargarMapaGerente();
+  if (estabaOculto && bodyId === "gvVendMapaBody") cargarMapaVendedores();
   if (estabaOculto && bodyId === "gvRatioBody") cargarRatioGerente();
   if (estabaOculto && bodyId === "gvRindeBody") cargarRindeGerente();
   if (estabaOculto && bodyId === "gvSenalesBody") cargarSenalesGerente();
@@ -13007,6 +13008,243 @@ function gvZoomProvincia(prov) {
   });
 }
 window.gvZoomProvincia = gvZoomProvincia;
+
+// ---- MAPA POR VENDEDOR --------------------------------------------------
+//
+// Misma base que el mapa de cobertura (SVG de argentina-map-data + arMapProject),
+// pero los puntos salen de gv_mapa_vendedores, que abre la cartera por vendedor.
+// Elegís un vendedor y se pintan SOLO sus clientes, para ver a qué zona atiende.
+// Tiene su propio tooltip y su propio zoom para no pisar el mapa de al lado, que
+// usa IDs fijos (gvMapaSlot/gvMapaTip/gvZoomProv).
+
+var _gvVendData = null; // filas crudas de la RPC, se cachean
+var _gvVendVB = null; // viewBox del país, para volver del zoom
+var _gvVendProv = ""; // provincia acercada
+
+function cargarMapaVendedores() {
+  var slot = document.getElementById("gvVendMapaSlot");
+  if (!slot) return;
+  slot.textContent = "Cargando mapa…";
+
+  var pedirDatos = _gvVendData
+    ? Promise.resolve(_gvVendData)
+    : sb.rpc("gv_mapa_vendedores", { p_meses: 12 }).then(function (resp) {
+        if (resp.error) throw resp.error;
+        _gvVendData = resp.data || [];
+        return _gvVendData;
+      });
+
+  Promise.all([loadArgentinaMapSvg(), pedirDatos])
+    .then(function (res) {
+      slot.innerHTML = res[0];
+      _gvVendLlenarSelect(res[1]);
+      gvVendRender();
+    })
+    .catch(function (err) {
+      slot.innerHTML =
+        '<div class="gv-cargando">No se pudo cargar el mapa: ' + escHtml(err.message) + "</div>";
+    });
+}
+window.cargarMapaVendedores = cargarMapaVendedores;
+
+function _gvVendLlenarSelect(filas) {
+  var sel = document.getElementById("gvVendSel");
+  if (!sel || sel.options.length > 1) return;
+  // Total de clientes por vendedor, para ordenarlos de mayor a menor cartera.
+  var tot = {};
+  filas.forEach(function (f) {
+    tot[f.vendor] = (tot[f.vendor] || 0) + Number(f.clientes || 0);
+  });
+  Object.keys(tot)
+    .sort(function (a, b) {
+      return tot[b] - tot[a];
+    })
+    .forEach(function (v) {
+      var o = document.createElement("option");
+      o.value = v;
+      o.textContent = (RANK_VEND_ALIAS[v] || v) + " (" + tot[v] + ")";
+      sel.appendChild(o);
+    });
+}
+
+function gvVendRender() {
+  var slot = document.getElementById("gvVendMapaSlot");
+  var svgEl = slot && slot.querySelector(".ar-map-svg");
+  if (!svgEl || !_gvVendData) return;
+
+  var vend = (document.getElementById("gvVendSel") || {}).value || "";
+  var filas = vend
+    ? _gvVendData.filter(function (f) {
+        return f.vendor === vend;
+      })
+    : _gvVendData;
+
+  // Se rearma el mapa desde cero para no acumular pines de la selección anterior.
+  var vieja = svgEl.querySelector("g.gv-pines");
+  if (vieja) vieja.remove();
+
+  // Vuelve al encuadre de país en cada cambio de vendedor: si no, los pines
+  // nuevos se dibujan a tamaño base sobre un viewBox acercado y quedan enormes.
+  if (!_gvVendVB) _gvVendVB = svgEl.getAttribute("viewBox");
+  else svgEl.setAttribute("viewBox", _gvVendVB);
+  _gvVendProv = "";
+  svgEl.querySelectorAll("[data-prov]:not(.gv-pin)").forEach(function (p) {
+    p.classList.remove("gv-prov-on", "gv-prov-off");
+  });
+
+  var resumen = document.getElementById("gvVendResumen");
+  var zonaEl = document.getElementById("gvVendZona");
+
+  if (typeof ARGENTINA_MAP_PROJECTION === "undefined" || !ARGENTINA_MAP_PROJECTION) {
+    if (resumen) resumen.textContent = "mapa de respaldo, sin pines (no cargó el contorno real)";
+    return;
+  }
+
+  var conCoord = filas.filter(function (f) {
+    return f.lat != null && f.lon != null;
+  });
+  var maxCli = Math.max.apply(
+    null,
+    conCoord
+      .map(function (f) {
+        return Number(f.clientes) || 1;
+      })
+      .concat([1]),
+  );
+
+  var ns = "http://www.w3.org/2000/svg";
+  var g = document.createElementNS(ns, "g");
+  g.setAttribute("class", "gv-pines");
+
+  conCoord.forEach(function (f) {
+    var p = arMapProject(Number(f.lon), Number(f.lat));
+    if (!p) return;
+    // Rojo = mayoría inactivos, verde = mayoría activos. Mismo criterio de color
+    // que el otro mapa, pero acá el eje es la salud de la cartera del vendedor.
+    var relAct = f.clientes ? 1 - Number(f.activos) / Number(f.clientes) : null;
+    var cls = _gvClaseTemp(relAct == null ? null : relAct / 0.5);
+    var r = 1.2 + 4.5 * Math.sqrt((Number(f.clientes) || 1) / maxCli);
+    var c = document.createElementNS(ns, "circle");
+    c.setAttribute("cx", p.x.toFixed(2));
+    c.setAttribute("cy", p.y.toFixed(2));
+    c.setAttribute("r", r.toFixed(2));
+    c.dataset.r = r.toFixed(3);
+    c.setAttribute("class", "gv-pin " + (cls || "gv-sin"));
+    c.dataset.loc = f.localidad;
+    c.dataset.pprov = f.provincia;
+    c.dataset.cli = f.clientes;
+    c.dataset.act = f.activos;
+    g.appendChild(c);
+  });
+  svgEl.appendChild(g);
+  _gvVendWireTip(svgEl);
+  _gvVendWireZoom(svgEl);
+
+  // Índice de zona: reparto de clientes por provincia del vendedor elegido.
+  if (zonaEl) {
+    if (!vend) {
+      zonaEl.textContent = "";
+    } else {
+      var porProv = {};
+      filas.forEach(function (f) {
+        porProv[f.provincia] = (porProv[f.provincia] || 0) + Number(f.clientes || 0);
+      });
+      var arr = Object.keys(porProv)
+        .map(function (k) {
+          return { prov: k, cli: porProv[k] };
+        })
+        .sort(function (a, b) {
+          return b.cli - a.cli;
+        });
+      var totCli = arr.reduce(function (s, x) {
+        return s + x.cli;
+      }, 0);
+      var top2 = arr.slice(0, 2).reduce(function (s, x) {
+        return s + x.cli;
+      }, 0);
+      var pct = totCli ? Math.round((100 * top2) / totCli) : 0;
+      var etiqueta = pct >= 75 ? "zona clara" : pct >= 50 ? "zona difusa" : "sin zona (itinerante)";
+      var topTxt = arr
+        .slice(0, 2)
+        .map(function (x) {
+          return x.prov + " " + x.cli;
+        })
+        .join(", ");
+      zonaEl.textContent =
+        "Índice de zona " + pct + "% en top-2 (" + topTxt + ") · " + arr.length +
+        " provincias · " + etiqueta;
+    }
+  }
+
+  if (resumen) {
+    resumen.textContent = conCoord.length + " localidades ubicadas";
+  }
+}
+window.gvVendRender = gvVendRender;
+
+function _gvVendWireTip(svgEl) {
+  var tip = document.getElementById("gvVendMapaTip");
+  var wrap = svgEl.closest(".gv-mapa-wrap");
+  if (!tip || !wrap) return;
+  svgEl.querySelectorAll(".gv-pin").forEach(function (c) {
+    c.addEventListener("mouseenter", function () {
+      var html =
+        "<strong>" + escHtml(c.dataset.loc) + "</strong>" +
+        escHtml(c.dataset.pprov) + "<br>" +
+        c.dataset.cli + " clientes · " + c.dataset.act + " activos";
+      tip.innerHTML = html;
+      tip.style.display = "block";
+    });
+    c.addEventListener("mousemove", function (ev) {
+      var r = wrap.getBoundingClientRect();
+      tip.style.left = ev.clientX - r.left + 14 + "px";
+      tip.style.top = ev.clientY - r.top + 14 + "px";
+    });
+    c.addEventListener("mouseleave", function () {
+      tip.style.display = "none";
+    });
+  });
+}
+
+function _gvVendWireZoom(svgEl) {
+  if (!_gvVendVB) _gvVendVB = svgEl.getAttribute("viewBox");
+  svgEl.querySelectorAll("[data-prov]:not(.gv-pin)").forEach(function (p) {
+    if (p._gvVendWired) return;
+    p._gvVendWired = true;
+    p.style.cursor = "pointer";
+    p.addEventListener("click", function () {
+      var prov = p.getAttribute("data-prov");
+      _gvVendZoom(svgEl, prov === _gvVendProv ? "" : prov);
+    });
+  });
+}
+
+function _gvVendZoom(svgEl, prov) {
+  if (!_gvVendVB) return;
+  _gvVendProv = prov || "";
+  var base = _gvVendVB.split(/\s+/).map(Number);
+  var vb = base;
+  if (prov) {
+    var path = svgEl.querySelector('[data-prov="' + prov.replace(/"/g, '\\"') + '"]');
+    if (path) {
+      var b = path.getBBox();
+      var m = Math.max(b.width, b.height) * 0.08;
+      vb = [b.x - m, b.y - m, b.width + 2 * m, b.height + 2 * m];
+    }
+  }
+  svgEl.setAttribute("viewBox", vb.join(" "));
+  var escala = base[2] / vb[2];
+  svgEl.querySelectorAll(".gv-pin").forEach(function (c) {
+    var r = parseFloat(c.dataset.r || "2");
+    c.setAttribute("r", (r / escala).toFixed(3));
+    c.style.strokeWidth = (0.35 / escala).toFixed(3);
+  });
+  svgEl.querySelectorAll("[data-prov]:not(.gv-pin)").forEach(function (p) {
+    var esta = p.getAttribute("data-prov") === prov;
+    p.classList.toggle("gv-prov-on", !!prov && esta);
+    p.classList.toggle("gv-prov-off", !!prov && !esta);
+  });
+}
 
 // ---- GEOCODIFICACIÓN ----------------------------------------------------
 //
