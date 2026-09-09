@@ -621,8 +621,20 @@ select item_code, count(*), sum(boxes) from sales_lines
 where empresa='lk' and item_code like '<cod>%' group by 1;
 ```
 
-Existe `chef_item_remap` (from_code → to_code) para las grafías de Chef, pero **no cubre el
-sufijo L**.
+**El sufijo L YA ESTÁ RESUELTO en `item_precios`, no es una pregunta abierta.** El 4/9/2026 se
+cargaron los 78 códigos con `origen = 'variante_L'`, su `base_cod` apuntando al código original
+y la nota *"Variante para cliente puntual. Mismo precio que el codigo base (confirmado por el
+usuario, 4/9/2026)"*. Por eso `v_item_precio` los valoriza bien y `products` no: **el maestro de
+artículos nunca los tuvo, y no hace falta que los tenga**. Lo que hay que recordar es que
+`sales_lines` guarda el código CON sufijo, así que cualquier join contra `products` los pierde.
+
+Existe además `chef_item_remap` (from_code → to_code) para las grafías de Chef.
+
+**Antes de declarar un artículo "sin alta", mirar `item_precios`**: tiene `base_cod`, `nota` y
+`actualizado_at` justamente para dejar asentado el criterio de cada carga manual. De los 169
+artículos que en julio-agosto no estaban en `products`/`loke_products`, **166 sí tenían precio**:
+80 salían de `chef_products`, 78 de las variantes L y 8 de cargas manuales. Sin alta real había
+**3**: `702EN`, `877E` y `730D`.
 
 ## 5. No todo lo que dice `empresa='lk'` es de Loekemeyer
 
@@ -672,7 +684,7 @@ Son **tres problemas distintos**, no uno:
 | Grupo | Clientes | Líneas | Cajas | Qué es | Qué hacer |
 |---|---|---|---|---|---|
 | **A** | 34 | 551 | 2.950 | **Chef cargado como LK.** 33 de 34 tienen historial en `chef`, **ninguno** tiene venta previa en `lk`. 92% de sus líneas usa artículos del catálogo de Chef. | Remarcar como `empresa='chef'`. **No borrar**: son ventas reales en la empresa equivocada. |
-| **B** | 22 | 789 | 3.455 | **Sufijo L/EL**, concentrado en Relca (427 líneas) y Malambo (126). 75 de 78 códigos existen en el padrón LK sin el sufijo. | Definir qué significa la "L". Si es grafía, normalizar. **Pregunta para quien arma el Excel.** |
+| **B** | 22 | 789 | 3.455 | **Sufijo L/EL**, concentrado en Relca (427 líneas) y Malambo (126). Es una **variante de código para un cliente puntual, mismo precio que el base** — ya resuelto en `item_precios` el 4/9/2026 (`origen='variante_L'`). | Nada urgente: `v_item_precio` los valoriza bien. Solo cuidar que ningún cálculo joinee contra `products` a secas. |
 | **C** | 26 | 32 | 403 | Clientes LK legítimos (25 de 26 con historial previo) con artículos que faltan dar de alta. | Alta de artículos en el padrón. |
 
 **Mientras no se corrija, el grupo A ensucia todo lo que lee la facturación de Loekemeyer**:
