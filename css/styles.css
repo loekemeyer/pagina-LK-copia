@@ -3990,9 +3990,16 @@ body.section-perfil #navSearch {
 }
 
 .user-toggle-caret {
-  font-size: 12px;
+  font-size: 16px; /* un poco más grande */
+  line-height: 1;
   opacity: 1;
   color: #e3000f; /* flechita roja */
+  display: inline-block;
+  transition: transform 0.22s ease;
+}
+/* Al abrir el menú (aria-expanded=true) la flecha gira apuntando hacia arriba */
+.user-toggle-btn[aria-expanded="true"] .user-toggle-caret {
+  transform: rotate(180deg);
 }
 
 .user-toggle-btn .profile-avatar {
