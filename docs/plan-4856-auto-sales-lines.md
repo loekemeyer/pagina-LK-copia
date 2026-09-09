@@ -305,3 +305,16 @@ artículo (Estadística Madre), que necesita líneas.
   comparación cada mes; el termómetro ya está en verde a nivel cliente/cobertura.
 - Verificación (scratchpad de la sesión): `recon6.py` sobre `sales_lines` ago vs
   `comprobantes_venta` FC ago.
+
+### Los 15 clientes con cajas distintas — resueltos (2026-09-09)
+Eran un **artefacto de comparación**: comparé `sales_lines` NETO (ya resta NC) contra
+`comprobantes_venta` **solo-FC**. Comparando **NETO vs NETO** (`sum(total_cajas*signo)`),
+las 15 bajan a 10 y de esas:
+- **~7 son de ±3-4 cajas** (redondeo / una caja) — inmateriales.
+- **3 de fondo (2447 −169, 1903 −70, 2128 −158) son Chef-de-Loeke**: ventas de Chef de
+  art Loeke que el Excel taguea lk y el parser asigna (bien) a CH. Ejemplo 2128 verificado:
+  08-06 = 602 (LK, coincide) + 08-14 = 159 (el parser las factura CH, punto de venta
+  00005xxx) → el Excel las sumó a lk de más.
+- **0 gaps genuinos del parser**: no falta ningún comprobante.
+- **Conclusión**: donde el parser difiere del Excel, el parser tiene razón (marca correcta).
+  No solo empata el Excel a nivel cliente — lo corrige. Verif: `recon6.py` + net-vs-net.
