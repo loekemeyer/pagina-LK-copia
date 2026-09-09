@@ -530,3 +530,166 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   la desduplicación de Chef quedó bien.
 - `v_orders_origen` tiene una rama del `CASE` redundante y un `JOIN` que debería ser
   `LEFT JOIN`.
+
+---
+
+# Reportes de ventas por cliente — checklist obligatorio
+
+**Escrito el 9/9/2026 después de un reporte que salió mal cuatro veces seguidas** ("clientes
+que no compran el artículo 504"). Los tres errores no fueron de cálculo: fueron **supuestos
+sobre el significado de los datos que no se verificaron contra la base**. Antes de entregar
+cualquier ranking de clientes por volumen, recorrer esta lista.
+
+## 1. Precios: la fuente es `v_item_precio`, NO `products`
+
+**`products` + `loke_products` NO alcanzan para valorizar ventas.** Medido sobre los 369
+artículos vendidos en 4 meses: esa combinación deja **170 sin resolver y 5 en $0 — 175 mal
+valorizados (47%)**. `v_item_precio` cubre 362 de 369 y ninguno en cero, porque además de los
+dos padrones consulta `item_precios` (precios cargados a mano, columna `fuente` =
+`item_precios:manual`).
+
+Los artículos de la línea Loke son el caso típico: `120` (Filtro de Café) y `193` (Tostador
+Enlozado) **no existen en `products` y valen $0 en `loke_products`**, pero tienen $1.040 y
+$4.950 en `v_item_precio`. El cliente 4112 (Diarco) compró 47 y 88 cajas de ellos: su volumen
+pasó de $4,3 M a $10,6 M al corregir la fuente, y **cambió el puesto 1 del ranking**.
+
+**Chequeo antes de entregar:** contar cuántos artículos del período quedan sin precio. Si no
+es cero o casi, la fuente está mal.
+
+```sql
+select count(distinct s.item_code) filter (where v.cod is null) as sin_precio,
+       count(distinct s.item_code) as total
+from sales_lines s left join v_item_precio v on v.cod = s.item_code
+where s.empresa='lk' and s.invoice_date >= '<desde>'
+  and s.item_code not in (select item_code from sales_excluded_items);
+```
+
+Sin el filtro de `sales_excluded_items` da 16 de 378 en vez de 7 de 369: los códigos
+administrativos tampoco tienen precio y ensucian el chequeo.
+
+## 2. "Compró X" incluye los pedidos web sin facturar
+
+`sales_lines` es solo lo **facturado**. Un cliente que pidió el artículo por el portal la
+semana pasada todavía no aparece ahí, pero **comercialmente ya lo compró**: ofrecérselo es
+quedar mal. Para un reporte de "a quién ofrecerle X" hay que cruzar también `order_items`.
+
+```sql
+-- quién pidió el artículo por el portal (facturado o no)
+select distinct cu.cod_cliente
+from order_items oi
+join orders o   on o.id = oi.order_id
+join customers cu on cu.id = o.customer_id
+join products p on p.id = oi.product_id     -- OJO: order_items.product_id es uuid, no el código
+where o.created_at >= '<desde>' and p.cod = '<articulo>';
+```
+
+**`order_items` no tiene `product_cod`**: se joinea por `product_id` (uuid) contra
+`products.id`. Para artículos Loke, por `loke_product_id`.
+
+**Pero los pedidos web NO se suman al volumen.** Desde 2026 el ~99% de los pedidos entra por
+el portal y después se factura, así que sumar `orders.total` + `sales_lines` **cuenta dos
+veces la misma operación** (verificado: mediana del cociente exactamente 2,00). Regla:
+`orders`/`order_items` sirven para *saber si pidió*, nunca para *cuánto compró*.
+
+## 3. Una devolución no es una compra
+
+`sales_lines.boxes` puede ser negativo. Sin filtrar, un cliente que solo devolvió mercadería
+figura como activo. Exigir **al menos una compra positiva** en la ventana:
+
+```sql
+having sum(case when boxes > 0 then boxes else 0 end) > 0
+```
+
+**Y el ranking se ordena por compras positivas, no por neto** (decisión del usuario, 9/9/2026).
+Una devolución puede corresponder a mercadería vendida *antes* del período y hace parecer chico
+a un cliente que hoy compra fuerte: Diarco compró $15,5 M y devolvió $4,9 M — por neto salía
+3.º, por compras es el 1.º. Mostrar **tres columnas: Compras · Devoluciones · Venta neta**, así
+las devoluciones quedan a la vista sin distorsionar el orden. 18 de 121 clientes tenían
+devoluciones.
+
+## 4. Un mismo artículo puede estar cargado con varias grafías
+
+Buscar `item_code = '504'` no encuentra `504L`, que es el mismo Afila Cuchillos. Desde julio
+2026 hay 78 códigos con sufijo `L`/`EL` cuyo código base sí existe en el padrón (75 de 78).
+Por eso Relca y Malambo aparecían como "no compran el 504" cuando lo compran.
+
+Usar `item_code LIKE '504%'` o normalizar, y **revisar siempre qué variantes existen** antes de
+filtrar por un código:
+
+```sql
+select item_code, count(*), sum(boxes) from sales_lines
+where empresa='lk' and item_code like '<cod>%' group by 1;
+```
+
+**El sufijo L YA ESTÁ RESUELTO en `item_precios`, no es una pregunta abierta.** El 4/9/2026 se
+cargaron los 78 códigos con `origen = 'variante_L'`, su `base_cod` apuntando al código original
+y la nota *"Variante para cliente puntual. Mismo precio que el codigo base (confirmado por el
+usuario, 4/9/2026)"*. Por eso `v_item_precio` los valoriza bien y `products` no: **el maestro de
+artículos nunca los tuvo, y no hace falta que los tenga**. Lo que hay que recordar es que
+`sales_lines` guarda el código CON sufijo, así que cualquier join contra `products` los pierde.
+
+Existe además `chef_item_remap` (from_code → to_code) para las grafías de Chef.
+
+**Antes de declarar un artículo "sin alta", mirar `item_precios`**: tiene `base_cod`, `nota` y
+`actualizado_at` justamente para dejar asentado el criterio de cada carga manual. De los 169
+artículos que en julio-agosto no estaban en `products`/`loke_products`, **166 sí tenían precio**:
+80 salían de `chef_products`, 78 de las variantes L y 8 de cargas manuales. Sin alta real había
+**3**: `702EN`, `877E` y `730D`.
+
+## 5. No todo lo que dice `empresa='lk'` es de Loekemeyer
+
+Un código de cliente con ventas marcadas `lk` **no garantiza** que sea cliente de Loekemeyer.
+Al 9/9/2026 hay 34 códigos con ventas `lk` desde julio que **no tienen ficha en `customers`** y
+sí están en `chef_padron` — son ventas de Chef mal cargadas (ver la sección de anomalías abajo).
+El caso testigo: el código 2686 es **Dorinka S.R.L., de Chef**, y con $40 M encabezaba un
+ranking de clientes de Loekemeyer.
+
+**Filtrar siempre contra el padrón**, no confiar solo en la columna `empresa`:
+
+```sql
+... where exists (select 1 from customers c where c.cod_cliente::text = s.customer_code)
+```
+
+Un cliente que sale "(sin razón social)" es una señal de alarma, no una fila más del ranking.
+Y **nunca resolver el nombre desde `Wpp_Clientes` sin filtrar `marca='LK'`**: 63 códigos
+figuran con las dos marcas y 62 con razón social distinta.
+
+## 6. Valorización: la cadena completa
+
+```
+cajas × uxb × list_price × (1 - customers.dto_vol) × (1 - web_order_discount)
+```
+
+`list_price` es **por unidad, no por caja**: sin el `uxb` el monto sale dividido por las
+unidades por caja (promedio 12,1, rango 1 a 100). Y excluir siempre
+`sales_excluded_items` (descuentos por pago, notas de crédito, agregados de ISIS): son 21
+códigos administrativos que si se cuentan como compra corren la fecha de última compra.
+
+---
+
+# Anomalía de carga de julio-agosto 2026 — SIN RESOLVER
+
+Auditado el 9/9/2026. **1.372 líneas marcadas `empresa='lk'` con artículos que no existen en el
+padrón de Loekemeyer**, en 82 clientes. Entraron por dos importaciones manuales:
+`import_batch = 'julio_26'` (cargada el 3/8) y `'ago-26'` (cargada el 2/9). La serie deja el
+salto aislado: histórico 0,1% · feb-jun 1,2% · **julio 17,3% · agosto 14,1%**.
+
+Encaja con un segundo hecho: **la última factura cargada como `empresa='chef'` es del
+30/06/2026**. Desde julio no entró ninguna. Las ventas de Chef no se duplicaron — se desviaron.
+(Verificado: cero de las 1.372 líneas coincide con algo ya cargado como chef por
+cliente+artículo+fecha+cajas.)
+
+Son **tres problemas distintos**, no uno:
+
+| Grupo | Clientes | Líneas | Cajas | Qué es | Qué hacer |
+|---|---|---|---|---|---|
+| **A** | 34 | 551 | 2.950 | **Chef cargado como LK.** 33 de 34 tienen historial en `chef`, **ninguno** tiene venta previa en `lk`. 92% de sus líneas usa artículos del catálogo de Chef. | Remarcar como `empresa='chef'`. **No borrar**: son ventas reales en la empresa equivocada. |
+| **B** | 22 | 789 | 3.455 | **Sufijo L/EL**, concentrado en Relca (427 líneas) y Malambo (126). Es una **variante de código para un cliente puntual, mismo precio que el base** — ya resuelto en `item_precios` el 4/9/2026 (`origen='variante_L'`). | Nada urgente: `v_item_precio` los valoriza bien. Solo cuidar que ningún cálculo joinee contra `products` a secas. |
+| **C** | 26 | 32 | 403 | Clientes LK legítimos (25 de 26 con historial previo) con artículos que faltan dar de alta. | Alta de artículos en el padrón. |
+
+**Mientras no se corrija, el grupo A ensucia todo lo que lee la facturación de Loekemeyer**:
+Ranking de Inactivos, dashboard de ventas, estadística madre y las proyecciones de las OC de
+Virgilio. Son clientes que figuran como "dejaron de comprar" sin haber comprado nunca.
+
+Queda pendiente además averiguar **por qué se cortó la carga de Chef en julio** — eso está
+fuera de la base, en el proceso de importación.
