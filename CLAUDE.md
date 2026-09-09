@@ -422,41 +422,35 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
 
 ### Gerente de ventas
 
-- **INTEGRACIÓN CON TELEGRAM — pedido explícito del usuario (3/8/2026).** Quiere que las
-  5 acciones del día lleguen por Telegram, y pidió que se le recuerde a medida que el
-  módulo se desarrolle. **Hoy no hay NADA de Telegram en el proyecto**: 0 coincidencias en
-  el repo, 0 tablas o columnas en Supabase (las 11 `bot_*` son WhatsApp, con `telefono`
-  como clave), 0 de las 24 Edge Functions y 0 secretos en el vault. Si el bot existe, vive
-  en n8n, que no es alcanzable desde una sesión de Claude.
-  Falta que el usuario provea: (1) el **bot token**, que va en los secretos de Supabase
-  como `TELEGRAM_BOT_TOKEN` y **NUNCA en el repo** (es público y se sirve por GitHub
-  Pages), y (2) el **chat id** del grupo o de cada destinatario. Alternativa más corta si
-  el bot ya está en n8n: pegarle al webhook de n8n y no mover el token.
-  El transporte es lo único que falta —`gv_sugerencias` ya guarda las acciones y
-  `gv_agenda` las devuelve armadas— y el patrón ya existe cinco veces (`pg_cron` →
-  `net.http_post` → Edge Function: `retry-sheets`, `asoc-timeout-cron`,
-  `ig-token-refresh`, `notify-tracking-every-minute`). Sería una Edge Function
-  `gerente-ventas-telegram` más un cron a las 07:35 UTC-3, cinco minutos después del que
-  genera la agenda. **Dos decisiones para preguntarle cuando se encare**: si va a un grupo
-  único o segmentado por vendedor, y si quiere botones inline para marcar *Sirvió / No
-  sirvió* desde el propio Telegram — eso cerraría el ciclo de aprendizaje sin entrar al
-  panel, pero necesita un webhook con `verify_jwt: false` y su propio secreto.
+- **Telegram de la agenda — RESUELTO (9/9/2026).** Las 5 acciones del día salen por el
+  **bot existente** `@Lk_gerencia_bot` (token en Vault `telegram_bot_token`, el mismo que
+  usan los reportes `rep_*`). **Envío + ruteo**: `gv_enviar_agenda_telegram(p_fecha)` —
+  gerencia → `chat_gerencia`, resto → `chat_faltantes` (grupo "Faltantes Virgilio"), según
+  la tabla `gv_telegram_config` (`chat_gerencia`/`chat_faltantes`/`gerencia_vendedores`);
+  encola con `tg_enqueue_botones` y sale por `tg_outbox_flush` (cron 28). Cron
+  `gerente-ventas-agenda-telegram` (job 37, `35 10 * * *` = 07:35 ART, 5 min después del
+  generador job 18). **Botones** 👍/👎 (utilidad) y ✅/❌ (resultado) → webhook Edge Function
+  `gerente-ventas-telegram-webhook` (verify_jwt off, secreto en
+  `gv_telegram_config.webhook_secret`) → RPC `gv_telegram_webhook` (usa el token del Vault
+  para `answerCallbackQuery`/`editMessageReplyMarkup`) → `gv_telegram_callback`. La Edge
+  Function `gerente-ventas-telegram` quedó **deprecada** (stub HTTP 410, borrable del
+  dashboard). Para cambiar destinos o vendedores de gerencia: editar `gv_telegram_config`.
 - **La población por provincia cargada es PROVISORIA**: suma 46.082.944 contra los
   46.044.703 del Censo 2022 (~38.241 de más). Reemplazar con el dato oficial del INDEC vía
   `gv_set_poblacion(provincia, NULL, poblacion, fuente, anio)`.
 - **La población por localidad no está cargada**, así que la pestaña "Por localidad" del
   ratio sale sin números. El mapa igual anda: los pines se dimensionan por sucursales.
-- **Quedan 78 localidades sin geocodificar de 439** (corrido el 3/8/2026: 361 resueltas,
-  que cubren 1.390 de 1.469 sucursales = 94,6%). No es un bug: es cola de calidad de dato,
-  en cuatro grupos. (1) Barrios que Georef no tiene como localidad: `Once`, `Abasto`,
-  `Tribunales`, `Alta Cordoba`, `Barrio Jardin`. (2) **Provincia mal cargada**: `Esquel` y
-  `Gaiman` figuran en Buenos Aires y son de Chubut; `Berazategui`, `Quilmes`, `San Miguel`,
-  `Munro`, `Villa Ballester` y `Ciudadela` figuran en CABA y son de Buenos Aires — eso se
-  arregla en `customer_delivery_addresses`, el alias no puede cruzar provincias. (3) Notas
-  metidas en el campo: `Verificar`, `Local 86 - Cordoba`, `Mataderos (8:30 a 14)`,
-  `Mercado Central (Ma a Ju)`. (4) Abreviaturas y sufijos, que **ya se resolvieron con 18
-  alias** (`S.M. de Tucuman`, `Rosario Sud`, `MDQ Norte`, `Usuahia`…). Para sumar más,
-  agregar filas en `geo_localidad_alias`; el destino tiene que existir y estar geocodificado.
+- **Quedan ~17 localidades sin geocodificar** (al 9/9/2026: cobertura de sucursales
+  **98,8%**, subió de 94,6%). El 9/9 se resolvieron ~50: correcciones de provincia mal
+  cargada en `customer_delivery_addresses` (`Capital Federal`/`Ciudad Autónoma…` → `CABA`;
+  `Berazategui`/`Quilmes`/`San Miguel`/`Munro`/`Villa Ballester`/`Ciudadela` de CABA → Buenos
+  Aires; `Cipolletti` de Neuquén → Río Negro; `San Martín de los Andes` de Río Negro →
+  Neuquén) + ~40 filas nuevas en `geo_localidad_alias` (barrios de CABA/Córdoba, abreviaturas
+  de capitales). **Georef está bloqueado por el proxy de egress**, así que geocodificar desde
+  una sesión de Claude NO se puede: la vía es agregar aliases a localidades ya geocodificadas
+  de la MISMA provincia (el alias no cruza provincias) o corregir el dato. Lo que queda es
+  basura real (notas tipo `Verificar`/`Topsy`/`Mercado Central`, o Chubut sin cargar como
+  `Esquel`/`Gaiman`): no hay a dónde mapearla sin corregir la ficha del cliente.
 - **Capa de redacción con LLM (opcional).** `CLAUDE_API_KEY` ya está en el vault, así que
   el mensaje diario podría salir en prosa en vez de lista estructurada sin tocar el motor
   de señales, que es determinístico y no debe depender de un modelo.
