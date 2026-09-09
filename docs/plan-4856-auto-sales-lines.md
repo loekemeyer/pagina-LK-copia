@@ -318,3 +318,24 @@ las 15 bajan a 10 y de esas:
 - **0 gaps genuinos del parser**: no falta ningún comprobante.
 - **Conclusión**: donde el parser difiere del Excel, el parser tiene razón (marca correcta).
   No solo empata el Excel a nivel cliente — lo corrige. Verif: `recon6.py` + net-vs-net.
+
+### Item 2 — ¿`comprobantes_venta` da líneas por artículo? NO (resuelto 2026-09-09)
+- Es **1 fila por comprobante** (31.115 comprob / 31.119 filas en LK) con `familia` de solo
+  **3 valores** — cabecera, sin `item_code`. No hay tabla de líneas poblada
+  (`Comprobantes_NC_Items` vacía; `comprobantes_venta` no tiene `parse_raw` ni `*_items`).
+- **Consecuencia de arquitectura (firme)**:
+  - $/cajas/actividad/NC-ND **por cliente** → `comprobantes_venta` (parser, cabecera). Alcanza.
+  - Proyección **por artículo** (Estadística Madre) → `vista_facturacion_neto_items`
+    (Gestión-entregas, único line-level vivo) o el Excel al cierre. Son complementarios.
+
+### Item 3 — Valorización canónica: la relación es EXACTA (resuelto 2026-09-09)
+- Ratio `sales_lines_net / comprobante_subtotal` por cliente (agosto, >100k): **p25 = mediana
+  = p75 = 0,980**. Clavado. → **el subtotal de factura ya trae `dto_vol` incorporado; el único
+  factor extra es el 2% web** ⇒ `net = subtotal × 0,98` (súper = `subtotal`, sin 2%).
+- Los outliers de ratio bajo (4112=0,19; 3960/269=0,49) son el **mismo artefacto NC** del
+  item 1 (net vs subtotal-solo-FC), no divergencia.
+- **Decisión recomendada**: mantener la convención NET (`×0,98`) de todos los módulos y
+  derivarla del parser como `subtotal × 0,98` → la capa tentativa/auto-fill **reconcilia
+  exacto** con el Excel mensual, sin re-basear historia. Guardar además `subtotal` (s/IVA)
+  y `total` (c/IVA) como columnas extra por si se quiere el importe real de factura.
+- Verif: `recon6.py` (ratio por cliente).
