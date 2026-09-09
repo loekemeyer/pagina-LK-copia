@@ -735,6 +735,12 @@ document.querySelectorAll(".nav-item").forEach(function (btn) {
       }
       cargarUsoModulos();
     }
+    if (
+      btn.dataset.page === "ficha-cliente" &&
+      typeof initFichaCliente === "function"
+    ) {
+      initFichaCliente();
+    }
   });
 });
 
@@ -15228,3 +15234,381 @@ function _cliPendWireOnce() {
   if (reload) reload.addEventListener("click", cargarClientesPendientes);
   if (exp) exp.addEventListener("click", exportarClientesPendientes);
 }
+
+// =====================================================================
+// FICHA DE CLIENTE (vista 360) — data-page="ficha-cliente"
+// Buscador -> buscar_cliente_ficha ; ficha completa -> get_ficha_cliente.
+// La matriz articulo x mes muestra 6 meses por defecto y expande a 12.
+// =====================================================================
+var _fcWired = false;
+var _fcData = null; // ultima ficha cargada (JSON de get_ficha_cliente)
+var _fcMesesExpandido = false; // false = 6 meses, true = 12
+var _fcBuscarTimer = null;
+var FC_MESES_DEFAULT = 6;
+var FC_MES_NOMBRES = [
+  "ene", "feb", "mar", "abr", "may", "jun",
+  "jul", "ago", "sep", "oct", "nov", "dic",
+];
+
+function fcMesLabel(ym) {
+  // 'YYYY-MM' -> 'sep-26'
+  var p = String(ym || "").split("-");
+  if (p.length < 2) return ym || "";
+  var mi = parseInt(p[1], 10) - 1;
+  var nom = FC_MES_NOMBRES[mi] || p[1];
+  return nom + "-" + p[0].slice(2);
+}
+
+function initFichaCliente() {
+  if (_fcWired) return;
+  _fcWired = true;
+  var input = document.getElementById("fcBuscar");
+  var sug = document.getElementById("fcSugerencias");
+  if (!input) return;
+
+  input.addEventListener("input", function () {
+    var q = input.value.trim();
+    if (_fcBuscarTimer) clearTimeout(_fcBuscarTimer);
+    if (q.length < 2) {
+      fcCerrarSugerencias();
+      return;
+    }
+    _fcBuscarTimer = setTimeout(function () {
+      fcBuscar(q);
+    }, 220);
+  });
+
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") fcCerrarSugerencias();
+  });
+
+  // Cerrar el desplegable al hacer click afuera
+  document.addEventListener("click", function (e) {
+    if (!sug || sug.hidden) return;
+    if (e.target === input || sug.contains(e.target)) return;
+    fcCerrarSugerencias();
+  });
+
+  setTimeout(function () {
+    try {
+      input.focus();
+    } catch (_) {}
+  }, 50);
+}
+
+function fcCerrarSugerencias() {
+  var sug = document.getElementById("fcSugerencias");
+  if (sug) {
+    sug.hidden = true;
+    sug.innerHTML = "";
+  }
+}
+
+async function fcBuscar(q) {
+  var sug = document.getElementById("fcSugerencias");
+  if (!sug) return;
+  try {
+    var r = await sb.rpc("buscar_cliente_ficha", { p_q: q });
+    if (r.error) throw r.error;
+    var rows = r.data || [];
+    if (!rows.length) {
+      sug.innerHTML =
+        '<div class="fc-sug-empty">Sin resultados para "' +
+        escapeHtml(q) +
+        '"</div>';
+      sug.hidden = false;
+      return;
+    }
+    var html = rows
+      .map(function (c) {
+        var motivos = Array.isArray(c.motivos) ? c.motivos.join(" · ") : "";
+        return (
+          '<button type="button" class="fc-sug-item" data-cod="' +
+          escapeHtml(c.cod_cliente) +
+          '">' +
+          '<span class="fc-sug-cod">' +
+          escapeHtml(c.cod_cliente) +
+          "</span>" +
+          '<span class="fc-sug-nom">' +
+          escapeHtml(c.business_name || "(sin razón social)") +
+          "</span>" +
+          '<span class="fc-sug-meta">' +
+          escapeHtml(c.localidad || "") +
+          (motivos ? ' · <em>' + escapeHtml(motivos) + "</em>" : "") +
+          "</span>" +
+          "</button>"
+        );
+      })
+      .join("");
+    sug.innerHTML = html;
+    sug.hidden = false;
+    sug.querySelectorAll(".fc-sug-item").forEach(function (b) {
+      b.addEventListener("click", function () {
+        fcElegir(b.dataset.cod, b.querySelector(".fc-sug-nom").textContent);
+      });
+    });
+  } catch (err) {
+    sug.innerHTML =
+      '<div class="fc-sug-empty">Error: ' +
+      escapeHtml(err.message || err) +
+      "</div>";
+    sug.hidden = false;
+  }
+}
+
+function fcElegir(cod, nombre) {
+  var input = document.getElementById("fcBuscar");
+  if (input) input.value = (nombre ? nombre + " " : "") + "(" + cod + ")";
+  fcCerrarSugerencias();
+  cargarFichaCliente(cod);
+}
+
+async function cargarFichaCliente(cod) {
+  var status = document.getElementById("fcStatus");
+  var cont = document.getElementById("fcContenido");
+  if (status) status.textContent = "Cargando ficha del cliente " + cod + "…";
+  if (cont) cont.innerHTML = "";
+  try {
+    var r = await sb.rpc("get_ficha_cliente", { p_cod: String(cod) });
+    if (r.error) throw r.error;
+    _fcData = r.data;
+    _fcMesesExpandido = false;
+    if (status) status.textContent = "";
+    fcRender();
+  } catch (err) {
+    if (status)
+      status.textContent = "Error al cargar la ficha: " + (err.message || err);
+  }
+}
+
+function fcToggleMeses() {
+  _fcMesesExpandido = !_fcMesesExpandido;
+  fcRender();
+}
+
+function fcRender() {
+  var cont = document.getElementById("fcContenido");
+  if (!cont || !_fcData) return;
+  var f = _fcData;
+  var d = f.datos || {};
+  var html = "";
+
+  // ---- Encabezado del cliente ----
+  var chefCods = Array.isArray(d.chef_cods) ? d.chef_cods : [];
+  html +=
+    '<div class="fc-cabecera">' +
+    '<div class="fc-cab-nom">' +
+    escapeHtml(d.business_name || "(sin razón social)") +
+    "</div>" +
+    '<div class="fc-cab-cod">Código LK <strong>' +
+    escapeHtml(d.cod_cliente != null ? d.cod_cliente : f.cod) +
+    "</strong>" +
+    (chefCods.length
+      ? ' · Chef ' + escapeHtml(chefCods.join(", "))
+      : "") +
+    "</div>" +
+    "</div>";
+
+  // ---- Grilla de datos ----
+  function dato(lbl, val) {
+    return (
+      '<div class="fc-dato"><span class="fc-dato-lbl">' +
+      escapeHtml(lbl) +
+      '</span><span class="fc-dato-val">' +
+      (val === "" || val == null ? "—" : escapeHtml(val)) +
+      "</span></div>"
+    );
+  }
+  var dtoPct =
+    d.dto_vol != null ? (Number(d.dto_vol) * 100).toFixed(1) + "%" : "—";
+  html +=
+    '<div class="fc-card"><div class="fc-card-tit">Datos</div>' +
+    '<div class="fc-datos-grid">' +
+    dato("CUIT", d.cuit) +
+    dato("Localidad", d.localidad) +
+    dato("Vendedor", d.vendedor || d.vend) +
+    dato("Dto. volumen", dtoPct) +
+    dato("Cond. pago", d.payment_term) +
+    dato("Deuda", d.debt != null ? "$ " + formatMoney(d.debt) : "—") +
+    dato(
+      "Límite crédito",
+      d.credit_limit != null ? "$ " + formatMoney(d.credit_limit) : "—",
+    ) +
+    dato("Mail", d.mail) +
+    dato("WhatsApp", d.whatsapp) +
+    "</div></div>";
+
+  // ---- Direcciones de entrega ----
+  var dirs = Array.isArray(f.direcciones) ? f.direcciones : [];
+  if (dirs.length) {
+    html +=
+      '<div class="fc-card"><div class="fc-card-tit">Direcciones de entrega (' +
+      dirs.length +
+      ")</div><ul class=\"fc-dirs\">";
+    dirs.forEach(function (a) {
+      html +=
+        "<li><strong>" +
+        escapeHtml(a.label || "s/etiqueta") +
+        "</strong> — " +
+        escapeHtml(a.localidad || "") +
+        (a.provincia ? ", " + escapeHtml(a.provincia) : "") +
+        (a.zona_expreso ? ' <em>(' + escapeHtml(a.zona_expreso) + ")</em>" : "") +
+        "</li>";
+    });
+    html += "</ul></div>";
+  }
+
+  // ---- Facturación por año ----
+  var fact = Array.isArray(f.facturacion_anio) ? f.facturacion_anio : [];
+  if (fact.length) {
+    html +=
+      '<div class="fc-card"><div class="fc-card-tit">Facturación por año (neto)</div>' +
+      '<div class="fc-tabla-wrap"><table class="fc-tabla"><thead><tr>' +
+      "<th>Año</th><th>LK</th><th>Chef</th><th>Total</th><th>Compras</th><th>Cajas</th>" +
+      "</tr></thead><tbody>";
+    fact.forEach(function (y) {
+      var vacio = Number(y.total) === 0 && Number(y.cajas) === 0;
+      html +=
+        '<tr class="' +
+        (vacio ? "fc-row-vacia" : "") +
+        '"><td>' +
+        escapeHtml(y.anio) +
+        '</td><td class="fc-num">' +
+        (Number(y.lk) ? "$ " + formatMoney(y.lk) : "—") +
+        '</td><td class="fc-num">' +
+        (Number(y.chef) ? "$ " + formatMoney(y.chef) : "—") +
+        '</td><td class="fc-num"><strong>' +
+        (Number(y.total) ? "$ " + formatMoney(y.total) : "—") +
+        '</strong></td><td class="fc-num">' +
+        (Number(y.compras) || 0) +
+        '</td><td class="fc-num">' +
+        (Number(y.cajas) || 0) +
+        "</td></tr>";
+    });
+    html += "</tbody></table></div></div>";
+  }
+
+  // ---- Pedidos web (último mes / trimestre) ----
+  var pm = Array.isArray(f.pedidos_mes) ? f.pedidos_mes : [];
+  var pt = Array.isArray(f.pedidos_trimestre) ? f.pedidos_trimestre : [];
+  html +=
+    '<div class="fc-card"><div class="fc-card-tit">Pedidos por el portal</div>' +
+    '<div class="fc-pedidos-kpis">' +
+    '<div class="fc-kpi"><span class="fc-kpi-num">' +
+    pm.length +
+    '</span><span class="fc-kpi-lbl">último mes</span></div>' +
+    '<div class="fc-kpi"><span class="fc-kpi-num">' +
+    pt.length +
+    '</span><span class="fc-kpi-lbl">último trimestre</span></div>' +
+    "</div>";
+  if (pt.length) {
+    html +=
+      '<div class="fc-tabla-wrap"><table class="fc-tabla"><thead><tr>' +
+      "<th>Fecha</th><th>Estado</th><th>Total</th><th>Pago</th><th>Origen</th><th>Ítems</th>" +
+      "</tr></thead><tbody>";
+    pt.forEach(function (o) {
+      var fecha = String(o.created_at || "").slice(0, 10);
+      html +=
+        "<tr><td>" +
+        escapeHtml(fecha) +
+        "</td><td>" +
+        escapeHtml(o.status || "") +
+        '</td><td class="fc-num">' +
+        (o.total != null ? "$ " + formatMoney(o.total) : "—") +
+        "</td><td>" +
+        escapeHtml(o.payment_method || "—") +
+        "</td><td>" +
+        escapeHtml(o.origen || "—") +
+        '</td><td class="fc-num">' +
+        (o.items || 0) +
+        "</td></tr>";
+    });
+    html += "</tbody></table></div>";
+  }
+  html += "</div>";
+
+  // ---- Resumen artículos ----
+  var res = f.resumen_articulos || {};
+  html +=
+    '<div class="fc-card"><div class="fc-card-tit">Artículos</div>' +
+    '<div class="fc-pedidos-kpis">' +
+    '<div class="fc-kpi"><span class="fc-kpi-num">' +
+    (res.total_distintos || 0) +
+    '</span><span class="fc-kpi-lbl">distintos (histórico)</span></div>' +
+    '<div class="fc-kpi"><span class="fc-kpi-num">' +
+    (res.activos_count || 0) +
+    '</span><span class="fc-kpi-lbl">activos (12m)</span></div>' +
+    "</div>";
+
+  // ---- Matriz artículo x mes ----
+  var meses = Array.isArray(f.meses) ? f.meses : [];
+  var arts = Array.isArray(f.articulos) ? f.articulos : [];
+  var nShow = _fcMesesExpandido
+    ? meses.length
+    : Math.min(FC_MESES_DEFAULT, meses.length);
+  var mesesShow = meses.slice(0, nShow);
+
+  html +=
+    '<div class="fc-matriz-head">' +
+    '<span class="fc-matriz-tit">Compras por mes (cajas)</span>';
+  if (meses.length > FC_MESES_DEFAULT) {
+    html +=
+      '<button type="button" class="fc-vermas" onclick="fcToggleMeses()">' +
+      (_fcMesesExpandido
+        ? "Ver menos"
+        : "Ver más meses (" + meses.length + ")") +
+      "</button>";
+  }
+  html += "</div>";
+
+  if (!arts.length) {
+    html += '<p class="fc-sin">Sin artículos facturados.</p>';
+  } else {
+    html += '<div class="fc-tabla-wrap"><table class="fc-tabla fc-matriz"><thead><tr>';
+    html += "<th>Cód</th><th>Descripción</th>";
+    mesesShow.forEach(function (m) {
+      html += '<th class="fc-num">' + escapeHtml(fcMesLabel(m)) + "</th>";
+    });
+    html += '<th class="fc-num">Cajas 12m</th><th class="fc-num">$ neto</th></tr></thead><tbody>';
+    arts.forEach(function (a) {
+      var mm = a.mm || {};
+      var esChef = a.empresa === "chef";
+      html +=
+        '<tr><td class="fc-cod">' +
+        escapeHtml(a.cod) +
+        (esChef ? ' <span class="fc-badge-chef">CH</span>' : "") +
+        '</td><td class="fc-desc" title="' +
+        escapeHtml(a.descripcion || "") +
+        '">' +
+        escapeHtml(a.descripcion || "(sin descripción)") +
+        "</td>";
+      mesesShow.forEach(function (m) {
+        var v = mm[m];
+        html +=
+          '<td class="fc-num' +
+          (v ? "" : " fc-cero") +
+          '">' +
+          (v ? v : "·") +
+          "</td>";
+      });
+      html +=
+        '<td class="fc-num"><strong>' +
+        (Number(a.cajas) || 0) +
+        '</strong></td><td class="fc-num">' +
+        (Number(a.neto) ? "$ " + formatMoney(a.neto) : "—") +
+        "</td></tr>";
+    });
+    html += "</tbody></table></div>";
+    if (arts.length >= 80) {
+      html +=
+        '<p class="fc-sin">Se muestran los 80 artículos de mayor facturación.</p>';
+    }
+  }
+  html += "</div>"; // cierra card articulos
+
+  cont.innerHTML = html;
+}
+
+window.initFichaCliente = initFichaCliente;
+window.cargarFichaCliente = cargarFichaCliente;
+window.fcToggleMeses = fcToggleMeses;

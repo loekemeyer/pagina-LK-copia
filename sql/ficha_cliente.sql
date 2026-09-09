@@ -141,6 +141,8 @@ DECLARE
   v_fact      jsonb;
   v_arts      jsonb;
   v_res_art   jsonb;
+  v_meses     jsonb;   -- lista de los ultimos 12 meses (YYYY-MM), del mas nuevo al mas viejo
+  v_mes_desde text;    -- primer dia del mes de hace 11 meses (corte de la matriz art x mes)
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM admins a WHERE a.auth_user_id = auth.uid()) THEN
     RAISE EXCEPTION 'no autorizado';
@@ -150,6 +152,18 @@ BEGIN
 
   SELECT COALESCE((SELECT s.value::numeric FROM app_settings s WHERE s.key='web_order_discount'),0.02)
     INTO v_wd;
+
+  -- Ventana de 12 meses para la matriz articulo x mes. El frontend muestra 6
+  -- por defecto y deja "ver mas" para los otros 6.
+  v_mes_desde := to_char(
+    date_trunc('month', (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')) - INTERVAL '11 months',
+    'YYYY-MM-DD');
+  SELECT jsonb_agg(to_char(m,'YYYY-MM') ORDER BY m DESC)
+    INTO v_meses
+    FROM generate_series(
+      date_trunc('month', (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')) - INTERVAL '11 months',
+      date_trunc('month', (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')),
+      INTERVAL '1 month') m;
 
   -- CUIT (digitos) del cliente LK
   SELECT NULLIF(regexp_replace(COALESCE(c.cuit,''),'[^0-9]','','g'),'')
@@ -211,8 +225,8 @@ BEGIN
       SELECT jsonb_build_object(
                'id', o.id, 'created_at', o.created_at, 'status', o.status,
                'total', o.total, 'payment_method', o.payment_method,
-               'origen', COALESCE(vo.origen_pedido,'—'),
-               'herramienta', COALESCE(vo.herramienta,'—'),
+               'origen', COALESCE(vo.origen_pedido,'-'),
+               'herramienta', COALESCE(vo.herramienta,'-'),
                'items', (SELECT count(*) FROM order_items oi WHERE oi.order_id = o.id)
              ) AS x
       FROM orders o
@@ -228,8 +242,8 @@ BEGIN
       SELECT jsonb_build_object(
                'id', o.id, 'created_at', o.created_at, 'status', o.status,
                'total', o.total, 'payment_method', o.payment_method,
-               'origen', COALESCE(vo.origen_pedido,'—'),
-               'herramienta', COALESCE(vo.herramienta,'—'),
+               'origen', COALESCE(vo.origen_pedido,'-'),
+               'herramienta', COALESCE(vo.herramienta,'-'),
                'items', (SELECT count(*) FROM order_items oi WHERE oi.order_id = o.id)
              ) AS x
       FROM orders o
@@ -313,15 +327,28 @@ BEGIN
     INTO v_arts
     FROM (
       SELECT jsonb_build_object(
-               'empresa', empresa, 'cod', item_code,
-               'descripcion', descripcion, 'categoria', categoria,
-               'cajas', cajas, 'neto', ROUND(COALESCE(neto,0)),
-               'primera', primera, 'ultima', ultima,
-               'anio_alta', anio_alta, 'anio_baja', anio_baja,
-               'activo', activo
+               'empresa', af.empresa, 'cod', af.item_code,
+               'descripcion', af.descripcion, 'categoria', af.categoria,
+               'cajas', af.cajas, 'neto', ROUND(COALESCE(af.neto,0)),
+               'primera', af.primera, 'ultima', af.ultima,
+               'anio_alta', af.anio_alta, 'anio_baja', af.anio_baja,
+               'activo', af.activo,
+               -- cajas por mes (ultimos 12); el frontend muestra 6 y expande a 12
+               'mm', COALESCE((
+                 SELECT jsonb_object_agg(mk, cj)
+                 FROM (
+                   SELECT to_char(date_trunc('month', s.invoice_date::date),'YYYY-MM') AS mk,
+                          sum(s.boxes) AS cj
+                   FROM _sl_ficha s
+                   WHERE s.empresa = af.empresa
+                     AND s.item_code = af.item_code
+                     AND s.invoice_date >= v_mes_desde
+                   GROUP BY 1
+                 ) mm
+               ), '{}'::jsonb)
              ) AS x
-      FROM _art_ficha
-      ORDER BY neto DESC NULLS LAST
+      FROM _art_ficha af
+      ORDER BY af.neto DESC NULLS LAST
       LIMIT 80
     ) t;
 
@@ -333,6 +360,7 @@ BEGIN
     'pedidos_trimestre', v_ped_tri,
     'facturacion_anio', v_fact,
     'resumen_articulos', v_res_art,
+    'meses', v_meses,
     'articulos', v_arts
   );
 END;
