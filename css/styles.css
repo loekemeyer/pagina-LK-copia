@@ -15751,3 +15751,24 @@ body { top: 0 !important; }
 .ds-switch-btn.on .ds-switch-knob {
   transform: translateX(16px);
 }
+
+/* Nuevos switch: APAGADO gris sin contorno; PRENDIDO rojo */
+.ds-btn.ds-filter.ds-switch-btn {
+  border: none;
+  background: #e6e6e6;
+  color: #444;
+}
+.ds-btn.ds-filter.ds-switch-btn:hover {
+  background: #dcdcdc;
+}
+.ds-btn.ds-filter.ds-switch-btn.on {
+  background: #e3000f;
+  color: #fff;
+  border: none;
+}
+.ds-switch-btn .ds-switch {
+  background: #b9b9b9; /* track apagado, visible sobre el gris */
+}
+.ds-switch-btn.on .ds-switch {
+  background: rgba(0, 0, 0, 0.28); /* track sobre el rojo, perilla blanca resalta */
+}
