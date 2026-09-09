@@ -124,14 +124,36 @@ empieza en 4).
 - **Regla del dueño (2026-09-09): el súper NUNCA lleva el 2% (salvo que ya esté en su precio)
   y tiene su propia lista.** Los datos lo confirman.
 
-### La brecha que queda es COBERTURA, no precio
-Desglose del gap solo-ISIS de agosto ($54,4M):
-- **Cencosud (2444): $39,4M / 1.403 cajas.** Ver hallazgo abajo.
-- **Facturación directa fuera de Gestión: ~$17M / ~35 clientes** (2686, 2532, 2364, 4059…).
-  No pasan por la página ni por Gestión — hueco real que Gestión no cubre.
-- **Notas de crédito / devoluciones**: cajas negativas de ISIS (1651, 1434) que Gestión no
-  registra (Gestión tiene entregas, no NC/ND).
+### La brecha que queda es COBERTURA, no precio — y NO es "fuera de Gestión"
+Desglose del gap solo-ISIS de agosto ($54,4M). **CORREGIDO 2026-09-09**: se verificó cliente
+por cliente y **no existe "facturación directa fuera de Gestión"** — todo pasa por Gestión.
+Lo que parecía un hueco es en realidad:
+- **Cencosud (2444): $39,4M / 1.403 cajas.** Venta de Chef de art Loeke; ISIS la tagea lk. Ver
+  hallazgo abajo.
+- **~$18M / 29 clientes que yo había llamado "directa" son otras dos cosas** (verificado: los
+  29 están en Gestión con entregas jul-sep):
+  - **Mayoría = el mismo caso Cencosud, más amplio**: Gestión los factura como **Chef** (NP
+    4xxxx) e ISIS los tagea `lk` porque los artículos son Loeke. Las cajas ISIS-agosto
+    coinciden con las entregas de Gestión (ej. 2118, 1253=137, 2687=127, 2708=44, 328=36).
+    En ISIS llevan el **código de cliente de Chef** con `empresa='lk'`, así que resueltos
+    contra el padrón LK salen con nombre equivocado (2118 "Milera" en LK vs "Cuatro Robles"
+    en Gestión-Chef; 2335 "Gastroeuropa" vs "Montenegro").
+  - **Minoría = timing de borde de mes**: clientes LK genuinos cuya factura ISIS cae fin de
+    mes y la entrega de Gestión al mes siguiente — misma venta, mes distinto (2364, 3875,
+    4059: ISIS 31/8 → Gestión fecha_salida sep; 2532, 2447: jul).
+- **Notas de crédito / débito (NC/ND)**: cajas negativas de ISIS (1651, 1434) que Gestión no
+  genera. **Es lo ÚNICO genuinamente ISIS-only.**
 - **Línea 7xx sin precio**: cajas presentes, importe 0 en los dos lados.
+
+**Implicancia**: el auto-fill desde Gestión, imputando empresa por NP (4=Chef), clasifica
+todo esto CORRECTAMENTE (Chef→no entra a lk; timing→mes correcto). El "hueco de cobertura"
+casi desaparece; lo único que Gestión no tiene son las NC/ND.
+
+**Implicancia 2 (importante)**: el problema Chef-de-Loeke mal imputado como lk en `sales_lines`
+es MUCHO más amplio que solo Cencosud — hay ~24 clientes Chef más ensuciando las estadísticas
+LK. El detector anterior (lk∩chef en `sales_lines`) solo veía los que están en el import
+histórico de Chef; estos no están ahí pero en Gestión son Chef. El detector correcto es cruzar
+los códigos lk de `sales_lines` contra la facturación de Gestión y ver cuáles resuelven a Chef.
 
 ### Pedidos web agosto
 212 pedidos entraron por la página LK por $450,2M (total de pedido); **los 212 están
