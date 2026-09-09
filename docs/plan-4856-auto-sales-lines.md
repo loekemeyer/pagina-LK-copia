@@ -164,3 +164,63 @@ Facturación de Gestión-Virgilio e ISIS.** Mientras exista brecha (facturación
 de Gestión, NC/ND, precios faltantes, imputación de empresa), ISIS sigue siendo la fuente y
 esto queda como validación/monitoreo, no como reemplazo. La Fase 1 (cruce/consistencia,
 solo lectura) es lo que va midiendo esa convergencia mes a mes.
+
+---
+
+## Fase 1.5 — Capa TENTATIVA del mes en curso (primer uso productivo, bajo riesgo)
+
+### Motivo (verificado 2026-09-09)
+La carga de ISIS a `sales_lines` es **mensual y con rezago**: un lote por mes calendario
+(`import_batch` = `febrero_26`, `marzo_26`, … `ago-26`), importado a mano entre el **día 1 y
+14 del mes siguiente** (casi siempre 1-6; junio se atrasó al 14). Cadencia real medida:
+
+| mes facturado | importado |
+|---|---|
+| feb | 04/03 · mar → 06/04 · abr → 05/05 · may → 01/06 · jun → **14/07** · jul → 03/08 · ago → 02/09 |
+
+**Consecuencia:** durante el mes en curso `sales_lines` NO tiene nada de ese mes; aparece
+recién cuando cierra y lo importan. O sea todo el panel de LK está **ciego al mes corriente**
+hasta ~día 1-14 del siguiente. Gestión-Virgilio (`Facturacion_NP`) está **en vivo** (diario).
+
+### Diseño (no rompe "ISIS es la verdad")
+- Capa que inserta en `sales_lines` SOLO el tramo **posterior al último mes cerrado de ISIS**
+  (`invoice_date > max(invoice_date de ISIS)`), tomada de la facturación de Gestión por FDW.
+- `import_batch = 'virgilio_tentativo'` (flag de provisional). No pisa filas de ISIS.
+- Cron diario refresca el tramo abierto (delete+insert del batch tentativo).
+- Cuando ISIS cierra e importa el mes → se **borra el batch tentativo** de ese período y
+  manda ISIS. Rollback: `DELETE FROM sales_lines WHERE import_batch='virgilio_tentativo'`
+  (WHERE real, por `supautils`).
+- **Esquiva el bloqueo del "100% de coincidencia"**: es explícitamente tentativo y ISIS lo
+  reemplaza al cerrar; no necesita ser exacto, solo útil para ver el mes en curso.
+- Empresa por prefijo NP (4=Chef → NO entra a lk; resuelve solo el caso Cencosud).
+
+### Límites del dato tentativo (hay que mostrarlo como "estimado")
+Subestima el mes: le falta la **facturación directa fuera de Gestión** (~$17M/mes), las
+**NC/ND** (Gestión no las tiene) y el precio de la **línea 7xx**. Es "en vivo aproximado",
+no el cierre.
+
+### Qué lo usaría (todo lo que lee `sales_lines` empresa `lk` lo toma solo, sin tocar consumidores)
+Como la capa alimenta la misma tabla, **cualquier RPC que lea `sales_lines` lk hereda el mes
+en curso automáticamente**. Consumidores actuales del dato exportado de ISIS:
+
+| Consumidor (RPC/vista) | Pantalla / uso | ¿Gana con el vivo? |
+|---|---|---|
+| `get_ranking_inactivos` / `_export` | Ranking Inactivos: última compra, valor, desglose x año, Excel | **Sí** — un cliente que compró este mes ya no figura "inactivo" |
+| `get_estadistica_clientes_agg` | Estadística Clientes → "Próximos pedidos" | **Sí** — deja de marcar atrasado a quien ya compró |
+| `gv_candidatos` | Gerente de ventas: señales/agenda diaria (reactivar, ritmo_caído…) | **Sí** — evita falsos "frío" del mes en curso |
+| `gv_dashboard_calcular/_calcular2/_extra` | Dashboard de ventas: FACTURADO por mes | **Sí** — el gran ganador: hoy el mes corriente sale en 0 |
+| `datos_cliente_empresa` | Clientes agrupados / Sugerencias / buscador / Clientes vinculados | Sí (última compra y valor al día) |
+| `get_vendedores_ranking` | Filtro por vendedor del Ranking | Sí (indirecto) |
+| `get_acuerdo_vendedores` | Comisiones por vendedor | Parcial (tentativo, no liquidar con esto) |
+| `gv_cobertura` / `gv_cobertura_provincia` | Cobertura geográfica (activos) | Menor |
+| `refresh_estadistica_madre_cache` / vista `estadistica_madre` | Estadística Madre → **portal cliente** (sugerencias) + **OCs de Virgilio** (proyección) | Leve (proyección 6m; suma el mes parcial) |
+| `get_all_sales_lines_admin(_with_customer)` | Fuente de Estadística Madre | Leve |
+| `get_customer_sales_history` / `get_customer_history` | Historial cliente, Análisis Venta Cliente, portal | Menor (histórico) |
+| `sugerencias_cliente` | Sugerencias del portal | Menor |
+| `v_customer_item_month` | Detección de anomalías del carrito (`script.js`) | No (usa promedios históricos) |
+| `ficha_cliente` / `get_ficha_cliente` | Ficha de cliente | Menor |
+| reportes `rep_*` (Telegram diario/semanal/mensual) | Reportes de ventas por Telegram | Sí (el $ del mes; el depósito ya sale de Gestión) |
+
+**Prioridad de valor**: Dashboard FACTURADO, Ranking Inactivos y las señales del Gerente de
+ventas — son los tres que hoy sufren más la ceguera del mes en curso. Los históricos
+(historial, ficha, anomalías) casi no cambian.
