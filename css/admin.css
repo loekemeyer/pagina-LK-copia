@@ -4686,6 +4686,18 @@ input[type="number"].manual-cell {
   align-self: center;
 }
 
+/* Cobertura de distribuidores: pintado de provincias sobre el SVG */
+.ar-map-svg [data-prov].gv-cob-conf { fill: #10b981; }
+.ar-map-svg [data-prov].gv-cob-noconf { fill: #f59e0b; }
+.gv-cob-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.gv-cob-chip {
+  background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px;
+  padding: 2px 8px; font-size: 13px;
+}
+.gv-cob-chip.conf { background: #ecfdf5; border-color: #a7f3d0; }
+.gv-cob-chip.noconf { background: #fffbeb; border-color: #fde68a; }
+.gv-cob-chip b { margin-left: 4px; color: #b91c1c; font-weight: 700; cursor: pointer; }
+
 /* ---- Ratio ---- */
 .gv-nivel-switch { display: flex; gap: 6px; margin-bottom: 14px; }
 

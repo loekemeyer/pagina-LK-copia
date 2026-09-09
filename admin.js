@@ -11710,6 +11710,7 @@ function toggleEstCard(bodyId, headEl) {
   // despliega la tarjeta.
   if (estabaOculto && bodyId === "gvMapaBody") cargarMapaGerente();
   if (estabaOculto && bodyId === "gvVendMapaBody") cargarMapaVendedores();
+  if (estabaOculto && bodyId === "gvCobBody") cargarCobDistribuidores();
   if (estabaOculto && bodyId === "gvRatioBody") cargarRatioGerente();
   if (estabaOculto && bodyId === "gvRindeBody") cargarRindeGerente();
   if (estabaOculto && bodyId === "gvSenalesBody") cargarSenalesGerente();
@@ -13245,6 +13246,228 @@ function _gvVendZoom(svgEl, prov) {
     p.classList.toggle("gv-prov-off", !!prov && !esta);
   });
 }
+
+// ---- COBERTURA DE DISTRIBUIDORES ----------------------------------------
+//
+// Un distribuidor factura en una provincia pero REVENDE a otras. Ese dato no
+// está en la base (las direcciones de entrega dicen dónde recibe, no dónde
+// vende), así que se carga a mano acá y se guarda en gv_distribuidor_cobertura.
+// El mapa pinta las provincias que cubre el distribuidor elegido: verde =
+// confirmado, ámbar = a confirmar. Reusa el mismo SVG, sin pines.
+
+var _gvCobData = null; // filas de gv_distribuidores_cobertura
+var _gvCobActivo = null; // {cod, name} distribuidor en foco
+
+function cargarCobDistribuidores() {
+  var slot = document.getElementById("gvCobMapaSlot");
+  if (!slot) return;
+  slot.textContent = "Cargando…";
+
+  // El menú de provincias sale de ARGENTINA_PROVINCIAS, la misma lista con la
+  // que se etiquetan los path del SVG, así lo que se guarda matchea al pintar.
+  var provSel = document.getElementById("gvCobProv");
+  if (provSel && provSel.options.length === 0 && typeof ARGENTINA_PROVINCIAS !== "undefined") {
+    ARGENTINA_PROVINCIAS.slice()
+      .sort()
+      .forEach(function (p) {
+        var o = document.createElement("option");
+        o.value = p;
+        o.textContent = p;
+        provSel.appendChild(o);
+      });
+  }
+
+  Promise.all([loadArgentinaMapSvg(), sb.rpc("gv_distribuidores_cobertura")])
+    .then(function (res) {
+      if (res[1].error) throw res[1].error;
+      _gvCobData = res[1].data || [];
+      slot.innerHTML = res[0];
+      _gvCobLlenarSelect();
+      _gvCobRender();
+    })
+    .catch(function (err) {
+      slot.innerHTML = '<div class="gv-cargando">Error: ' + escHtml(err.message) + "</div>";
+    });
+}
+window.cargarCobDistribuidores = cargarCobDistribuidores;
+
+function _gvCobDistribuidores() {
+  var m = {};
+  (_gvCobData || []).forEach(function (f) {
+    m[f.cod_cliente] = f.business_name || "Cod " + f.cod_cliente;
+  });
+  return Object.keys(m)
+    .map(function (k) {
+      return { cod: Number(k), name: m[k] };
+    })
+    .sort(function (a, b) {
+      return (a.name || "").localeCompare(b.name || "");
+    });
+}
+
+function _gvCobLlenarSelect() {
+  var sel = document.getElementById("gvCobSel");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Elegí un distribuidor —</option>';
+  _gvCobDistribuidores().forEach(function (d) {
+    var o = document.createElement("option");
+    o.value = String(d.cod);
+    o.textContent = d.name + " (" + d.cod + ")";
+    sel.appendChild(o);
+  });
+  if (_gvCobActivo) sel.value = String(_gvCobActivo.cod);
+  var res = document.getElementById("gvCobResumen");
+  if (res) res.textContent = _gvCobDistribuidores().length + " distribuidores con cobertura";
+}
+
+function gvCobSeleccionar(cod) {
+  if (!cod) {
+    _gvCobActivo = null;
+  } else {
+    var d = _gvCobDistribuidores().find(function (x) {
+      return x.cod === Number(cod);
+    });
+    _gvCobActivo = d || { cod: Number(cod), name: "Cod " + cod };
+  }
+  _gvCobRender();
+}
+window.gvCobSeleccionar = gvCobSeleccionar;
+
+function _gvCobRender() {
+  var slot = document.getElementById("gvCobMapaSlot");
+  var svgEl = slot && slot.querySelector(".ar-map-svg");
+  if (svgEl) {
+    svgEl.querySelectorAll("[data-prov]").forEach(function (p) {
+      p.classList.remove("gv-cob-conf", "gv-cob-noconf");
+    });
+  }
+  var chips = document.getElementById("gvCobChips");
+  var addBox = document.getElementById("gvCobAddBox");
+  if (chips) chips.innerHTML = "";
+  if (!_gvCobActivo) {
+    if (addBox) addBox.style.display = "none";
+    return;
+  }
+  if (addBox) addBox.style.display = "";
+
+  var filas = (_gvCobData || []).filter(function (f) {
+    return Number(f.cod_cliente) === _gvCobActivo.cod;
+  });
+
+  if (svgEl) {
+    filas.forEach(function (f) {
+      var path = svgEl.querySelector('[data-prov="' + String(f.provincia).replace(/"/g, '\\"') + '"]');
+      if (path) path.classList.add(f.confirmado ? "gv-cob-conf" : "gv-cob-noconf");
+    });
+  }
+
+  if (chips) {
+    if (!filas.length) {
+      chips.innerHTML = '<span class="gv-sin-dato">Sin provincias cargadas todavía.</span>';
+    } else {
+      filas.forEach(function (f) {
+        var s = document.createElement("span");
+        s.className = "gv-cob-chip " + (f.confirmado ? "conf" : "noconf");
+        s.innerHTML =
+          escHtml(f.provincia) + (f.confirmado ? " ✓" : " ?") +
+          ' <b data-cod="' + _gvCobActivo.cod + '" data-prov="' + escHtml(f.provincia) + '">✕</b>';
+        chips.appendChild(s);
+      });
+      chips.querySelectorAll("b[data-prov]").forEach(function (b) {
+        b.style.cursor = "pointer";
+        b.addEventListener("click", function () {
+          gvCobQuitar(Number(b.dataset.cod), b.dataset.prov);
+        });
+      });
+    }
+  }
+}
+
+function gvCobAgregar() {
+  if (!_gvCobActivo) return;
+  var provSel = document.getElementById("gvCobProv");
+  var conf = document.getElementById("gvCobConf");
+  var prov = provSel && provSel.value;
+  if (!prov) return;
+  sb.rpc("gv_set_distribuidor_cobertura", {
+    p_cod: _gvCobActivo.cod,
+    p_provincia: prov,
+    p_confirmado: !!(conf && conf.checked),
+    p_fuente: "panel",
+  })
+    .then(function (r) {
+      if (r.error) throw r.error;
+      return sb.rpc("gv_distribuidores_cobertura");
+    })
+    .then(function (r) {
+      if (r.error) throw r.error;
+      _gvCobData = r.data || [];
+      _gvCobLlenarSelect();
+      _gvCobRender();
+    })
+    .catch(function (err) {
+      alert("No se pudo guardar: " + err.message);
+    });
+}
+window.gvCobAgregar = gvCobAgregar;
+
+function gvCobQuitar(cod, prov) {
+  sb.rpc("gv_del_distribuidor_cobertura", { p_cod: cod, p_provincia: prov })
+    .then(function (r) {
+      if (r.error) throw r.error;
+      return sb.rpc("gv_distribuidores_cobertura");
+    })
+    .then(function (r) {
+      if (r.error) throw r.error;
+      _gvCobData = r.data || [];
+      _gvCobLlenarSelect();
+      _gvCobRender();
+    })
+    .catch(function (err) {
+      alert("No se pudo quitar: " + err.message);
+    });
+}
+window.gvCobQuitar = gvCobQuitar;
+
+function gvCobBuscarCliente() {
+  var inp = document.getElementById("gvCobBuscar");
+  var res = document.getElementById("gvCobResultados");
+  var q = inp && inp.value.trim();
+  if (!q || !res) return;
+  res.style.display = "";
+  res.innerHTML = "<option>Buscando…</option>";
+  sb.rpc("gv_buscar_cliente", { p_q: q })
+    .then(function (r) {
+      if (r.error) throw r.error;
+      var arr = r.data || [];
+      res.innerHTML = "";
+      if (!arr.length) {
+        res.innerHTML = '<option value="">sin resultados</option>';
+        return;
+      }
+      res.appendChild(new Option("— Elegí para usar como distribuidor —", ""));
+      arr.forEach(function (c) {
+        var o = document.createElement("option");
+        o.value = String(c.cod_cliente);
+        o.textContent = (c.business_name || "(sin nombre)") + " (" + c.cod_cliente + ")";
+        res.appendChild(o);
+      });
+    })
+    .catch(function (err) {
+      res.innerHTML = '<option value="">error: ' + escHtml(err.message) + "</option>";
+    });
+}
+window.gvCobBuscarCliente = gvCobBuscarCliente;
+
+function gvCobUsarResultado() {
+  var res = document.getElementById("gvCobResultados");
+  var cod = res && res.value;
+  if (!cod) return;
+  var name = res.options[res.selectedIndex].textContent.replace(/\s*\(\d+\)\s*$/, "");
+  _gvCobActivo = { cod: Number(cod), name: name };
+  _gvCobRender();
+}
+window.gvCobUsarResultado = gvCobUsarResultado;
 
 // ---- GEOCODIFICACIÓN ----------------------------------------------------
 //
