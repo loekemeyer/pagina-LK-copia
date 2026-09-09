@@ -246,3 +246,39 @@ en curso automáticamente**. Consumidores actuales del dato exportado de ISIS:
 **Prioridad de valor**: Dashboard FACTURADO, Ranking Inactivos y las señales del Gerente de
 ventas — son los tres que hoy sufren más la ceguera del mes en curso. Los históricos
 (historial, ficha, anomalías) casi no cambian.
+
+### FUENTE MEJOR que Gestión-entregas: el parser de ISIS ya existe (hallazgo 2026-09-09)
+En el proyecto **Virgilio** hay un parser vivo de los comprobantes de ISIS:
+**`comprobantes_venta`** (39.551 filas, FC+NC+ND, `marca` LK/CH, `tipo`, `signo`, `total`,
+`total_cajas`, `subtotal`, IVA, `contraparte_cuit/codigo`, `fecha`, `cae`) — cubre **hasta
+HOY**. Es el output real del facturador, no las entregas.
+
+**Ventajas sobre la facturación de Gestión (entregas):**
+- **Trae NC y ND** (lo único genuinamente ISIS-only que a Gestión le falta). Ago LK: 229 NC
+  = −$133M / −1.975 cajas.
+- **Marca correcta por comprobante** (CUIT/punto de venta), no por artículo → resuelve solo
+  el problema Cencosud / Chef-de-Loeke. Verificado: su LK-agosto (20.869 cajas FC) es MENOR
+  y más correcto que `sales_lines` lk (22.556, inflado por Chef-de-Loeke).
+- Es **prácticamente la versión viva del Excel mensual** (los dos salen de ISIS).
+
+**Comparación mes cerrado (agosto, LK):**
+| Fuente | cajas | $ |
+|---|--:|--:|
+| `sales_lines` (Excel, net reconstruido) | 22.556 | $522,1M |
+| `comprobantes_venta` FC (subtotal s/IVA) | 20.869 | $546,5M |
+| `comprobantes_venta` NC | −1.975 | −$133,1M |
+
+**Límite**: es **nivel cabecera** (`total_cajas` + `familia`, sin `item_code`/líneas por
+artículo). Sirve para $/cajas/actividad/NC-ND **por cliente**; NO para proyección por
+artículo (Estadística Madre), que necesita líneas.
+
+### Arquitectura recomendada (revisada)
+- **Mes en curso + NC/ND, nivel cliente/$**: `comprobantes_venta` (ISIS real, vivo,
+  marca-correcto) por FDW. Reemplaza a "Gestión-entregas" como fuente tentativa preferida.
+- **Nivel artículo** (proyección madre): Gestión entregas (`vista_facturacion_neto_items`,
+  líneas) o el Excel al cierre.
+- **Verdad final**: el Excel mensual sigue mandando; la convergencia se mide comparando
+  `comprobantes_venta` vs el Excel en cada mes cerrado (deberían casar casi exacto por venir
+  ambos de ISIS). Ese es el termómetro concreto de la **condición de implementación**.
+- **Pendiente de confirmar**: si `comprobantes_venta` tiene (o puede tener) una tabla de
+  líneas por artículo; hoy no se ve una `*_items` poblada.
