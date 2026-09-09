@@ -3489,7 +3489,7 @@
         cod_cliente: String(state.customer.cod_cliente || ""),
         vend: String(state.customer.vend || ""),
         condicion_pago: paymentMethodText,
-        condicion_pago_code: SUPER_PAYMENT_CODE[state.superKey] || 0,
+        condicion_pago_code: SUPER_PAYMENT_CODE[state.superKey] || 1,
         sucursal_entrega: sucursalEntrega,
         cliente_nuevo: "",
         is_promo: false,

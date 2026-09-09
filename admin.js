@@ -4643,7 +4643,7 @@ function cpCardProcessFileData(card, buf) {
     if (isGM) {
       // Formato Lista GM (cliente 4080): precios del Excel, sin descuentos
       items = cpParseItemsGM(raw);
-      payment = { text: "Lista GM", discount: 0, code: 0 };
+      payment = { text: "Lista GM", discount: 0, code: 1 };
       delivery = cpParseDeliveryFromRaw(raw);
       excelTotal = null; // No comparamos con total del Excel en este formato
     } else {
