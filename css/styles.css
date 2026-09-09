@@ -15716,3 +15716,38 @@ body { top: 0 !important; }
   min-width: 240px;
   max-width: 100%;
 }
+
+/* ===== Botón "Nuevos" como SWITCH (prendido/apagado visible) ===== */
+.ds-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ds-switch {
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: #cfcfcf;
+  position: relative;
+  flex: 0 0 auto;
+  transition: background 0.18s ease;
+}
+.ds-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.18s ease;
+}
+/* Prendido: track rojo y perilla a la derecha (además del fondo negro que ya
+   aplica .ds-filter.on al botón) */
+.ds-switch-btn.on .ds-switch {
+  background: #e3000f;
+}
+.ds-switch-btn.on .ds-switch-knob {
+  transform: translateX(16px);
+}

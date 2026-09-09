@@ -5224,7 +5224,10 @@ function applyPendingFilters() {
 
   // UI sync del botón NUEVOS desktop (si existe)
   const b = $("btnFilterNew");
-  if (b) b.classList.toggle("on", !!filterNewOnly);
+  if (b) {
+    b.classList.toggle("on", !!filterNewOnly);
+    b.setAttribute("aria-checked", filterNewOnly ? "true" : "false");
+  }
 
   closeFiltersOverlay();
   renderProducts();
@@ -13557,7 +13560,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function syncNewFilterBtn() {
     const b = $("btnFilterNew");
-    if (b) b.classList.toggle("on", !!filterNewOnly);
+    if (b) {
+      b.classList.toggle("on", !!filterNewOnly);
+      b.setAttribute("aria-checked", filterNewOnly ? "true" : "false");
+    }
   }
 
   $("btnFilterNew")?.addEventListener("click", () => {
