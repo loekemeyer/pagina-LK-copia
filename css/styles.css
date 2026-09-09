@@ -3933,10 +3933,11 @@ body.section-perfil #navSearch {
   align-items: center;
   gap: 10px;
 
-  background: #111; /* oscuro */
-  color: #fff; /* letras blancas */
-  border: 1px solid #000;
-  padding: 8px 14px;
+  background: #fff; /* caja blanca */
+  color: #000; /* letras negras */
+  border: 1px solid #e0e0e0;
+  height: 36px; /* igual que el botón de idioma (中文) */
+  padding: 0 14px;
   border-radius: 999px;
 
   cursor: pointer;
@@ -3945,7 +3946,7 @@ body.section-perfil #navSearch {
 }
 
 .user-toggle-btn:hover {
-  background: #222; /* leve aclarado al hover */
+  background: #f4f4f4; /* leve gris al hover */
   transform: translateY(-1px);
 }
 
@@ -3954,7 +3955,7 @@ body.section-perfil #navSearch {
   font-size: 17px; /* +30% sobre 13 */
   line-height: 1;
   white-space: nowrap;
-  color: #fff;
+  color: #000;
   /* Trunca razón social larga con … para no tapar el carrito */
   display: inline-block;
   vertical-align: middle;
@@ -3971,7 +3972,7 @@ body.section-perfil #navSearch {
     max-width: clamp(70px, 14vw, 160px);
   }
   .user-toggle-btn {
-    padding: 6px 10px;
+    padding: 0 10px;
     gap: 6px;
   }
   .user-toggle-btn .profile-avatar {
@@ -3990,8 +3991,8 @@ body.section-perfil #navSearch {
 
 .user-toggle-caret {
   font-size: 12px;
-  opacity: 0.9;
-  color: #fff;
+  opacity: 1;
+  color: #e3000f; /* flechita roja */
 }
 
 .user-toggle-btn .profile-avatar {

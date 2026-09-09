@@ -1793,7 +1793,7 @@ async function refreshAuthState(sessionOverride) {
 
   const name = (customerProfile?.business_name || "").trim();
   if ($("helloNavText"))
-    $("helloNavText").innerText = name ? `Hola, ${name} !` : "Hola!";
+    $("helloNavText").innerText = name ? `¡Hola, ${name}!` : "¡Hola!";
 
   if ($("menuMyOrders")) $("menuMyOrders").style.display = "block";
 
@@ -12719,7 +12719,7 @@ async function onLinkedCustomerSelected(opts) {
     var nameSelf = (customerProfile && customerProfile.business_name || "").trim();
     var helloElSelf = $("helloNavText");
     if (helloElSelf)
-      helloElSelf.innerText = nameSelf ? "Hola, " + nameSelf + " !" : "Hola!";
+      helloElSelf.innerText = nameSelf ? "¡Hola, " + nameSelf + "!" : "¡Hola!";
 
     // Mantener el badge "Modo Administrador" si el vendedor logueado es admin
     // (ej. Loekemeyer SRL). Para vendedores no-admin, queda en "".
@@ -12857,7 +12857,7 @@ async function onLinkedCustomerSelected(opts) {
 
   var name = (customerProfile.business_name || "").trim();
   var helloEl = $("helloNavText");
-  if (helloEl) helloEl.innerText = name ? "Hola, " + name + " !" : "Hola!";
+  if (helloEl) helloEl.innerText = name ? "¡Hola, " + name + "!" : "¡Hola!";
 
   var note = $("customerNote");
   if (note) {
