@@ -22,9 +22,20 @@
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- (0) PRERREQUISITO — correr UNA VEZ en el proyecto VIRGILIO (hrxfctzncixxqmpfhskv):
+-- (0) PRERREQUISITOS — correr UNA VEZ en el proyecto VIRGILIO (hrxfctzncixxqmpfhskv):
+--     -- comprobantes_venta es una VISTA security_invoker sobre isis_lk.documentos /
+--     -- isis_ch.documentos (ambas con RLS). El rol lector necesita, además del select
+--     -- sobre la vista, acceso a las tablas base y una policy propia (mismo patrón que
+--     -- usa el FDW de PPP: "una policy por tabla para lk_ppp_reader").
 --     grant select on public.comprobantes_venta to lk_ppp_reader;
---     (mismo rol de solo-lectura que ya usa el FDW de PPP; ver CLAUDE.md § PPP)
+--     grant usage on schema isis_lk, isis_ch to lk_ppp_reader;
+--     grant select on isis_lk.documentos, isis_ch.documentos to lk_ppp_reader;
+--     create policy lk_ppp_reader_ro on isis_lk.documentos for select to lk_ppp_reader using (true);
+--     create policy lk_ppp_reader_ro on isis_ch.documentos for select to lk_ppp_reader using (true);
+--     -- (todo aditivo y reversible; no toca policies ni datos existentes)
+-- ESTADO: ejecutado el 2026-09-09. fact_live cargó 39.532 filas; ago-lk FC subtotal
+-- $546.453.209 / 20.869 cajas (coincide con la medición previa). Cron LK jobid 38
+-- 'sincronizar-fact-live' cada 30 min.
 -- ----------------------------------------------------------------------------
 
 -- (1) LK: foreign table al parser de Virgilio (server virgilio_db ya existe)

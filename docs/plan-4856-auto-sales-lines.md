@@ -351,9 +351,24 @@ capa en vivo desde el parser de ISIS; **no toca `sales_lines`**.
   Caen en chef solos; LK no se ensucia.
 - **Valorización**: `neto = subtotal × 0,98` (convención módulos) + `subtotal`/`total` crudos
   expuestos. Súper: sin flag es_super en el parser → por ahora va con 0,98 (a afinar).
-- **Pendiente para activar** (no ejecutado — requiere OK / lo corre el dueño):
-  1. En Virgilio: `grant select on public.comprobantes_venta to lk_ppp_reader;`
-  2. En LK: correr `sql/facturacion_live.sql` + `select sincronizar_fact_live();`
-  3. Elegir refresco: plegar a `sincronizar_ppp()` (diario) o cron `*/30`.
+- **DESPLEGADO 2026-09-09** (solo lectura, no toca `sales_lines`):
+  - Virgilio: grants a `lk_ppp_reader` sobre `comprobantes_venta` + `isis_lk/isis_ch.documentos`
+    + policies `lk_ppp_reader_ro` (la vista es security_invoker sobre `documentos` con RLS;
+    mismo patrón que el FDW de PPP). Todo aditivo/reversible.
+  - LK: foreign table + `fact_live` + `sincronizar_fact_live()` + `get_facturacion_live()`
+    creados; cron LK jobid 38 `sincronizar-fact-live` cada 30 min.
+  - **Verificado**: `fact_live` cargó 39.532 filas. ago-lk FC subtotal $546.453.209 /
+    20.869 cajas (coincide exacto con la medición previa). **Mes en curso (sep a hoy):
+    $145,7M neto / 6.481 cajas — que `sales_lines` hoy muestra en $0.**
 - Todavía NO se conecta a ninguna pantalla; primer uso sugerido: tarjeta "facturado mes en
   curso" del Dashboard leyendo `get_facturacion_live(date_trunc('month',now()), now(), 'lk')`.
+- Rollback si hiciera falta: `drop function get_facturacion_live; drop function
+  sincronizar_fact_live; drop table fact_live; drop foreign table virgilio.comprobantes_venta;`
+  `select cron.unschedule('sincronizar-fact-live');` (LK) + revocar grants/policies en Virgilio.
+
+## Memoria operativa (2026-09-09, indicado por el dueño)
+**Producción Virgilio ya NO se usa — solo Gestión Virgilio.** Los operarios trabajan sobre
+Gestión; Producción Virgilio quedó fuera de uso. (Comparten el mismo proyecto Supabase
+`hrxfctzncixxqmpfhskv`, así que los datos de facturación/comprobantes no cambian de lugar;
+lo que cambia es qué app opera.) La nota del CLAUDE.md de LK que dice "Producción Virgilio…
+la app que los operarios están usando en este momento" quedó desactualizada.
