@@ -94,3 +94,73 @@ Archivo nuevo: `sql/sales_lines_auto_virgilio.sql`.
 - `sql/reporte_deposito_gestion.sql` — `import foreign schema` + espejo + bloque en `sincronizar_ppp()`.
 - `sql/pedidos_match_virgilio.sql` — FDW + `v_pedidos_match`/`match_string`.
 - `impactar_ventas_chef_en_sales_lines.sql` — INSERT idempotente a `sales_lines` por `import_batch` + rollback por lote.
+
+---
+
+## Validación de datos (2026-09-08/09) — solo lectura, nada tocado en producción
+
+Se comparó, para agosto-2026 (y jun/jul como control), lo facturado en **ISIS**
+(`sales_lines` empresa `lk`, valorizado con la cadena LK: `list_price·uxb·(1−dto_vol)·0,98`,
+usando `products ∪ loke_products` y quitando el sufijo "L") contra la **facturación de
+Gestión-Virgilio** (`vista_facturacion_neto_items` + `Facturacion_NP`, lado lk = NP no
+empieza en 4).
+
+### Totales agosto-2026 (lk)
+| | ISIS | Gestión (ajust.) |
+|---|--:|--:|
+| cajas | 22.556 | 19.371 (85,9%) |
+| importe $ | 522,1M | 492,4M (94,3%) |
+
+### Cobertura por mes (rampa de adopción)
+- may-26: 0% · jun-26: 0,3% · **jul-26: 84% cajas / 84% $** · **ago-26: 86% cajas / 94% $**.
+- Gestión (Producción Virgilio) arranca ~30/6; may/jun no son comparables.
+
+### Valorización: NO difiere (verificado componente a componente)
+- **No-súper** (3.479 de 3.522 grupos coincidentes): lista, uxb y dto **idénticos**; el
+  único desvío es un **+2,0% plano = el descuento web (0,98)** que la valorización de
+  Gestión (`importe_ent`) no aplica. Aplicando `×0,98` al no-súper, coinciden (residuo 0,015%).
+- **Súper** (43 grupos): lista propia del súper y factor 1,00 (sin 2%). Ahí **Gestión está
+  bien** (lista real del súper) y la reconstrucción LK está mal (usa lista general ×0,98).
+- **Regla del dueño (2026-09-09): el súper NUNCA lleva el 2% (salvo que ya esté en su precio)
+  y tiene su propia lista.** Los datos lo confirman.
+
+### La brecha que queda es COBERTURA, no precio
+Desglose del gap solo-ISIS de agosto ($54,4M):
+- **Cencosud (2444): $39,4M / 1.403 cajas.** Ver hallazgo abajo.
+- **Facturación directa fuera de Gestión: ~$17M / ~35 clientes** (2686, 2532, 2364, 4059…).
+  No pasan por la página ni por Gestión — hueco real que Gestión no cubre.
+- **Notas de crédito / devoluciones**: cajas negativas de ISIS (1651, 1434) que Gestión no
+  registra (Gestión tiene entregas, no NC/ND).
+- **Línea 7xx sin precio**: cajas presentes, importe 0 en los dos lados.
+
+### Pedidos web agosto
+212 pedidos entraron por la página LK por $450,2M (total de pedido); **los 212 están
+enganchados en Gestión** (`lk_pedidos_match`). Por canal: 174 clientes Web→Gestión, 79
+"Gestión sin pedido web" (ISIS/teléfono producidos por Virgilio), 30 "ISIS directa".
+
+### ⚠ Hallazgo: Cencosud (2444) mal imputado en `sales_lines`
+- **2444 es venta de CHEF de artículos de Loeke** (confirmado por el dueño; regla v13.79 de
+  Gestión: NP de Chef con artículos Loeke sin "L").
+- En `sales_lines` figura como **`empresa='lk'` todos los meses desde 2024-03** (y además
+  como `empresa='chef'` en el import histórico, con cajas que coinciden mes a mes → es la
+  misma venta doble-etiquetada). Como los módulos filtran `empresa='lk'`, **cuentan a
+  Cencosud como cliente de Loekemeyer**: infla el Ranking, el Dashboard y la Estadística
+  Madre en **~$196,6M los últimos 12m** (~$574M histórico, 25.216 cajas).
+- **Es el ÚNICO cliente con ese patrón** (detector lk∩chef con cajas coincidentes ≥60% de
+  los meses: solo 2444). Salvedad: el detector solo ve clientes presentes en el import
+  histórico de Chef; un chequeo completo cruzaría por CUIT contra la facturación Chef de
+  Gestión.
+- Consecuencia: el auto-fill por NP (4=Chef) lo clasificaría **bien** solo. Da vuelta la
+  decisión (c): a Cencosud **no** hay que recuperarlo hacia lk, hay que **sacarlo**.
+- Arreglo puntual pendiente (requiere OK del dueño, toca datos): excluir/re-etiquetar 2444
+  del lado lk (filtro en las RPC de lk, o corregir `empresa` con backup previo).
+
+## Condición de implementación (decisión del dueño, 2026-09-09)
+**El norte es alimentar la info de ventas desde el pipeline de Gestión-Virgilio.** PERO hoy
+**la verdad es ISIS**: es el facturador y el que genera las **NC y ND**. Gestión sólo tiene
+entregas, no notas de crédito/débito.
+**NO se implementa el auto-fill hasta que haya coincidencia 100% entre el módulo de
+Facturación de Gestión-Virgilio e ISIS.** Mientras exista brecha (facturación directa fuera
+de Gestión, NC/ND, precios faltantes, imputación de empresa), ISIS sigue siendo la fuente y
+esto queda como validación/monitoreo, no como reemplazo. La Fase 1 (cruce/consistencia,
+solo lectura) es lo que va midiendo esa convergencia mes a mes.
