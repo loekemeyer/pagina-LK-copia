@@ -12699,7 +12699,7 @@ function cargarRatioGerente() {
   if (!tabla) return;
   var thead = tabla.querySelector("thead");
   var tbody = tabla.querySelector("tbody");
-  tbody.innerHTML = '<tr><td colspan="7" class="gv-cargando">Cargando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" class="gv-cargando">Cargando…</td></tr>';
 
   _gvPedirCobertura(_gvNivel)
     .then(function (filas) {
@@ -12717,7 +12717,9 @@ function cargarRatioGerente() {
         "<tr>" +
         (esProv ? "<th>PROVINCIA</th>" : "<th>LOCALIDAD</th><th>PROVINCIA</th>") +
         "<th>SUCURSALES</th><th>CLIENTES</th><th>ACTIVOS 12M</th>" +
-        "<th>POBLACIÓN</th><th>HAB. POR PUNTO</th><th>VS MEDIANA</th>" +
+        "<th>POBLACIÓN</th><th>HAB. POR PUNTO</th>" +
+        (esProv ? "<th>VENTA</th><th>$/HAB</th>" : "") +
+        "<th>VS MEDIANA</th>" +
         "</tr>";
 
       // Ordena de más frío a más caliente: lo primero que hay que mirar es
@@ -12749,6 +12751,10 @@ function cargarRatioGerente() {
             "<td>" + _gvNum(f.activos) + "</td>" +
             "<td>" + (f.poblacion == null ? "—" : _gvNum(f.poblacion)) + "</td>" +
             "<td>" + (ratio == null ? "—" : _gvNum(ratio)) + "</td>" +
+            (esProv
+              ? "<td>" + (Number(f.venta) ? "$" + _gvNum(Math.round(Number(f.venta) / 1e6)) + " M" : "—") + "</td>" +
+                "<td>" + (f.venta_per_capita == null ? "—" : "$" + _gvNum(f.venta_per_capita)) + "</td>"
+              : "") +
             "<td>" + relTxt + "</td>" +
             "</tr>"
           );
@@ -12764,7 +12770,7 @@ function cargarRatioGerente() {
     })
     .catch(function (err) {
       tbody.innerHTML =
-        '<tr><td colspan="8" class="gv-cargando">Error: ' + escHtml(err.message) + "</td></tr>";
+        '<tr><td colspan="9" class="gv-cargando">Error: ' + escHtml(err.message) + "</td></tr>";
     });
 }
 window.cargarRatioGerente = cargarRatioGerente;
