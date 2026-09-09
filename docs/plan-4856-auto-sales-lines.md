@@ -282,3 +282,26 @@ artículo (Estadística Madre), que necesita líneas.
   ambos de ISIS). Ese es el termómetro concreto de la **condición de implementación**.
 - **Pendiente de confirmar**: si `comprobantes_venta` tiene (o puede tener) una tabla de
   líneas por artículo; hoy no se ve una `*_items` poblada.
+
+### Convergencia parser vs Excel — medida a nivel cliente (agosto LK, mes cerrado)
+| | clientes | cajas | $ |
+|---|--:|--:|--:|
+| `sales_lines` (Excel, net) | 220 | 22.556 | $522,1M |
+| `comprobantes_venta` FC (subtotal s/IVA) | 191 | 20.869 | $546,5M |
+
+- **Cobertura completa**: **0 clientes** están solo en el parser; todo lo que el parser
+  tiene, el Excel también.
+- **29 clientes están solo en `sales_lines`** ($46,1M / 3.307 cajas) = los **Chef-de-Loeke +
+  Cencosud** que el Excel mete mal en lk y el parser asigna (bien) a CH. Cencosud 2444 es
+  $39,4M; los otros 28 ~$6,7M. → el parser es MÁS correcto que el Excel para "ventas LK".
+- **De los 191 coincidentes, solo 15 tienen cajas distintas (>2)**; el volumen casa ~90%.
+- Diferencias entendidas: **$ +14,8% del parser es definicional** (`sales_lines` reconstruye
+  NETO `×(1−dto)×0,98`; el parser trae el subtotal real de factura sin esos descuentos, sin
+  IVA — para "facturado real" el parser es el verdadero); **cajas +8,4%** concentrado en 15
+  clientes, a revisar (bonificación/redondeo vs `item_code` excluidos).
+- **Lectura**: la brecha parser↔Excel NO es cobertura — es etapa de valorización + 15 clientes.
+  El parser ya reproduce el Excel a nivel cliente para un mes cerrado. La "condición de
+  implementación" (coincidencia 100% con ISIS) se puede monitorear con esta misma
+  comparación cada mes; el termómetro ya está en verde a nivel cliente/cobertura.
+- Verificación (scratchpad de la sesión): `recon6.py` sobre `sales_lines` ago vs
+  `comprobantes_venta` FC ago.
