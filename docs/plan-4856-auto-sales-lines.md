@@ -339,3 +339,21 @@ las 15 bajan a 10 y de esas:
   exacto** con el Excel mensual, sin re-basear historia. Guardar además `subtotal` (s/IVA)
   y `total` (c/IVA) como columnas extra por si se quiere el importe real de factura.
 - Verif: `recon6.py` (ratio por cliente).
+
+## FASE 1 CONSTRUIDA — `sql/facturacion_live.sql` (solo lectura, 2026-09-09)
+Escrita y lista para correr (los `.sql` del repo se corren a mano en el SQL editor). Es la
+capa en vivo desde el parser de ISIS; **no toca `sales_lines`**.
+- **Objetos LK**: foreign table `virgilio.comprobantes_venta` (server `virgilio_db`, verificado)
+  → espejo local `public.fact_live` (RLS on, sin policies) → `sincronizar_fact_live()`
+  (delete+insert, WHERE real) → RPC `get_facturacion_live(p_desde,p_hasta,p_empresa)` con guard
+  admin y revoke a public/anon.
+- **Cencosud/Chef-de-Loeke resueltos por `marca`**: `empresa = case when marca='CH' then 'chef' else 'lk'`.
+  Caen en chef solos; LK no se ensucia.
+- **Valorización**: `neto = subtotal × 0,98` (convención módulos) + `subtotal`/`total` crudos
+  expuestos. Súper: sin flag es_super en el parser → por ahora va con 0,98 (a afinar).
+- **Pendiente para activar** (no ejecutado — requiere OK / lo corre el dueño):
+  1. En Virgilio: `grant select on public.comprobantes_venta to lk_ppp_reader;`
+  2. En LK: correr `sql/facturacion_live.sql` + `select sincronizar_fact_live();`
+  3. Elegir refresco: plegar a `sincronizar_ppp()` (diario) o cron `*/30`.
+- Todavía NO se conecta a ninguna pantalla; primer uso sugerido: tarjeta "facturado mes en
+  curso" del Dashboard leyendo `get_facturacion_live(date_trunc('month',now()), now(), 'lk')`.
