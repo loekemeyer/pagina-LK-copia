@@ -1795,6 +1795,7 @@ async function logout() {
     if ($("helloNavText")) $("helloNavText").innerText = "";
     if ($("loginBtn")) $("loginBtn").style.display = "inline";
     if ($("userBox")) $("userBox").style.display = "none";
+    syncTraductorCn();
 
     closeUserMenu();
     resetShippingSelect();
@@ -1824,6 +1825,36 @@ async function logout() {
 }
 
 /***********************
+ * BOTÓN TRADUCIR AL CHINO (中文)
+ * Regla (10/9/2026): el traductor NO va para cualquier cliente logueado.
+ * Visitante sin login → se muestra. Cliente logueado → solo si su código
+ * está en CLIENTES_CHINOS. Cuando llegue el listado de clientes chinos se
+ * cargan acá los cod_cliente y el botón vuelve a aparecer para ellos.
+ ***********************/
+const CLIENTES_CHINOS = new Set([]); // ej: ["1234", "5678"]
+
+function puedeVerTraductorCn() {
+  if (!currentSession) {
+    // Todavía no resolvió la sesión: si el navegador viene logueado, ocultar
+    // desde el arranque para que el botón no aparezca y desaparezca.
+    try {
+      if (localStorage.getItem("is_logged") === "1") return false;
+    } catch (e) {}
+    return true; // visitante: sí
+  }
+  const cod = String(customerProfile?.cod_cliente || "").trim();
+  return cod !== "" && CLIENTES_CHINOS.has(cod);
+}
+
+function syncTraductorCn() {
+  const mostrar = puedeVerTraductorCn();
+  document.querySelectorAll(".btn-translate-cn").forEach((b) => {
+    b.style.display = mostrar ? "" : "none";
+  });
+}
+window.syncTraductorCn = syncTraductorCn;
+
+/***********************
  * AUTH/PROFILE HELPERS
  ***********************/
 async function refreshAuthState(sessionOverride) {
@@ -1848,6 +1879,7 @@ async function refreshAuthState(sessionOverride) {
     if ($("loginBtn")) $("loginBtn").style.display = "inline";
     if ($("userBox")) $("userBox").style.display = "none";
     if ($("ctaCliente")) $("ctaCliente").style.display = "inline-flex";
+    syncTraductorCn();
     if ($("helloNavBtn")) $("helloNavBtn").innerText = "";
     if ($("customerNote")) $("customerNote").innerText = "";
     if ($("menuMyOrders")) $("menuMyOrders").style.display = "none";
@@ -1906,6 +1938,7 @@ async function refreshAuthState(sessionOverride) {
   if ($("loginBtn")) $("loginBtn").style.display = "none";
   if ($("userBox")) $("userBox").style.display = "inline-flex";
   if ($("ctaCliente")) $("ctaCliente").style.display = "none";
+  syncTraductorCn();
 
   const name = (customerProfile?.business_name || "").trim();
   if ($("helloNavText"))
@@ -13483,6 +13516,7 @@ function isLokeItem(productId) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  syncTraductorCn();
   WEB_ORDER_DISCOUNT = await getWebOrderDiscount();
   // Fecha estimada de entrega + reingresos de importados (no bloquean la carga).
   getFechaEstimadaEntrega().then((f) => {
