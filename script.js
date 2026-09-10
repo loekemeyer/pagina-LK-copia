@@ -335,17 +335,70 @@ const PC_HOVER_DELAY = 3000; // ms que hay que sostener el mouse
 let _pcHoverTimer = null;
 let _pcHoverEl = null;
 
-function _pcPersianaSet(media, abrir) {
-  if (!media) return;
-  media.classList.toggle("is-open", !!abrir);
-  const cur = media.querySelector(".pc-count-cur");
-  if (cur) cur.textContent = abrir ? "2" : "1";
+function _pcUrlsDe(media) {
+  try {
+    return JSON.parse(media.getAttribute("data-urls") || "[]");
+  } catch (e) {
+    return [];
+  }
 }
+
+// Muestra la foto `idx` de la card. idx 0 = portada (persiana cerrada);
+// idx > 0 = la foto va a la capa de atrás y la portada se corre a la derecha.
+// Así las flechas recorren TODAS las fotos con las mismas dos capas.
+function _pcFotoSet(media, idx) {
+  if (!media) return;
+  const urls = _pcUrlsDe(media);
+  const n = urls.length;
+  if (n < 2) return;
+  idx = ((idx % n) + n) % n;
+  media.setAttribute("data-idx", String(idx));
+  const cur = media.querySelector(".pc-count-cur");
+  if (cur) cur.textContent = String(idx + 1);
+  if (idx === 0) {
+    media.classList.remove("is-open");
+    return;
+  }
+  const back = media.querySelector("img.pc-back");
+  const target = urls[idx];
+  const abrir = () => {
+    // Ojo: comparar contra el atributo, no contra .src (que viene absoluto).
+    if (back && back.getAttribute("src") !== target) back.setAttribute("src", target);
+    media.classList.add("is-open");
+  };
+  if (back && back.getAttribute("src") !== target) {
+    // Precarga: evita el parpadeo en blanco al saltar de foto.
+    const pre = new Image();
+    pre.onload = abrir;
+    pre.onerror = abrir;
+    pre.src = target;
+    if (pre.complete) abrir();
+  } else {
+    abrir();
+  }
+}
+
+// Flechas de la card: cambian de foto YA, sin esperar los 3 s del hover.
+function pcFoto(pid, dir, ev) {
+  if (ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
+  }
+  const media = document.querySelector("#card-" + pid + " .pc-media");
+  if (!media) return;
+  // El temporizador del hover ya no manda: el cliente eligió a mano.
+  if (_pcHoverTimer) clearTimeout(_pcHoverTimer);
+  _pcHoverTimer = null;
+  _pcHoverEl = media;
+  const cur = parseInt(media.getAttribute("data-idx") || "0", 10) || 0;
+  _pcFotoSet(media, cur + dir);
+}
+window.pcFoto = pcFoto;
 
 function _pcHoverCerrar() {
   if (_pcHoverTimer) clearTimeout(_pcHoverTimer);
   _pcHoverTimer = null;
-  if (_pcHoverEl) _pcPersianaSet(_pcHoverEl, false);
+  if (_pcHoverEl) _pcFotoSet(_pcHoverEl, 0);
   _pcHoverEl = null;
 }
 
@@ -358,7 +411,7 @@ if (!window.matchMedia || window.matchMedia("(hover: hover)").matches) {
     _pcHoverEl = media;
     _pcHoverTimer = setTimeout(() => {
       _pcHoverTimer = null;
-      if (_pcHoverEl === media) _pcPersianaSet(media, true);
+      if (_pcHoverEl === media) _pcFotoSet(media, 1);
     }, PC_HOVER_DELAY);
   });
   document.addEventListener("mouseout", (ev) => {
@@ -4599,6 +4652,13 @@ function renderProducts() {
         ? `<div class="pc-count${badgeHtml ? " pc-count-bajo" : ""}" aria-hidden="true"><span class="pc-count-cur">1</span>/${pcUrls.length}</div>`
         : "";
 
+    // Flechas: para el que no quiere esperar los 3 s del hover.
+    const pcArrowsHtml =
+      pcUrls.length > 1
+        ? `<button class="pc-arrow prev" type="button" aria-label="Foto anterior" onclick="pcFoto('${pid}',-1,event)">‹</button>
+           <button class="pc-arrow next" type="button" aria-label="Foto siguiente" onclick="pcFoto('${pid}',1,event)">›</button>`
+        : "";
+
     const inCart = cart.find((i) => String(i.productId) === String(pid));
     const qty = inCart ? Number(inCart.qtyCajas || 0) : 0;
     const totalUni = qty * Number(p.uxb || 0);
@@ -4609,6 +4669,7 @@ function renderProducts() {
       ${assortmentStarHtml}
         <div class="pc-media${pcBack ? " pc-persiana" : ""}"${pcUrlsAttr} onclick="openProdPreview('${pid}')">
         ${pcCountHtml}
+        ${pcArrowsHtml}
         ${
           pcBack
             ? `<img class="pc-back" src="${pcBack}" alt="" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='${imgFallback}'">`
