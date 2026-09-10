@@ -11,15 +11,13 @@
 --           sucursal elegida (customer_delivery_addresses.zona_expreso)
 --
 -- Offsets por zona (entrega_zona_config, EDITABLE):
---   1 CABA Sur +1 · 2 CABA Centro +2 · 3 CABA Oeste +4 · 4 GBA Sur +4
---   5 GBA Oeste +5 · 6 GBA Norte +6 · 7 GBA Norte Lejos +6
---   (parseados del dictado del 10/9 — confirmar; se cambian con un UPDATE)
+--   1 CABA Sur +1 · 2 CABA Centro +2 · 3 CABA Oeste +2 · 4 GBA Sur +2
+--   5 GBA Oeste +3 · 6 GBA Norte +4 · 7 GBA Norte Lejos +4
+--   (confirmados por el dueño el 10/9/2026; se cambian con un UPDATE)
 --
 -- Mapa barrio→zona (entrega_barrio_zona, EDITABLE): semilla = los 39 barrios
 -- que Virgilio ya programó (unívocos). Los que faltan se agregan a mano:
 --   insert into entrega_barrio_zona (barrio_norm, zona) values ('villa devoto', 3);
--- Villa Devoto quedó cargado a mano el 10/9 (zona 3, A CONFIRMAR) para poder
--- probar con el cliente de prueba Tierra Nativa.
 --
 -- Pendiente: feriados (hoy solo se saltan sábados y domingos).
 -- El portal la consume con:  sb.rpc('get_fecha_estimada_entrega',
@@ -35,11 +33,11 @@ create table if not exists public.entrega_zona_config (
 insert into public.entrega_zona_config (zona, dias_habiles, descripcion) values
   (1, 1, 'CABA Sur'),
   (2, 2, 'CABA Centro'),
-  (3, 4, 'CABA Oeste'),
-  (4, 4, 'GBA Sur'),
-  (5, 5, 'GBA Oeste'),
-  (6, 6, 'GBA Norte'),
-  (7, 6, 'GBA Norte Lejos')
+  (3, 2, 'CABA Oeste'),
+  (4, 2, 'GBA Sur'),
+  (5, 3, 'GBA Oeste'),
+  (6, 4, 'GBA Norte'),
+  (7, 4, 'GBA Norte Lejos')
 on conflict (zona) do nothing;
 
 create table if not exists public.entrega_barrio_zona (
