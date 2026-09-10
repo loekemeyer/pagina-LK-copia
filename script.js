@@ -948,41 +948,25 @@ async function descargarFotosSurtido(tipo) {
       const hasBlanco = set.has(c + ".webp");
       const hasCarton = set.has(c + "-2.webp");
 
-      // ALTA CALIDAD: baja la versión 1000x1000 con cartón (carpeta hd/).
-      // Como el manifest solo lista la raíz del bucket, no sabemos de antemano
-      // si existe la HD: se intenta hd/ y, si no está, cae a la 400 con cartón
-      // (o a la fondo blanco) para que la descarga no quede vacía.
-      if (tipo === "hd") {
-        if (!hasBlanco && !hasCarton) {
-          faltan++;
-          return; // el producto no tiene ninguna foto: no hay HD posible
-        }
-        // Se prueban en orden: HD .webp, HD .jpg (así se subió), y si no hay
-        // HD, la 400 con cartón (o fondo blanco) para no dejar la foto afuera.
-        const fallback = hasCarton
-          ? BASE_IMG + enc + "-2.webp" + IMG_PARAMS
-          : BASE_IMG + enc + ".webp" + IMG_PARAMS;
-        tasks.push({
-          baseName: c,
-          candidates: [
-            { url: BASE_IMG + "hd/" + enc + ".webp" + IMG_PARAMS, ext: ".webp" },
-            { url: BASE_IMG + "hd/" + enc + ".jpg" + IMG_PARAMS, ext: ".jpg" },
-            { url: fallback, ext: ".webp" },
-          ],
-        });
-        return;
-      }
-
+      // FONDO BLANCO: la 400x400 sin cartón, tal cual.
       if (wantBlanco && hasBlanco) {
         tasks.push({
           url: BASE_IMG + enc + ".webp" + IMG_PARAMS,
           path: (tipo === "ambas" ? "fondo-blanco/" : "") + c + ".webp",
         });
       }
+      // CON CARTÓN: ahora baja la 1000x1000 (carpeta hd/). Como el manifest solo
+      // lista la raíz del bucket, no sabemos de antemano si existe la HD: se prueba
+      // hd/{cod}.webp, hd/{cod}.jpg (así se subió) y, si falta, cae a la 400 con
+      // cartón (-2.webp) para que la descarga nunca quede vacía.
       if (wantCarton && hasCarton) {
         tasks.push({
-          url: BASE_IMG + enc + "-2.webp" + IMG_PARAMS,
-          path: (tipo === "ambas" ? "con-carton/" : "") + c + ".webp",
+          baseName: (tipo === "ambas" ? "con-carton/" : "") + c,
+          candidates: [
+            { url: BASE_IMG + "hd/" + enc + ".webp" + IMG_PARAMS, ext: ".webp" },
+            { url: BASE_IMG + "hd/" + enc + ".jpg" + IMG_PARAMS, ext: ".jpg" },
+            { url: BASE_IMG + enc + "-2.webp" + IMG_PARAMS, ext: ".webp" },
+          ],
         });
       }
       if (tipo === "blanco" && !hasBlanco) faltan++;
@@ -1045,8 +1029,7 @@ async function descargarFotosSurtido(tipo) {
 
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download =
-      "fotos-loekemeyer-" + (tipo === "hd" ? "alta-calidad" : tipo) + ".zip";
+    a.download = "fotos-loekemeyer-" + tipo + ".zip";
     document.body.appendChild(a);
     a.click();
     a.remove();
