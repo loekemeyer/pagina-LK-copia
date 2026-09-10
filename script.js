@@ -949,6 +949,27 @@ async function descargarFotosSurtido(tipo) {
       const enc = encodeURIComponent(c);
       const hasBlanco = set.has(c + ".webp");
       const hasCarton = set.has(c + "-2.webp");
+
+      // ALTA CALIDAD: baja la versión 1000x1000 con cartón (carpeta hd/).
+      // Como el manifest solo lista la raíz del bucket, no sabemos de antemano
+      // si existe la HD: se intenta hd/ y, si no está, cae a la 400 con cartón
+      // (o a la fondo blanco) para que la descarga no quede vacía.
+      if (tipo === "hd") {
+        if (!hasBlanco && !hasCarton) {
+          faltan++;
+          return; // el producto no tiene ninguna foto: no hay HD posible
+        }
+        const fallback = hasCarton
+          ? BASE_IMG + enc + "-2.webp" + IMG_PARAMS
+          : BASE_IMG + enc + ".webp" + IMG_PARAMS;
+        tasks.push({
+          url: BASE_IMG + "hd/" + enc + ".webp" + IMG_PARAMS, // 1000x1000 con cartón
+          fallbackUrl: fallback, // 400x400 con cartón (o fondo blanco)
+          path: c + ".webp",
+        });
+        return;
+      }
+
       if (wantBlanco && hasBlanco) {
         tasks.push({
           url: BASE_IMG + enc + ".webp" + IMG_PARAMS,
@@ -978,11 +999,17 @@ async function descargarFotosSurtido(tipo) {
     for (const t of tasks) {
       setStatus("Descargando fotos… " + (done + 1) + "/" + tasks.length);
       try {
-        const r = await fetch(t.url);
+        let r = await fetch(t.url);
+        // Alta calidad: si no está la HD, se usa la versión 400 como respaldo
+        if (!r.ok && t.fallbackUrl) {
+          r = await fetch(t.fallbackUrl);
+        }
         if (r.ok) {
           const b = await r.blob();
           zip.file(t.path, b);
           ok++;
+        } else {
+          faltan++;
         }
       } catch (e) {}
       done++;
@@ -997,7 +1024,8 @@ async function descargarFotosSurtido(tipo) {
 
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "fotos-loekemeyer-" + tipo + ".zip";
+    a.download =
+      "fotos-loekemeyer-" + (tipo === "hd" ? "alta-calidad" : tipo) + ".zip";
     document.body.appendChild(a);
     a.click();
     a.remove();
