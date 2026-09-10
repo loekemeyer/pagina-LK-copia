@@ -48,7 +48,9 @@ function setStatus(msg) {
 }
 
 function showTable(show) {
-  $("tablaSug").style.display = show ? "table" : "none";
+  // Al mostrar, limpiamos el display inline para que mande el CSS
+  // (tabla en desktop, tarjetas apiladas en móvil vía media query).
+  $("tablaSug").style.display = show ? "" : "none";
 }
 
 function pick(obj, keys, fallback = "") {
@@ -177,7 +179,7 @@ function renderSug() {
 
     tbody.innerHTML += `
       <tr>
-        <td class="imgcell">
+        <td class="imgcell" data-label="">
           <img
             class="sug-img"
             src="${imgUrlByCod(cod)}"
@@ -188,17 +190,17 @@ function renderSug() {
             onerror="this.onerror=null;this.src='img/no-image.jpg'"
           />
         </td>
-        <td>${cod}</td>
-        <td class="desc">${desc}</td>
-        <td class="uxb-cell">${uxb}</td>
-        <td class="price-cell">
+        <td class="cod-cell" data-label="Cod">${cod}</td>
+        <td class="desc" data-label="Descripción">${desc}</td>
+        <td class="uxb-cell" data-label="UxB">${uxb}</td>
+        <td class="price-cell" data-label="Tu precio contado">
   $${tuPrecioContado.toLocaleString("es-AR", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })}
-</td>       
-        <td class="msg">${msg}</td>
-        <td>
+</td>
+        <td class="msg" data-label="Motivo">${msg}</td>
+        <td data-label="Pedido">
           <div class="sug-action">
             <div class="sug-stepper">
               <button type="button" class="sug-step-btn" onclick="sugDec('${pid}')">−</button>

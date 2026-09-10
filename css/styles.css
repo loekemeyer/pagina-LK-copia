@@ -14393,14 +14393,43 @@ a.user-menu-item:hover {
   }
 }
 
-/* 3) Grid de productos: SIEMPRE 4 columnas en desktop (≥901px), con las
-      cards flexibles (1fr) y un tope de 320px para que no se agranden de más
-      en pantallas anchas. El toggle 3-col (.grid-3col, ≥1200px) lo sobreescribe. */
+/* 3) Grid de productos por dispositivo (pedido 10/9/2026):
+      - Desktop / cualquier pantalla HORIZONTAL: SIEMPRE 4 columnas, cards lo
+        más grandes posible (1fr; el ancho tope lo pone el max-width 1600 del
+        layout, así no se agrandan de más en 4K).
+      - Tablet en VERTICAL: 3 columnas.
+      - Celular: 2 columnas.
+      Prioridad: que la foto y el texto queden legibles en cada tamaño.
+      El toggle 3-col (.grid-3col, ≥1200px) lo sobreescribe. */
 @media (min-width: 901px) {
   .products-grid {
-    grid-template-columns: repeat(4, minmax(0, 320px));
-    justify-content: center;
-    gap: clamp(14px, 1.6vw, 25px);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: clamp(16px, 1.6vw, 26px);
+  }
+}
+/* Tablet (601-1024px): 3 columnas, cards que llenan el ancho disponible. */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .products-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: clamp(14px, 2vw, 22px);
+  }
+}
+/* Celular (≤600px): 2 columnas. */
+@media (max-width: 600px) {
+  .products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+/* PC y cualquier pantalla HORIZONTAL: siempre 4, aunque se angoste la ventana.
+   Vuelve a 4 en la franja 901-1024 cuando la orientación es horizontal, así una
+   ventana de PC achicada no baja a 3. En vertical (tablet) sigue mandando el
+   bloque de 3 de arriba. */
+@media (min-width: 901px) and (orientation: landscape) {
+  .products-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
