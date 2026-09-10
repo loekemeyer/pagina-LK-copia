@@ -6655,13 +6655,15 @@ body.section-perfil #navSearch {
      antes (caso sin login). Con banner, queda igual por space-between. */
   margin-left: auto;
 }
-/* En notebooks (901-1280px) los desktop-sort-buttons no entran en una línea
-   junto al banner PEDIR PARA. Solución:
+/* En notebooks chicos (901-1024px) los desktop-sort-buttons no entran en una
+   línea junto al banner PEDIR PARA. Solución:
    - Ocultar los chips de orden (.desktop-sort-buttons)
    - Mostrar la mobile-products-bar (botones Categoría + Filtros) que abren overlays
    - Ocultar el buscador de la mobile-bar (ya hay buscador en el header)
-   - El banner PEDIR PARA queda solo en el sort-row arriba */
-@media (min-width: 901px) and (max-width: 1280px) {
+   - El banner PEDIR PARA queda solo en el sort-row arriba
+   Arriba de 1024px se muestran los botones compactos (Mi surtido / Nuevos /
+   Filtrar por), que es lo que se quiere ver en monitores normales. */
+@media (min-width: 901px) and (max-width: 1024px) {
   /* Chips de orden ocultos en este rango */
   #productos .sort-row .desktop-sort-buttons {
     display: none !important;
@@ -14391,13 +14393,13 @@ a.user-menu-item:hover {
   }
 }
 
-/* 3) Grid de productos auto-responsive: # de columnas se calcula
-      según el viewport. minmax(220px, 1fr) = card mínima 220px.
-      → 1366px ≈ 5 cols, 1920px ≈ 7 cols, 2560px ≈ 9 cols,
-      4K capado por el max-width de arriba. */
+/* 3) Grid de productos: SIEMPRE 4 columnas en desktop (≥901px), con las
+      cards flexibles (1fr) y un tope de 320px para que no se agranden de más
+      en pantallas anchas. El toggle 3-col (.grid-3col, ≥1200px) lo sobreescribe. */
 @media (min-width: 901px) {
   .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 320px));
+    justify-content: center;
     gap: clamp(14px, 1.6vw, 25px);
   }
 }
