@@ -15161,13 +15161,17 @@ body { top: 0 !important; }
 .fotos-popup-head {
   background: #212122;
   margin: -28px -26px 18px;
-  padding: 16px 26px;
+  padding: 22px 26px 18px;
   border-radius: var(--radius) var(--radius) 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
 }
 .fotos-popup-close {
   position: absolute;
-  top: 8px;
-  right: 12px;
+  top: 22px; /* alineada al centro vertical del logo dentro de la franja */
+  right: 14px;
   border: none;
   background: none;
   font-size: 26px;
