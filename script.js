@@ -32,6 +32,14 @@ const NOTIFY_NEW_ADDRESS_URL =
  * UI CONSTANTS
  ***********************/
 let WEB_ORDER_DISCOUNT = 0.02; // default fallback
+// Fecha estimada de entrega (global). La setea el dueño en Gestión Virgilio
+// (Stock_Config['entrega_estimada_global']) y el cron sync_reingresos_virgilio()
+// la espeja a app_settings['fecha_estimada_entrega']. "" = no mostrar.
+let FECHA_ESTIMADA_ENTREGA = "";
+// Reingreso de importados (E): cod → fecha (ISO). Solo trae los que están sin
+// stock en Virgilio (falta>0, contando stock de parte). Origen: RPC get_reingresos()
+// (tabla local reingreso_cache espejada de Virgilio). Se muestra en el catálogo.
+let _reingresoMap = new Map();
 const UPSELL_DISCOUNT = 0.3; // Descuento extra aplicado al pedido "promo" (items agregados desde popup upsell). Se graba como pedido separado (X+1).
 // EXPO: en esta copia el admin no elige entre sus razones vinculadas; entra a
 // cualquier cliente del padrón vía "Elegir cliente" o crea uno con "Nuevo cliente".
@@ -991,6 +999,63 @@ async function getWebOrderDiscount() {
     console.warn("No se pudo leer web_order_discount, usando default 0.02", e);
     return 0.02;
   }
+}
+
+// Fecha estimada de entrega global (app_settings). "" si no está seteada.
+async function getFechaEstimadaEntrega() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("app_settings")
+      .select("value")
+      .eq("key", "fecha_estimada_entrega")
+      .maybeSingle();
+    if (error) throw error;
+    return String(data?.value || "").trim();
+  } catch (e) {
+    console.warn("No se pudo leer fecha_estimada_entrega", e);
+    return "";
+  }
+}
+
+// Código canónico para cruzar con Virgilio: mayúsculas + sin ceros a la izquierda
+// (gv_cod_stock en Virgilio devuelve '35E' donde LK guarda '035E').
+function _canonCod(cod) {
+  return String(cod || "").trim().toUpperCase().replace(/^0+(?=\d)/, "");
+}
+
+// Reingresos de importados sin stock (cod → fecha ISO). Una sola llamada;
+// la RPC lee la tabla local espejada de Virgilio (nada de FDW en vivo).
+async function loadReingresos() {
+  try {
+    const { data, error } = await supabaseClient.rpc("get_reingresos");
+    if (error) throw error;
+    const m = new Map();
+    (data || []).forEach((r) => {
+      const cod = _canonCod(r.cod);
+      if (cod && r.fecha) m.set(cod, r.fecha);
+    });
+    _reingresoMap = m;
+  } catch (e) {
+    console.warn("No se pudieron leer los reingresos", e);
+    _reingresoMap = new Map();
+  }
+}
+
+// dd/mm a partir de una fecha ISO (YYYY-MM-DD). "" si no parsea.
+function fmtDdMm(iso) {
+  const s = String(iso || "").trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return "";
+  return `${m[3]}/${m[2]}`;
+}
+
+// Reingreso estimado de un producto (solo importados terminados en E que estén
+// sin stock). Devuelve "dd/mm" o "" si no corresponde.
+function reingresoDeProducto(cod) {
+  const c = String(cod || "").trim().toUpperCase();
+  if (!/E$/.test(c)) return "";
+  const iso = _reingresoMap.get(_canonCod(c));
+  return iso ? fmtDdMm(iso) : "";
 }
 
 /***********************
@@ -4412,6 +4477,9 @@ function renderProducts() {
       .trim()
       .toUpperCase();
 
+    // Reingreso estimado (solo importados E sin stock en Virgilio) — informativo.
+    const reingresoDdMm = reingresoDeProducto(p.cod);
+
     let badgeHtml = "";
 
     if (badge === "NUEVO") {
@@ -4474,6 +4542,12 @@ function renderProducts() {
           </div>
 
           <div class="card-desc">${String(p.description || "")}</div>
+
+          ${
+            reingresoDdMm
+              ? `<div class="pc-reingreso" title="Sin stock — reingreso estimado">Reingreso Est ${reingresoDdMm}</div>`
+              : ""
+          }
 
           <div class="${logged ? "" : "price-hidden"} card-prices">
   <div class="card-price-line">
@@ -7016,6 +7090,18 @@ function calcTotals() {
 function updateCart() {
   const cartDiv = $("cart");
   if (!cartDiv) return;
+
+  // Fecha estimada de entrega (global) en el carrito, antes de confirmar.
+  const entregaEl = $("entregaEstimada");
+  if (entregaEl) {
+    const ddmm = fmtDdMm(FECHA_ESTIMADA_ENTREGA) || String(FECHA_ESTIMADA_ENTREGA || "").trim();
+    if (ddmm) {
+      entregaEl.innerHTML = `Entrega estimada: <strong>${ddmm}</strong>`;
+      entregaEl.hidden = false;
+    } else {
+      entregaEl.hidden = true;
+    }
+  }
 
   // Modo cliente-expo o escala activa: dto por escala según subtotal.
   _expoSyncDto();
@@ -13339,6 +13425,14 @@ function isLokeItem(productId) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   WEB_ORDER_DISCOUNT = await getWebOrderDiscount();
+  // Fecha estimada de entrega + reingresos de importados (no bloquean la carga).
+  getFechaEstimadaEntrega().then((f) => {
+    FECHA_ESTIMADA_ENTREGA = f;
+    if (typeof updateCart === "function") updateCart();
+  });
+  loadReingresos().then(() => {
+    if (typeof renderProducts === "function") renderProducts();
+  });
   // Sincronizar altura cart-col-right con cart-col-left (carrito 2 cols)
   // → la tabla se estira al alto exacto de la izquierda y scrollea internamente.
   // CASO ESPECIAL: si el módulo "Seguro que no necesitás esto?" está oculto,

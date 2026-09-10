@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23333" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23333" />
+    <link rel="stylesheet" href="css/styles.css?v=23334" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23334" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1330,6 +1330,9 @@
            ============================================================ -->
       <div class="cart-2col">
         <div class="cart-col-left">
+      <!-- Fecha estimada de entrega (global). La completa updateCart() desde
+           app_settings['fecha_estimada_entrega']; oculta si no está seteada. -->
+      <div id="entregaEstimada" class="entrega-estimada" hidden></div>
       <!-- Dirección de entrega + Observaciones (misma fila, mitad y mitad) -->
       <div class="ship-row ship-row-split">
         <div class="ship-card">
@@ -2136,14 +2139,14 @@
     ></div>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23333"></script>
-    <script src="script.js?v=23333"></script>
+    <script src="./version.js?v=23334"></script>
+    <script src="script.js?v=23334"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23333"></script>
+    <script src="analisis-venta-cliente.js?v=23334"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23333"></script>
-    <script src="admin-excel-krikos.js?v=23333"></script>
-    <script src="vendor-import-excel.js?v=23333"></script>
+    <script src="scotapi-shim.js?v=23334"></script>
+    <script src="admin-excel-krikos.js?v=23334"></script>
+    <script src="vendor-import-excel.js?v=23334"></script>
   </body>
 </html>
