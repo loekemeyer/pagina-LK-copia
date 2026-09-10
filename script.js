@@ -894,16 +894,14 @@ async function maybeShowFotosPopup() {
     if (!cod) return;
     // Guard: solo si tiene "Mi Surtido".
     if (!(myAssortmentIds instanceof Set) || myAssortmentIds.size === 0) return;
-    // Ya lo cerró/descargó en esta sesión de navegador.
+    // Ya lo cerró/descargó en ESTA sesión de navegador → no repetir.
     if (sessionStorage.getItem("lk_fotos_popup_seen") === "1") return;
-    // Chequear una sola vez por carga (evita doble RPC desde dos flujos de login).
+    // Chequear una sola vez por carga (evita doble apertura desde dos flujos de login).
     if (window._fotosPopupChecked) return;
     window._fotosPopupChecked = true;
-    // Ya descargó alguna vez (persistido): no mostrar más.
-    const { data, error } = await supabaseClient.rpc("fotos_descarga_estado", {
-      p_cod_cliente: cod,
-    });
-    if (!error && data === true) return;
+    // Se muestra UNA VEZ POR SESIÓN: cada vez que el cliente abre el navegador
+    // vuelve a aparecer, aunque ya haya descargado antes. Por eso NO se consulta
+    // el estado persistido (fotos_descarga_estado) — solo manda el guard de sesión.
     _abrirFotosPopup();
   } catch (e) {}
 }
