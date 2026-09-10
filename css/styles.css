@@ -15871,3 +15871,16 @@ body { top: 0 !important; }
     min-height: 125vh;
   }
 }
+
+/* ============================================================
+   Header apretado (notebooks 901-1280px): sacar el dropdown "Categorías ▾"
+   del nav. Es el ítem menos útil del header —las categorías ya están en el
+   sidebar izquierdo y en la barra mobile— y sacarlo evita que, con una razón
+   social larga, los textos del header queden angostos y solapados.
+   En ≥1281px (monitores grandes) se muestra normal.
+   ============================================================ */
+@media (min-width: 901px) and (max-width: 1280px) {
+  .nav-center .dropdown-wrap {
+    display: none !important;
+  }
+}
