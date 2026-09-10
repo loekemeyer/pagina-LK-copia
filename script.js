@@ -959,13 +959,18 @@ async function descargarFotosSurtido(tipo) {
           faltan++;
           return; // el producto no tiene ninguna foto: no hay HD posible
         }
+        // Se prueban en orden: HD .webp, HD .jpg (así se subió), y si no hay
+        // HD, la 400 con cartón (o fondo blanco) para no dejar la foto afuera.
         const fallback = hasCarton
           ? BASE_IMG + enc + "-2.webp" + IMG_PARAMS
           : BASE_IMG + enc + ".webp" + IMG_PARAMS;
         tasks.push({
-          url: BASE_IMG + "hd/" + enc + ".webp" + IMG_PARAMS, // 1000x1000 con cartón
-          fallbackUrl: fallback, // 400x400 con cartón (o fondo blanco)
-          path: c + ".webp",
+          baseName: c,
+          candidates: [
+            { url: BASE_IMG + "hd/" + enc + ".webp" + IMG_PARAMS, ext: ".webp" },
+            { url: BASE_IMG + "hd/" + enc + ".jpg" + IMG_PARAMS, ext: ".jpg" },
+            { url: fallback, ext: ".webp" },
+          ],
         });
         return;
       }
@@ -999,17 +1004,35 @@ async function descargarFotosSurtido(tipo) {
     for (const t of tasks) {
       setStatus("Descargando fotos… " + (done + 1) + "/" + tasks.length);
       try {
-        let r = await fetch(t.url);
-        // Alta calidad: si no está la HD, se usa la versión 400 como respaldo
-        if (!r.ok && t.fallbackUrl) {
-          r = await fetch(t.fallbackUrl);
-        }
-        if (r.ok) {
-          const b = await r.blob();
-          zip.file(t.path, b);
-          ok++;
+        if (t.candidates) {
+          // Alta calidad: prueba HD .webp, HD .jpg y por último la 400
+          let blob = null,
+            ext = ".webp";
+          for (const cand of t.candidates) {
+            try {
+              const r = await fetch(cand.url);
+              if (r.ok) {
+                blob = await r.blob();
+                ext = cand.ext;
+                break;
+              }
+            } catch (e) {}
+          }
+          if (blob) {
+            zip.file(t.baseName + ext, blob);
+            ok++;
+          } else {
+            faltan++;
+          }
         } else {
-          faltan++;
+          const r = await fetch(t.url);
+          if (r.ok) {
+            const b = await r.blob();
+            zip.file(t.path, b);
+            ok++;
+          } else {
+            faltan++;
+          }
         }
       } catch (e) {}
       done++;
