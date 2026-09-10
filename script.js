@@ -325,6 +325,57 @@ function productImgStep(pid, dir, ev) {
 }
 window.productImgStep = productImgStep;
 
+/* ------------------------------------------------------------------
+   Persiana de la card con RETARDO. El cambio de foto no se dispara con el
+   simple paso del mouse: hay que quedarse PC_HOVER_DELAY ms sobre la card.
+   Barrer la grilla con el mouse ya no dispara nada. Al salir vuelve al toque.
+   Va por delegación en document porque las cards se re-renderizan seguido.
+   ------------------------------------------------------------------ */
+const PC_HOVER_DELAY = 3000; // ms que hay que sostener el mouse
+let _pcHoverTimer = null;
+let _pcHoverEl = null;
+
+function _pcPersianaSet(media, abrir) {
+  if (!media) return;
+  media.classList.toggle("is-open", !!abrir);
+  const cur = media.querySelector(".pc-count-cur");
+  if (cur) cur.textContent = abrir ? "2" : "1";
+}
+
+function _pcHoverCerrar() {
+  if (_pcHoverTimer) clearTimeout(_pcHoverTimer);
+  _pcHoverTimer = null;
+  if (_pcHoverEl) _pcPersianaSet(_pcHoverEl, false);
+  _pcHoverEl = null;
+}
+
+if (!window.matchMedia || window.matchMedia("(hover: hover)").matches) {
+  document.addEventListener("mouseover", (ev) => {
+    const media =
+      ev.target && ev.target.closest ? ev.target.closest(".pc-persiana") : null;
+    if (!media || media === _pcHoverEl) return;
+    _pcHoverCerrar();
+    _pcHoverEl = media;
+    _pcHoverTimer = setTimeout(() => {
+      _pcHoverTimer = null;
+      if (_pcHoverEl === media) _pcPersianaSet(media, true);
+    }, PC_HOVER_DELAY);
+  });
+  document.addEventListener("mouseout", (ev) => {
+    const media =
+      ev.target && ev.target.closest ? ev.target.closest(".pc-persiana") : null;
+    if (!media || media !== _pcHoverEl) return;
+    // Moverse DENTRO de la misma card no es salir.
+    if (ev.relatedTarget && media.contains(ev.relatedTarget)) return;
+    _pcHoverCerrar();
+  });
+  // Si la grilla se re-renderiza o se scrollea, el elemento viejo puede quedar
+  // colgado: cerrar por las dudas.
+  window.addEventListener("scroll", () => {
+    if (_pcHoverEl && !document.body.contains(_pcHoverEl)) _pcHoverCerrar();
+  }, { passive: true });
+}
+
 // Hover (solo mouse): al entrar muestra la 2ª foto (sin cartón), al salir
 // vuelve a la principal (con cartón). En táctil no hay hover → usa las flechas.
 function productImgHover(pid, entra) {
@@ -4508,6 +4559,13 @@ function renderProducts() {
       `;
     }
 
+    // Contador de fotos (1/2, 1/3…): el total sale de las fotos que tenga el
+    // producto, así al sumar una foto más el número se actualiza solo.
+    const pcCountHtml =
+      pcUrls.length > 1
+        ? `<div class="pc-count${badgeHtml ? " pc-count-bajo" : ""}" aria-hidden="true"><span class="pc-count-cur">1</span>/${pcUrls.length}</div>`
+        : "";
+
     const inCart = cart.find((i) => String(i.productId) === String(pid));
     const qty = inCart ? Number(inCart.qtyCajas || 0) : 0;
     const totalUni = qty * Number(p.uxb || 0);
@@ -4517,6 +4575,7 @@ function renderProducts() {
       ${badgeHtml}
       ${assortmentStarHtml}
         <div class="pc-media${pcBack ? " pc-persiana" : ""}"${pcUrlsAttr} onclick="openProdPreview('${pid}')">
+        ${pcCountHtml}
         ${
           pcBack
             ? `<img class="pc-back" src="${pcBack}" alt="" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='${imgFallback}'">`

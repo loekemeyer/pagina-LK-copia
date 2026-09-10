@@ -1,3 +1,16 @@
 {
-  "locks": []
+  "locks": [
+    {
+      "file": "css/styles.css",
+      "owner": "loekemeyer.n8n@gmail.com@ccr-remote",
+      "acquired": "2026-09-10T14:13:01Z",
+      "note": "fix header overlap traductor/carrito"
+    },
+    {
+      "file": "script.js",
+      "owner": "loekemeyer.n8n@gmail.com@ccr-remote",
+      "acquired": "2026-09-10T14:15:26Z",
+      "note": "persiana derecha + delay 3s + contador fotos"
+    }
+  ]
 }
