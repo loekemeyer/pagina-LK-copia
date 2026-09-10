@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23356" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23356" />
+    <link rel="stylesheet" href="css/styles.css?v=23357" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23357" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1345,6 +1345,25 @@
           <div class="ship-hint">
             Seleccioná una dirección para poder confirmar el pedido.
           </div>
+          <!-- RETIRA: el cliente elige día (desde +3 días hábiles) y franja horaria.
+               Lo muestra/oculta _syncRetiroUI() según la sucursal elegida. -->
+          <div id="retiroBlock" class="retiro-block" hidden>
+            <label class="ship-label" for="retiroFecha">¿Qué día retirás?</label>
+            <input type="date" id="retiroFecha" class="retiro-fecha" />
+            <div class="ship-hint" id="retiroFechaHint">
+              A partir de 3 días hábiles. Lunes a viernes.
+            </div>
+            <div class="retiro-franjas" role="radiogroup" aria-label="Franja horaria">
+              <label class="retiro-franja">
+                <input type="radio" name="retiroFranja" value="9:00 a 12:00" />
+                <span>9:00 a 12:00</span>
+              </label>
+              <label class="retiro-franja">
+                <input type="radio" name="retiroFranja" value="13:00 a 16:30" />
+                <span>13:00 a 16:30</span>
+              </label>
+            </div>
+          </div>
         </div>
         <div class="ship-card">
           <label class="ship-label" for="obsPedidoInput">Observaciones</label>
@@ -2142,14 +2161,14 @@
     ></div>
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23356"></script>
-    <script src="script.js?v=23356"></script>
+    <script src="./version.js?v=23357"></script>
+    <script src="script.js?v=23357"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23356"></script>
+    <script src="analisis-venta-cliente.js?v=23357"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23356"></script>
-    <script src="admin-excel-krikos.js?v=23356"></script>
-    <script src="vendor-import-excel.js?v=23356"></script>
+    <script src="scotapi-shim.js?v=23357"></script>
+    <script src="admin-excel-krikos.js?v=23357"></script>
+    <script src="vendor-import-excel.js?v=23357"></script>
   </body>
 </html>

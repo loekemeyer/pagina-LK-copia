@@ -1193,7 +1193,66 @@ function _renderEntregaEstimada(iso) {
   }
 }
 
+// ---- RETIRA: el cliente elige día (desde +3 días hábiles) y franja ----
+function _esRetira() {
+  return String(deliveryChoice?.zonaExpreso || "").trim().toLowerCase() === "retira";
+}
+function _isoLocal(d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+// Suma n días hábiles (lun-vie). Feriados: pendiente, igual que en la RPC.
+function _sumarHabiles(d, n) {
+  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  let k = 0;
+  while (k < n) {
+    r.setDate(r.getDate() + 1);
+    if (r.getDay() !== 0 && r.getDay() !== 6) k++;
+  }
+  return r;
+}
+function _retiroMinIso() {
+  return _isoLocal(_sumarHabiles(new Date(), 3));
+}
+function _retiroSeleccion() {
+  const fecha = String($("retiroFecha")?.value || "").trim();
+  const franja = document.querySelector('input[name="retiroFranja"]:checked')?.value || "";
+  return { fecha, franja };
+}
+// Fecha válida: ≥ mínimo y no cae en fin de semana.
+function _retiroFechaValida(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+  if (iso < _retiroMinIso()) return false;
+  const d = new Date(iso + "T12:00:00");
+  return d.getDay() !== 0 && d.getDay() !== 6;
+}
+function _syncRetiroUI() {
+  const block = $("retiroBlock");
+  if (!block) return;
+  const retira = _esRetira();
+  block.hidden = !retira;
+  if (retira) {
+    const inp = $("retiroFecha");
+    if (inp) {
+      inp.min = _retiroMinIso();
+      if (inp.value && !_retiroFechaValida(inp.value)) inp.value = "";
+    }
+  }
+}
+function _resetRetiro() {
+  const inp = $("retiroFecha");
+  if (inp) inp.value = "";
+  document.querySelectorAll('input[name="retiroFranja"]').forEach((r) => (r.checked = false));
+  _syncRetiroUI();
+}
+
 function _syncEntregaEstimada() {
+  _syncRetiroUI();
+  if (_esRetira()) {
+    // Retira: no hay fecha estimada de reparto; el día lo elige el cliente.
+    _renderEntregaEstimada("");
+    return;
+  }
   const slot = Number(deliveryChoice?.slot);
   const cid = customerProfile?.id;
   // Sin sucursal elegida: cae al valor global (app_settings), si existiera.
@@ -7594,6 +7653,10 @@ function updateCart() {
     const deliveryConfirmedByUser =
       !shipBtn || shipBtn.classList.contains("confirmed");
     const mustChooseDelivery = !deliveryChoice.slot || !deliveryConfirmedByUser;
+    // Retira: exige día válido (≥ +3 hábiles, lun-vie) y franja horaria.
+    const _rs = _esRetira() ? _retiroSeleccion() : null;
+    const mustChooseRetiro =
+      !!_rs && (!_retiroFechaValida(_rs.fecha) || !_rs.franja);
     const mustChoosePayment =
       !isAdmin && !document.getElementById("paymentSelect")?.value;
     var _csv2 = document.getElementById("customerSelect")?.value || "";
@@ -7608,6 +7671,7 @@ function updateCart() {
       !!currentSession &&
       cart.length > 0 &&
       !mustChooseDelivery &&
+      !mustChooseRetiro &&
       !mustChoosePayment &&
       !mustChooseCustomer;
 
@@ -7624,6 +7688,11 @@ function updateCart() {
     } else if (!!currentSession && cart.length > 0 && mustChooseDelivery) {
       setOrderStatus(
         "Elegí una opción de Entrega para poder confirmar el pedido.",
+        "err",
+      );
+    } else if (!!currentSession && cart.length > 0 && mustChooseRetiro) {
+      setOrderStatus(
+        "Retira: elegí el día (desde 3 días hábiles, lunes a viernes) y la franja horaria.",
         "err",
       );
     } else if (!!currentSession && cart.length > 0 && mustChoosePayment) {
@@ -7670,6 +7739,8 @@ async function sendOrderToSheets(input) {
     cliente_nuevo: String(
       input.cliente_nuevo || input.clienteNuevo || "",
     ).trim(),
+    retiro_fecha: input.retiro_fecha || input.retiroFecha || null,
+    retiro_franja: input.retiro_franja || input.retiroFranja || null,
     is_promo: !!(input.is_promo || input.isPromo),
     extra_discount: Number(input.extra_discount || input.extraDiscount || 0),
     deuda: Number(input.deuda || 0),
@@ -8545,6 +8616,8 @@ async function _submitSingleOrder(
     ).trim(),
     cliente_nuevo: String(clienteNuevoValue || "").trim(),
     observaciones: String(observacionesValue || "").trim(),
+    retiro_fecha: retiroSel.fecha || null,
+    retiro_franja: retiroSel.franja || null,
     is_promo: isPromo,
     extra_discount: extraRate,
     deuda: debt,
@@ -8692,7 +8765,19 @@ async function submitOrder() {
   const clienteNuevoValue = isAdmin
     ? String($("clienteNuevoInput")?.value || "").trim()
     : "";
-  const observacionesValue = String($("obsPedidoInput")?.value || "").trim();
+  // Retira: día + franja elegidos por el cliente. Van como campos propios en el
+  // payload y ADEMÁS al principio de observaciones, así lo ve depósito aunque
+  // el Sheet/ERP no lea los campos nuevos.
+  const retiroSel = _esRetira() ? _retiroSeleccion() : { fecha: "", franja: "" };
+  const retiroTexto = retiroSel.fecha
+    ? `RETIRA ${fmtDdMm(retiroSel.fecha)} ${retiroSel.franja}`.trim()
+    : "";
+  const observacionesValue = [
+    retiroTexto,
+    String($("obsPedidoInput")?.value || "").trim(),
+  ]
+    .filter(Boolean)
+    .join(" · ");
   try {
     setOrderStatus("");
 
@@ -8829,6 +8914,8 @@ async function submitOrder() {
         sucursalEntrega:
           deliveryChoiceSnapshot.label || deliveryChoiceSnapshot.slot || "",
         fechaEntregaEstimada: _entregaEstActual || "",
+        retiroFecha: retiroSel.fecha || "",
+        retiroFranja: retiroSel.franja || "",
         metodoPago: getPaymentMethodText(),
         subtotal: Number(primaryResult.subtotal || 0),
         listSubtotal: Number(primaryResult.listSubtotal || 0),
@@ -8876,7 +8963,13 @@ async function submitOrder() {
       var _seEl = document.getElementById("successEntrega");
       if (_seEl) {
         var _seDdMm = fmtDdMm(lastConfirmedOrder.fechaEntregaEstimada);
-        if (_seDdMm) {
+        var _seRet = fmtDdMm(lastConfirmedOrder.retiroFecha);
+        if (_seRet) {
+          _seEl.innerHTML =
+            "Retirás el <strong>" + _seRet + "</strong> de " +
+            (lastConfirmedOrder.retiroFranja || "");
+          _seEl.hidden = false;
+        } else if (_seDdMm) {
           _seEl.innerHTML = "Fecha estimada de entrega: <strong>" + _seDdMm + "</strong>";
           _seEl.hidden = false;
         } else {
@@ -8944,6 +9037,7 @@ async function submitOrder() {
     if (paySel) paySel.value = "";
     var obsInput = $("obsPedidoInput");
     if (obsInput) obsInput.value = "";
+    _resetRetiro();
     document.querySelectorAll("#paymentButtons .pay-btn").forEach(function (b) {
       b.classList.remove("selected", "active");
     });
@@ -14352,6 +14446,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       direccionEntrega: "",
       zonaExpreso: "",
     };
+
+    // Retira: día y franja → revalidar el botón Confirmar; un fin de semana o
+    // una fecha antes del mínimo se rechaza en el acto (el input date no
+    // permite deshabilitar días sueltos).
+    $("retiroFecha")?.addEventListener("change", (ev) => {
+      const v = ev.target.value;
+      if (v && !_retiroFechaValida(v)) {
+        alert(
+          "Elegí un día hábil (lunes a viernes) a partir del " +
+            fmtDdMm(_retiroMinIso()) + ".",
+        );
+        ev.target.value = "";
+      }
+      refreshSubmitEnabled();
+    });
+    document.querySelectorAll('input[name="retiroFranja"]').forEach((r) =>
+      r.addEventListener("change", () => refreshSubmitEnabled()),
+    );
 
     shipSel.addEventListener("change", () => {
       // Opción especial "+ Agregar sucursal" → abrir modal y resetear select

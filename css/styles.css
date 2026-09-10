@@ -1150,6 +1150,46 @@ body {
 .entrega-estimada strong {
   font-size: 15px;
 }
+/* Retira: día + franja horaria dentro de la card de entrega */
+.retiro-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #ddd;
+}
+.retiro-fecha {
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid #d8d8d8;
+  border-radius: 10px;
+  font-size: 15px;
+  background: #fff;
+}
+.retiro-franjas {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.retiro-franja {
+  flex: 1 1 140px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid #d8d8d8;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.retiro-franja:has(input:checked) {
+  border-color: #e3000f;
+  background: #fff5f5;
+}
+.retiro-franja input {
+  accent-color: #e3000f;
+}
 /* Misma info en la pantalla "¡Pedido confirmado!" (tilde verde) */
 .success-entrega {
   display: inline-block;
