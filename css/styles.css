@@ -15154,6 +15154,15 @@ body { top: 0 !important; }
   max-width: 440px;
   text-align: center;
   padding: 28px 26px 24px;
+  overflow: hidden; /* para que la franja respete las esquinas redondeadas */
+}
+/* Franja superior gris oscuro (mismo color que el menú) detrás del logo.
+   Full-bleed: cancela el padding del card con márgenes negativos. */
+.fotos-popup-head {
+  background: #212122;
+  margin: -28px -26px 18px;
+  padding: 16px 26px;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 .fotos-popup-close {
   position: absolute;
@@ -15163,14 +15172,15 @@ body { top: 0 !important; }
   background: none;
   font-size: 26px;
   line-height: 1;
-  color: #999;
+  color: #fff; /* blanco para contrastar sobre la franja oscura */
   cursor: pointer;
+  z-index: 1;
 }
-.fotos-popup-close:hover { color: #444; }
+.fotos-popup-close:hover { color: #ccc; }
 .fotos-popup-logo {
   height: 34px;
   width: auto;
-  margin: 4px auto 14px;
+  margin: 0 auto;
   display: block;
 }
 .fotos-popup-title {
