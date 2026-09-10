@@ -1150,6 +1150,20 @@ body {
 .entrega-estimada strong {
   font-size: 15px;
 }
+/* Misma info en la pantalla "¡Pedido confirmado!" (tilde verde) */
+.success-entrega {
+  display: inline-block;
+  margin: 4px auto 14px;
+  padding: 10px 18px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  color: #1e3a8a;
+  font-size: 14px;
+}
+.success-entrega strong {
+  font-size: 16px;
+}
 .ship-label {
   font-size: 12px;
   color: #444;

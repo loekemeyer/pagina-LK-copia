@@ -1169,6 +1169,66 @@ async function getFechaEstimadaEntrega() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Fecha estimada de entrega POR ZONA (10/9/2026). Ya no se carga a mano: la
+// calcula la RPC get_fecha_estimada_entrega(customer_id, slot) = última fecha
+// real de programación en Gestión Virgilio + N días hábiles según la zona del
+// barrio de la sucursal (tablas entrega_zona_config / entrega_barrio_zona).
+// Devuelve null si la sucursal es Retira o si el barrio no tiene zona mapeada,
+// y en ese caso no se muestra nada (no se inventa una fecha).
+// ---------------------------------------------------------------------------
+let _entregaEstCache = {}; // "customerId|slot" -> ISO o ""
+let _entregaEstActual = ""; // la que se está mostrando (se guarda en el pedido)
+
+function _renderEntregaEstimada(iso) {
+  _entregaEstActual = String(iso || "").trim();
+  const el = $("entregaEstimada");
+  if (!el) return;
+  const ddmm = fmtDdMm(_entregaEstActual) || _entregaEstActual;
+  if (ddmm) {
+    el.innerHTML = `Entrega estimada: <strong>${ddmm}</strong>`;
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+  }
+}
+
+function _syncEntregaEstimada() {
+  const slot = Number(deliveryChoice?.slot);
+  const cid = customerProfile?.id;
+  // Sin sucursal elegida: cae al valor global (app_settings), si existiera.
+  if (!cid || !Number.isFinite(slot) || slot <= 0) {
+    _renderEntregaEstimada(FECHA_ESTIMADA_ENTREGA);
+    return;
+  }
+  const key = `${cid}|${slot}`;
+  if (Object.prototype.hasOwnProperty.call(_entregaEstCache, key)) {
+    _renderEntregaEstimada(_entregaEstCache[key]);
+    return;
+  }
+  // Mientras llega la RPC no mostramos nada viejo de otra sucursal.
+  _renderEntregaEstimada("");
+  _entregaEstCache[key] = ""; // evita disparos duplicados
+  supabaseClient
+    .rpc("get_fecha_estimada_entrega", { p_customer_id: cid, p_slot: slot })
+    .then(({ data, error }) => {
+      if (error) throw error;
+      const iso = String(data?.fecha || "").trim();
+      _entregaEstCache[key] = iso;
+      // Solo pintar si el usuario sigue en la misma sucursal/cliente.
+      if (
+        String(customerProfile?.id) === String(cid) &&
+        Number(deliveryChoice?.slot) === slot
+      ) {
+        _renderEntregaEstimada(iso);
+      }
+    })
+    .catch((e) => {
+      console.warn("get_fecha_estimada_entrega:", e);
+      delete _entregaEstCache[key];
+    });
+}
+
 // Código canónico para cruzar con Virgilio: mayúsculas + sin ceros a la izquierda
 // (gv_cod_stock en Virgilio devuelve '35E' donde LK guarda '035E').
 function _canonCod(cod) {
@@ -6205,6 +6265,7 @@ async function guardarNuevaSucursal() {
         zonaExpreso: opt?.dataset.zonaExpreso || expreso,
       };
       refreshSubmitEnabled();
+      _syncEntregaEstimada();
     }
 
     cerrarModalSucursal();
@@ -7348,17 +7409,9 @@ function updateCart() {
   const cartDiv = $("cart");
   if (!cartDiv) return;
 
-  // Fecha estimada de entrega (global) en el carrito, antes de confirmar.
-  const entregaEl = $("entregaEstimada");
-  if (entregaEl) {
-    const ddmm = fmtDdMm(FECHA_ESTIMADA_ENTREGA) || String(FECHA_ESTIMADA_ENTREGA || "").trim();
-    if (ddmm) {
-      entregaEl.innerHTML = `Entrega estimada: <strong>${ddmm}</strong>`;
-      entregaEl.hidden = false;
-    } else {
-      entregaEl.hidden = true;
-    }
-  }
+  // Fecha estimada de entrega en el carrito, antes de confirmar. Se calcula
+  // por ZONA de la sucursal elegida (RPC get_fecha_estimada_entrega).
+  _syncEntregaEstimada();
 
   // Modo cliente-expo o escala activa: dto por escala según subtotal.
   _expoSyncDto();
@@ -8775,6 +8828,7 @@ async function submitOrder() {
         codCliente: customerProfile?.cod_cliente || "",
         sucursalEntrega:
           deliveryChoiceSnapshot.label || deliveryChoiceSnapshot.slot || "",
+        fechaEntregaEstimada: _entregaEstActual || "",
         metodoPago: getPaymentMethodText(),
         subtotal: Number(primaryResult.subtotal || 0),
         listSubtotal: Number(primaryResult.listSubtotal || 0),
@@ -8818,6 +8872,17 @@ async function submitOrder() {
       // aunque el pedido sí quedaba grabado.
       showSection("pedidoConfirmado");
       playSuccessAnimation();
+      // Fecha estimada de entrega también en la pantalla del tilde verde.
+      var _seEl = document.getElementById("successEntrega");
+      if (_seEl) {
+        var _seDdMm = fmtDdMm(lastConfirmedOrder.fechaEntregaEstimada);
+        if (_seDdMm) {
+          _seEl.innerHTML = "Fecha estimada de entrega: <strong>" + _seDdMm + "</strong>";
+          _seEl.hidden = false;
+        } else {
+          _seEl.hidden = true;
+        }
+      }
       // Escala activa: fijar el dto_vol permanente tras el primer pedido.
       if (_escalaActiva) {
         _escalaFijar().catch(function (e) { console.error("escalaFijar:", e); });
@@ -14300,6 +14365,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       deliveryChoice.label = opt?.dataset?.label || opt?.textContent || "";
       deliveryChoice.direccionEntrega = opt?.dataset?.direccionEntrega || "";
       deliveryChoice.zonaExpreso = opt?.dataset?.zonaExpreso || "";
+      // Recalcular la fecha estimada de entrega para la sucursal elegida.
+      _syncEntregaEstimada();
 
       // Si cambió la dirección, resetear el botón "Confirmada" → "Confirmar"
       // (forzar al usuario a re-confirmar la nueva dirección) + re-mostrar hint.
