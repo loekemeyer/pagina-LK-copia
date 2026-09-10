@@ -15743,3 +15743,63 @@ body { top: 0 !important; }
   min-width: 240px;
   max-width: 100%;
 }
+
+/* =========================================================
+   HEADER DESKTOP — sin superposición (fix 10/9/2026)
+   El logo y .nav-right estaban en position:absolute, o sea fuera
+   del flujo: el .nav-center centrado quedaba DEBAJO de la caja de
+   usuario y, con una razón social larga, el botón 🌐 中文 tapaba
+   "Enviá tu Pedido". Con el header en flujo (logo | nav-center |
+   nav-right) el solapamiento no puede ocurrir a ningún ancho:
+   el centro ocupa el espacio que sobra y el buscador es lo
+   primero que cede. Solo desktop — mobile (<=900) oculta
+   nav-center/nav-right y sigue con su layout absoluto.
+   ========================================================= */
+@media (min-width: 901px) {
+  .header {
+    gap: 16px;
+    justify-content: flex-start;
+  }
+  .logo {
+    position: static;
+    left: auto;
+    flex: 0 0 auto;
+  }
+  .nav {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: flex-end;
+    gap: 16px;
+  }
+  .nav-center {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+  }
+  /* El buscador cede ancho antes que los botones */
+  .nav-search {
+    flex: 0 1 340px;
+    min-width: 120px;
+  }
+  .nav-center a,
+  .nav-center button.nav-link,
+  .nav-center .dropdown-wrap {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .nav-right {
+    position: static;
+    right: auto;
+    top: auto;
+    transform: none;
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  /* La razón social ya no puede empujar sobre el carrito, pero
+     igual se acota para que la caja de usuario no coma el header. */
+  .user-toggle-text {
+    max-width: clamp(80px, 14vw, 220px);
+  }
+}
