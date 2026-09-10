@@ -16,6 +16,20 @@ Esto va ANTES de cualquier otra respuesta. Si hay un agente corriendo en backgro
 puedo actuar todavía, igual poner el acuse. El usuario necesita saber que el mensaje
 llegó y fue procesado, no que se quedó en cola.
 
+## ⚠ REGLA: borrar un pedido = borrarlo de TODOS lados (todos los repos/proyectos)
+
+Cuando el usuario pida **borrar un pedido**, borrarlo de **todos los lugares donde ese pedido
+interviene**, no de uno solo. Un pedido web vive en varios proyectos a la vez:
+
+1. **Página LK** (`kwkclwhmoygunqmlegrg`, este repo): `orders` + `order_items`.
+   (El pedido de Chef vive en el proyecto Chef `nkhzocgdpwtgrmwleihr`, repo `paginach`.)
+2. **Gestión Virgilio** (`hrxfctzncixxqmpfhskv`): la NP y la programación. Buscar el `order_id`
+   (filtrando `empresa` = `lk`/`chef`) en `PPP_Web_NP`, `PPP_Web_Programacion`, `PPP_Web_Base`,
+   `PPP_Web_Tanda_Items`. Si ya está en tanda/picking, avisarlo antes de borrar.
+
+**Backup antes de cada borrado** (protocolo de Supabase). Borrar hijos antes que padres
+(`order_items` antes de `orders`). Al terminar, reportar en qué lugares apareció y de cuáles se borró.
+
 ## Git: commitear a main por defecto (OBLIGATORIO)
 
 Salvo que el usuario aclare otra branch, **todo commit y push va a `main`**.
