@@ -1333,6 +1333,9 @@
       <!-- Fecha estimada de entrega (global). La completa updateCart() desde
            app_settings['fecha_estimada_entrega']; oculta si no está seteada. -->
       <div id="entregaEstimada" class="entrega-estimada" hidden></div>
+      <!-- Aviso de deuda (dato de Gestión Virgilio, se sube 1x por semana). Sólo
+           avisa, no bloquea. Lo completa updateCart() desde el cache _deudaCliente. -->
+      <div id="deudaAviso" class="deuda-aviso" hidden></div>
       <!-- Dirección de entrega + Observaciones (misma fila, mitad y mitad) -->
       <div class="ship-row ship-row-split">
         <div class="ship-card">
