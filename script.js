@@ -331,6 +331,18 @@ window.productImgStep = productImgStep;
    Barrer la grilla con el mouse ya no dispara nada. Al salir vuelve al toque.
    Va por delegación en document porque las cards se re-renderizan seguido.
    ------------------------------------------------------------------ */
+/* Zoom del documento (ver el bloque ZOOM GLOBAL en css/styles.css).
+   getBoundingClientRect() y las coordenadas del mouse vienen en px de
+   PANTALLA (ya multiplicados por el zoom); offsetWidth, scrollWidth y
+   getComputedStyle siguen en px CSS. O sea: todo lo que se mide con rect y
+   después se escribe como longitud (style.top, --var, transform) hay que
+   dividirlo por este factor, o queda un 20% corrido. */
+function _zoomDoc() {
+  var z = parseFloat(getComputedStyle(document.documentElement).zoom);
+  return z > 0 ? z : 1;
+}
+window._zoomDoc = _zoomDoc;
+
 const PC_HOVER_DELAY = 3000; // ms que hay que sostener el mouse
 let _pcHoverTimer = null;
 let _pcHoverEl = null;
@@ -4966,7 +4978,7 @@ function _ncHideByUser() {
   }
 
   // Captura el alto actual y fíjalo inline para animar de N → 0
-  var startH = sec.getBoundingClientRect().height;
+  var startH = sec.getBoundingClientRect().height / _zoomDoc();
   sec.style.maxHeight = startH + "px";
   void sec.offsetHeight; // commit del alto explícito antes de animar
 
@@ -5072,7 +5084,7 @@ function _ncRecalcHalfWidth() {
     __ncAnim.halfWidth = 0;
     return;
   }
-  const cardW = cards[0].getBoundingClientRect().width;
+  const cardW = cards[0].getBoundingClientRect().width / _zoomDoc();
   const gapPx = parseFloat(getComputedStyle(track).gap) || 14;
   const setSize = cards.length / 2;
   __ncAnim.halfWidth = setSize * (cardW + gapPx);
@@ -5085,7 +5097,8 @@ function _ncShift(dir) {
   if (s.manualMode) return; // evita double-click rápido
 
   const cards = track.querySelectorAll(".nc-card");
-  const cardW = cards[0]?.getBoundingClientRect().width || 340;
+  const cardW =
+    (cards[0]?.getBoundingClientRect().width || 340) / _zoomDoc();
   const gapPx = parseFloat(getComputedStyle(track).gap) || 14;
   const step = (cardW + gapPx) * 2; // mueve 2 cards por click
 
@@ -5177,7 +5190,7 @@ function _ncWireControls() {
       document.documentElement.style.setProperty("--nc-carousel-h", "0px");
       return;
     }
-    var h = s.getBoundingClientRect().height;
+    var h = s.getBoundingClientRect().height / _zoomDoc();
     document.documentElement.style.setProperty(
       "--nc-carousel-h",
       Math.round(h) + "px",
@@ -5199,7 +5212,7 @@ function _ncWireControls() {
     if (!sec || sec.hidden) return;
     var rect = sec.getBoundingClientRect();
     // 86px = altura del header fijo (mismo que el `top:` del sticky)
-    sec.classList.toggle("is-stuck", rect.top <= 86);
+    sec.classList.toggle("is-stuck", rect.top <= 86 * _zoomDoc());
   }
   window.addEventListener(
     "scroll",
@@ -6165,23 +6178,26 @@ function flyProductImageToCart(productId) {
   const target = getVisibleCartIconEl();
   if (!img || !target) return;
 
+  const _z = _zoomDoc();
   const r1 = img.getBoundingClientRect();
   const r2 = target.getBoundingClientRect();
   if (!r1.width || !r1.height || !r2.width || !r2.height) return;
 
   const clone = img.cloneNode(true);
   clone.className = "fly-to-cart";
-  clone.style.left = `${r1.left}px`;
-  clone.style.top = `${r1.top}px`;
-  clone.style.width = `${r1.width}px`;
-  clone.style.height = `${r1.height}px`;
+  // El clon se cuelga de <body>, que está DENTRO del zoom: las medidas de
+  // rect vienen en px de pantalla y hay que devolverlas a px CSS.
+  clone.style.left = `${r1.left / _z}px`;
+  clone.style.top = `${r1.top / _z}px`;
+  clone.style.width = `${r1.width / _z}px`;
+  clone.style.height = `${r1.height / _z}px`;
   clone.style.opacity = "1";
   clone.style.transform = "translate3d(0,0,0) scale(1)";
 
   document.body.appendChild(clone);
 
-  const dx = r2.left + r2.width / 2 - (r1.left + r1.width / 2);
-  const dy = r2.top + r2.height / 2 - (r1.top + r1.height / 2);
+  const dx = (r2.left + r2.width / 2 - (r1.left + r1.width / 2)) / _z;
+  const dy = (r2.top + r2.height / 2 - (r1.top + r1.height / 2)) / _z;
 
   // start anim next frame
   requestAnimationFrame(() => {
@@ -6253,7 +6269,7 @@ function positionViewOrderToastBelowHeader() {
   if (!header || !toast) return;
 
   const headerRect = header.getBoundingClientRect();
-  const offset = Math.max(0, headerRect.bottom + 10); // 10px de aire
+  const offset = Math.max(0, headerRect.bottom / _zoomDoc() + 10); // 10px de aire
 
   toast.style.top = `${offset}px`;
 }

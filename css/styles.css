@@ -15831,3 +15831,41 @@ body { top: 0 !important; }
     max-width: clamp(80px, 14vw, 220px);
   }
 }
+
+/* =========================================================
+   ZOOM GLOBAL DEL SITIO (10/9/2026)
+   Pedido: que con el navegador al 100% se vea como se veía al 80%.
+   `zoom` en :root es exactamente lo que hace el zoom del navegador:
+   escala el bloque contenedor inicial, así que a 1920 px de ventana el
+   layout pasa a tener 2400 px de ancho y entra 25% más contenido.
+   OJO — dos diferencias contra el zoom real del navegador:
+   1) Las media queries NO ven el zoom (siguen leyendo window.innerWidth),
+      así que no hay realimentación: este @media es estable.
+   2) getBoundingClientRect() devuelve px YA escalados, mientras que
+      offsetWidth / getComputedStyle siguen en px CSS. Todo el JS que mide
+      con rect y después escribe una longitud divide por _zoomDoc().
+   Solo desktop: en mobile achicar todo un 20% deja la letra ilegible.
+   ========================================================= */
+@media (min-width: 901px) {
+  :root {
+    zoom: 0.8;
+  }
+  /* Las unidades de viewport (vh/vw) NO las escala el zoom: siguen atadas a
+     la ventana real, así que adentro del zoom rinden un 20% menos. Donde el
+     alto es "lo que queda de pantalla" hay que compensar (100vh → 125vh) o
+     queda una franja muerta abajo. Las constantes en px NO se tocan: ya están
+     en el espacio zoomeado. Los max-height de modales se dejan como están:
+     son topes, y un tope más chico no rompe nada. */
+  .categories-sidebar {
+    max-height: min(720px, calc(125vh - 86px - 44px));
+  }
+  .pay-card {
+    max-height: calc(125vh - 120px);
+  }
+  #carrito .cart-col-right {
+    max-height: calc(125vh - 200px);
+  }
+  #loke {
+    min-height: 125vh;
+  }
+}
