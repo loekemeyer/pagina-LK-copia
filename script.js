@@ -147,7 +147,11 @@ function _expoNewSyncComplete() {
 // Las imágenes están almacenadas a 400x400 WebP, así que se sirven directo
 // vía /object/public/ sin transform. IMG_PARAMS queda vacío.
 const BASE_IMG = `${SUPABASE_URL}/storage/v1/object/public/products-images/`;
-const IMG_PARAMS = ``;
+// Cache-buster de imágenes de producto: al reemplazar fotos en Supabase (mismo
+// nombre de archivo), bumpear esta fecha para que navegadores y CDN bajen la
+// versión nueva al instante en vez de esperar el TTL de cache. Mantener el MISMO
+// valor en script.js, historial.js y sugerencias.js.
+const IMG_PARAMS = `?v=20260910`;
 
 /***********************
  * CARRUSEL DE FOTOS POR PRODUCTO
