@@ -1182,6 +1182,7 @@ let currentSession = null; // sesión supabase
 let isAdmin = false; // admin flag
 let customerProfile = null; // {id, business_name, dto_vol, ...}
 let _vendorOwnProfile = null; // snapshot del perfil del vendedor logueado (para volver desde "Pedir para")
+let _deudaCliente = null; // {deuda, cargado_at} de get_mi_deuda() — cache 1x por sesión (idea 6064)
 function isListPriceOnlyClient() {
   // Si el operador (admin) tiene un cliente REAL seleccionado, cotiza para ese
   // cliente: se aplican SUS descuentos como a cualquier cliente.
@@ -1985,6 +1986,10 @@ async function refreshAuthState(sessionOverride) {
   customerProfile = custRow || null;
   // Snapshot del perfil propio del vendedor para poder volver desde "Pedir para"
   _vendorOwnProfile = customerProfile ? Object.assign({}, customerProfile) : null;
+
+  // Aviso de deuda (idea 6064): traer el dato de Gestión 1 vez por sesión, en
+  // background. No se espera (best-effort) para no demorar el resto del login.
+  cargarDeudaCliente();
 
   // Escala activa: cliente self-service que calcula dto en vivo con su 1er pedido.
   // Carga la escala UNA VEZ y prende el modo. No aplica a admins.
@@ -7496,8 +7501,58 @@ function updateCart() {
   }
   syncAdminCheckoutUI();
   renderMissingAssortmentModule();
+  // Aviso de deuda pendiente (idea 6064): se pinta desde el cache _deudaCliente.
+  renderDeudaAviso();
   // ✅ persiste carrito para otras páginas (sugerencias, historial, etc.)
   saveCartToLS();
+}
+
+/***********************
+ * AVISO DE DEUDA (idea 6064)
+ * Dato de Gestión Virgilio, se sube ~1x por semana. Gestión lo expone por FDW y
+ * LK lo lee con la RPC get_mi_deuda() (resuelve el cliente por auth.uid()). Es
+ * SÓLO un aviso antes de confirmar: no bloquea el pedido. Umbral $1.000.
+ ***********************/
+async function cargarDeudaCliente() {
+  // Best-effort: si la RPC no existe, no hay sesión, o el FDW está caído, se
+  // ignora en silencio (el pedido no se traba nunca por esto).
+  try {
+    if (!currentSession) { _deudaCliente = null; return; }
+    const { data, error } = await supabaseClient.rpc("get_mi_deuda");
+    if (error) { _deudaCliente = null; }
+    else {
+      const row = Array.isArray(data) ? data[0] : data;
+      const monto = Number(row?.deuda || 0);
+      _deudaCliente =
+        monto > 0 ? { deuda: monto, cargado_at: row?.cargado_at || null } : null;
+    }
+  } catch {
+    _deudaCliente = null;
+  }
+  try { renderDeudaAviso(); } catch {}
+}
+
+function renderDeudaAviso() {
+  const el = $("deudaAviso");
+  if (!el) return;
+  const UMBRAL = 1000; // igual que Cuarentena en Gestión
+  const d = _deudaCliente;
+  // Los admins/vendedores cotizan para otros clientes: el dato de auth.uid() no
+  // aplica, así que no se muestra en ese modo.
+  if (isAdmin || isVendorProfile() || !d || !(Number(d.deuda) > UMBRAL)) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  const fecha = fmtDdMm(d.cargado_at);
+  const cuando = fecha
+    ? ` <span class="deuda-aviso-fecha">(dato al ${fecha})</span>`
+    : "";
+  el.innerHTML =
+    `<span class="deuda-aviso-ico" aria-hidden="true">⚠️</span>` +
+    `<span class="deuda-aviso-txt">Registramos una deuda pendiente de ` +
+    `<strong>$${formatMoney(d.deuda)}</strong> de pedidos facturados.${cuando}</span>`;
+  el.hidden = false;
 }
 
 /***********************

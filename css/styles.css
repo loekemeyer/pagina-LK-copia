@@ -1150,6 +1150,33 @@ body {
 .entrega-estimada strong {
   font-size: 15px;
 }
+/* Aviso de deuda pendiente (idea 6064) — sólo avisa, no bloquea */
+.deuda-aviso {
+  width: min(780px, 100%);
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  color: #991b1b;
+  font-size: 13.5px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.deuda-aviso strong {
+  font-size: 15px;
+}
+.deuda-aviso-ico {
+  flex: 0 0 auto;
+  font-size: 16px;
+  line-height: 1.3;
+}
+.deuda-aviso-fecha {
+  color: #b45309;
+  font-size: 12px;
+  white-space: nowrap;
+}
 .ship-label {
   font-size: 12px;
   color: #444;
