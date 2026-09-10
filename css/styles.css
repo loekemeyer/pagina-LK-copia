@@ -15500,6 +15500,33 @@ body { top: 0 !important; }
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* Aviso (no bloquea) al superar 3 cajas del mismo producto */
+.qty-warn-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%) translateY(20px);
+  background: #fff4d6;
+  color: #7a4d00;
+  border: 1px solid #f0c14b;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  z-index: 100001;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  max-width: min(92vw, 420px);
+}
+.qty-warn-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 @media (max-width: 640px) {
   .cr-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

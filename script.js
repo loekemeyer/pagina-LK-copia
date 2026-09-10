@@ -1219,6 +1219,7 @@ let lastConfirmedOrder = null;
  * Detecta cantidades inusuales comparando contra el promedio histórico del cliente.
  ***********************/
 const ANOMALY_THRESHOLD = 6; // marca si pedido > promedio * 6
+const QTY_WARN_THRESHOLD = 3; // avisa (no bloquea) al cruzar +3 cajas del mismo producto
 let _anomalyCache = { customerId: null, map: null }; // cache por cliente
 
 async function loadAnomalyData(codCliente) {
@@ -2859,6 +2860,47 @@ function avisoSoloAgregar(min) {
       "Si necesitás sacar algo, escribinos y lo hacemos nosotros."
     );
   } catch (e) {}
+}
+
+// Toast de advertencia (NO bloquea): avisa cuando una línea supera las 3 cajas
+// del mismo producto. Se dispara UNA sola vez al cruzar de ≤3 a >3 (flag por
+// línea en item._warnedOverQty) y se rearma si la línea vuelve a bajar de 3.
+function mostrarAvisoCantidad(msg) {
+  try {
+    let t = document.getElementById("qtyWarnToast");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "qtyWarnToast";
+      t.className = "qty-warn-toast";
+      t.setAttribute("role", "status");
+      t.setAttribute("aria-live", "polite");
+      document.body.appendChild(t);
+    }
+    t.textContent = String(msg || "");
+    t.classList.add("show");
+    clearTimeout(window._qtyWarnTimer);
+    window._qtyWarnTimer = setTimeout(() => t.classList.remove("show"), 4500);
+  } catch (e) {}
+}
+
+function checkQtyWarning(productId) {
+  const item = cart.find((i) => i.productId === productId);
+  if (!item) return;
+  const cajas = Number(item.qtyCajas) || 0;
+  if (cajas > QTY_WARN_THRESHOLD) {
+    if (!item._warnedOverQty) {
+      item._warnedOverQty = true;
+      const prod = (products || []).find((p) => String(p.id) === String(productId));
+      const cod = prod && prod.cod ? " (" + prod.cod + ")" : "";
+      mostrarAvisoCantidad(
+        "⚠️ Estás cargando " + cajas + " cajas del mismo producto" + cod +
+        ". Revisá que sea la cantidad que querés pedir."
+      );
+    }
+  } else {
+    // volvió a 3 o menos: se rearma para que un nuevo cruce vuelva a avisar
+    item._warnedOverQty = false;
+  }
 }
 
 // Un pedido es editable mientras NO haya salido a compras (enviado_a_compras_at
@@ -7117,6 +7159,9 @@ function addFirstBox(productId, source) {
     logCartAddEvent(productId, source || "catalogo");
   }
 
+  // ⚠️ Aviso (no bloquea) si la línea cruza las 3 cajas del mismo producto
+  checkQtyWarning(productId);
+
   // ✅ Toast: 3s después del último “agregar” (no acumulativo)
   scheduleViewOrderToastAfterAdd();
 
@@ -7149,6 +7194,9 @@ function changeQty(productId, delta) {
   const input = document.querySelector(`#qty-${CSS.escape(productId)} input`);
   if (input) input.value = item.qtyCajas;
 
+  // ⚠️ Aviso (no bloquea) al cruzar +3 cajas; también rearma si bajó de 3
+  checkQtyWarning(productId);
+
   updateCart();
   renderProducts();
 
@@ -7179,6 +7227,10 @@ function manualQty(productId, value) {
   }
 
   item.qtyCajas = qty;
+
+  // ⚠️ Aviso (no bloquea) al cruzar +3 cajas; también rearma si bajó de 3
+  checkQtyWarning(productId);
+
   updateCart();
   renderProducts();
 }
