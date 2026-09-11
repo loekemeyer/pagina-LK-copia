@@ -15752,12 +15752,19 @@ body { top: 0 !important; }
   gap: 10px;
 }
 .modal .pp-card {
-  width: 92vw;
-  max-width: 600px;
+  /* Compacto y atado a la pantalla: nunca más ancho que 420px ni más alto
+     que el 90% del viewport; si aun así no entra, scrollea (no se corta). */
+  width: min(92vw, 420px);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .pp-imgwrap {
-  width: 100%;
-  max-width: 520px;
+  /* La imagen es cuadrada y se dimensiona por el MENOR entre el ancho del
+     card y el 44% del alto de la ventana, así en pantallas bajas se achica
+     y el card entero sigue entrando. */
+  width: min(100%, 44vh);
+  max-width: 360px;
+  margin: 0 auto;
   aspect-ratio: 1 / 1;
   background: #f6f6f6;
   border-radius: 12px;
@@ -15820,6 +15827,18 @@ body { top: 0 !important; }
 }
 #prodPreviewModal .pp-card {
   z-index: 1;
+}
+/* El popup de producto se centra y escrollea SIEMPRE, igual en todas las
+   pantallas (NO bottom-sheet en mobile). El !important vence la regla mobile
+   `.modal{align-items:flex-end !important}` por mayor especificidad (id). */
+#prodPreviewModal.open {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  overflow-y: auto;
+}
+#prodPreviewModal .pp-card {
+  margin: auto !important;
 }
 
 /* Flechas dentro del popup de producto (navegar entre fotos) */
