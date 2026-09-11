@@ -2882,8 +2882,9 @@ body.section-perfil #navSearch {
   overflow: hidden;
 }
 /* Estado de stock — TODA ficha muestra uno de los dos, así la ausencia de cartel
-   no significa nada. Verde "En stock" por defecto; naranja "Ingresa dd/mm" cuando
-   Virgilio informa que no hay. Informativo: no bloquea la compra. */
+   no significa nada. Verde "En stock" por defecto; naranja "Sin stock / hasta dd/mm"
+   en dos renglones y letra grande cuando Virgilio informa que no hay. Informativo:
+   no bloquea la compra. */
 .product-card .pc-stock {
   margin: 2px 0 4px;
   padding: 2px 8px;
@@ -2903,6 +2904,22 @@ body.section-perfil #navSearch {
   color: #b45309;
   background: #fff7ed;
   border-color: #fed7aa;
+  /* Dos renglones y letra grande: es el dato que el cliente tiene que ver sí o sí.
+     Sigue siendo inline-block, así el cartel mide lo que mide el texto. */
+  padding: 4px 10px;
+  border-radius: 10px;
+  text-align: center;
+  line-height: 1.15;
+  font-size: 15px;
+}
+.product-card .pc-stock-ingresa .pc-stock-l1 {
+  display: block;
+  font-size: 16px;
+  letter-spacing: 0.2px;
+}
+.product-card .pc-stock-ingresa .pc-stock-l2 {
+  display: block;
+  font-size: 15px;
 }
 /* Bloque de precios */
 .product-card .card-prices {
