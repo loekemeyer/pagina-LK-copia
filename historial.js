@@ -10,7 +10,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // /object/public/ sirve la imagen directo. Las fotos ya están en 400x400 WebP.
 const BASE_IMG = `${SUPABASE_URL}/storage/v1/object/public/products-images/`;
 // Cache-buster de imágenes: mantener el MISMO valor que script.js / sugerencias.js.
-const IMG_PARAMS = `?v=20260913`;
+const IMG_PARAMS = `?v=20260914`;
 
 // ================= CATALOGO ACTIVO =================
 let CATALOGO_CODES = new Set();

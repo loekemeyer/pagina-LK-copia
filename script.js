@@ -151,7 +151,7 @@ const BASE_IMG = `${SUPABASE_URL}/storage/v1/object/public/products-images/`;
 // nombre de archivo), bumpear esta fecha para que navegadores y CDN bajen la
 // versión nueva al instante en vez de esperar el TTL de cache. Mantener el MISMO
 // valor en script.js, historial.js y sugerencias.js.
-const IMG_PARAMS = `?v=20260913`;
+const IMG_PARAMS = `?v=20260914`;
 
 /***********************
  * CARRUSEL DE FOTOS POR PRODUCTO
