@@ -16055,3 +16055,48 @@ body { top: 0 !important; }
     display: none !important;
   }
 }
+
+/* ============================================================
+   "Contenido para tus redes": salida visible.
+   La × reusa .fotos-popup-close, que es BLANCA porque en el popup de fotos
+   va sobre la franja oscura; acá la tarjeta es blanca y quedaba invisible.
+   Se le da color oscuro solo en este modal y se agrega un botón "Salir".
+   ============================================================ */
+#contenidoRedesModal .fotos-popup-close {
+  top: 12px;
+  right: 12px;
+  color: #555;
+  font-size: 28px;
+  line-height: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+#contenidoRedesModal .fotos-popup-close:hover {
+  background: #f0f0f0;
+  color: #111;
+}
+.cr-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+.cr-salir {
+  border: 1px solid #d8d8d8;
+  background: #fff;
+  color: #333;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 10px 26px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.cr-salir:hover {
+  background: #f4f4f4;
+  border-color: #bbb;
+}
