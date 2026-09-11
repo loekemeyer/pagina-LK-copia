@@ -356,3 +356,23 @@ revoke all on function public.sync_diferido_virgilio(int) from public, anon, aut
 -- Chef NO parte todavía: sus pedidos viven en otro proyecto y no tienen
 -- `pedido_diferido`.
 -- =============================================================================
+
+-- =============================================================================
+-- 7) CHEF (2026-09-11). Mismo corte, sin tocar el proyecto de Chef: sus pedidos
+--    se leen desde acá por el FDW `chef_db`, así que el corte vive igual en LK.
+--
+--    · `pedido_diferido` lleva ahora `empresa` en la PK (lk / chef).
+--    · `reingreso_piso` tolera el sufijo **L**: un artículo de Loeke vendido por
+--      Chef viaja como `505L` / `952EL` (regla v13.71) y `reingreso_cache` guarda
+--      el código base. Se prueba exacto y, si no, pelando una L final.
+--    · `marcar_diferidos_chef(p_dias)` hace de trigger: Chef no puede tener uno
+--      (sus `orders` están en otro proyecto). Lo llama `sync_diferido_virgilio`.
+--      **Sólo marca pedidos con `fecha_recep >= 2026-09-11`**, el día en que se
+--      prendió: marcar uno viejo lo partiría retroactivamente.
+--    · `gv_pedidos_web_np_chef` corta por disponible/diferido antes de los
+--      bloques de 15 y devuelve `diferido` / `no_antes_de` (se recreó junto con
+--      `gv_pedidos_web_np_chef_admin`, que la envuelve con el chequeo de admin).
+--
+--    Verificado: 69 NP de Chef y md5 idéntico antes y después
+--    (foto en `gv_np_chef_antes_diferido`).
+-- =============================================================================
