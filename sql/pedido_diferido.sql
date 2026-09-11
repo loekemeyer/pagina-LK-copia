@@ -41,8 +41,14 @@ create table if not exists public.pedido_diferido (
   primary key (order_id, art)
 );
 alter table public.pedido_diferido enable row level security;
-revoke all on public.pedido_diferido from anon, authenticated;
--- La escribe el trigger (definer) y la leen las vistas del feed; nadie más.
+revoke all on public.pedido_diferido from anon;
+grant select on public.pedido_diferido to authenticated;
+-- La escribe el trigger (definer); la lee `v_pedidos_web_np`, que es
+-- `security_invoker`, así que la policy de SELECT no es opcional: sin ella el
+-- panel de Gestión (rol `authenticated`) vería la tabla vacía y el corte nunca
+-- aparecería. No hay dato sensible acá: pedido y código de artículo.
+create policy pedido_diferido_sel on public.pedido_diferido
+  for select to authenticated using (true);
 
 comment on table public.pedido_diferido is
   'Líneas de un pedido web que al recibirse no tenían stock (importados con reingreso estimado). Congela el corte de la NP: v_pedidos_web_np las manda a un bloque aparte. No se borra ni se recalcula cuando llega la mercadería.';
@@ -97,34 +103,46 @@ create trigger marcar_pedido_diferido
   after insert or update of sheets_payload on public.orders
   for each row execute function public.trg_marcar_pedido_diferido();
 
--- 3) El feed por línea expone si esa línea espera mercadería.
+-- 3) LA FECHA PISO, EN VIVO: la de hoy si el artículo sigue sin stock, la
+--    congelada si no hay dato nuevo. Si ya entró, no hay piso (null) y el
+--    bloque se programa normal — pero sigue siendo un bloque aparte: el corte
+--    no se deshace.
+-- ⚠ `reingreso_cache` tiene RLS PRENDIDA Y CERO POLICIES: leída desde una vista
+--   `security_invoker` por el rol `authenticated` devuelve 0 filas, en silencio.
+--   Por eso el piso se resuelve con esta función `security definer` en vez de un
+--   join. Recibe la fecha congelada como fallback.
+create or replace function public.reingreso_piso(p_art text, p_congelada date)
+returns date
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case
+           when r.cod is null    then null::date   -- ya no figura en el feed: sin piso
+           when not r.sin_stock  then null::date   -- ya llegó
+           else greatest(coalesce(r.fecha_reingreso, p_congelada), current_date)
+         end
+    from (select 1) _
+    left join public.reingreso_cache r on r.cod = upper(btrim(p_art));
+$$;
+grant execute on function public.reingreso_piso(text, date) to authenticated;
+
+-- 4) El feed por línea expone si esa línea espera mercadería.
 --    (se agrega la columna al final; los consumidores que ya existen no cambian)
 create or replace view public.v_pedidos_web_dif
 with (security_invoker = true) as
   select v.*,
          (d.order_id is not null) as diferido,
-         d.fecha_reingreso        as diferido_hasta_orig
+         d.fecha_reingreso        as diferido_hasta_orig,
+         case when d.order_id is null then null::date
+              else public.reingreso_piso(v.art, d.fecha_reingreso)
+         end                      as no_antes_de
     from public.v_pedidos_web v
     left join public.pedido_diferido d
       on d.order_id = v.order_id and d.art = v.art;
 revoke all on public.v_pedidos_web_dif from anon;
 grant select on public.v_pedidos_web_dif to authenticated;
-
--- 4) La fecha piso, EN VIVO: la de hoy si sigue sin stock, la congelada si no
---    hay dato nuevo. Si el artículo ya entró, no hay piso (null) y el bloque se
---    programa normal, aunque siga siendo un bloque aparte.
-create or replace function public.pedido_diferido_piso(p_order_id bigint, p_art text)
-returns date
-language sql
-stable
-as $$
-  select case when coalesce(r.sin_stock, false)
-              then greatest(coalesce(r.fecha_reingreso, d.fecha_reingreso), current_date)
-         end
-    from public.pedido_diferido d
-    left join public.reingreso_cache r on r.cod = upper(btrim(d.art))
-   where d.order_id = p_order_id and d.art = upper(btrim(p_art));
-$$;
 
 -- =============================================================================
 -- CONTROLES (correr a mano, ANTES y DESPUÉS de aplicar)
@@ -171,17 +189,14 @@ lin as (
          v.m3 as m3_unit,
          coalesce(i.cajas, 0) * coalesce(v.m3, 0) as linea_m3,
          (d.order_id is not null) as es_diferido,
-         case
-           when d.order_id is null then null::date
-           when r.cod is not null and not r.sin_stock then null::date   -- ya llegó
-           else greatest(coalesce(r.fecha_reingreso, d.fecha_reingreso), current_date)
+         case when d.order_id is null then null::date
+              else public.reingreso_piso(i.art, d.fecha_reingreso)
          end as linea_no_antes_de
     from public.v_pedidos_web i
     join cap c on c.empresa = i.empresa
     left join vol v on v.codigo = upper(btrim(i.art))
     left join public.pedido_diferido d
            on d.order_id = i.order_id and d.art = i.art
-    left join public.reingreso_cache r on r.cod = upper(btrim(i.art))
 ),
 orden as (
   select l.*,
@@ -235,3 +250,109 @@ group by empresa, order_id, np_idx;
 
 revoke all on public.v_pedidos_web_np from anon;
 grant select on public.v_pedidos_web_np to authenticated;
+
+
+-- =============================================================================
+-- 6) LO QUE VE GESTIÓN. Dos caminos, los dos necesarios:
+--
+--    a) `gv_pedidos_web_np_lk` (la RPC que lee la Edge Function del cron y el
+--       panel) devuelve ahora `diferido` y `no_antes_de` al final.
+--    b) el piso de fecha se EMPUJA a Gestión por el FDW `virgilio_db`, igual que
+--       `sync_pedidos_match_virgilio`: Gestión lee una tabla local suya
+--       (`GV_PPP_Web_Diferido`) y no depende de que el front o la Edge Function
+--       le manden el dato. Se eligió empujar en vez de agregar el campo al
+--       payload del cron para no tener que redeployar la Edge Function: el
+--       armado queda protegido aunque nadie toque ese código.
+-- =============================================================================
+drop function if exists public.gv_pedidos_web_np_lk(date);
+create function public.gv_pedidos_web_np_lk(p_desde date)
+returns table(empresa text, order_id bigint, np_idx integer, cod text, razon_social text,
+              fecha_recep date, hora_recep text, direccion text, v text,
+              condicion_pago_code text, numero_oc text, enviado_a_compras boolean,
+              lineas bigint, cajas numeric, items jsonb, arts text, localidad text,
+              provincia text, zona_expreso text, nombre_expreso text, direccion_expreso text,
+              m3 numeric, m3_parcial boolean, fecha_entrega_pactada date, np_total integer,
+              isis_empresa text, cod_isis text,
+              diferido boolean, no_antes_de date)
+language sql
+volatile
+security definer
+set search_path = public
+as $$
+  select p.empresa, p.order_id, p.np_idx, p.cod, p.razon_social, p.fecha_recep,
+         p.hora_recep, p.direccion, p.v, p.condicion_pago_code, p.numero_oc,
+         p.enviado_a_compras, p.lineas, p.cajas, p.items, p.arts,
+         p.localidad, p.provincia, p.zona_expreso, p.nombre_expreso, p.direccion_expreso,
+         p.m3, p.m3_parcial,
+         nullif(coalesce(o.sheets_payload->>'fecha_entrega', o.sheets_payload->>'fechaEntrega'), '')::date,
+         count(*) over (partition by p.empresa, p.order_id)::int,
+         p.isis_empresa, p.cod_isis,   -- v13.77
+         p.diferido, p.no_antes_de     -- v15.67
+    from public.v_pedidos_web_np p
+    left join public.orders o on o.id = p.order_id
+   where p.fecha_recep >= p_desde
+   order by p.order_id, p.np_idx;
+$$;
+revoke all on function public.gv_pedidos_web_np_lk(date) from public, anon, authenticated;
+grant execute on function public.gv_pedidos_web_np_lk(date) to service_role, gv_reader;
+
+-- La foránea (del lado Gestión ya está el GRANT + policy para `lk_ppp_reader`).
+create foreign table if not exists virgilio.gv_ppp_web_diferido (
+  empresa     text,
+  order_id    bigint,
+  np_idx      int,
+  no_antes_de date,
+  creado_at   timestamptz
+) server virgilio_db
+  options (schema_name 'public', table_name 'GV_PPP_Web_Diferido');
+
+create or replace function public.sync_diferido_virgilio(p_dias int default 45)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_n int;
+begin
+  create temp table _dif on commit drop as
+  select p.empresa, p.order_id, p.np_idx, p.no_antes_de
+    from public.v_pedidos_web_np p
+   where p.diferido and p.no_antes_de is not null
+     and p.fecha_recep >= current_date - p_dias;
+
+  update virgilio.gv_ppp_web_diferido v
+     set no_antes_de = d.no_antes_de
+    from _dif d
+   where v.empresa = d.empresa and v.order_id = d.order_id and v.np_idx = d.np_idx
+     and v.no_antes_de is distinct from d.no_antes_de;
+
+  -- postgres_fdw NO soporta ON CONFLICT: por eso update + insert en dos pasos.
+  insert into virgilio.gv_ppp_web_diferido (empresa, order_id, np_idx, no_antes_de, creado_at)
+  select d.empresa, d.order_id, d.np_idx, d.no_antes_de, now()
+    from _dif d
+   where not exists (select 1 from virgilio.gv_ppp_web_diferido v
+                      where v.empresa = d.empresa and v.order_id = d.order_id and v.np_idx = d.np_idx);
+  get diagnostics v_n = row_count;
+
+  -- ⚠ Nunca vaciar y recargar: si el armado de Gestión (cada 15 min) leyera entre
+  --   el delete y el insert, programaría una NP diferida para mañana.
+  delete from virgilio.gv_ppp_web_diferido v
+   where not exists (select 1 from _dif d
+                      where d.empresa = v.empresa and d.order_id = v.order_id and d.np_idx = v.np_idx);
+
+  return v_n;
+end;
+$$;
+revoke all on function public.sync_diferido_virgilio(int) from public, anon, authenticated;
+
+-- cron 41, cada 10 min
+-- select cron.schedule('sync-diferido-virgilio', '*/10 * * * *',
+--   $c$select public.sync_diferido_virgilio();$c$);
+
+-- =============================================================================
+-- APLICADO el 2026-09-11. Backup de la vista anterior en `gv_backup_vistas`
+-- (motivo 'pre pedido_diferido'), y foto del corte anterior en
+-- `gv_np_antes_diferido` (1.475 NP, md5 e1218e13… — idéntico después del cambio).
+-- Chef NO parte todavía: sus pedidos viven en otro proyecto y no tienen
+-- `pedido_diferido`.
+-- =============================================================================
