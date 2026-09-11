@@ -1,0 +1,19 @@
+-- 2026-09-11 — Se PRENDIÓ la RLS en las 3 tablas de backup del borrado de Tierra Nativa (10/09).
+-- Por qué: sin RLS y con los grants por defecto de Supabase, la anon key (que es pública: está
+-- embebida en script.js / admin.js y el sitio se sirve por GitHub Pages) las podía LEER.
+-- Verificado con `set local role anon`: backup_tierra_nativa_orders_20260910 devolvía 181 filas
+-- y backup_tierra_nativa_order_items_20260910 342. Después del cambio: 0 y 0 como anon, y los
+-- datos siguen enteros como postgres.
+--
+-- NO se tocaron `entrega_barrio_zona` (137 filas) ni `entrega_zona_config` (7): las lee el
+-- portal del cliente con la anon key (script.js), así que su lectura pública es intencional.
+--
+-- Lo aplicado:
+--   alter table public.backup_tierra_nativa_orders_20260910      enable row level security;
+--   alter table public.backup_tierra_nativa_order_items_20260910 enable row level security;
+--   alter table public.backup_tierra_nativa_ppp_match_20260910   enable row level security;
+--
+-- ROLLBACK:
+-- alter table public.backup_tierra_nativa_orders_20260910      disable row level security;
+-- alter table public.backup_tierra_nativa_order_items_20260910 disable row level security;
+-- alter table public.backup_tierra_nativa_ppp_match_20260910   disable row level security;

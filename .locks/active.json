@@ -1,3 +1,5 @@
 {
-  "locks": []
+  "locks": [
+    { "file": "sql/backups/rls_backups_tierra_nativa_20260911.sql", "owner": "thomasloke1@gmail.com@CCR-REMOTE", "acquired": "2026-09-11T12:45:00Z", "note": "rollback del enable RLS en los backups" }
+  ]
 }
