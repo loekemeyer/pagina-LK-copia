@@ -15,9 +15,16 @@
 --   5 GBA Oeste +3 · 6 GBA Norte +4 · 7 GBA Norte Lejos +4
 --   (confirmados por el dueño el 10/9/2026; se cambian con un UPDATE)
 --
--- Mapa barrio→zona (entrega_barrio_zona, EDITABLE): semilla = los 39 barrios
--- que Virgilio ya programó (unívocos). Los que faltan se agregan a mano:
---   insert into entrega_barrio_zona (barrio_norm, zona) values ('villa devoto', 3);
+-- Mapa barrio→zona (entrega_barrio_zona, EDITABLE). Fuente de verdad: la tabla
+-- productiva `public."Zonas_Barrios"` del proyecto Gestión Virgilio
+-- (hrxfctzncixxqmpfhskv), que lleva las decisiones del dueño (Devoto = Centro,
+-- Burzaco = Z4, San Isidro/V.López = Z7, Paternal = Z3…). Se espejó a mano el
+-- 11/9/2026 (107 barrios, origen 'Zonas_Barrios (Virgilio) espejado'). Si allá
+-- se agrega un barrio (RPC zona_barrio_set o el trigger de auto-aprendizaje),
+-- hay que volver a espejar. NO es un FDW a propósito: es una tabla chica y el
+-- portal la lee en el camino caliente.
+-- Ojo: `zona_expreso` del cliente es el barrio del EXPRESO en AMBA, no el
+-- destino final (Loekemeyer entrega sólo en AMBA; el interior va por expreso).
 --
 -- Pendiente: feriados (hoy solo se saltan sábados y domingos).
 -- El portal la consume con:  sb.rpc('get_fecha_estimada_entrega',
