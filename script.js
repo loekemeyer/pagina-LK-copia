@@ -36,9 +36,11 @@ let WEB_ORDER_DISCOUNT = 0.02; // default fallback
 // (Stock_Config['entrega_estimada_global']) y el cron sync_reingresos_virgilio()
 // la espeja a app_settings['fecha_estimada_entrega']. "" = no mostrar.
 let FECHA_ESTIMADA_ENTREGA = "";
-// Reingreso de importados (E): cod → fecha (ISO). Solo trae los que están sin
-// stock en Virgilio (falta>0, contando stock de parte). Origen: RPC get_reingresos()
-// (tabla local reingreso_cache espejada de Virgilio). Se muestra en el catálogo.
+// Importados SIN stock en Virgilio (falta>0, contando stock de parte): cod → fecha
+// de reingreso en ISO, o null si todavía no se sabe cuándo llega. Origen: RPC
+// get_reingresos() (tabla local reingreso_cache espejada de Virgilio).
+// ESTAR EN EL MAPA = no hay stock. No estar = hay. La ausencia no significa
+// "no sé": el catálogo muestra siempre uno de los dos estados (ver estadoStock).
 let _reingresoMap = new Map();
 const UPSELL_DISCOUNT = 0.3; // Descuento extra aplicado al pedido "promo" (items agregados desde popup upsell). Se graba como pedido separado (X+1).
 // EXPO: en esta copia el admin no elige entre sus razones vinculadas; entra a
@@ -1317,7 +1319,9 @@ async function loadReingresos() {
     const m = new Map();
     (data || []).forEach((r) => {
       const cod = _canonCod(r.cod);
-      if (cod && r.fecha) m.set(cod, r.fecha);
+      // La fecha puede venir vacía: el artículo está sin stock igual, sólo que
+      // todavía no hay fecha de reingreso cargada.
+      if (cod) m.set(cod, r.fecha || null);
     });
     _reingresoMap = m;
   } catch (e) {
@@ -1334,13 +1338,19 @@ function fmtDdMm(iso) {
   return `${m[3]}/${m[2]}`;
 }
 
-// Reingreso estimado de un producto (solo importados terminados en E que estén
-// sin stock). Devuelve "dd/mm" o "" si no corresponde.
-function reingresoDeProducto(cod) {
-  const c = String(cod || "").trim().toUpperCase();
-  if (!/E$/.test(c)) return "";
-  const iso = _reingresoMap.get(_canonCod(c));
-  return iso ? fmtDdMm(iso) : "";
+// Estado de stock de un producto para el catálogo. Devuelve siempre uno de:
+//   { tipo: "en_stock" }                      → "En stock"
+//   { tipo: "reingreso", fecha: "dd/mm" }     → "Ingresa 12/10"
+//   { tipo: "reingreso", fecha: "" }          → "Ingresa — fecha a confirmar"
+//
+// La regla es una sola: EN STOCK salvo que Virgilio diga que no hay. Los
+// nacionales no tienen feed de stock, así que caen en "en_stock" igual que un
+// importado con mercadería — que es como se venden hoy. El badge "SIN STOCK"
+// que carga el admin en products pisa esto y lo resuelve el que renderiza.
+function estadoStock(cod) {
+  const c = _canonCod(cod);
+  if (!_reingresoMap.has(c)) return { tipo: "en_stock" };
+  return { tipo: "reingreso", fecha: fmtDdMm(_reingresoMap.get(c)) };
 }
 
 /***********************
@@ -4842,8 +4852,19 @@ function renderProducts() {
       .trim()
       .toUpperCase();
 
-    // Reingreso estimado (solo importados E sin stock en Virgilio) — informativo.
-    const reingresoDdMm = reingresoDeProducto(p.cod);
+    // Estado de stock: verde "En stock" por defecto, naranja "Ingresa dd/mm" cuando
+    // Virgilio dice que no hay. Todas las fichas muestran uno de los dos, así que
+    // la ausencia de cartel nunca significa nada. El badge SIN STOCK que carga el
+    // admin en products manda por encima y ya se muestra arriba de la foto.
+    const stock = estadoStock(p.cod);
+    const stockHtml =
+      badge === "SIN STOCK"
+        ? ""
+        : stock.tipo === "reingreso"
+          ? `<div class="pc-stock pc-stock-ingresa" title="Sin stock — fecha estimada de ingreso a depósito">${
+              stock.fecha ? `Ingresa ${stock.fecha}` : "Ingresa — fecha a confirmar"
+            }</div>`
+          : `<div class="pc-stock pc-stock-hay">En stock</div>`;
 
     let badgeHtml = "";
 
@@ -4924,11 +4945,7 @@ function renderProducts() {
 
           <div class="card-desc">${String(p.description || "")}</div>
 
-          ${
-            reingresoDdMm
-              ? `<div class="pc-reingreso" title="Sin stock — reingreso estimado">Reingreso Est ${reingresoDdMm}</div>`
-              : ""
-          }
+          ${stockHtml}
 
           <div class="${logged ? "" : "price-hidden"} card-prices">
   <div class="card-price-line">

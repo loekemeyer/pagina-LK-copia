@@ -2881,18 +2881,28 @@ body.section-perfil #navSearch {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* Reingreso estimado (importados E sin stock) — informativo, no bloquea la compra */
-.product-card .pc-reingreso {
+/* Estado de stock — TODA ficha muestra uno de los dos, así la ausencia de cartel
+   no significa nada. Verde "En stock" por defecto; naranja "Ingresa dd/mm" cuando
+   Virgilio informa que no hay. Informativo: no bloquea la compra. */
+.product-card .pc-stock {
   margin: 2px 0 4px;
   padding: 2px 8px;
   display: inline-block;
   font-size: 12px;
   font-weight: 700;
-  color: #b45309;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
+  border: 1px solid;
   border-radius: 999px;
   line-height: 1.3;
+}
+.product-card .pc-stock-hay {
+  color: #15803d;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.product-card .pc-stock-ingresa {
+  color: #b45309;
+  background: #fff7ed;
+  border-color: #fed7aa;
 }
 /* Bloque de precios */
 .product-card .card-prices {
