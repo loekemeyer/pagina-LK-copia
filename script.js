@@ -1339,7 +1339,7 @@ function fmtDdMm(iso) {
 }
 
 // Estado de stock de un producto para el catálogo. Devuelve siempre uno de:
-//   { tipo: "en_stock" }                      → "En stock"
+//   { tipo: "en_stock" }                      → sin cartel (el default)
 //   { tipo: "reingreso", fecha: "dd/mm" }     → "Sin stock / hasta 12/10"
 //   { tipo: "reingreso", fecha: "" }          → "Sin stock / fecha a confirmar"
 //
@@ -4852,19 +4852,18 @@ function renderProducts() {
       .trim()
       .toUpperCase();
 
-    // Estado de stock: verde "En stock" por defecto, naranja "Sin stock / hasta dd/mm"
-    // cuando Virgilio dice que no hay. Todas las fichas muestran uno de los dos, así
-    // que la ausencia de cartel nunca significa nada. El badge SIN STOCK que carga el
-    // admin en products manda por encima y ya se muestra arriba de la foto.
+    // Estado de stock: el cartel sale SOLO cuando no hay stock y SOLO con sesión
+    // iniciada (pedido del dueño, 11/09/2026: sacar el "En stock" verde y no
+    // mostrarle el estado a quien no entró). Ficha sin cartel = hay mercadería.
+    // El badge SIN STOCK que carga el admin en products manda por encima y ya se
+    // muestra arriba de la foto, así que ahí tampoco va este cartel.
     const stock = estadoStock(p.cod);
     const stockHtml =
-      badge === "SIN STOCK"
+      !logged || badge === "SIN STOCK" || stock.tipo !== "reingreso"
         ? ""
-        : stock.tipo === "reingreso"
-          ? `<div class="pc-stock pc-stock-ingresa" title="Sin stock — fecha estimada de ingreso a depósito"><span class="pc-stock-l1">Sin stock</span><span class="pc-stock-l2">${
-              stock.fecha ? `hasta ${stock.fecha}` : "fecha a confirmar"
-            }</span></div>`
-          : `<div class="pc-stock pc-stock-hay">En stock</div>`;
+        : `<div class="pc-stock pc-stock-ingresa" title="Sin stock — fecha estimada de ingreso a depósito"><span class="pc-stock-l1">Sin stock</span><span class="pc-stock-l2">${
+            stock.fecha ? `hasta ${stock.fecha}` : "fecha a confirmar"
+          }</span></div>`;
 
     let badgeHtml = "";
 
