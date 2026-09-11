@@ -1509,6 +1509,20 @@ body {
   opacity: 0.35;
   cursor: not-allowed;
 }
+/* Aviso de falta de stock en la línea del carrito (11/09/2026). Naranja, como el
+   cartel del catálogo; informativo, no bloquea la compra. */
+.cart-sinstock {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #b45309;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+}
 .cart-min-hint {
   font-size: 10px;
   line-height: 1.25;

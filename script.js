@@ -7600,10 +7600,21 @@ function updateCart() {
       // piso. Fuera del modo edición `min` es 0 y todo queda igual que siempre.
       const min = editMinQty(item.productId);
       const enElPiso = min > 0 && totalCajas <= min;
+      // Aviso de falta de stock en la línea del carrito (pedido del dueño, 11/09/2026:
+      // sólo acá, con fecha). Mismo dato que el cartel del catálogo: `estadoStock`.
+      const stockCart = estadoStock(p.cod);
+      const sinStockHtml =
+        stockCart.tipo === "reingreso"
+          ? `<div class="cart-sinstock">⏳ Sin stock — ${
+              stockCart.fecha
+                ? `se entrega desde el ${stockCart.fecha}`
+                : "fecha de ingreso a confirmar"
+            }</div>`
+          : "";
       rows += `
         <tr class="${loke ? "loke-row" : ""}${item.isUpsellPromo ? " promo-row" : ""}">
           <td><strong>${String(p.cod || "")}</strong></td>
-          <td class="desc">${loke ? '<span class="loke-cart-tag">LOKE</span>' : ""}${item.isUpsellPromo ? '<span class="promo-cart-tag" style="display:inline-block;background:#ffebb3;color:#7a5100;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:6px;">PROMO 30% (pedido aparte)</span>' : ""}${splitTwoWords(p.description)}</td>
+          <td class="desc">${loke ? '<span class="loke-cart-tag">LOKE</span>' : ""}${item.isUpsellPromo ? '<span class="promo-cart-tag" style="display:inline-block;background:#ffebb3;color:#7a5100;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-right:6px;">PROMO 30% (pedido aparte)</span>' : ""}${splitTwoWords(p.description)}${sinStockHtml}</td>
           <td>
             <div class="cart-step">
               <button type="button" class="cart-step-btn" onclick="changeQty('${pidAttr}', -1)" aria-label="Restar una caja"${enElPiso ? ' disabled title="Ya está en el pedido: sólo se puede agregar"' : ""}>−</button>
