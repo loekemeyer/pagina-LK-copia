@@ -130,8 +130,16 @@ grant execute on function public.krikos_auto_crear_pedido(bigint, uuid, text, nu
 grant execute on function public.krikos_auto_marcar(bigint, text, text) to service_role;
 
 -- =============================================================================
--- CRON (se agrega recién después de probar con dry_run contra OC reales)
+-- CRON — APLICADO el 2026-09-11 18:28 ART. Es el jobid 43.
 -- =============================================================================
+-- Antes de prenderlo se corrió {"dry_run": true, "force": true} contra las 6 OC
+-- pendientes reales: 5 entraban limpias con el total EXACTO al del PDF, y la 6ª
+-- (La Anonima 22908256) salia 'parcial' avisando que falta el 198E y que por eso
+-- el total difiere 5,3%. La corrida real dejo las 6 en 'salteada' (vencidas), sin
+-- crear ningun pedido.
+--
+-- Para apagarlo: select cron.alter_job(43, active := false);
+--
 -- select cron.schedule('krikos-auto-import-10min', '3-59/10 * * * *', $c$
 --   select net.http_post(
 --     url := 'https://kwkclwhmoygunqmlegrg.supabase.co/functions/v1/krikos-auto-import',
