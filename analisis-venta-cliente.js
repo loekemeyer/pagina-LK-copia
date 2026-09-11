@@ -10,7 +10,7 @@
 // en mayorista.html en customer mode).
 var AVC_SUPABASE_URL = "https://kwkclwhmoygunqmlegrg.supabase.co";
 var AVC_SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3a2Nsd2htb3lndW5xbWxlZ3JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1MjA2NzUsImV4cCI6MjA4NTA5NjY3NX0.soqPY5hfA3RkAJ9jmIms8UtEGUc4WpZztpEbmDijOgU";
+  "sb_publishable_mVX5MnjwM770cNjgiL6yLw_LDNl9pML";
 
 // Si ya existe supabaseClient (mayorista), lo reutilizamos para compartir auth.
 // Sino creamos uno nuevo (admin standalone).

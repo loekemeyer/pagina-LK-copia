@@ -13,7 +13,7 @@
   // que ya está logueado en la página principal (misma origin → misma sesión).
   var SUPABASE_URL = 'https://kwkclwhmoygunqmlegrg.supabase.co';
   // anon key (mismo que el sitio): permite reusar la sesión guardada y respeta RLS.
-  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3a2Nsd2htb3lndW5xbWxlZ3JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1MjA2NzUsImV4cCI6MjA4NTA5NjY3NX0.soqPY5hfA3RkAJ9jmIms8UtEGUc4WpZztpEbmDijOgU';
+  var SUPABASE_ANON_KEY = 'sb_publishable_mVX5MnjwM770cNjgiL6yLw_LDNl9pML';
   // Cliente supabase-js compartido con store.js (un solo cliente / una sola sesión).
   var sb = window.__osaSb ||
     ((window.supabase && window.supabase.createClient)
