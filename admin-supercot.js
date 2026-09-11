@@ -3425,13 +3425,24 @@
       window.toast && window.toast("No hay ítems válidos para subir", "warning");
       return;
     }
+    // 2026-09-11 — este guard NUNCA se disparaba: filtraba por `it.included && !it.found`,
+    // pero un ítem sin match nace con `included: !!p`, o sea included=false. La condición era
+    // imposible, así que la OC se subía incompleta EN SILENCIO. Caso real: una OC de La Anónima
+    // entró con 17 de 18 renglones porque el 198E no está en products/loke_products (aunque se
+    // le factura desde junio). Ahora mira sólo `!it.found` y además dice QUÉ códigos faltan.
     var missing = state.items.filter(function (it) {
-      return it.included && !it.found;
+      return !it.found && (it.cajas || 0) > 0;
     });
     if (missing.length) {
+      var codsFaltan = missing
+        .map(function (it) {
+          return (it.codPdf || it.codLk || "?") + " ×" + (it.cajas || 0) + " cj";
+        })
+        .join(", ");
       var ok = window.confirm(
-        missing.length +
-          " ítem(s) marcado(s) sin match en LK no se enviarán. ¿Continuar?",
+        "⚠ " + missing.length + " renglón(es) del PDF NO están en el catálogo de LK y " +
+          "NO se van a subir:\n\n" + codsFaltan + "\n\n" +
+          "El pedido va a entrar incompleto. ¿Continuar igual?",
       );
       if (!ok) return;
     }
