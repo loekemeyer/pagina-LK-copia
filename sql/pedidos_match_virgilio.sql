@@ -228,6 +228,8 @@ begin
        fecha_entrega, fecha_entrega_txt)
     select empresa, order_id, cod_cliente, status, fecha_pedido, hora_pedido, created_at,
            sucursal_entrega, metodo_pago, items_string, match_string, ambiguo, orden_en_dia,
+           -- Chef no tiene Krikos: su portal no carga OC de supermercado, así que no hay
+           -- fecha de entrega que mandar.
            null::date, null::text
       from public.v_pedidos_match_chef
      where fecha_pedido >= v_corte;
