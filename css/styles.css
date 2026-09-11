@@ -1151,6 +1151,13 @@ body {
   font-size: 15px;
 }
 /* Aviso de deuda pendiente (idea 6064) — sólo avisa, no bloquea */
+/* ⚠ El `display:flex` de abajo le GANA al display:none que el navegador le da al
+   atributo [hidden] (misma especificidad, gana la del autor). Sin esta regla, el
+   aviso oculto —o sea en admin, en modo vendedor y en todo cliente sin deuda— se
+   dibujaba igual: una caja roja vacía arriba de Método de pago. */
+.deuda-aviso[hidden] {
+  display: none;
+}
 .deuda-aviso {
   width: min(780px, 100%);
   margin-bottom: 10px;
