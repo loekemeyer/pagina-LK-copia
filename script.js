@@ -1201,13 +1201,28 @@ function _isoLocal(d) {
   const p = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
-// Suma n días hábiles (lun-vie). Feriados: pendiente, igual que en la RPC.
+// Feriados nacionales (tabla `feriados`, misma que usa la RPC). Se cargan al
+// inicio; si la carga falla queda vacío y solo se saltan sáb/dom.
+let _feriadosSet = new Set();
+async function loadFeriados() {
+  try {
+    const { data, error } = await supabaseClient.from("feriados").select("fecha");
+    if (error) throw error;
+    _feriadosSet = new Set((data || []).map((r) => String(r.fecha).slice(0, 10)));
+  } catch (e) {
+    console.warn("No se pudieron leer los feriados", e);
+  }
+}
+function _esHabil(d) {
+  return d.getDay() !== 0 && d.getDay() !== 6 && !_feriadosSet.has(_isoLocal(d));
+}
+// Suma n días hábiles (lun-vie, sin feriados), igual que entrega_sumar_habiles.
 function _sumarHabiles(d, n) {
   const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   let k = 0;
   while (k < n) {
     r.setDate(r.getDate() + 1);
-    if (r.getDay() !== 0 && r.getDay() !== 6) k++;
+    if (_esHabil(r)) k++;
   }
   return r;
 }
@@ -1223,8 +1238,7 @@ function _retiroSeleccion() {
 function _retiroFechaValida(iso) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
   if (iso < _retiroMinIso()) return false;
-  const d = new Date(iso + "T12:00:00");
-  return d.getDay() !== 0 && d.getDay() !== 6;
+  return _esHabil(new Date(iso + "T12:00:00"));
 }
 function _syncRetiroUI() {
   const block = $("retiroBlock");
@@ -13902,6 +13916,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     FECHA_ESTIMADA_ENTREGA = f;
     if (typeof updateCart === "function") updateCart();
   });
+  // Feriados: recalcular el mínimo del calendario de Retira cuando lleguen.
+  loadFeriados().then(() => _syncRetiroUI());
   loadReingresos().then(() => {
     if (typeof renderProducts === "function") renderProducts();
   });
@@ -14509,7 +14525,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const v = ev.target.value;
       if (v && !_retiroFechaValida(v)) {
         alert(
-          "Elegí un día hábil (lunes a viernes) a partir del " +
+          "Elegí un día hábil (lunes a viernes, no feriado) a partir del " +
             fmtDdMm(_retiroMinIso()) + ".",
         );
         ev.target.value = "";

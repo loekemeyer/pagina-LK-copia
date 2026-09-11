@@ -128,3 +128,12 @@ end $$;
 
 revoke execute on function public.get_fecha_estimada_entrega(uuid, smallint) from public, anon;
 grant  execute on function public.get_fecha_estimada_entrega(uuid, smallint) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- FERIADOS (11/9/2026, migración "feriados_dias_habiles"). Tabla `feriados`
+-- (fecha pk, nombre) legible por anon/authenticated; la saltan
+-- entrega_sumar_habiles (que pasó a STABLE porque lee la tabla) y el
+-- calendario de Retira del portal (_esHabil en script.js). Cargados 2026
+-- completo y los fijos de 2027. Los "feriados con fines turísticos" se
+-- anuncian cada año: agregarlos a mano con un INSERT.
+-- ---------------------------------------------------------------------
