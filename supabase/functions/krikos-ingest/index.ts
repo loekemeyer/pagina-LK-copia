@@ -19,9 +19,19 @@
 //       → busca mails del remitente desde hace `days` días, procesa los que
 //         no estén en la tabla. Devuelve resumen.
 //   { action: "test_imap" }
-//       → conecta, autentica, EXAMINE INBOX, cuenta mails de Krikos. No escribe.
+//       → conecta, autentica, y cuenta mails de Krikos en cada carpeta configurada.
+//         No escribe.
+//   { action: "list_folders", days?: 30 }
+//       → lista TODAS las carpetas de la casilla con cuántos mails de Krikos tiene
+//         cada una. Sirve para encontrar a dónde archivan los mails. No escribe.
 //   { action: "status" }
 //       → conteo por estado de la bandeja.
+//
+// ⚠ En la casilla real los mails ENTRAN a INBOX y después los ARCHIVAN a mano en
+// otra carpeta. Mirando sólo INBOX se pierde todo lo archivado (y lo que archiven
+// antes de la próxima corrida del cron, que es cada 10 min). Por eso las carpetas
+// a mirar se configuran con `KRIKOS_MAILBOXES` (lista separada por comas, default
+// "INBOX"); averiguar el nombre exacto con `list_folders`.
 //
 // Secretos: primero variable de entorno (Supabase → Edge Functions → Secrets) y,
 // si no está, el Vault de Postgres vía la RPC `krikos_secret` (solo service_role):
@@ -33,6 +43,7 @@
 //   KRIKOS_IMAP_TLS        "true" para TLS implícito (993); default "false"
 //   KRIKOS_IMAP_USER       default ventas@loekemeyer.com
 //   KRIKOS_SENDER          default noreply@planexware.com
+//   KRIKOS_MAILBOXES       carpetas a mirar, separadas por coma; default "INBOX"
 // =============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
@@ -46,6 +57,12 @@ const IMAP_TLS = (Deno.env.get("KRIKOS_IMAP_TLS") ?? "false") === "true";
 const IMAP_USER = Deno.env.get("KRIKOS_IMAP_USER") ?? "ventas@loekemeyer.com";
 const SENDER = Deno.env.get("KRIKOS_SENDER") ?? "noreply@planexware.com";
 const BUCKET = "krikos-oc";
+// Carpetas a mirar, separadas por coma. Default sólo INBOX. Hace falta porque en
+// la casilla real los mails de Krikos ENTRAN a la bandeja de entrada y después
+// los ARCHIVAN a mano en otra carpeta: mirando sólo INBOX, todo lo archivado
+// (y lo que archiven antes de la próxima corrida) queda afuera. Se configura sin
+// tocar código: `select vault.create_secret('INBOX,Archivo', 'KRIKOS_MAILBOXES');`
+const MAILBOXES_DEFAULT = "INBOX";
 const LINK_RE = /https:\/\/krikos360\.planexware\.net\/Documentos\/api\/documento\?token=([A-Za-z0-9_\-.]+)/;
 
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
@@ -66,6 +83,25 @@ async function getSecret(name: string): Promise<string> {
     console.warn("krikos_secret", name, e);
     return "";
   }
+}
+
+/** Las carpetas configuradas, o sólo INBOX. */
+async function mailboxes(): Promise<string[]> {
+  const raw = (await getSecret("KRIKOS_MAILBOXES")) || MAILBOXES_DEFAULT;
+  const l = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return l.length ? l : ["INBOX"];
+}
+
+/** Un nombre de carpeta con espacios o acentos hay que mandarlo entre comillas. */
+function quoteMailbox(s: string): string {
+  return /^[A-Za-z0-9_./-]+$/.test(s) ? s : '"' + s.replace(/([\\"])/g, "\\$1") + '"';
+}
+
+/** Clave de deduplicación por mail. Se le antepone la carpeta salvo en INBOX,
+ *  para no cambiar el formato de lo ya guardado: dos carpetas pueden repetir el
+ *  UIDVALIDITY y ahí un mail distinto pasaría por "ya procesado". */
+function uidKey(mailbox: string, uidvalidity: string, uid: number): string {
+  return mailbox === "INBOX" ? `${uidvalidity}:${uid}` : `${mailbox}:${uidvalidity}:${uid}`;
 }
 
 function json(o: unknown, status = 200) {
@@ -191,8 +227,23 @@ class Imap {
     return "LOGIN";
   }
 
+  /** Todas las carpetas seleccionables de la casilla. Sólo lectura. */
+  async list(): Promise<string[]> {
+    const r = await this.cmd('LIST "" "*"');
+    const out: string[] = [];
+    for (const l of r.lines) {
+      // * LIST (\HasNoChildren) "/" "Archivo"   |   * LIST (...) "/" INBOX
+      const m = /^\* LIST \(([^)]*)\) (?:"[^"]*"|NIL) (?:"(.*)"|(\S+))\s*$/.exec(l);
+      if (!m) continue;
+      if (/\\Noselect/i.test(m[1] ?? "")) continue;   // carpeta contenedora, no se puede abrir
+      const name = m[2] ?? m[3] ?? "";
+      if (name) out.push(name);
+    }
+    return out;
+  }
+
   async examine(mailbox = "INBOX"): Promise<{ exists: number; uidvalidity: string }> {
-    const r = await this.cmd(`EXAMINE ${mailbox}`);
+    const r = await this.cmd(`EXAMINE ${quoteMailbox(mailbox)}`);
     let exists = 0, uidvalidity = "";
     for (const l of r.lines) {
       const e = /^\* (\d+) EXISTS/.exec(l); if (e) exists = Number(e[1]);
@@ -365,23 +416,53 @@ function internalDateToIso(s: string): string | null {
 }
 
 // ── Acciones ──────────────────────────────────────────────────────────────────
-async function openMailbox(): Promise<{ imap: Imap; auth: string; exists: number; uidvalidity: string }> {
+async function openMailbox(mailbox = "INBOX"): Promise<{ imap: Imap; auth: string; exists: number; uidvalidity: string }> {
   const pass = await getSecret("KRIKOS_IMAP_PASS");
   if (!pass) throw new Error("KRIKOS_IMAP_PASS no configurado (ni env ni Vault)");
   const imap = await Imap.connect(IMAP_HOST, IMAP_PORT, IMAP_TLS);
   await imap.capability();
   const auth = await imap.login(IMAP_USER, pass);
-  const { exists, uidvalidity } = await imap.examine("INBOX");
+  const { exists, uidvalidity } = await imap.examine(mailbox);
   return { imap, auth, exists, uidvalidity };
+}
+
+/** Qué carpetas tiene la casilla y cuántos mails de Krikos hay en cada una.
+ *  Sirve para saber a dónde archivan los mails sin tener que abrir el correo. */
+async function actionListFolders(days: number) {
+  const started = Date.now();
+  const { imap, auth } = await openMailbox();
+  try {
+    const since = new Date(Date.now() - days * 86400000);
+    const criteria = `FROM "${SENDER}" SINCE ${imapDate(since)}`;
+    const folders: unknown[] = [];
+    for (const mb of await imap.list()) {
+      try {
+        const { exists, uidvalidity } = await imap.examine(mb);
+        const uids = await imap.uidSearch(criteria);
+        folders.push({ carpeta: mb, mails: exists, uidvalidity, krikos: uids.length });
+      } catch (e) {
+        folders.push({ carpeta: mb, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { ok: true, auth, days, configuradas: await mailboxes(), folders, ms: Date.now() - started };
+  } finally { await imap.logout(); }
 }
 
 async function actionTestImap() {
   const started = Date.now();
-  const { imap, auth, exists, uidvalidity } = await openMailbox();
+  const mbs = await mailboxes();
+  const { imap, auth, exists, uidvalidity } = await openMailbox(mbs[0]);
   try {
     const since = new Date(Date.now() - 30 * 86400000);
-    const uids = await imap.uidSearch(`FROM "${SENDER}" SINCE ${imapDate(since)}`);
-    return { ok: true, host: IMAP_HOST, port: IMAP_PORT, tls: IMAP_TLS, auth, caps: imap.caps, inbox_exists: exists, uidvalidity, krikos_ultimos_30d: uids.length, ms: Date.now() - started };
+    const criteria = `FROM "${SENDER}" SINCE ${imapDate(since)}`;
+    const porCarpeta: Record<string, number> = {};
+    let total = 0;
+    for (const mb of mbs) {
+      if (mb !== mbs[0]) await imap.examine(mb);
+      const n = (await imap.uidSearch(criteria)).length;
+      porCarpeta[mb] = n; total += n;
+    }
+    return { ok: true, host: IMAP_HOST, port: IMAP_PORT, tls: IMAP_TLS, auth, caps: imap.caps, carpetas: mbs, inbox_exists: exists, uidvalidity, krikos_ultimos_30d: total, krikos_por_carpeta: porCarpeta, ms: Date.now() - started };
   } finally { await imap.logout(); }
 }
 
@@ -404,25 +485,31 @@ async function fetchPdf(link: string): Promise<Uint8Array> {
 
 async function actionSync(days: number, dryRun: boolean) {
   const started = Date.now();
-  const { imap, auth, uidvalidity } = await openMailbox();
-  const summary = { ok: true, auth, days, dry_run: dryRun, encontrados: 0, ya_procesados: 0, nuevos: 0, insertados: 0, errores: 0, detalle: [] as unknown[], ms: 0 };
+  const mbs = await mailboxes();
+  const { imap, auth } = await openMailbox(mbs[0]);
+  const summary = { ok: true, auth, days, dry_run: dryRun, carpetas: mbs, encontrados: 0, ya_procesados: 0, nuevos: 0, insertados: 0, errores: 0, detalle: [] as unknown[], ms: 0 };
   try {
     const since = new Date(Date.now() - days * 86400000);
+    // Una vuelta por carpeta: los mails entran a INBOX y después los archivan, así
+    // que mirando una sola se pierde la mitad. El doc_id evita duplicar la OC que
+    // aparezca en las dos.
+    for (const mb of mbs) {
+    const { uidvalidity } = await imap.examine(mb);
     const uids = await imap.uidSearch(`FROM "${SENDER}" SINCE ${imapDate(since)}`);
-    summary.encontrados = uids.length;
-    if (!uids.length) return summary;
+    summary.encontrados += uids.length;
+    if (!uids.length) continue;
 
-    const keys = uids.map((u) => `${uidvalidity}:${u}`);
+    const keys = uids.map((u) => uidKey(mb, uidvalidity, u));
     const { data: known, error: kErr } = await sb.from("krikos_oc_inbox").select("mail_uid").in("mail_uid", keys);
     if (kErr) throw new Error("lectura bandeja: " + kErr.message);
     const knownSet = new Set((known ?? []).map((r) => r.mail_uid));
-    const pending = uids.filter((u) => !knownSet.has(`${uidvalidity}:${u}`));
-    summary.ya_procesados = uids.length - pending.length;
-    summary.nuevos = pending.length;
+    const pending = uids.filter((u) => !knownSet.has(uidKey(mb, uidvalidity, u)));
+    summary.ya_procesados += uids.length - pending.length;
+    summary.nuevos += pending.length;
 
     for (const uid of pending) {
-      const mail_uid = `${uidvalidity}:${uid}`;
-      const det: Record<string, unknown> = { uid };
+      const mail_uid = uidKey(mb, uidvalidity, uid);
+      const det: Record<string, unknown> = { carpeta: mb, uid };
       try {
         const { raw, internalDate } = await imap.uidFetchRaw(uid);
         const rawStr = new TextDecoder("latin1").decode(raw);
@@ -485,6 +572,7 @@ async function actionSync(days: number, dryRun: boolean) {
         summary.detalle.push(det);
       }
     }
+    }
     return summary;
   } finally {
     summary.ms = Date.now() - started;
@@ -505,11 +593,15 @@ Deno.serve(async (req) => {
   try {
     if (action === "status") return json(await actionStatus());
     if (action === "test_imap") return json(await actionTestImap());
+    if (action === "list_folders") {
+      const days = Math.min(365, Math.max(1, Number(body.days ?? 30)));
+      return json(await actionListFolders(days));
+    }
     if (action === "sync") {
       const days = Math.min(365, Math.max(1, Number(body.days ?? 30)));
       return json(await actionSync(days, !!body.dry_run));
     }
-    return json({ ok: false, error: "action desconocida", valid: ["sync", "test_imap", "status"] }, 400);
+    return json({ ok: false, error: "action desconocida", valid: ["sync", "test_imap", "list_folders", "status"] }, 400);
   } catch (e) {
     console.error("krikos-ingest error:", e);
     return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500);

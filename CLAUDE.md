@@ -385,6 +385,19 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
   del JWT es el `doc_id`, clave de deduplicación. **Los parsers de `admin-supercot.js` ya eran de
   Krikos**: detectan `OrdCotoPlx`, `OrdIncPlx`, `OrdJumboPlx`… ("Plx" = Planexware). Lo único
   que faltaba era el transporte.
+- **⚠ LOS MAILS NO ESTÁN EN LA BANDEJA DE ENTRADA.** Entran a INBOX y ahí nomás los ARCHIVAN a
+  mano en **`Inbox/1 Pedidos pendientes a pasar ISIS/Pedidos Super`** (1.284 mails; ojo que el
+  padre es `Inbox`, no `INBOX`, y el separador es `/`). Mirando sólo INBOX la bandeja quedaba
+  vacía para siempre: el 11/9/2026 había 0 mails de Planexware en INBOX y 10 en esa carpeta.
+  Por eso la función recorre una LISTA de carpetas, configurable sin tocar código:
+  `select vault.create_secret('INBOX,Inbox/1 Pedidos pendientes a pasar ISIS/Pedidos Super', 'KRIKOS_MAILBOXES');`
+  (default `INBOX`). Para encontrar el nombre exacto de una carpeta sin abrir el correo:
+  `{"action":"list_folders"}` lista todas con cuántos mails de Krikos tiene cada una. El
+  `doc_id` evita que una OC entre dos veces si aparece en dos carpetas.
+- **El link del mail VENCE.** Al procesar 45 días de historia el 11/9/2026, las 3 OC de Coto más
+  viejas (entrega 28/07, 03/08, 18/08) devolvieron `text/html` de 9.845 bytes en vez del PDF y
+  quedaron en `estado = 'error'`; las 7 recientes bajaron bien (146-181 kB). No es un bug: en
+  régimen el cron procesa el mail del día. Sólo aparece si se pide una ventana larga hacia atrás.
 - **Flujo**: cron `krikos-ingest-10min` (pg_cron, `*/10`) → `net.http_post` a la Edge Function
   **`krikos-ingest`** (header `x-krikos-secret`) → IMAP a la casilla → por cada mail nuevo baja el
   PDF al bucket privado **`krikos-oc`** (`<año>/<doc_id>.pdf`) e inserta en **`krikos_oc_inbox`**
@@ -404,7 +417,8 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
   `mail_uid = <UIDVALIDITY>:<UID>` y por `doc_id`.
 - **Secretos de la Edge Function**: `KRIKOS_INGEST_SECRET` (el mismo valor va en el header del
   cron — está en `select command from cron.job where jobname = 'krikos-ingest-10min'`),
-  `KRIKOS_IMAP_PASS`, y opcionales `KRIKOS_IMAP_HOST/PORT/TLS/USER`, `KRIKOS_SENDER`. La función
+  `KRIKOS_IMAP_PASS`, y opcionales `KRIKOS_IMAP_HOST/PORT/TLS/USER`, `KRIKOS_SENDER`,
+  `KRIKOS_MAILBOXES`. La función
   los lee primero del env (Supabase → Edge Functions → Secrets) y, si no están, **del Vault de
   Postgres** vía `krikos_secret(p_name)` (solo `service_role`): se cargan con
   `select vault.create_secret('<valor>', 'KRIKOS_IMAP_PASS');` desde el SQL editor, sin pasar
@@ -654,11 +668,12 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
 
 ### Integración Krikos
 
-- **Falta `KRIKOS_IMAP_PASS`** (password de ventas@; 4/9/2026). `KRIKOS_INGEST_SECRET` ya está
-  en el Vault. Cargar con `select vault.create_secret('<password>', 'KRIKOS_IMAP_PASS');`. Hasta
-  entonces el cron corre cada 10 min y falla con "KRIKOS_IMAP_PASS no configurado": inocuo, pero
-  la bandeja queda vacía. Después, probar con `{"action":"test_imap"}` y luego
-  `{"action":"sync","dry_run":true}`.
+- ~~**Falta `KRIKOS_IMAP_PASS`**~~ ✅ **cargado el 11/9/2026 por Luis** en el Vault de LK. Ese
+  mismo día se vio que no alcanzaba: los mails se archivan fuera de INBOX, así que la función pasó
+  a recorrer varias carpetas (`KRIKOS_MAILBOXES`, ver arriba). **La bandeja quedó andando**: 10 OC
+  detectadas, 7 con PDF bajado (Carrefour x2, Diarco x2, La Anónima, Coto x2) y 3 con el link
+  vencido. Las 10 son de OC que ya se habían cargado a mano: hay que **descartarlas desde la
+  Bandeja Krikos** una vez.
 - **Pedir al hosting que habilite IMAP con TLS (993)** en SmarterMail. Hoy el 143 va sin cifrar
   (la contraseña no, por CRAM-MD5; el contenido sí). Luego `KRIKOS_IMAP_TLS=true`, `KRIKOS_IMAP_PORT=993`
   y cambiar Thunderbird también.
