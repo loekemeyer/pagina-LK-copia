@@ -28,6 +28,26 @@
 -- `auto_aviso` en las de error lleva el `error_msg` del ingest: el front ya lo muestra en
 -- `apr-krikos-aviso`, así que el motivo se lee sin abrir nada. Sin eso el aviso salía mudo.
 --
+-- ⚠ VERIFICADO EL 2026-09-13 A LA NOCHE, Y EL ESPEJO ESTA VACIO — ESO ES LO ESPERADO.
+--   `public."GV_Krikos_OC"` del proyecto de Gestion tiene HOY **0 filas**, y no es una falla:
+--   medido contra `krikos_oc_inbox` (21 filas) no califica NINGUNA para viajar —
+--   0 `pendiente` sin pedido, 0 `parcial` de los ultimos 7 dias, y de los 6 `error` el mas
+--   NUEVO tiene el mail de hace **62 dias**, o sea afuera de la ventana de 30. Con 90 dias
+--   entrarian los 6; con 60, ninguno. Los otros 15 ya se resolvieron (9 `descartado`,
+--   5 `cargado`, 1 `descartado/salteada`) y por definicion no viajan.
+--   Los tres crons estan VIVOS y en verde (26 `krikos-ingest-10min`, 42
+--   `krikos-oc-a-virgilio-10min`, 43 `krikos-auto-import-10min`; ultima corrida de las 06:15
+--   UTC del 13/09, `succeeded`).
+--
+--   PERO OJO, Y ESTO ES LO QUE HAY QUE SABER: **el espejo nunca entrego una sola fila**, asi
+--   que el camino LK -> Gestion esta SIN PROBAR de punta a punta. Que el cron diga
+--   `succeeded` no alcanza: prueba que la funcion corrio, no que la fila llego del otro lado.
+--   El dia que caiga un error nuevo, si el push esta roto, el aviso no aparece y nadie se
+--   entera — que es exactamente el modo de falla que este espejo vino a tapar.
+--   La proxima sesion que tenga el "dale" de Thomas para escribir: empujar UNA fila de prueba,
+--   confirmar que aparece en `GV_Krikos_OC` de Gestion, y borrarla. Recien ahi esta probado.
+--   Antes de dar el tema por cerrado, mirar esto y no el estado de los crons.
+--
 -- ROLLBACK (deja de viajar lo que falló, vuelve al comportamiento anterior al 13/09):
 --   borrar la tercera condición del WHERE y el CASE de `auto_aviso`.
 -- =====================================================================================
