@@ -63,6 +63,9 @@ const BUCKET = "krikos-oc";
 // (y lo que archiven antes de la próxima corrida) queda afuera. Se configura sin
 // tocar código: `select vault.create_secret('INBOX,Archivo', 'KRIKOS_MAILBOXES');`
 const MAILBOXES_DEFAULT = "INBOX";
+// Cuántos mail_uid se preguntan por vez. Ver el comentario en actionSync: el `in()` de
+// PostgREST viaja en la URL. Con 100 claves de ~40 chars la query queda en ~5 KB, cómoda.
+const UID_CHUNK = 100;
 const LINK_RE = /https:\/\/krikos360\.planexware\.net\/Documentos\/api\/documento\?token=([A-Za-z0-9_\-.]+)/;
 
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
@@ -500,9 +503,17 @@ async function actionSync(days: number, dryRun: boolean) {
     if (!uids.length) continue;
 
     const keys = uids.map((u) => uidKey(mb, uidvalidity, u));
-    const { data: known, error: kErr } = await sb.from("krikos_oc_inbox").select("mail_uid").in("mail_uid", keys);
-    if (kErr) throw new Error("lectura bandeja: " + kErr.message);
-    const knownSet = new Set((known ?? []).map((r) => r.mail_uid));
+    // PostgREST manda el `in()` en la QUERY STRING, así que la URL crece con cada UID. Con
+    // `days` grande (el máximo es 365) una carpeta con cientos de mails armaba una URL de
+    // decenas de miles de caracteres y el request moría antes de llegar: la sincronización
+    // fallaba entera y no procesaba ni un mail. Se pregunta de a tandas.
+    const knownSet = new Set<string>();
+    for (let i = 0; i < keys.length; i += UID_CHUNK) {
+      const { data: known, error: kErr } = await sb.from("krikos_oc_inbox")
+        .select("mail_uid").in("mail_uid", keys.slice(i, i + UID_CHUNK));
+      if (kErr) throw new Error("lectura bandeja: " + kErr.message);
+      for (const r of known ?? []) knownSet.add(String(r.mail_uid));
+    }
     const pending = uids.filter((u) => !knownSet.has(uidKey(mb, uidvalidity, u)));
     summary.ya_procesados += uids.length - pending.length;
     summary.nuevos += pending.length;
