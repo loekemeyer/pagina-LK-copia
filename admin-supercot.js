@@ -3980,6 +3980,36 @@
     return r.data || [];
   }
 
+  // Conteo por estado para el badge (RPC krikos_inbox_counts, definida en
+  // sql/PENDIENTE-krikos-inbox-20260913.sql). Nunca rompe: si la RPC todavia
+  // no esta en la base o falla, devuelve null y el badge cae al conteo de la
+  // lista que se esta mostrando (comportamiento anterior).
+  async function loadKrikosInboxCounts() {
+    try {
+      var r = await window.sb.rpc("krikos_inbox_counts");
+      if (r.error || !Array.isArray(r.data)) return null;
+      var c = { pendiente: 0, cargado: 0, descartado: 0, error: 0 };
+      r.data.forEach(function (x) {
+        if (x && Object.prototype.hasOwnProperty.call(c, x.estado)) c[x.estado] = Number(x.n) || 0;
+      });
+      return c;
+    } catch (err) {
+      console.warn("scot bandeja krikos counts:", err);
+      return null;
+    }
+  }
+
+  function fmtKrikosInboxBadge_(c) {
+    // "0 pendientes · 5 cargadas · 10 descartadas · 6 con error"
+    function p(n, sing, plur) { return n + " " + (n === 1 ? sing : plur); }
+    return [
+      p(c.pendiente, "pendiente", "pendientes"),
+      p(c.cargado, "cargada", "cargadas"),
+      p(c.descartado, "descartada", "descartadas"),
+      p(c.error, "con error", "con error"),
+    ].join(" · ");
+  }
+
   async function resolverKrikosInbox(id, estado, orderId) {
     var r = await window.sb.rpc("krikos_inbox_resolver", {
       p_id: id,
@@ -4162,11 +4192,20 @@
     var body = mount.querySelector("#scotInboxBody");
     var badge = mount.querySelector("#scotInboxBadge");
     try {
-      krikosInboxRows = await loadKrikosInbox(krikosInboxEstado);
+      var res = await Promise.all([loadKrikosInbox(krikosInboxEstado), loadKrikosInboxCounts()]);
+      krikosInboxRows = res[0];
+      var counts = res[1];
       body.innerHTML = renderKrikosInboxTable_(krikosInboxRows);
-      var n = krikosInboxRows.length;
-      badge.textContent = n + (krikosInboxEstado === "pendiente" ? (n === 1 ? " pendiente" : " pendientes") : "");
-      badge.className = "scot-inbox-badge" + (n ? (krikosInboxEstado === "error" ? " err" : "") : " zero");
+      if (counts) {
+        // Los cuatro estados siempre, asi "0 pendientes" con la lista vacia no
+        // parece una bandeja rota: se ve que hay cargadas / descartadas / con error.
+        badge.textContent = fmtKrikosInboxBadge_(counts);
+        badge.className = "scot-inbox-badge" + (counts.error ? " err" : counts.pendiente ? "" : " zero");
+      } else {
+        var n = krikosInboxRows.length;
+        badge.textContent = n + (krikosInboxEstado === "pendiente" ? (n === 1 ? " pendiente" : " pendientes") : "");
+        badge.className = "scot-inbox-badge" + (n ? (krikosInboxEstado === "error" ? " err" : "") : " zero");
+      }
     } catch (err) {
       console.error("scot bandeja krikos load:", err);
       body.innerHTML = '<div class="scot-inbox-empty" style="color:#c0392b">No se pudo leer la bandeja: ' + escapeHtml(err.message || String(err)) + "</div>";
