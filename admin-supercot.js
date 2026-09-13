@@ -3488,6 +3488,40 @@
       }
     }
 
+    // Guard de OC ya cargada. La comparación de hash de findDuplicateCardIdx sólo
+    // mira las cards abiertas en pantalla, así que no veía el caso real: la misma
+    // OC subida en dos sesiones distintas. Pasó 4 veces entre mayo y junio de 2026
+    // (22663852, 58132128093, 22784730 y 22784731) y las 8 copias viajaron al Sheet.
+    // La fuente de verdad es el backend: la RPC oc_super_ya_cargada mira orders de
+    // LK y, para los supers de Chef, también los de Chef. No bloquea — avisa y pide
+    // confirmación, porque re-subir a propósito es una operación válida.
+    if (state.orderNumber) {
+      try {
+        var dupOc = await window.sb.rpc("oc_super_ya_cargada", {
+          p_oc: String(state.orderNumber),
+          p_chef: isChefSuper(state.superKey),
+        });
+        var dupRows = (dupOc && dupOc.data) || [];
+        if (dupRows.length) {
+          var dupMsg =
+            "⚠ LA OC " + state.orderNumber + " YA ESTÁ CARGADA\n\n" +
+            dupRows
+              .map(function (r) {
+                var d = new Date(r.creado);
+                return "  Pedido " + r.order_id + " (" + r.empresa.toUpperCase() + ") — " +
+                  (isNaN(d.getTime()) ? r.creado : d.toLocaleDateString("es-AR"));
+              })
+              .join("\n") +
+            "\n\nSubirla de nuevo duplica el pedido en ISIS.\n\n¿Subir igual?";
+          if (!window.confirm(dupMsg)) return;
+        }
+      } catch (dupErr) {
+        // Si el chequeo falla (sin sesión, RPC caída) no se frena la carga: el
+        // duplicado es un riesgo, no poder trabajar es una certeza.
+        console.warn("scot: no se pudo chequear OC duplicada", dupErr);
+      }
+    }
+
     state.submitting = true;
     var btn = $mount && $mount.querySelector("#scotSubmitBtn");
     if (btn) {
