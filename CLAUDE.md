@@ -500,9 +500,35 @@ Documentos de planificación y replicación, NO ejecutables:
 ## Common operations
 
 - **Run locally**: open `index.html` or `mayorista.html` in a browser, or serve the `wwwroot` directory with any static server (e.g. `python -m http.server`). There is no dev server.
-- **Deploy: se despliega SOLO con el push a `main`.** El sitio de trabajo es **GitHub Pages** (`loekemeyer.github.io`), que se rebuildea con cada push mediante el workflow *"pages build and deployment"*. Tarda entre 30 s y un par de minutos; si el cambio no se ve, lo más probable es que la corrida esté en cola, no que falte un paso. **No sugerir `git pull` ni copiar archivos**: no hay nada que hacer a mano después del push, solo `Ctrl+F5`.
-  - Para ver el estado de la última corrida: Actions → *pages build and deployment*, o `mcp__github__actions_list` con `method: list_workflow_runs`.
-  - **El IIS es un despliegue APARTE y ocasional**, no el flujo normal. Ahí sí los archivos son el entregable y se copian a mano al web root. Ojo con el espejo (`robocopy /MIR`, `rsync --delete`): borraría el `web.config` del servidor, que es el único que existe.
+- ⚠ **Deploy: son DOS sitios, y al que usan los clientes NO llega con el push.**
+
+  | Sitio | Quién entra | Cómo se despliega |
+  |---|---|---|
+  | **`www.loekemeyer.com`** (IIS, panel SolidCP) | **los clientes — es producción** | **a mano**, `scripts\deploy-iis.ps1` |
+  | `loekemeyer.github.io` (GitHub Pages) | desarrollo / revisión | solo, con cada push a `main` |
+
+  **Pushear a `main` NO llega a los clientes.** Hasta el 14/09 este archivo decía que el sitio "se
+  despliega SOLO con el push" y que el IIS era "aparte y ocasional". Es al revés, y salió caro: ese
+  día se corrigió el bug que dejaba los pedidos web sin `sheets_payload`, se pusheó, el workflow de
+  Pages dio verde — y se dio por publicado. Los clientes seguían con la v2.3.388 y **seguían
+  entrando pedidos rotos**. Lo delató el pie de la página: decía 388 con el repo en 389.
+
+  **Después de pushear un cambio que tiene que ver un cliente:**
+
+  ```powershell
+  .\scripts\deploy-iis.ps1 -Simular     # qué subiría (delta contra lo que hay publicado)
+  .\scripts\deploy-iis.ps1 -Mode Ftp    # lo sube
+  ```
+
+  El script saca el delta leyendo `https://www.loekemeyer.com/version.js`, así que **el número del
+  pie de la página es la única prueba de que un cambio llegó a los clientes**. Antes de decir que
+  algo está publicado, comprobalo ahí: que el run de Pages esté en verde no alcanza. Necesita
+  `scripts\deploy-iis.local.json` con las credenciales FTP (fuera del repo).
+  - Para ver el estado de la última corrida de Pages: Actions → *pages build and deployment*, o
+    `mcp__github__actions_list` con `method: list_workflow_runs`. Eso prueba que se publicó en
+    Pages, **no** que llegó a `loekemeyer.com`.
+  - Ojo con el espejo (`robocopy /MIR`, `rsync --delete`): borraría el `web.config` del servidor,
+    que es el único que existe. El script ya lo excluye a propósito.
   - `loeke.zip` en el repo es un bundle de despliegue viejo; no editar.
 - **Third-party libs** are loaded from CDN in the HTML files (Supabase JS v2, jsPDF, lottie-web, xlsx). There is no bundler; add new libs the same way (a `<script src="https://cdn...">` tag).
 - **SQL fix scripts** like `fix_missing.sql` are one-shot data repairs run manually in the Supabase SQL editor; they are not migrations and have no framework.
