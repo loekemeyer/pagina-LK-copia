@@ -2,8 +2,8 @@
 -- gv_cliente_isis — a qué ISIS se factura cada cliente de LK, empujado a Gestión Virgilio
 -- 2026-09-14 (pedido de Thomas). Lado LK de la v17.75 de `Gestion-Virgilio`.
 -- =====================================================================================
--- POR QUÉ EXISTE. Un cliente de Tierra del Fuego (y Cencosud, cuando se lo dé de alta)
--- compra artículos de Loekemeyer pero se le factura por Chef: carga el pedido desde la
+-- POR QUÉ EXISTE. Un cliente de Tierra del Fuego compra artículos de Loekemeyer pero se
+-- le factura por Chef: carga el pedido desde la
 -- página de LK y los artículos salen con la L pegada (505 → 505L). Eso ya lo resuelve
 -- `v_pedidos_web` acá mismo, con `isis_empresa` y `cod_isis`.
 --
@@ -21,10 +21,15 @@
 -- 14/09 son **9**. La Anónima (771) queda afuera por las dos vías: su override dice 'lk'
 -- (dueño 07/09: *"se le vende por LK, no por CH"*) y 10 de sus 11 sucursales no son de TdF.
 --
--- CENCOSUD no entra todavía: **no existe en `customers`** (0 filas con el CUIT 30590360763;
--- en Chef es el 2444). Cuando se lo dé de alta hay que agregarle además
--- `insert into gv_isis_override (cuit, isis_empresa, motivo) values ('30590360763','chef', …)`,
--- porque sus sucursales no son de Tierra del Fuego.
+-- ⚠ CENCOSUD NO ENTRA POR ACÁ, Y NO HAY QUE DARLO DE ALTA (dueño, 14/09: *"Cencosud sube
+-- pedido por Krikos y eso lo detectaba… siempre (histórico) subió pedidos por CH. No lo voy
+-- a dar de alta."*). No está en `customers` (0 filas con el CUIT 30590360763) y no lo
+-- necesita: **no carga por la página**. Sus OC entran por Krikos y la Bandeja las manda
+-- derecho al portal de Chef — `precios_super.cadena` lo tiene con `empresa='chef'`,
+-- `cod_cliente_chef='2444'` y `cod_cliente_lk` nulo. Medido: 4.452 líneas del 2444 en
+-- `sales_lines` marcadas `chef`, del 2021-05-27 a hoy, ninguna en LK. Su caso propio —NP de
+-- Chef con artículos de Loeke SIN la L— lo cubre `gv_fac_ajustes_isis` de Gestión: es el
+-- caso INVERSO al de Tierra del Fuego.
 --
 -- ROLLBACK: `select cron.unschedule('sync-cliente-isis-virgilio');` y, en Virgilio,
 -- `delete from public."GV_Cliente_Isis" where empresa is not null;`
