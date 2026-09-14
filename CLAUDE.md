@@ -1026,39 +1026,39 @@ and secret API keys and disable the anon and service_role keys."*
 **NO apretarlo todavia:** apaga TAMBIEN la `anon`, que es la que usa el frontend. Hoy eso
 tira abajo la app entera.
 
-### 3. EXCEPCION MEDIDA: Storage rechaza las claves nuevas al ESCRIBIR
+### 3. Las claves nuevas van en el header `apikey`, NO en `Authorization: Bearer`
 
-Comprobado en vivo el 2026-09-11 contra los dos proyectos (hrxfctzncixxqmpfhskv y
-kwkclwhmoygunqmlegrg). El Storage API de estos proyectos NO entiende el formato nuevo
-cuando la operacion escribe:
+Corrige una version anterior de este bloque que decia que Storage rechaza las claves
+nuevas al escribir. Eso estaba mal: Storage las acepta. Lo que las rechaza es mandarlas
+SOLAS en `Authorization: Bearer`, porque ahi el servicio las parsea como JWT.
 
-| Operacion | Clave legacy (JWT) | Clave nueva (`sb_publishable_` / `sb_secret_`) |
-|---|---|---|
-| `GET /storage/v1/object/...` | anda | anda |
-| `POST /storage/v1/object/...` (upload) | anda | **403 `Invalid Compact JWS` / AccessDenied** |
-| `POST /rest/v1/rpc/...` (PostgREST) | anda | anda |
-| Edge Functions con `verify_jwt` | anda | anda |
+Medido en vivo el 2026-09-14 contra hrxfctzncixxqmpfhskv:
 
-`Invalid Compact JWS` = el Storage intento parsear el token como JWT y no pudo. No es la
-clave equivocada ni un permiso faltante: el servicio no soporta el formato. Repro exacta:
+| Llamada | header `apikey` | header `Authorization` | Resultado |
+|---|---|---|---|
+| `POST /storage/v1/object/...` | — | `Bearer sb_publishable_...` | **403 `Invalid Compact JWS`** |
+| `POST /storage/v1/object/...` | `sb_publishable_...` | — | auth OK |
+| `POST /storage/v1/object/...` | `sb_publishable_...` | `Bearer sb_publishable_...` | auth OK |
+| `POST /storage/v1/object/...` | — | `Bearer eyJ...` (legacy) | auth OK |
+| `POST /functions/v1/<fn>` con `verify_jwt=true` | cualquiera de las tres formas | | 200 |
 
-```sql
-select r.status, r.content from public.http((
-  'POST','https://<ref>.supabase.co/storage/v1/object/__no_existe__/x.txt',
-  array[public.http_header('Authorization','Bearer <clave>')],
-  'text/plain','x')::public.http_request) r;
-```
+Por que: el API Gateway de Supabase valida la clave que viene en `apikey`, y con eso
+mintea un JWT corto que manda al servicio de abajo. Si no hay `apikey`, no hay nada que
+validar y el `Bearer sb_...` llega crudo al servicio, que espera un JWT. La clave legacy
+no tiene el problema porque ELLA MISMA es un JWT.
 
-**Consecuencia:** cualquier cosa que SUBA a Storage tiene que seguir con la
-`service_role` legacy hasta que Supabase actualice el Storage de estos proyectos. Caso
-real: el workflow `build-deploy.yml` de `loekemeyer/Planify` sube el `Planify.exe` a
-`planify_updates`; al cambiarle el secret `SUPABASE_SERVICE_KEY` por una `sb_secret_`
-empezo a fallar el paso "Upload to Supabase Storage" en 2 segundos, con el `.exe` ya
-compilado (runs 112 a 115 del 2026-09-11).
+Doc: *"You cannot send a publishable or secret key in the `Authorization: Bearer ...`
+header, except if the value exactly equals the `apikey` header."*
 
-**Antes de apagar las legacy, buscar todo lo que escriba en Storage** (`storage/v1/object`
-con POST/PUT, `.storage.from(...).upload(`, `.upload(`) y confirmar que ese camino sigue
-andando. Si no anda, NO se apagan las legacy todavia.
+**Regla practica:** al migrar un cliente a `sb_publishable_` / `sb_secret_`, mandar
+SIEMPRE el header `apikey`. `supabase-js` ya lo hace solo. Los que hay que revisar a mano
+son los `curl`, los `Invoke-RestMethod`, `pg_net` y los workflows escritos a mano.
+
+Caso real: el workflow `build-deploy.yml` de `loekemeyer/Planify` sube el `.exe` con
+`Authorization: Bearer $SUPA_KEY` y sin `apikey`. Al cambiarle el secret por una
+`sb_secret_`, el upload empezo a dar 403 con el `.exe` ya compilado (runs 112 a 115 del
+2026-09-11). Se resolvio reponiendo la legacy; la solucion definitiva es agregarle el
+header `apikey` y recien ahi pasarlo a `sb_secret_`.
 
 ### Orden obligatorio
 
@@ -1070,11 +1070,11 @@ andando. Si no anda, NO se apagan las legacy todavia.
 2. Reemplazar esa cadena por la `sb_publishable_...` del proyecto Supabase de ESTE repo
    (cada proyecto tiene la suya; no mezclar).
 3. Migrar todo backend que use `service_role` (Edge Functions, n8n, scripts) a `sb_secret_...`.
-4. Inventariar lo que escribe en Storage (ver la excepcion de arriba) y dejarlo con la
-   `service_role` legacy; si algo de eso ya se paso a `sb_secret_`, volverlo atras.
+4. Buscar todo llamador que mande la clave SOLO como `Authorization: Bearer` sin header
+   `apikey` (curl, Invoke-RestMethod, pg_net, GitHub Actions) y agregarle el `apikey`.
+   Con eso puede usar la clave nueva; sin eso falla con `Invalid Compact JWS`.
 5. Recien con 1-4 hechos en TODOS los repos que peguen contra ese proyecto:
-   `Disable JWT-based API keys`. Mientras exista un upload a Storage vivo, este paso
-   queda bloqueado.
+   `Disable JWT-based API keys`.
 
 ### Paso opcional: rotar el JWT secret
 
