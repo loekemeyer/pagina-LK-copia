@@ -885,3 +885,311 @@ body.lk-admin-embed #tablaSug th:last-child,
 body.lk-admin-embed #tablaSug td:last-child {
   display: none !important;
 }
+
+/* ============================================================================
+   ESCALADO POR ALTO DE VIEWPORT  (desktop, tablet y All-in-One)
+   ----------------------------------------------------------------------------
+   El problema que resuelve: la pantalla ya era "alto fijo, la lista scrollea"
+   (body 100dvh + overflow hidden, .tableWrap con flex:1 / min-height:0), pero
+   TODO lo de adentro estaba en px fijos: la foto 90px, el stepper 30px, el
+   header 50px, los paddings. Cuando el viewport se achica —una All-in-One con
+   el escalado de Windows en 125/150%, o el zoom del navegador— esos px NO se
+   achican: el navegador reporta menos px CSS de alto, el cuadro entero entra
+   igual pero las filas siguen midiendo lo mismo, así que entran 2, 1 o ninguna.
+   Por eso "se ve todo muy grande y explotado".
+
+   La corrección: expresar los tamaños con clamp(mínimo, valor en vh, máximo).
+   1vh es el 1% del alto del viewport, así que al hacer zoom las filas se
+   achican en la MISMA proporción que el espacio disponible y la cantidad de
+   productos visibles no cambia. El texto, en cambio, sí se ve más grande al
+   zoomear —que es lo que uno busca al zoomear—, porque el px CSS crece en
+   pantalla. Es "agrandar la letra sin agrandar la página".
+
+   Los mínimos en px son el piso: aunque el viewport quede muy bajo, la foto no
+   baja de 40px ni el botón + / − de 22px, que es el límite táctil razonable.
+   Medido con estos valores: entran entre 4 y 7 filas desde 400px de alto de
+   viewport para arriba (400px es un zoom de 200% en una pantalla de notebook).
+
+   No toca el bloque de ≤720px: ahí la tabla ya se convierte en tarjetas y ese
+   camino funciona. Va al final del archivo a propósito — misma especificidad
+   que las reglas de arriba, gana por orden, y así se lee de un vistazo qué se
+   escala y qué no.
+   ========================================================================== */
+
+@media (min-width: 721px) {
+  body {
+    padding: clamp(10px, 2.2vh, 28px) clamp(10px, 1.4vw, 18px);
+  }
+
+  .back-btn {
+    padding: clamp(5px, 0.9vh, 9px) clamp(10px, 1.2vw, 16px);
+    font-size: clamp(11px, 1.5vh, 13px);
+    margin-bottom: clamp(6px, 1.2vh, 14px);
+  }
+  .back-btn span:first-child {
+    font-size: clamp(12px, 1.7vh, 15px);
+  }
+
+  .card {
+    padding: clamp(12px, 2.2vh, 28px) clamp(14px, 1.6vw, 28px)
+      clamp(10px, 1.8vh, 24px);
+  }
+
+  /* --- Header --- */
+  .sug-header {
+    gap: clamp(8px, 1.2vh, 14px);
+    margin-bottom: clamp(6px, 1.2vh, 14px);
+  }
+  .sug-title-block {
+    gap: clamp(8px, 1.2vh, 14px);
+  }
+  .sug-title-icon {
+    width: clamp(32px, 5vh, 50px);
+    height: clamp(32px, 5vh, 50px);
+    font-size: clamp(17px, 2.7vh, 26px);
+    border-radius: clamp(9px, 1.4vh, 14px);
+  }
+  h1 {
+    font-size: clamp(16px, 2.6vh, 24px);
+  }
+  .sug-subtitle {
+    font-size: clamp(10px, 1.4vh, 13px);
+  }
+  .sug-tab {
+    padding: clamp(5px, 1vh, 9px) clamp(10px, 1.1vw, 16px);
+    font-size: clamp(11px, 1.5vh, 13px);
+  }
+  .sug-cliente-selector {
+    gap: clamp(6px, 1vh, 10px);
+    margin: clamp(3px, 0.7vh, 6px) 0 clamp(6px, 1.4vh, 12px);
+  }
+  .sug-cliente-label {
+    font-size: clamp(11px, 1.5vh, 13px);
+  }
+  .sug-cliente-select {
+    font-size: clamp(11px, 1.5vh, 14px);
+    padding: clamp(5px, 1vh, 10px) clamp(28px, 2.4vw, 36px)
+      clamp(5px, 1vh, 10px) clamp(10px, 1.1vw, 14px);
+    min-width: clamp(180px, 22vw, 260px);
+  }
+
+  /* --- Tabla --- */
+  .tableWrap {
+    margin-top: clamp(6px, 1.2vh, 14px);
+  }
+  th {
+    padding: clamp(5px, 1.1vh, 11px) 10px;
+    font-size: clamp(10px, 1.3vh, 12px);
+  }
+  td {
+    padding: clamp(4px, 0.9vh, 10px) 8px;
+    font-size: clamp(11px, 1.6vh, 15px);
+  }
+
+  /* --- Foto: es lo que define el alto de la fila --- */
+  .imgcell {
+    width: clamp(58px, 10vh, 120px);
+  }
+  .sug-img {
+    width: clamp(40px, 8vh, 90px);
+    height: clamp(40px, 8vh, 90px);
+    border-radius: clamp(7px, 1.2vh, 12px);
+  }
+
+  /* --- Columna Pedido --- */
+  .sug-action {
+    gap: clamp(3px, 0.6vh, 6px);
+  }
+  .sug-stepper {
+    width: clamp(84px, 11vh, 120px);
+    gap: clamp(2px, 0.5vh, 4px);
+  }
+  .sug-step-btn {
+    width: clamp(22px, 3.2vh, 30px);
+    height: clamp(22px, 3.2vh, 30px);
+    font-size: clamp(13px, 2vh, 16px);
+  }
+  .sug-step-in {
+    width: clamp(34px, 5.2vh, 50px);
+    height: clamp(22px, 3.2vh, 30px);
+    font-size: clamp(11px, 1.5vh, 14px);
+  }
+  .sug-add-btn {
+    min-width: clamp(96px, 14vh, 150px);
+    padding: clamp(4px, 0.85vh, 8px) clamp(10px, 1.4vw, 18px);
+    font-size: clamp(10px, 1.4vh, 13px);
+  }
+
+  /* --- Pie --- */
+  .moreWrap {
+    margin-top: clamp(6px, 1vh, 12px);
+  }
+  .vermas-btn {
+    margin-top: clamp(7px, 1.4vh, 14px);
+    padding: clamp(6px, 1.2vh, 12px) 14px;
+    font-size: clamp(11px, 1.4vh, 13px);
+  }
+  .sug-info-box {
+    margin-top: clamp(8px, 1.6vh, 18px);
+    padding: clamp(8px, 1.3vh, 14px) clamp(12px, 1.4vw, 18px);
+    font-size: clamp(10px, 1.35vh, 13px);
+    line-height: 1.45;
+  }
+  .sug-info-icon {
+    font-size: clamp(15px, 2.2vh, 22px);
+  }
+}
+
+/* Pantalla baja (zoom fuerte, o un monitor 16:9 con el escalado alto): el
+   texto explicativo y el subtítulo ceden el lugar a los productos, que es a lo
+   que se entra. No se pierde nada operativo. */
+@media (min-width: 721px) and (max-height: 700px) {
+  .sug-info-box {
+    display: none;
+  }
+}
+@media (min-width: 721px) and (max-height: 560px) {
+  .sug-subtitle {
+    display: none;
+  }
+  .back-btn {
+    margin-bottom: 4px;
+  }
+}
+
+/* ============================================================================
+   CELULAR (≤720px): la tarjeta entraba UNA por pantalla
+   ----------------------------------------------------------------------------
+   Medido con la tarjeta anterior: 354px de alto en un viewport de 844px, o sea
+   que se veía un producto y medio, cortado justo en el botón "Agregar". El alto
+   se iba en tres cosas: la foto al ancho completo (140px), el titulo partido en
+   cuatro renglones porque competía por el ancho con las pestañas, y el bloque
+   de pedido apilado (stepper arriba, botón abajo: 110px).
+
+   Se reacomoda sin cambiar el HTML ni el JS:
+   - La fila pasa a grid: foto a la IZQUIERDA y los datos a la derecha, en vez
+     de todo apilado. Las areas siguen el orden real de las celdas que arma
+     renderSug() (img, cod, desc, uxb, precio, motivo, pedido).
+   - Stepper y "Agregar al pedido" van en la MISMA linea. Los dos conservan sus
+     44px de alto, que es el minimo tactil comodo.
+   - El titulo se lleva su propia fila y las pestañas la de abajo, asi no se
+     parte.
+   - El recuadro explicativo se oculta: en 390px de ancho ocupaba media pantalla
+     y no es operativo. En desktop sigue estando.
+   Resultado medido: la tarjeta baja a ~170px y entran 3 productos completos.
+   ========================================================================== */
+
+@media (max-width: 720px) {
+  .sug-header {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .sug-title-block {
+    flex: 1 1 100%;
+  }
+  h1 {
+    font-size: 17px;
+    line-height: 1.2;
+  }
+  .sug-tabs {
+    flex: 1 1 100%;
+  }
+  .sug-tab {
+    flex: 1;
+    padding: 6px 10px;
+  }
+
+  .sug-info-box {
+    display: none;
+  }
+
+  /* La etiqueta se partia en tres renglones al lado del desplegable. */
+  .sug-cliente-selector {
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin: 4px 0 8px;
+  }
+  .sug-cliente-label {
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .sug-cliente-select {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    padding: 8px 30px 8px 12px;
+  }
+
+  /* --- La fila: foto izquierda, datos derecha --- */
+  tbody tr {
+    display: grid;
+    grid-template-columns: clamp(64px, 22vw, 88px) auto 1fr;
+    grid-template-areas:
+      "img cod    cod"
+      "img desc   desc"
+      "img uxb    precio"
+      "img msg    msg"
+      "ped ped    ped";
+    column-gap: 10px;
+    row-gap: 2px;
+    align-items: start;
+    padding: 10px;
+  }
+
+  td.imgcell {
+    grid-area: img;
+    width: auto;
+    margin-bottom: 0;
+  }
+  td.imgcell .sug-img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    max-height: none;
+  }
+  td.cod-cell {
+    grid-area: cod;
+  }
+  td.desc {
+    grid-area: desc;
+    margin-bottom: 2px;
+  }
+  td.uxb-cell {
+    grid-area: uxb;
+  }
+  td.price-cell {
+    grid-area: precio;
+    justify-self: end;
+    float: none;
+  }
+  td.msg {
+    grid-area: msg;
+    margin-top: 4px;
+  }
+  tbody td:last-child {
+    grid-area: ped;
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  /* --- Pedido en UNA linea: stepper + agregar --- */
+  .sug-action {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  .sug-stepper {
+    width: clamp(108px, 34vw, 140px);
+    flex: 0 0 auto;
+  }
+  .sug-step-btn {
+    width: clamp(34px, 10vw, 44px);
+  }
+  .sug-add-btn {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+}

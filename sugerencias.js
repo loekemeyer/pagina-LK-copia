@@ -143,15 +143,21 @@ function renderSug() {
   const thead = $("theadSug");
   const tbody = $("tbodySug");
 
+  // Anchos en PORCENTAJE, no en px. Con table-layout:fixed los px son
+  // absolutos: las seis columnas fijas sumaban 930px y, en cuanto la pantalla
+  // bajaba de ~1100px de ancho (una tablet vertical, o una All-in-One con el
+  // escalado de Windows alto), no quedaba nada para Descripción y el nombre
+  // del producto se veía en 31px o directamente en 0. En % reparten siempre
+  // proporcionalmente y la tabla nunca pasa el ancho del dispositivo.
   thead.innerHTML = `
     <tr>
-      <th style="width:120px">Img</th>
-      <th style="width:80px">Cod</th>
-      <th>Descripción</th>
-      <th style="width:70px">UxB</th>
-      <th style="width:140px">Tu precio contado</th>
-      <th style="width:300px">Motivo</th>
-      <th style="width:220px">Pedido</th>
+      <th style="width:9%">Img</th>
+      <th style="width:7%">Cod</th>
+      <th style="width:22%">Descripción</th>
+      <th style="width:6%">UxB</th>
+      <th style="width:12%">Tu precio contado</th>
+      <th style="width:26%">Motivo</th>
+      <th style="width:18%">Pedido</th>
     </tr>
   `;
 
