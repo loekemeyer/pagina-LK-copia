@@ -8699,6 +8699,9 @@ async function _submitSingleOrder(
           p_subtotal: Number(subtotal || 0),
           p_total: Number(finalTotal || 0),
           p_items: rpcItems,
+          // También al editar: si no viaja, la ficha queda con los items VIEJOS
+          // y el pedido crece sin que Gestión se entere.
+          p_sheets_payload: sheetsPayload,
         })
       : supabaseClient.rpc("submit_order_fast", {
           p_auth_user_id: currentSession.user.id,
