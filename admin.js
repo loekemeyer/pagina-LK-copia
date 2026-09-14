@@ -1298,7 +1298,9 @@ function renderClientes(clientes, addresses) {
         '<div class="cc-detail-item"><div class="label">Dto. Vol</div><div class="val">' +
         (c.dto_vol != null ? (c.dto_vol * 100).toFixed(0) + "%" : "-") +
         "</div></div>" +
-        '<div class="cc-detail-item"><div class="label">PIN</div><div class="val">' +
+        '<div class="cc-detail-item"><div class="label">PIN</div><div class="val"' +
+        (c.pin ? ' data-copiable="' + String(c.pin).replace(/"/g, "") + '"' : "") +
+        ">" +
         (c.pin || "-") +
         "</div></div></div>" +
         '<div class="suc-section-header"><h4 style="font-size:14px;font-weight:700">Sucursales</h4>' +
@@ -8099,7 +8101,10 @@ function _renderGruposSugeridos(clusters) {
                 // El CUIT es el dato duro para confirmar si son el mismo
                 // cliente: dos códigos que lo comparten son la misma persona
                 // jurídica, sin importar cómo esté escrito el nombre.
-                (m.cuit ? '<span class="grupo-cuit">CUIT ' + _escGrupo(m.cuit) + "</span>" : "") +
+                (m.cuit
+                  ? '<span class="grupo-cuit" data-copiable="' + _escGrupo(m.cuit) + '">CUIT ' +
+                    _escGrupo(m.cuit) + "</span>"
+                  : "") +
                 // La dirección se muestra siempre, no solo cuando es el motivo
                 // del cluster: sirve igual para confirmar un match por nombre.
                 (m.direccion
@@ -11531,7 +11536,8 @@ function _renderArcaTabla(filas) {
       '<td class="est-rs">' + escHtml(f.business_name || "(sin razón social)") +
         (det.length ? '<span class="rank-cuit">' + escHtml(det.join(" · ")) + "</span>" : "") +
       "</td>" +
-      '<td style="font-size:12px; font-variant-numeric:tabular-nums">' +
+      '<td style="font-size:12px; font-variant-numeric:tabular-nums"' +
+        (f.cuit ? ' data-copiable="' + escHtml(f.cuit) + '"' : "") + ">" +
         (f.cuit ? escHtml(f.cuit) : "—") + "</td>" +
       '<td><span class="arca-badge" style="background:' + meta.color + '">' +
         escHtml(meta.label) + "</span></td>" +
@@ -12112,7 +12118,8 @@ function cargarRankingInactivos() {
         // 236 de los 1233 códigos del ERP no tienen ficha en customers, así
         // que puede venir vacío; en ese caso no se muestra la línea.
         var cuitHtml = r.cuit
-          ? '<span class="rank-cuit">CUIT ' + escHtml(r.cuit) + "</span>"
+          ? '<span class="rank-cuit" data-copiable="' + escHtml(r.cuit) + '">CUIT ' +
+            escHtml(r.cuit) + "</span>"
           : "";
         var grupoBadge = esGrupo
           ? ' <span class="rank-grupo-badge" title="' + miembros.length +
@@ -14548,7 +14555,9 @@ function _rcRender() {
       '<td style="padding:6px 8px;text-align:center;font-weight:bold;">' + r.ranking + '</td>' +
       '<td style="padding:6px 8px;"><b>' + _rcEsc(r.cod_cliente) + '</b></td>' +
       '<td style="padding:6px 8px;">' + _rcEsc(r.business_name || "—") + '</td>' +
-      '<td style="padding:6px 8px;font-size:12px;color:#64748b;">' + _rcEsc(r.cuit || "—") + '</td>' +
+      '<td style="padding:6px 8px;font-size:12px;color:#64748b;"' +
+        (r.cuit ? ' data-copiable="' + _rcEsc(r.cuit) + '"' : "") + ">" +
+        _rcEsc(r.cuit || "—") + '</td>' +
       '<td style="padding:6px 8px;font-size:12px;">' + _rcEsc(r.vendedor_nombre || r.vendedor || "—") + '</td>' +
       '<td style="padding:6px 8px;text-align:right;font-weight:bold;">' + _rcFmt(r.total_historico) + '</td>' +
       '<td style="padding:6px 8px;text-align:right;">' + (r.total_pedidos || 0) + '</td>' +
@@ -15145,7 +15154,9 @@ function _cliPendRender(rows) {
       "<tr>" +
       "<td>" + escapeHtml(c.cod_cliente || "—") + "</td>" +
       "<td>" + escapeHtml(c.business_name || "(sin razón social)") + "</td>" +
-      "<td>" + escapeHtml(c.cuit || "—") + "</td>" +
+      (c.cuit
+        ? '<td data-copiable="' + escapeHtml(c.cuit) + '">' + escapeHtml(c.cuit) + "</td>"
+        : "<td>—</td>") +
       "<td>" + escapeHtml(c.condicion_iva || "—") + "</td>" +
       "<td>" + escapeHtml(c.localidad || "—") + "</td>" +
       "<td>" + escapeHtml(c.provincia || "—") + "</td>" +
@@ -16277,12 +16288,17 @@ function fcRender() {
     "</div>";
 
   // ---- Grilla de datos ----
-  function dato(lbl, val) {
+  // El tercer argumento marca el valor como copiable con un clic. Hoy lo usa
+  // solo el CUIT: ver el modulo del final del archivo.
+  function dato(lbl, val, copiable) {
+    var vacio = val === "" || val == null;
     return (
       '<div class="fc-dato"><span class="fc-dato-lbl">' +
       escapeHtml(lbl) +
-      '</span><span class="fc-dato-val">' +
-      (val === "" || val == null ? "—" : escapeHtml(val)) +
+      '</span><span class="fc-dato-val"' +
+      (copiable && !vacio ? ' data-copiable="' + escapeHtml(val) + '"' : "") +
+      ">" +
+      (vacio ? "—" : escapeHtml(val)) +
       "</span></div>"
     );
   }
@@ -16291,7 +16307,7 @@ function fcRender() {
   html +=
     '<div class="fc-card"><div class="fc-card-tit">Datos</div>' +
     '<div class="fc-datos-grid">' +
-    dato("CUIT", d.cuit) +
+    dato("CUIT", d.cuit, true) +
     dato("Localidad", d.localidad) +
     dato("Vendedor", d.vendedor || d.vend) +
     dato("Dto. volumen", dtoPct) +
@@ -16481,79 +16497,39 @@ window.cargarFichaCliente = cargarFichaCliente;
 window.fcToggleMeses = fcToggleMeses;
 
 /* ============================================================================
-   CLIC PARA COPIAR — pantallas de clientes
+   CLIC PARA COPIAR — solo CUIT y PIN
    ----------------------------------------------------------------------------
-   Pedido de Tomas: no tipear a mano codigos, CUIT, mails ni razones sociales.
-   Un clic sobre el dato lo deja en el portapapeles.
+   Pedido de Tomas: que se copien SOLO esos dos y nada mas. Son los que se
+   tipean a mano todo el dia y los unicos donde equivocarse un digito rompe algo
+   (el CUIT identifica al cliente en ARCA y en el ERP; el PIN es la contrasena
+   con la que entra al portal).
 
-   Tres decisiones que valen la pena recordar:
+   El alcance es explicito, no heuristico: copia lo que lleve el atributo
+   data-copiable, y ese atributo se pone a mano donde se pinta un CUIT o un PIN.
+   Un selector generico por celda haria copiable cualquier cosa que alguien
+   agregue manana sin querer.
 
-   1. Se copia el DATO, no la fila. El selector apunta a la celda o al valor
-      suelto; si se enganchara el <tr> entero, copiar un codigo traeria tambien
-      la razon social, el CUIT y el saldo.
+   El valor sale del ATRIBUTO, no del texto: la celda del ranking dice
+   "CUIT 30-59036076-3" y lo que tiene que viajar al portapapeles es el numero
+   solo, sin la etiqueta.
 
-   2. Lo que ya hace otra cosa, no copia. Si el clic cae en un boton, un link,
-      un input, un switch o un elemento con onclick propio QUE ESTE DENTRO de la
-      celda, se deja pasar: el CUIT del ABM tiene su propio boton de copiar
-      (copiarCuit) y los switches del ranking tienen que seguir accionando.
-      El caso inverso si copia: .cc-cod vive dentro de .cc-header, que expande la
-      card; ahi el clic sobre el codigo copia y NO expande, y para eso hace falta
-      escuchar en fase de CAPTURA — en burbuja el onclick del header ya corrio.
-      El stopPropagation se aplica solo en ese caso, para no romper los
-      listeners de document que cierran los menus desplegables.
+   Dos cuidados:
+   - Si el clic cae en un boton, un link o un input que este DENTRO del elemento
+     marcado, se deja pasar: ese clic no es para copiar.
+   - Si hay texto seleccionado no se interfiere: alguien que arrastro para
+     marcar un pedazo quiere ese pedazo.
 
-   3. Si hay texto seleccionado no se interfiere: alguien que arrastro para
-      marcar un pedazo quiere ese pedazo, no la celda entera.
+   El CUIT del ABM no esta marcado a proposito: ya tiene su propio boton de
+   copiar con el iconito (copiarCuit, mas arriba en este archivo).
+
+   Donde esta marcado hoy: PIN en la card del ABM; CUIT en Clientes agrupados,
+   Estado de actividad, Ranking Inactivos, Ranking de clientes, el listado de
+   clientes y la Ficha de Cliente. Para sumar otro campo alcanza con ponerle
+   data-copiable="<valor>" donde se pinta.
    ========================================================================== */
 (function () {
-  // Las pantallas de clientes del panel.
-  var ZONAS = [
-    "#ver-clientes",
-    "#ficha-cliente",
-    "#estadistica-clientes",
-    "#ranking-clientes",
-    "#grupos-clientes",
-    "#clientes-pendientes",
-    "#sucursales-pendientes",
-    "#historial-cliente",
-  ];
-
-  // Que cuenta como "un dato".
-  var DATOS = [
-    "td",
-    ".cc-cod",
-    ".cc-razon",
-    ".cc-detail-item .val",
-    ".fc-dato-val",
-    ".fc-num",
-    ".fc-kpi-num",
-    ".fc-sug-cod",
-    ".fc-sug-nom",
-    "[data-copiable]",
-  ].join(",");
-
   var INTERACTIVO =
-    "button,a,input,select,textarea,label,svg,[onclick],[contenteditable]";
-
-  function marcarZonas() {
-    for (var i = 0; i < ZONAS.length; i++) {
-      var sec = document.querySelector(ZONAS[i]);
-      if (sec) sec.classList.add("lk-copiable");
-    }
-  }
-
-  // El texto de la celda sin los controles que tenga adentro: si al lado del
-  // numero hay un boton "Ocultar", se copia el numero y no la palabra del boton.
-  function textoDe(el) {
-    var copia = el.cloneNode(true);
-    var controles = copia.querySelectorAll(INTERACTIVO);
-    for (var i = 0; i < controles.length; i++) {
-      if (controles[i].parentNode) controles[i].parentNode.removeChild(controles[i]);
-    }
-    return (copia.innerText || copia.textContent || "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
+    "button,a,input,select,textarea,label,svg,[contenteditable]";
 
   function copiar(texto, el) {
     function listo() {
@@ -16563,13 +16539,10 @@ window.fcToggleMeses = fcToggleMeses;
           el.classList.remove("lk-copiado");
         }, 900);
       }
-      if (typeof toast === "function") {
-        var corto = texto.length > 40 ? texto.slice(0, 40) + "…" : texto;
-        toast("Copiado: " + corto, "success");
-      }
+      if (typeof toast === "function") toast("Copiado: " + texto, "success");
     }
-    // navigator.clipboard necesita contexto seguro; sirviendo por http (o si el
-    // navegador lo niega) queda el textarea invisible de toda la vida.
+    // navigator.clipboard necesita contexto seguro; si el navegador lo niega
+    // queda el textarea invisible de toda la vida.
     function aMano() {
       try {
         var ta = document.createElement("textarea");
@@ -16595,41 +16568,23 @@ window.fcToggleMeses = fcToggleMeses;
     }
   }
 
-  document.addEventListener(
-    "click",
-    function (ev) {
-      var t = ev.target;
-      if (!t || !t.closest) return;
+  document.addEventListener("click", function (ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return;
 
-      var dato = t.closest(DATOS);
-      if (!dato || !dato.closest(".lk-copiable")) return;
+    var dato = t.closest("[data-copiable]");
+    if (!dato) return;
 
-      // Un control DENTRO de la celda manda: ese clic no es para copiar.
-      var control = t.closest(INTERACTIVO);
-      if (control && dato.contains(control)) return;
+    var control = t.closest(INTERACTIVO);
+    if (control && dato.contains(control)) return;
 
-      var seleccion = window.getSelection ? String(window.getSelection()) : "";
-      if (seleccion && seleccion.length > 1) return;
+    var seleccion = window.getSelection ? String(window.getSelection()) : "";
+    if (seleccion && seleccion.length > 1) return;
 
-      var texto = textoDe(dato);
-      if (!texto || texto === "-" || texto === "—") return;
+    var texto = String(dato.getAttribute("data-copiable") || "").trim();
+    if (!texto) return;
 
-      // Solo se frena el evento cuando la celda vive dentro de algo que tambien
-      // responde al clic (la card del ABM); si no, se deja burbujear para no
-      // romper los listeners que cierran menus.
-      var accionDeEncima =
-        dato.parentElement && dato.parentElement.closest("[onclick]");
-      ev.preventDefault();
-      if (accionDeEncima) ev.stopPropagation();
-
-      copiar(texto, dato);
-    },
-    true
-  );
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", marcarZonas);
-  } else {
-    marcarZonas();
-  }
+    ev.preventDefault();
+    copiar(texto, dato);
+  });
 })();

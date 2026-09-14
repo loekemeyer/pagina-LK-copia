@@ -5472,38 +5472,32 @@ input[type="number"].manual-cell {
 }
 
 /* ============================================================================
-   CLIC PARA COPIAR — pantallas de clientes
-   El cursor es la unica senal de que la celda se puede copiar, asi que tiene
-   que estar en todas: `copy` es el cursor que los navegadores usan justamente
-   para eso. Los botones de adentro conservan su `pointer` porque su regla es
-   mas especifica, y asi se ve solo la diferencia entre "esto copia" y "esto
-   hace algo". La logica esta al final de admin.js.
+   CLIC PARA COPIAR — solo CUIT y PIN
+   El cursor `copy` y el resaltado son la unica senal de que el dato se puede
+   copiar; sin eso nadie descubre que el clic hace algo. Alcanza a lo que lleve
+   data-copiable, que se pone a mano solo sobre CUIT y PIN. La logica esta al
+   final de admin.js.
    ========================================================================== */
-.lk-copiable :is(td, .cc-cod, .cc-razon, .cc-detail-item .val, .fc-dato-val,
-    .fc-num, .fc-kpi-num, .fc-sug-cod, .fc-sug-nom, [data-copiable]) {
+[data-copiable] {
   cursor: copy;
   border-radius: 4px;
   transition: background 0.12s ease, box-shadow 0.12s ease;
 }
 
-.lk-copiable :is(td, .cc-cod, .cc-razon, .cc-detail-item .val, .fc-dato-val,
-    .fc-num, .fc-kpi-num, .fc-sug-cod, .fc-sug-nom, [data-copiable]):hover {
+[data-copiable]:hover {
   background: rgba(37, 99, 235, 0.07);
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18);
 }
 
-/* Confirmacion en el lugar donde se hizo clic, ademas del toast: si el ojo
-   estaba en la celda, el toast de la esquina se pierde. */
-.lk-copiado,
-.lk-copiable :is(td, .cc-cod, .cc-razon, .cc-detail-item .val, .fc-dato-val,
-    .fc-num, .fc-kpi-num, .fc-sug-cod, .fc-sug-nom, [data-copiable]).lk-copiado {
+/* Confirmacion donde se hizo clic, ademas del toast: si el ojo estaba en el
+   dato, el toast de la esquina se pierde. */
+[data-copiable].lk-copiado {
   background: rgba(22, 163, 74, 0.16);
   box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lk-copiable :is(td, .cc-cod, .cc-razon, .cc-detail-item .val, .fc-dato-val,
-      .fc-num, .fc-kpi-num, .fc-sug-cod, .fc-sug-nom, [data-copiable]) {
+  [data-copiable] {
     transition: none;
   }
 }
