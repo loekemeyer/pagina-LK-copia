@@ -1,0 +1,159 @@
+# Publica en el IIS de www.loekemeyer.com — el sitio donde entran los clientes.
+#
+# POR QUÉ EXISTE. Pushear a `main` publica en GitHub Pages, que es el espejo de
+# desarrollo. Los clientes entran a www.loekemeyer.com, que corre sobre IIS y
+# hasta ahora se subía a mano (scripts\deploy-iis.ps1, PowerShell + FTP desde
+# una PC). El 14/09 eso costó caro: se corrigió el bug que dejaba los pedidos
+# web sin confirmar, se pusheó, Pages dio verde, y los clientes siguieron con
+# la versión anterior cargando pedidos rotos durante horas.
+#
+# QUÉ HACE. Sube por FTPS SOLO los archivos que cambiaron en el push, igual que
+# el script de PowerShell. No es un espejo: NUNCA borra nada del servidor.
+#
+# ⚠ EL web.config NO SE SUBE NI SE BORRA. El del servidor es el único que
+# existe (ver CLAUDE.md). Está en la lista de exclusiones y este workflow no
+# borra archivos remotos, así que no lo puede tocar ni por accidente.
+#
+# CREDENCIALES. Van en Settings → Secrets and variables → Actions del repo:
+#   FTP_HOST   ftp.loekemeyer.com        (SolidCP → Hosting Space → FTP Accounts)
+#   FTP_USER   el usuario de esa cuenta
+#   FTP_PASS   su clave
+#   FTP_DIR    (opcional) carpeta remota; por defecto /
+# Nunca en el repo, que es público.
+
+name: deploy a IIS (loekemeyer.com)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      desde:
+        description: "Commit o tag desde el que calcular el delta (vacío = el push anterior; 'todo' = el sitio entero)"
+        required: false
+        default: ""
+      simular:
+        description: "Sólo listar lo que subiría, sin subir nada"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: deploy-iis
+  cancel-in-progress: false
+
+jobs:
+  subir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Traer el repo con historial
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Qué archivos hay que subir
+        id: delta
+        env:
+          ANTES: ${{ github.event.before }}
+          DESDE: ${{ inputs.desde }}
+        run: |
+          set -euo pipefail
+
+          # Lo que NUNCA se sube: el web.config del servidor es el único que existe,
+          # y el resto es material interno que no tiene por qué servirse público.
+          # Misma lista que scripts/deploy-iis.ps1.
+          excluir='^web\.config$|^\.locks/|^hooks/|^scripts/|^docs/|^sql/|^supabase/|\.md$|\.sql$|^LOCKS\.txt$|^config-claude\.json$|^caveman-state\.json$|^vercel\.json$|^\.github/|^tests/'
+
+          if [ "${DESDE:-}" = "todo" ]; then
+            git ls-files > /tmp/todos.txt
+            echo "detalle=sitio completo" >> "$GITHUB_OUTPUT"
+          else
+            base="${DESDE:-$ANTES}"
+            # Primer push de una rama, o un sha que ya no existe: sube el sitio entero.
+            if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] \
+               || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+              git ls-files > /tmp/todos.txt
+              echo "detalle=sitio completo (no habia base para el delta)" >> "$GITHUB_OUTPUT"
+            else
+              git diff --name-only --diff-filter=d "$base" HEAD > /tmp/todos.txt
+              echo "detalle=delta $base..HEAD" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+          grep -Ev "$excluir" /tmp/todos.txt > /tmp/subir.txt || true
+          # Un archivo borrado del repo no se baja del servidor: este workflow sólo sube.
+          while read -r f; do [ -f "$f" ] && echo "$f"; done < /tmp/subir.txt > /tmp/final.txt || true
+          mv /tmp/final.txt /tmp/subir.txt
+
+          n=$(wc -l < /tmp/subir.txt | tr -d ' ')
+          echo "cuantos=$n" >> "$GITHUB_OUTPUT"
+          echo "### Archivos a subir: $n" >> "$GITHUB_STEP_SUMMARY"
+          sed 's/^/- /' /tmp/subir.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Subir por FTPS
+        if: steps.delta.outputs.cuantos != '0' && inputs.simular != true
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+          FTP_DIR: ${{ secrets.FTP_DIR }}
+        run: |
+          set -euo pipefail
+          for v in FTP_HOST FTP_USER FTP_PASS; do
+            if [ -z "${!v:-}" ]; then
+              echo "::error::Falta el secret $v. Cargalo en Settings → Secrets and variables → Actions."
+              exit 1
+            fi
+          done
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+          remoto="${FTP_DIR:-/}"
+
+          # lftp NO expande variables del shell dentro de su script, así que la
+          # sesión se abre con ~/.netrc en vez de escribir la clave en el archivo
+          # de comandos. El runner es efímero y el .netrc va con permisos 600.
+          umask 077
+          printf 'machine %s login %s password %s\n' "$FTP_HOST" "$FTP_USER" "$FTP_PASS" > "$HOME/.netrc"
+          chmod 600 "$HOME/.netrc"
+
+          # Un `put` por archivo, creando la carpeta destino. Nada de mirror: este
+          # workflow NO borra archivos del servidor (ver la nota del web.config).
+          {
+            echo "set ftp:ssl-force true"
+            echo "set ftp:ssl-protect-data true"
+            echo "set ssl:verify-certificate no"
+            echo "set net:max-retries 3"
+            echo "set net:timeout 30"
+            echo "set xfer:clobber on"
+            echo "open $FTP_HOST"
+            while read -r f; do
+              d=$(dirname "$f")
+              [ "$d" != "." ] && echo "mkdir -p \"$remoto/$d\""
+              echo "put -O \"$remoto/$d\" \"$f\""
+            done < /tmp/subir.txt
+            echo "bye"
+          } > /tmp/lftp.cmd
+
+          lftp -f /tmp/lftp.cmd
+          rm -f "$HOME/.netrc"
+          echo "Subidos $(wc -l < /tmp/subir.txt | tr -d ' ') archivos (${{ steps.delta.outputs.detalle }})."
+
+      - name: Comprobar la versión publicada
+        if: inputs.simular != true
+        run: |
+          set -euo pipefail
+          esperada=$(grep -oP 'APP_VERSION\s*=\s*"\K[0-9.]+' version.js)
+          echo "En el repo: $esperada"
+          for i in 1 2 3 4 5; do
+            publicada=$(curl -fsS "https://www.loekemeyer.com/version.js?nocache=$RANDOM" \
+                        | grep -oP 'APP_VERSION\s*=\s*"\K[0-9.]+' || true)
+            echo "Intento $i — en loekemeyer.com: ${publicada:-(no se pudo leer)}"
+            if [ "${publicada:-}" = "$esperada" ]; then
+              echo "OK: los clientes ya tienen la v$esperada." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::El sitio sigue publicando ${publicada:-desconocida} y el repo está en $esperada."
+          echo "El pie de la página es la única prueba de que un cambio llegó a los clientes."
+          exit 1

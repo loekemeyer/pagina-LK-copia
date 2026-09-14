@@ -513,7 +513,15 @@ Documentos de planificación y replicación, NO ejecutables:
   Pages dio verde — y se dio por publicado. Los clientes seguían con la v2.3.388 y **seguían
   entrando pedidos rotos**. Lo delató el pie de la página: decía 388 con el repo en 389.
 
-  **Después de pushear un cambio que tiene que ver un cliente:**
+  **Desde el 14/09 el deploy al IIS es automático**: el workflow
+  `.github/workflows/deploy-iis.yml` sube por FTPS el delta de cada push a `main` y después
+  **comprueba que `www.loekemeyer.com/version.js` diga la versión del repo** — si no, falla. Necesita
+  los secrets `FTP_HOST`, `FTP_USER`, `FTP_PASS` (y `FTP_DIR` si la carpeta remota no es `/`) en
+  Settings → Secrets and variables → Actions. Sin ellos el job falla avisando cuál falta.
+
+  Sólo sube; **nunca borra nada del servidor**, así que no puede tocar el `web.config`.
+
+  **A mano, si hace falta** (el workflow caído, o para recuperarse):
 
   ```powershell
   .\scripts\deploy-iis.ps1 -Simular     # qué subiría (delta contra lo que hay publicado)
