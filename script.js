@@ -8547,6 +8547,14 @@ async function _submitSingleOrder(
   var observacionesValue = String(
     (document.getElementById("obsPedidoInput")?.value || ""),
   ).trim();
+  // Retira: MISMO motivo que observacionesValue. Hasta la 2.3.382 el payload de
+  // abajo leía `retiroSel`, que se declara en submitOrder() y acá no existe →
+  // ReferenceError después de la RPC: el pedido quedaba grabado pero sin
+  // sheets_payload, el cliente veía "No se pudo confirmar el pedido" y volvía a
+  // cargarlo. Del 11/09 al 14/09 dejó 32 filas de orders = 6 pedidos reales
+  // invisibles para Gestión (uno se cargó 9 veces). Si se agrega un campo nuevo
+  // al payload, la variable se lee ACÁ, no se toma prestada de submitOrder().
+  var retiroSel = _esRetira() ? _retiroSeleccion() : { fecha: "", franja: "" };
 
   // Build items payload
   var itemsPayload = items
@@ -8682,122 +8690,136 @@ async function _submitSingleOrder(
     return acc + Number(it.list_sub_total || 0);
   }, 0);
 
-  // Calculate status fields for sheet
-  var debt = Number(customerProfile.debt || 0);
-  var creditLimit = customerProfile.credit_limit == null ? null : Number(customerProfile.credit_limit);
+  // ─── EFECTOS SECUNDARIOS ─── El pedido YA está grabado por la RPC de arriba.
+  // Nada de lo que sigue puede tumbar la confirmación: si algo acá tira, el
+  // cliente tiene que ver igual "¡Pedido confirmado!". Si no, vuelve a apretar
+  // y carga el pedido de nuevo — pasó dos veces (observacionesValue, y retiroSel
+  // del 11/09 al 14/09: 32 filas de orders = 6 pedidos reales, uno cargado 9
+  // veces). El pedido entra igual: el barrido gv_lk_rellenar_sheets_payload
+  // (cron cada 10 min) le arma el sheets_payload desde order_items.
+  try {
+    // Calculate status fields for sheet
+    var debt = Number(customerProfile.debt || 0);
+    var creditLimit = customerProfile.credit_limit == null ? null : Number(customerProfile.credit_limit);
 
-  // LC: "X" if (debt + order) > creditLimit, else "OK"
-  var lcStatus = "OK";
-  if (creditLimit != null && (debt + finalTotal) > creditLimit) {
-    lcStatus = "X";
-  }
+    // LC: "X" if (debt + order) > creditLimit, else "OK"
+    var lcStatus = "OK";
+    if (creditLimit != null && (debt + finalTotal) > creditLimit) {
+      lcStatus = "X";
+    }
 
-  // D (Deuda): "X" if debt > 0, else "OK"
-  var dStatus = debt > 0 ? "X" : "OK";
+    // D (Deuda): "X" if debt > 0, else "OK"
+    var dStatus = debt > 0 ? "X" : "OK";
 
-  // PP: payment_term value or "Null" (no tiene plazo cargado)
-  var ppStatus = customerProfile.payment_term == null
-    ? "Null"
-    : String(Number(customerProfile.payment_term));
+    // PP: payment_term value or "Null" (no tiene plazo cargado)
+    var ppStatus = customerProfile.payment_term == null
+      ? "Null"
+      : String(Number(customerProfile.payment_term));
 
-  // Sheets payload (snake_case para compat con Apps Script + retry)
-  var sheetsPayload = {
-    order_number: String(orderId || "").trim(),
-    cod_cliente: String(customerProfile.cod_cliente || "").trim(),
-    vend: String(customerProfile.vend || "").trim(),
-    condicion_pago: String(getPaymentMethodText() || "").trim(),
-    condicion_pago_code: Number(getPaymentMethodCode() || 0),
-    sucursal_entrega: String(
-      deliveryChoiceSnapshot.label || deliveryChoiceSnapshot.slot || "",
-    ).trim(),
-    cliente_nuevo: String(clienteNuevoValue || "").trim(),
-    observaciones: String(observacionesValue || "").trim(),
-    retiro_fecha: retiroSel.fecha || null,
-    retiro_franja: retiroSel.franja || null,
-    is_promo: isPromo,
-    extra_discount: extraRate,
-    deuda: debt,
-    credit_limit: creditLimit,
-    payment_term: customerProfile.payment_term == null ? null : Number(customerProfile.payment_term),
-    lc: lcStatus,
-    d: dStatus,
-    pp: ppStatus,
-    order_total: finalTotal,
-    source: "Web",
-    mode: editOrderId ? "edit" : "new",
-    items: itemsPayload.map(function (it) {
-      return {
-        cod_art: it.cod_art,
-        cod_original: it.cod_original || null,
-        cajas: it.cajas,
-        uxb: it.uxb,
-      };
-    }),
-  };
-
-  // Guardar payload para retry automático + marcar is_promo/extra_discount
-  // + quién estaba logueado al confirmar (cliente o vendedor "Pedir para")
-  supabaseClient
-    .from("orders")
-    .update({
-      sheets_payload: sheetsPayload,
+    // Sheets payload (snake_case para compat con Apps Script + retry)
+    var sheetsPayload = {
+      order_number: String(orderId || "").trim(),
+      cod_cliente: String(customerProfile.cod_cliente || "").trim(),
+      vend: String(customerProfile.vend || "").trim(),
+      condicion_pago: String(getPaymentMethodText() || "").trim(),
+      condicion_pago_code: Number(getPaymentMethodCode() || 0),
+      sucursal_entrega: String(
+        deliveryChoiceSnapshot.label || deliveryChoiceSnapshot.slot || "",
+      ).trim(),
+      cliente_nuevo: String(clienteNuevoValue || "").trim(),
+      observaciones: String(observacionesValue || "").trim(),
+      retiro_fecha: retiroSel.fecha || null,
+      retiro_franja: retiroSel.franja || null,
       is_promo: isPromo,
       extra_discount: extraRate,
-      placed_by_auth_user_id: currentSession.user.id,
-    })
-    .eq("id", orderId)
-    .then(function () {});
+      deuda: debt,
+      credit_limit: creditLimit,
+      payment_term: customerProfile.payment_term == null ? null : Number(customerProfile.payment_term),
+      lc: lcStatus,
+      d: dStatus,
+      pp: ppStatus,
+      order_total: finalTotal,
+      source: "Web",
+      mode: editOrderId ? "edit" : "new",
+      items: itemsPayload.map(function (it) {
+        return {
+          cod_art: it.cod_art,
+          cod_original: it.cod_original || null,
+          cajas: it.cajas,
+          uxb: it.uxb,
+        };
+      }),
+    };
 
-  // Marcar en order_items desde qué módulo se agregó cada línea (Novedades,
-  // Sugerencias, Historial, catálogo normal, etc). Background, no bloquea.
-  itemsPayload.forEach(function (it) {
+    // Guardar payload para retry automático + marcar is_promo/extra_discount
+    // + quién estaba logueado al confirmar (cliente o vendedor "Pedir para")
     supabaseClient
-      .from("order_items")
-      .update({ source: it.source || "catalogo" })
-      .eq("order_id", orderId)
-      .eq("product_id", it.product_id)
+      .from("orders")
+      .update({
+        sheets_payload: sheetsPayload,
+        is_promo: isPromo,
+        extra_discount: extraRate,
+        placed_by_auth_user_id: currentSession.user.id,
+      })
+      .eq("id", orderId)
       .then(function () {});
-  });
 
-  // Enviar a sheets-proxy en background
-  sendOrderToSheetsWithRetry(sheetsPayload, 3)
-    .then(function () {
+    // Marcar en order_items desde qué módulo se agregó cada línea (Novedades,
+    // Sugerencias, Historial, catálogo normal, etc). Background, no bloquea.
+    itemsPayload.forEach(function (it) {
       supabaseClient
-        .from("orders")
-        .update({ sheets_sent: true })
-        .eq("id", orderId)
+        .from("order_items")
+        .update({ source: it.source || "catalogo" })
+        .eq("order_id", orderId)
+        .eq("product_id", it.product_id)
         .then(function () {});
-    })
-    .catch(function (e) {
-      console.warn("Sheets error (order " + orderId + "):", e);
     });
 
-  // Enviar al Sheet de entregas (Base Picking) en background
-  var entregasPayload = {
-    order_number: orderId,
-    fecha: new Date().toLocaleDateString("es-AR"),
-    cod_cliente: customerProfile.cod_cliente,
-    cliente: customerProfile.business_name,
-    vendedor: customerProfile.vend || "",
-    direccion_entrega:
-      deliveryChoiceSnapshot.direccionEntrega ||
-      deliveryChoiceSnapshot.label ||
-      "",
-    barrio_entrega: deliveryChoiceSnapshot.zonaExpreso || "",
-    empresa: "LK",
-    is_promo: isPromo,
-    extra_discount: extraRate,
-    mode: editOrderId ? "edit" : "new",
-    items: itemsPayload.map(function (it) {
-      return {
-        cod_art: it.cod_art,
-        description: it.description || "",
-        cajas: it.cajas,
-        uxb: it.uxb,
-      };
-    }),
-  };
-  sendOrderToEntregasSheet(entregasPayload);
+    // Enviar a sheets-proxy en background
+    sendOrderToSheetsWithRetry(sheetsPayload, 3)
+      .then(function () {
+        supabaseClient
+          .from("orders")
+          .update({ sheets_sent: true })
+          .eq("id", orderId)
+          .then(function () {});
+      })
+      .catch(function (e) {
+        console.warn("Sheets error (order " + orderId + "):", e);
+      });
+
+    // Enviar al Sheet de entregas (Base Picking) en background
+    var entregasPayload = {
+      order_number: orderId,
+      fecha: new Date().toLocaleDateString("es-AR"),
+      cod_cliente: customerProfile.cod_cliente,
+      cliente: customerProfile.business_name,
+      vendedor: customerProfile.vend || "",
+      direccion_entrega:
+        deliveryChoiceSnapshot.direccionEntrega ||
+        deliveryChoiceSnapshot.label ||
+        "",
+      barrio_entrega: deliveryChoiceSnapshot.zonaExpreso || "",
+      empresa: "LK",
+      is_promo: isPromo,
+      extra_discount: extraRate,
+      mode: editOrderId ? "edit" : "new",
+      items: itemsPayload.map(function (it) {
+        return {
+          cod_art: it.cod_art,
+          description: it.description || "",
+          cajas: it.cajas,
+          uxb: it.uxb,
+        };
+      }),
+    };
+    sendOrderToEntregasSheet(entregasPayload);
+  } catch (e) {
+    console.error(
+      "Post-pedido falló, pero el pedido " + orderId + " YA está grabado:",
+      e,
+    );
+  }
 
   return {
     orderId: orderId,
