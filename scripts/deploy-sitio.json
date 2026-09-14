@@ -1,0 +1,4 @@
+{
+  "sitio": "https://www.loekemeyer.com",
+  "_nota": "Que sitio publica scripts/deploy-iis.ps1. Va versionado a proposito: es el dominio publico, no hay nada secreto. Las credenciales de FTP viven en deploy-iis.local.json, que NO entra al repo. En otro repo (Chef, etc.) se copia el .ps1 y se cambia esta linea."
+}

@@ -1,6 +1,12 @@
 <#
-  deploy-iis.ps1 — publica en el IIS de loekemeyer.com (panel SolidCP)
-  SOLO los archivos que cambiaron, en vez de subir el sitio entero uno por uno.
+  deploy-iis.ps1 — publica en un IIS administrado con SolidCP SOLO los archivos
+  que cambiaron, en vez de subir el sitio entero uno por uno.
+
+  NO es exclusivo de loekemeyer.com: el dominio sale de scripts/deploy-sitio.json
+  (versionado, no tiene nada secreto), asi que el mismo script sirve para
+  chefsrl.com o cualquier otro sitio estatico del mismo hosting. Para llevarlo a
+  otro repo: copiar este archivo, crear ese .json con su dominio, y agregar al
+  .gitignore la linea de deploy-iis.local.json.
 
   Por que hace falta: el arbol pesa ~31 MB y el File Manager de SolidCP corre sobre
   IIS, que limita el tamano de subida (maxRequestLength / maxAllowedContentLength).
@@ -21,6 +27,7 @@
     .\scripts\deploy-iis.ps1 -Mode Ftp            # sube el delta por FTP
     .\scripts\deploy-iis.ps1 -Mode Ftp -Todo      # sube el sitio entero por FTP
     .\scripts\deploy-iis.ps1 -Desde 2.3.374       # delta contra una version puntual
+    .\scripts\deploy-iis.ps1 -Sitio https://www.chefsrl.com   # otro sitio, sin tocar el json
 
   Credenciales (modo Ftp): NUNCA en el repo, que es publico. Van en
   scripts\deploy-iis.local.json (ya esta en .gitignore):
@@ -34,6 +41,7 @@
 [CmdletBinding()]
 param(
   [ValidateSet('Zip', 'Ftp')] [string]$Mode = 'Zip',
+  [string]$Sitio = '',
   [string]$Desde = '',
   [switch]$Todo,
   [switch]$Simular
@@ -42,6 +50,21 @@ param(
 $ErrorActionPreference = 'Stop'
 $raiz = Split-Path -Parent $PSScriptRoot
 Set-Location $raiz
+
+# --- Que sitio se publica ---------------------------------------------------
+# Orden: el parametro -Sitio, si no scripts/deploy-sitio.json, si no se aborta.
+# Nada de un default escondido: publicar en el dominio equivocado es peor que
+# no publicar.
+if (-not $Sitio) {
+  $cfgSitio = Join-Path $PSScriptRoot 'deploy-sitio.json'
+  if (Test-Path $cfgSitio) {
+    $Sitio = (Get-Content $cfgSitio -Raw | ConvertFrom-Json).sitio
+  }
+}
+if (-not $Sitio) {
+  throw "No se sabe que sitio publicar. Crea scripts\deploy-sitio.json con { ""sitio"": ""https://www.tudominio.com"" } o pasa -Sitio https://..."
+}
+$Sitio = $Sitio.TrimEnd('/')
 
 # --- Lo que NUNCA se sube -----------------------------------------------------
 # web.config: el del servidor es el UNICO que existe y es el que manda (ver CLAUDE.md).
@@ -59,7 +82,7 @@ function EsPublicable([string]$ruta) {
 # --- Version publicada hoy en el sitio ---------------------------------------
 function VersionPublicada {
   try {
-    $url = "https://www.loekemeyer.com/version.js?nocache=$(Get-Random)"
+    $url = "$Sitio/version.js?nocache=$(Get-Random)"
     $txt = (Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 20).Content
     if ($txt -match 'APP_VERSION\s*=\s*"([0-9.]+)"') { return $Matches[1] }
   } catch {
@@ -187,4 +210,4 @@ foreach ($a in $archivos) {
 
 Write-Host ""
 Write-Host "$subidos archivos subidos a $($cfg.host)$remotaBase" -ForegroundColor Green
-Write-Host "Verifica con Ctrl+F5 en https://www.loekemeyer.com — el footer tiene que decir la version nueva." -ForegroundColor Green
+Write-Host "Verifica con Ctrl+F5 en $Sitio — el footer tiene que decir la version nueva." -ForegroundColor Green
