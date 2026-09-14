@@ -91,6 +91,7 @@ jobs:
           sed 's/^/- /' /tmp/subir.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Subir por FTPS
+        id: subida
         if: steps.delta.outputs.cuantos != '0' && inputs.simular != true
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
@@ -138,8 +139,12 @@ jobs:
           rm -f "$HOME/.netrc"
           echo "Subidos $(wc -l < /tmp/subir.txt | tr -d ' ') archivos (${{ steps.delta.outputs.detalle }})."
 
-      - name: Comprobar la versión publicada
-        if: inputs.simular != true
+      # Sólo cuando ESTE run subió algo: confirma que lo que acaba de subir llegó.
+      # NO sirve como centinela permanente — el repo avanza con cada commit y el
+      # sitio se sube cuando hace falta, así que "desfasado" es el estado normal.
+      # Una alarma que suena siempre no la mira nadie.
+      - name: Comprobar que lo subido llegó
+        if: steps.subida.outcome == 'success'
         run: |
           set -euo pipefail
           esperada=$(grep -oP 'APP_VERSION\s*=\s*"\K[0-9.]+' version.js)
