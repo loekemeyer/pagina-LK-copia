@@ -538,6 +538,13 @@ Documentos de planificación y replicación, NO ejecutables:
   - Ojo con el espejo (`robocopy /MIR`, `rsync --delete`): borraría el `web.config` del servidor,
     que es el único que existe. El script ya lo excluye a propósito.
   - `loeke.zip` en el repo es un bundle de despliegue viejo; no editar.
+  - **Para publicar en el IIS desde cualquier chat: pedirlo, o invocar la skill
+    `/publicar-lk`** (`.claude/skills/publicar-lk/SKILL.md`). Arma un `.zip` con SOLO
+    los archivos que cambiaron desde la version que hoy esta en el aire — unos cientos
+    de KB contra los ~31 MB del sitio entero, que el File Manager de SolidCP no acepta —
+    y lo entrega por el chat. Excluye `web.config`, `sql/`, `docs/`, `supabase/` y los
+    `.md`. La version publicada hay que PREGUNTARSELA al usuario: el proxy de las
+    sesiones remotas bloquea `loekemeyer.com`, asi que no se puede leer desde el chat.
 - **Third-party libs** are loaded from CDN in the HTML files (Supabase JS v2, jsPDF, lottie-web, xlsx). There is no bundler; add new libs the same way (a `<script src="https://cdn...">` tag).
 - **SQL fix scripts** like `fix_missing.sql` are one-shot data repairs run manually in the Supabase SQL editor; they are not migrations and have no framework.
 - **`vercel.json`** tiene rewrites de URLs limpias (mayorista, historial, sugerencias, admin). Presente por si se hace un deploy de prueba a Vercel, pero la producción va por IIS/GitHub Pages.
