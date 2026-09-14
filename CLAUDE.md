@@ -362,6 +362,17 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
 - **Los nombres de localidad se normalizan con `gv_norm_loc`, que NO es `norm_razon_social`**: esa además borra sufijos societarios, que en un topónimo no corresponde. La normalización resuelve sola las variantes de mayúsculas ("Lomas de Zamora" vs "Lomas De Zamora"); los sinónimos reales van en `geo_localidad_alias`, editable a propósito igual que `tokens_no_distintivos` (hoy tiene una fila: "tucuman" → "san miguel de tucuman"). **CABA usa barrios, no localidades** (San Cristóbal, Balvanera, Constitución, Once), así que su población hay que cargarla por barrio o comuna.
 - **Historical sales live in `sales_lines` (~260k rows), not in `orders`.** `orders`/`order_items` only hold web B2B orders (~1k rows, recent). Anything that needs real purchase history (last-purchase dates, churn, lifetime value) must read `sales_lines` — columns `customer_code` (text, matches `customers.cod_cliente`), `item_code` (text, matches `products.cod`), `boxes`, `invoice_date` (text, ISO `YYYY-MM-DD`, so it sorts/compares correctly as a string). `get_estadistica_clientes_agg` and `get_ranking_inactivos` both UNION the two sources.
 - **Do the heavy lifting in an RPC, not the browser.** The Supabase REST API caps responses at 1000 rows, so a `.from("sales_lines").select(...)` silently returns a truncated slice — it does not error. The `authenticated` role also has a ~8s `statement_timeout`, so aggregate first and narrow (e.g. LIMIT to the top N) before computing anything expensive. Function definitions live in `sql/`.
+- **El bucket `pedidos-pdf` se purga solo a los 30 dias, y depende de un secreto del Vault.**
+  El cron 2 `pedidos-pdf-cleanup-30d` (03:00 UTC) llama `limpiar_pedidos_pdf(30, 100)`, que
+  borra de a 100 objetos por corrida **por la Storage API** — nunca por SQL: saltear
+  `storage.protect_delete` con `set local storage.allow_delete_query` borra la fila del indice
+  y **deja el archivo huerfano en S3**, ocupando y sin poder listarlo. La funcion lee la clave
+  de `vault.decrypted_secrets` con el nombre **`service_role_key`**; si no esta, **degrada en
+  silencio** (`return 0` + `raise notice`) y el cron igual figura `succeeded`. Eso paso: el
+  secreto nunca se habia cargado y se acumularon 567 PDFs viejos (264 MB) hasta que lo canto
+  `rep_salud()` el 14/09. Hoy el secreto esta cargado con una **`sb_secret_`** (no la legacy:
+  la funcion manda `Authorization` **y** `apikey`, ver el punto 3 de la migracion de claves).
+  Chequeo: `select * from public.rep_salud();` tiene que dar vacio.
 - **Edge Functions en el repo** (bajo `supabase/functions/`):
   - `admin-otp/index.ts` — 2FA via email OTP para login admin PPP.
   - `crear-cliente-auth/index.ts` — **Crea auth users** usando `auth.admin.createUser` para bypassear la validación de dominio de Supabase sobre el email sintético `<cuit>@cuit.loekemeyer`. Lo llaman `script.js` y `admin.js`.
@@ -1026,39 +1037,57 @@ and secret API keys and disable the anon and service_role keys."*
 **NO apretarlo todavia:** apaga TAMBIEN la `anon`, que es la que usa el frontend. Hoy eso
 tira abajo la app entera.
 
-### 3. EXCEPCION MEDIDA: Storage rechaza las claves nuevas al ESCRIBIR
+### 3. ⚠ EL STORAGE SI ACEPTA LAS CLAVES NUEVAS — lo que falta es el header `apikey`
 
-Comprobado en vivo el 2026-09-11 contra los dos proyectos (hrxfctzncixxqmpfhskv y
-kwkclwhmoygunqmlegrg). El Storage API de estos proyectos NO entiende el formato nuevo
-cuando la operacion escribe:
+**Este bloque decia lo contrario hasta el 2026-09-14 y estaba MAL.** Se deja escrita la
+equivocacion porque es facil de repetir:
 
-| Operacion | Clave legacy (JWT) | Clave nueva (`sb_publishable_` / `sb_secret_`) |
-|---|---|---|
-| `GET /storage/v1/object/...` | anda | anda |
-| `POST /storage/v1/object/...` (upload) | anda | **403 `Invalid Compact JWS` / AccessDenied** |
-| `POST /rest/v1/rpc/...` (PostgREST) | anda | anda |
-| Edge Functions con `verify_jwt` | anda | anda |
+- **11/09** decia *"el Storage rechaza las claves nuevas al ESCRIBIR"*, y por eso el punto 4
+  del orden de abajo mandaba dejar en legacy todo lo que subiera a Storage.
+- **13/09 (Gestion v16.62), la buena:** el formato de la clave nunca fue el problema. **Lo que
+  faltaba es el header `apikey`.**
 
-`Invalid Compact JWS` = el Storage intento parsear el token como JWT y no pudo. No es la
-clave equivocada ni un permiso faltante: el servicio no soporta el formato. Repro exacta:
+Medicion contra el Storage real (bucket `inbox` de LK, objeto de prueba creado y borrado):
+
+| Request | Resultado |
+|---|---|
+| `Bearer sb_secret_…` y nada mas | **403 `Invalid Compact JWS`** |
+| `Bearer sb_secret_…` **+ `apikey: sb_secret_…`** | **200**, el objeto se sube |
+| `Bearer sb_publishable_…` y nada mas | 403 `Invalid Compact JWS` |
+| `Bearer sb_publishable_…` **+ `apikey: …`** | 403 **`new row violates row-level security policy`** ← paso auth; lo frena la RLS, que es lo correcto para una clave publica |
+
+**Por que la legacy andaba sin `apikey`:** la legacy **es** un JWT, asi que el Storage la podia
+parsear del Bearer. Con la clave nueva intenta lo mismo, no puede, y contesta `Invalid Compact
+JWS`. Ese error significa *"no pude parsear el token"*, no *"no soporto el formato"*.
+
+**Confirmado tambien BORRANDO, el 2026-09-14** (`limpiar_pedidos_pdf`, que hace
+`net.http_delete` contra `/storage/v1/object/pedidos-pdf` mandando `Authorization` **y**
+`apikey` con una `sb_secret_`): 6 tandas, las 6 en **200**, 567 PDFs borrados de verdad
+(706 → 139 objetos, 329 → 65,6 MB). O sea que la clave nueva escribe y borra.
+
+**Y por eso la app nunca estuvo rota:** `supabase-js` manda `apikey` siempre. Los que fallaban
+eran los `curl` / `Invoke-RestMethod` escritos a mano, que mandan solo el Bearer — exactamente
+el caso del workflow `build-deploy.yml` de `loekemeyer/Planify`, que al cambiarle el secret
+`SUPABASE_SERVICE_KEY` por una `sb_secret_` empezo a fallar en "Upload to Supabase Storage"
+con el `.exe` ya compilado (runs 112 a 115 del 11/09). **Ya corregido**: sus workflows mandan
+las dos cabeceras desde el commit `75179d7`.
+
+Repro, para volver a medirlo (ojo: **si da 200 crea el objeto**, hay que borrarlo con un
+`DELETE` a la misma URL — `storage.objects` no se puede borrar por SQL, `storage.protect_delete()`
+lo impide):
 
 ```sql
-select r.status, r.content from public.http((
-  'POST','https://<ref>.supabase.co/storage/v1/object/__no_existe__/x.txt',
-  array[public.http_header('Authorization','Bearer <clave>')],
-  'text/plain','x')::public.http_request) r;
+select net.http_post(
+  url := 'https://<ref>.supabase.co/storage/v1/object/<bucket>/__prueba__.json',
+  headers := jsonb_build_object('Authorization','Bearer <clave>','apikey','<clave>',
+                                'Content-Type','application/json'),
+  body := '{"p":1}'::jsonb);
 ```
 
-**Consecuencia:** cualquier cosa que SUBA a Storage tiene que seguir con la
-`service_role` legacy hasta que Supabase actualice el Storage de estos proyectos. Caso
-real: el workflow `build-deploy.yml` de `loekemeyer/Planify` sube el `Planify.exe` a
-`planify_updates`; al cambiarle el secret `SUPABASE_SERVICE_KEY` por una `sb_secret_`
-empezo a fallar el paso "Upload to Supabase Storage" en 2 segundos, con el `.exe` ya
-compilado (runs 112 a 115 del 2026-09-11).
-
 **Antes de apagar las legacy, buscar todo lo que escriba en Storage** (`storage/v1/object`
-con POST/PUT, `.storage.from(...).upload(`, `.upload(`) y confirmar que ese camino sigue
-andando. Si no anda, NO se apagan las legacy todavia.
+con POST/PUT/DELETE, `.storage.from(...).upload(`, `.upload(`) y confirmar que **cada uno manda
+el header `apikey`**, no solo el Bearer. Lo que usa `supabase-js` ya lo manda solo; lo escrito
+a mano (`curl`, `Invoke-RestMethod`, `net.http_*`) hay que mirarlo uno por uno.
 
 ### Orden obligatorio
 
@@ -1070,11 +1099,14 @@ andando. Si no anda, NO se apagan las legacy todavia.
 2. Reemplazar esa cadena por la `sb_publishable_...` del proyecto Supabase de ESTE repo
    (cada proyecto tiene la suya; no mezclar).
 3. Migrar todo backend que use `service_role` (Edge Functions, n8n, scripts) a `sb_secret_...`.
-4. Inventariar lo que escribe en Storage (ver la excepcion de arriba) y dejarlo con la
-   `service_role` legacy; si algo de eso ya se paso a `sb_secret_`, volverlo atras.
+4. Inventariar lo que escribe en Storage (ver el punto 3) y confirmar que **cada uno manda el
+   header `apikey`**, no solo el Bearer. Ya NO hay que dejar nada en legacy por eso: con
+   `apikey` el Storage acepta tanto `sb_secret_` como `sb_publishable_` (medido el 13/09 al
+   subir y el 14/09 al borrar).
 5. Recien con 1-4 hechos en TODOS los repos que peguen contra ese proyecto:
-   `Disable JWT-based API keys`. Mientras exista un upload a Storage vivo, este paso
-   queda bloqueado.
+   `Disable JWT-based API keys`. **Ya no esta bloqueado por el Storage** (punto 3). Lo que
+   falta: que ningun cliente siga mandando la anon legacy. El boton lo aprieta el dueno, no
+   Claude: apaga la `anon` que usa el frontend.
 
 ### Paso opcional: rotar el JWT secret
 
