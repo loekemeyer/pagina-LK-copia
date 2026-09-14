@@ -11,46 +11,46 @@
 -- Cron: jobid 42 `krikos-oc-a-virgilio-10min`, `5-59/10 * * * *`.
 --
 -- QUÉ VIAJA, y por qué cada corte:
---   1. `pendiente` sin pedido  → lo que todavía hay que cargar.
+--   1. `pendiente` sin pedido, con mail de los últimos **30 días** → lo que todavía hay que
+--      cargar a mano y todavía se puede.
 --   2. `parcial` de los últimos 7 días → entró sola pero con diferencias contra la OC; es el
 --      "si el importe NO DA, QUE LO ACLARE MUY GRANDE EN PPP" del dueño.
---   3. `error` con mail de los últimos 30 días → AGREGADO EL 2026-09-13.
---      Dueño: *"no me interesa ya krikos x paginalk si llega directo a GV"*. Antes las que
---      fallaban NO viajaban, así que la única forma de enterarse era abrir la bandeja del
---      panel de LK — justo lo que él ya no quiere mirar. La ventana va sobre `mail_fecha` y
---      NO sobre `created_at`: las 6 históricas de junio/julio tienen `created_at` del backfill
---      (11/09) y habrían quedado como 6 avisos muertos permanentes en la PPP. Con el corte por
---      fecha del mail no viaja ninguna de ésas y cualquier falla nueva aparece en ≤ 10 min.
---      Medido el 13/09: con 30 días viajan 0 de 6; con 120 días viajarían las 6.
---      Para esas 6 el camino es resolverlas (ver sql/PENDIENTE-krikos-inbox-20260913.sql).
+--   3. `error` con mail de los últimos **30 días** Y **desde el 2026-09-14** → lo que falló al
+--      importarse. Ver abajo por qué son dos cortes y no uno.
 --   Lo que entró limpio NO viaja: ya es un pedido normal en la PPP.
 --
 -- `auto_aviso` en las de error lleva el `error_msg` del ingest: el front ya lo muestra en
 -- `apr-krikos-aviso`, así que el motivo se lee sin abrir nada. Sin eso el aviso salía mudo.
 --
--- ✅ 2026-09-13, MAS TARDE: LA VENTANA PASO DE 30 A 90 DIAS Y EL CAMINO QUEDO PROBADO.
---   Thomas: "no me interesa ya krikos x paginalk si llega directo a GV" — y con 30 dias NO
---   llegaba nada: el espejo de Gestion tenia 0 filas porque de las 21 OC de la bandeja no
---   calificaba ninguna (0 `pendiente` sin pedido, 0 `parcial` de 7 dias, y de los 6 `error`
---   el mas nuevo con el mail de hace 62 dias, o sea afuera). La ventana se amplio a **90
---   dias** con un CREATE OR REPLACE que solo cambia ese literal.
+-- ⚠ 2026-09-14 (Luis): *"fijate que ahí está mostrando avisos de pedidos por mail al pedo (son
+-- viejos). Sacalos, debería ser de ahora en adelante la cosa para pedidos nuevos que entren"*.
+-- En la PPP había **6 renglones rojos permanentes** —COTO x3, LA ANÓNIMA x2, CARREFOUR x1,
+-- mails del 16/06 al 13/07— todas con el mismo motivo: `el link no devolvió un PDF`. El link
+-- de Planexware ya venció y la fecha de entrega de las 6 pasó hace meses: **no hay nada que
+-- alguien pueda hacer con ese aviso**, así que era ruido fijo que tapaba lo que sí importa.
 --
---   Se corrio `select public.sync_krikos_oc_virgilio();` a mano → devolvio **6**, y las 6
---   aparecieron en `public."GV_Krikos_OC"` del proyecto de Gestion con su motivo visible.
---   **Eso es la prueba de punta a punta que faltaba**: hasta ese momento el espejo nunca
---   habia entregado una sola fila, asi que no habia forma de saber si el push funcionaba
---   (un cron en `succeeded` prueba que la funcion corrio, no que la fila llego).
+-- POR QUÉ ESTABAN AHÍ, que no fue un descuido: el 13/09 la ventana se había ampliado a 90 días
+-- A PROPÓSITO, porque hasta ese momento el espejo **nunca había entregado una sola fila** y no
+-- había forma de saber si el push funcionaba (un cron en `succeeded` prueba que la función
+-- corrió, no que la fila llegó del otro lado). Con 90 días viajaron las 6 y ahí quedó probado
+-- el camino de punta a punta. Esa prueba ya está hecha; el ruido, no hace falta.
 --
---   Las 6 tienen EL MISMO motivo: `el link no devolvio un PDF (text/html, 9845 bytes)` —
---   COTO x3, LA ANONIMA x2, CARREFOUR x1, mails del 16/06 al 13/07. No son 6 problemas
---   distintos, es uno: el link de Planexware no sirve para bajar el PDF por ese camino.
---   Ojo tambien: las 6 tienen la fecha de entrega ya vencida (junio/julio).
+-- POR QUÉ DOS CORTES en la rama de `error`:
+--   · **30 días móviles** sobre `mail_fecha` — y no sobre `created_at`, que para las viejas es
+--     la fecha del backfill (11/09) y las volvería a colar. Es lo que la doc de este archivo ya
+--     decía desde el 13/09; lo que estaba en 90 era el código.
+--   · **piso fijo el 2026-09-14** = el "de ahora en adelante" que pidió Luis. Sin el piso, una
+--     OC vieja que se re-procese hoy (el ingest la vuelve a tocar y le mueve el estado) volvería
+--     a aparecer. En 30 días el corte móvil manda solo y el piso queda inocuo.
 --
---   NO quedan como aviso muerto permanente: el corte es por `mail_fecha`, asi que la mas
---   nueva sale sola de la ventana en ~28 dias. Para volver atras: cambiar 90 por 30.
+-- MEDIDO al aplicarlo (2026-09-14): la función devolvió **0** y `GV_Krikos_OC` quedó en 0 filas,
+-- o sea que el cartel desapareció. Y no se escondió nada vivo: de las 21 OC de la bandeja, 5
+-- están `cargado`, 10 `descartado` y las 6 `error` son las de junio/julio. **`pendiente` sin
+-- pedido: ninguna.** Las viejas no se pierden — siguen en la Bandeja Krikos del panel de LK, que
+-- es donde se resuelven (ver `sql/PENDIENTE-krikos-inbox-20260913.sql`).
 --
--- ROLLBACK (deja de viajar lo que falló, vuelve al comportamiento anterior al 13/09):
---   borrar la tercera condición del WHERE y el CASE de `auto_aviso`.
+-- ROLLBACK: sacar los cortes nuevos (volver a `(k.estado='pendiente' and k.order_id is null)` y
+-- a `interval '90 days'` sin el piso). Para ver una OC vieja puntual en la PPP alcanza con eso.
 -- =====================================================================================
 
 create or replace function public.sync_krikos_oc_virgilio()
@@ -81,9 +81,26 @@ begin
               else k.auto_aviso end,
          k.auto_at, k.order_id
     from public.krikos_oc_inbox k
-   where (k.estado = 'pendiente' and k.order_id is null)
+   where
+      -- PENDIENTES (hay que cargarlas a mano). Ventana de 30 dias sobre la FECHA DEL MAIL:
+      -- una OC de hace mas de un mes ya no es accionable y en la PPP solo es ruido fijo.
+      -- Las viejas no se pierden: siguen en la Bandeja Krikos del panel de LK.
+      (k.estado = 'pendiente' and k.order_id is null and k.mail_fecha > now() - interval '30 days')
+      -- Las que SI se cargaron pero con algo que no dio viajan 7 dias: es el
+      -- "aclaralo MUY GRANDE en PPP" del dueno. Las que entraron limpias no
+      -- viajan: ya son un pedido normal en la PPP.
       or (k.auto_estado = 'parcial' and k.auto_at > now() - interval '7 days')
-      or (k.estado = 'error' and k.mail_fecha > now() - interval '90 days');
+      -- FALLADAS. 2026-09-14 (Luis: *"esta mostrando avisos de pedidos por mail al pedo (son
+      -- viejos), sacalos, deberia ser de ahora en adelante"*): dos cortes juntos.
+      --   · 30 dias moviles sobre la fecha del mail — el comentario de la v16.xx ya decia 30
+      --     pero el codigo tenia 90, y por eso seguian viajando las 6 de junio/julio cuyo link
+      --     de Planexware ya habia vencido: seis renglones rojos permanentes que nadie podia
+      --     resolver.
+      --   · y un piso fijo el 2026-09-14, que es el "de ahora en adelante" que pidio Luis: sin
+      --     el piso, una OC vieja que se re-procese hoy volveria a aparecer. En 30 dias el
+      --     corte movil manda solo y el piso queda inocuo.
+      or (k.estado = 'error' and k.mail_fecha > now() - interval '30 days'
+          and k.mail_fecha >= timestamptz '2026-09-14 00:00-03');
   get diagnostics v_n = row_count;
   return v_n;
 end; $function$;
@@ -91,3 +108,5 @@ end; $function$;
 -- verificación
 select public.sync_krikos_oc_virgilio();                       -- filas espejadas
 select estado, count(*) from public.krikos_oc_inbox group by 1 order by 2 desc;
+select estado, count(*) filter (where mail_fecha > now() - interval '30 days') dentro_de_30d
+  from public.krikos_oc_inbox group by 1;
