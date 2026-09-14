@@ -362,6 +362,17 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
 - **Los nombres de localidad se normalizan con `gv_norm_loc`, que NO es `norm_razon_social`**: esa además borra sufijos societarios, que en un topónimo no corresponde. La normalización resuelve sola las variantes de mayúsculas ("Lomas de Zamora" vs "Lomas De Zamora"); los sinónimos reales van en `geo_localidad_alias`, editable a propósito igual que `tokens_no_distintivos` (hoy tiene una fila: "tucuman" → "san miguel de tucuman"). **CABA usa barrios, no localidades** (San Cristóbal, Balvanera, Constitución, Once), así que su población hay que cargarla por barrio o comuna.
 - **Historical sales live in `sales_lines` (~260k rows), not in `orders`.** `orders`/`order_items` only hold web B2B orders (~1k rows, recent). Anything that needs real purchase history (last-purchase dates, churn, lifetime value) must read `sales_lines` — columns `customer_code` (text, matches `customers.cod_cliente`), `item_code` (text, matches `products.cod`), `boxes`, `invoice_date` (text, ISO `YYYY-MM-DD`, so it sorts/compares correctly as a string). `get_estadistica_clientes_agg` and `get_ranking_inactivos` both UNION the two sources.
 - **Do the heavy lifting in an RPC, not the browser.** The Supabase REST API caps responses at 1000 rows, so a `.from("sales_lines").select(...)` silently returns a truncated slice — it does not error. The `authenticated` role also has a ~8s `statement_timeout`, so aggregate first and narrow (e.g. LIMIT to the top N) before computing anything expensive. Function definitions live in `sql/`.
+- **El bucket `pedidos-pdf` se purga solo a los 30 dias, y depende de un secreto del Vault.**
+  El cron 2 `pedidos-pdf-cleanup-30d` (03:00 UTC) llama `limpiar_pedidos_pdf(30, 100)`, que
+  borra de a 100 objetos por corrida **por la Storage API** — nunca por SQL: saltear
+  `storage.protect_delete` con `set local storage.allow_delete_query` borra la fila del indice
+  y **deja el archivo huerfano en S3**, ocupando y sin poder listarlo. La funcion lee la clave
+  de `vault.decrypted_secrets` con el nombre **`service_role_key`**; si no esta, **degrada en
+  silencio** (`return 0` + `raise notice`) y el cron igual figura `succeeded`. Eso paso: el
+  secreto nunca se habia cargado y se acumularon 567 PDFs viejos (264 MB) hasta que lo canto
+  `rep_salud()` el 14/09. Hoy el secreto esta cargado con una **`sb_secret_`** (no la legacy:
+  la funcion manda `Authorization` **y** `apikey`, ver el punto 3 de la migracion de claves).
+  Chequeo: `select * from public.rep_salud();` tiene que dar vacio.
 - **Edge Functions en el repo** (bajo `supabase/functions/`):
   - `admin-otp/index.ts` — 2FA via email OTP para login admin PPP.
   - `crear-cliente-auth/index.ts` — **Crea auth users** usando `auth.admin.createUser` para bypassear la validación de dominio de Supabase sobre el email sintético `<cuit>@cuit.loekemeyer`. Lo llaman `script.js` y `admin.js`.
@@ -1057,6 +1068,12 @@ JWS`. Ese error significa *"no pude parsear el token"*, no *"no soporto el forma
 eran los `curl` / `Invoke-RestMethod` escritos a mano, que mandan solo el Bearer — exactamente el
 caso del workflow de Planify (runs 112 a 115 del 11/09). **Ya corregido**: `build-deploy.yml` y
 `deploy-only.yml` de `loekemeyer/Planify` mandan las dos cabeceras desde el commit `75179d7`.
+
+**Confirmado tambien BORRANDO, el 14/09** (lo de arriba es un upload): `limpiar_pedidos_pdf` de
+LK hace `net.http_delete` contra `/storage/v1/object/pedidos-pdf` con `Authorization: Bearer
+<sb_secret_>` **y** `apikey`. Seis tandas, las seis en **200**, 567 PDFs borrados de verdad (el
+bucket paso de 706 a 139 objetos y de 329 a 65,6 MB). O sea que con `apikey` la clave nueva
+escribe y borra.
 
 Repro, para volver a medirlo (ojo: **si da 200 crea el objeto**, hay que borrarlo con un `DELETE`
 a la misma URL — `storage.objects` no se puede borrar por SQL, `storage.protect_delete()` lo
