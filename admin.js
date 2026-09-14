@@ -13843,6 +13843,49 @@ window.imprimirDashboard = imprimirDashboard;
 // ---- PPP EN CURSO (backlog de pedidos adentro) -------------------------
 // Plata/m³/días de lo que está pedido y todavía no facturó. Sale del espejo de
 // Virgilio (sincronizar_ppp), no del cache del dashboard.
+// ---------------------------------------------------------------------------
+// Banda "Cómo viene el mes": lo facturado hasta hoy y el cierre proyectado,
+// por empresa. Extrapola por días hábiles transcurridos — el error medido del
+// método es 11,8% al cuarto del mes, 12,7% a la mitad y 5,2% a los tres
+// cuartos, contra 15% de adivinar con el promedio de los 3 meses previos.
+// NO tiene nada que ver con la proyección de compras de las OC, que es otra
+// cosa y sigue igual.
+// ---------------------------------------------------------------------------
+function _gvCargarMes() {
+  var slot = document.getElementById("gvMesBanda");
+  if (!slot) return;
+  sb.rpc("gv_proyeccion_mes")
+    .then(function (resp) {
+      if (resp.error) throw resp.error;
+      var filas = resp.data || [];
+      if (!filas.length) { slot.innerHTML = ""; return; }
+      var nombre = { lk: "Loekemeyer", chef: "Chef" };
+      var bloques = filas.map(function (f) {
+        return '<div class="gv-ppp-row" style="margin-bottom:6px">' +
+          _gvPppNum(nombre[f.empresa] || f.empresa, _gvNum(f.proyeccion_cierre) + " cj") +
+          _gvPppNum("Facturado hasta hoy", _gvNum(f.cajas_hasta_hoy) + " cj") +
+          _gvPppNum("vs mes anterior", _gvVar(f.proyeccion_cierre, f.mes_anterior) || "—") +
+          _gvPppNum("vs promedio 3 meses", _gvVar(f.proyeccion_cierre, f.media_3_meses) || "—") +
+          "</div>";
+      }).join("");
+      var f0 = filas[0] || {};
+      slot.innerHTML =
+        '<div class="gv-ppp">' +
+        '<div class="gv-ppp-tit">Cómo viene el mes · cierre proyectado</div>' +
+        bloques +
+        '<div class="gv-ppp-pie">' +
+        f0.dias_habiles_transcurridos + " de " + f0.dias_habiles_del_mes +
+        " días hábiles (" + f0.pct_mes_transcurrido + "% del mes) · " +
+        "última factura " + escHtml(f0.ultima_factura || "—") + " · " +
+        "margen típico a esta altura " + escHtml(f0.margen_tipico || "") +
+        "</div></div>";
+    })
+    .catch(function (err) {
+      slot.innerHTML = "";
+      console.warn("gv_proyeccion_mes:", err.message);
+    });
+}
+
 function _gvCargarPPP() {
   var slot = document.getElementById("gvPppBanda");
   if (!slot) return;
@@ -13996,6 +14039,13 @@ function _gvPintarDashboard(d, generado) {
   var html = _gvResumenEjecutivo(d, mesTxt);
   html += '<div id="gvPppBanda"></div>';
   _gvCargarPPP();
+
+  // --- Cómo viene el mes en curso ----------------------------------------
+  // Desde que sales_lines se llena solo desde ISIS (14/09/2026) el mes
+  // corriente está en vivo, así que se puede proyectar el cierre. Aparte, y
+  // async, igual que la banda de PPP.
+  html += '<div id="gvMesBanda"></div>';
+  _gvCargarMes();
 
   // --- Tarjetas -----------------------------------------------------------
   html +=
