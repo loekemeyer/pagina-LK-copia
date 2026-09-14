@@ -8613,6 +8613,65 @@ async function _submitSingleOrder(
   var finalTotal = afterPayment * (1 - extraRate);
   var totalDiscounts = Math.max(0, totalNoDiscount - finalTotal);
 
+  // ─── LA FICHA DEL PEDIDO (sheetsPayload) ───
+  // Se arma ACÁ, ANTES de la RPC, y viaja EN la RPC (p_sheets_payload): así se
+  // guarda en la MISMA transacción que crea el pedido y un pedido no puede
+  // existir sin su ficha. Antes se armaba después y se guardaba en un update
+  // aparte; del 11/09 al 14/09 ese update no llegó a ejecutarse nunca y dejó 6
+  // pedidos reales invisibles para Gestión, que filtra por sheets_payload.
+  // `order_number` no va acá: el número lo pone la RPC, que es la única que lo
+  // conoce antes de que exista.
+  var debt = Number(customerProfile.debt || 0);
+  var creditLimit = customerProfile.credit_limit == null ? null : Number(customerProfile.credit_limit);
+
+  // LC: "X" if (debt + order) > creditLimit, else "OK"
+  var lcStatus = "OK";
+  if (creditLimit != null && (debt + finalTotal) > creditLimit) {
+    lcStatus = "X";
+  }
+
+  // D (Deuda): "X" if debt > 0, else "OK"
+  var dStatus = debt > 0 ? "X" : "OK";
+
+  // PP: payment_term value or "Null" (no tiene plazo cargado)
+  var ppStatus = customerProfile.payment_term == null
+    ? "Null"
+    : String(Number(customerProfile.payment_term));
+
+  // snake_case para compat con Apps Script + retry
+  var sheetsPayload = {
+    cod_cliente: String(customerProfile.cod_cliente || "").trim(),
+    vend: String(customerProfile.vend || "").trim(),
+    condicion_pago: String(getPaymentMethodText() || "").trim(),
+    condicion_pago_code: Number(getPaymentMethodCode() || 0),
+    sucursal_entrega: String(
+      deliveryChoiceSnapshot.label || deliveryChoiceSnapshot.slot || "",
+    ).trim(),
+    cliente_nuevo: String(clienteNuevoValue || "").trim(),
+    observaciones: String(observacionesValue || "").trim(),
+    retiro_fecha: retiroSel.fecha || null,
+    retiro_franja: retiroSel.franja || null,
+    is_promo: isPromo,
+    extra_discount: extraRate,
+    deuda: debt,
+    credit_limit: creditLimit,
+    payment_term: customerProfile.payment_term == null ? null : Number(customerProfile.payment_term),
+    lc: lcStatus,
+    d: dStatus,
+    pp: ppStatus,
+    order_total: finalTotal,
+    source: "Web",
+    mode: editOrderId ? "edit" : "new",
+    items: itemsPayload.map(function (it) {
+      return {
+        cod_art: it.cod_art,
+        cod_original: it.cod_original || null,
+        cajas: it.cajas,
+        uxb: it.uxb,
+      };
+    }),
+  };
+
   // RPC call — el 30% extra ya viene BAKED-IN en p_total.
   // `source` (módulo desde el que se agregó cada producto) tiene que viajar acá:
   // el carrito lo guarda e itemsPayload lo arrastra, pero si no se incluye en
@@ -8651,6 +8710,8 @@ async function _submitSingleOrder(
           p_subtotal: Number(subtotal || 0),
           p_total: Number(finalTotal || 0),
           p_items: rpcItems,
+          // La ficha va acá: se guarda en la misma transacción que el pedido.
+          p_sheets_payload: sheetsPayload,
         }),
     15000,
     editOrderId ? "edit_order_fast" : "submit_order_fast",
@@ -8690,73 +8751,24 @@ async function _submitSingleOrder(
     return acc + Number(it.list_sub_total || 0);
   }, 0);
 
-  // ─── EFECTOS SECUNDARIOS ─── El pedido YA está grabado por la RPC de arriba.
+  // La ficha ya la guardó la RPC junto con el pedido. Acá sólo se le agrega el
+  // número, que hasta este punto no existía, para lo que va al Sheet.
+  sheetsPayload.order_number = String(orderId || "").trim();
+
+  // ─── EFECTOS SECUNDARIOS ─── El pedido YA está grabado CON SU FICHA.
   // Nada de lo que sigue puede tumbar la confirmación: si algo acá tira, el
   // cliente tiene que ver igual "¡Pedido confirmado!". Si no, vuelve a apretar
   // y carga el pedido de nuevo — pasó dos veces (observacionesValue, y retiroSel
   // del 11/09 al 14/09: 32 filas de orders = 6 pedidos reales, uno cargado 9
-  // veces). El pedido entra igual: el barrido gv_lk_rellenar_sheets_payload
-  // (cron cada 10 min) le arma el sheets_payload desde order_items.
+  // veces). Desde que la ficha viaja en la RPC, un error acá ya no puede dejar
+  // el pedido invisible para Gestión.
   try {
-    // Calculate status fields for sheet
-    var debt = Number(customerProfile.debt || 0);
-    var creditLimit = customerProfile.credit_limit == null ? null : Number(customerProfile.credit_limit);
-
-    // LC: "X" if (debt + order) > creditLimit, else "OK"
-    var lcStatus = "OK";
-    if (creditLimit != null && (debt + finalTotal) > creditLimit) {
-      lcStatus = "X";
-    }
-
-    // D (Deuda): "X" if debt > 0, else "OK"
-    var dStatus = debt > 0 ? "X" : "OK";
-
-    // PP: payment_term value or "Null" (no tiene plazo cargado)
-    var ppStatus = customerProfile.payment_term == null
-      ? "Null"
-      : String(Number(customerProfile.payment_term));
-
-    // Sheets payload (snake_case para compat con Apps Script + retry)
-    var sheetsPayload = {
-      order_number: String(orderId || "").trim(),
-      cod_cliente: String(customerProfile.cod_cliente || "").trim(),
-      vend: String(customerProfile.vend || "").trim(),
-      condicion_pago: String(getPaymentMethodText() || "").trim(),
-      condicion_pago_code: Number(getPaymentMethodCode() || 0),
-      sucursal_entrega: String(
-        deliveryChoiceSnapshot.label || deliveryChoiceSnapshot.slot || "",
-      ).trim(),
-      cliente_nuevo: String(clienteNuevoValue || "").trim(),
-      observaciones: String(observacionesValue || "").trim(),
-      retiro_fecha: retiroSel.fecha || null,
-      retiro_franja: retiroSel.franja || null,
-      is_promo: isPromo,
-      extra_discount: extraRate,
-      deuda: debt,
-      credit_limit: creditLimit,
-      payment_term: customerProfile.payment_term == null ? null : Number(customerProfile.payment_term),
-      lc: lcStatus,
-      d: dStatus,
-      pp: ppStatus,
-      order_total: finalTotal,
-      source: "Web",
-      mode: editOrderId ? "edit" : "new",
-      items: itemsPayload.map(function (it) {
-        return {
-          cod_art: it.cod_art,
-          cod_original: it.cod_original || null,
-          cajas: it.cajas,
-          uxb: it.uxb,
-        };
-      }),
-    };
-
-    // Guardar payload para retry automático + marcar is_promo/extra_discount
-    // + quién estaba logueado al confirmar (cliente o vendedor "Pedir para")
+    // Marcar is_promo/extra_discount + quién estaba logueado al confirmar
+    // (cliente o vendedor "Pedir para"). El sheets_payload NO va acá: lo guardó
+    // la RPC en la misma transacción que creó el pedido.
     supabaseClient
       .from("orders")
       .update({
-        sheets_payload: sheetsPayload,
         is_promo: isPromo,
         extra_discount: extraRate,
         placed_by_auth_user_id: currentSession.user.id,

@@ -133,6 +133,32 @@ if (!/EFECTOS SECUNDARIOS[\s\S]{0,600}?\n  try \{/.test(fn)) {
   process.exit(1);
 }
 
+// La ficha tiene que armarse ANTES de la RPC y viajar EN la RPC: así se guarda
+// en la misma transacción que crea el pedido y un pedido no puede existir sin
+// ella. Si alguien vuelve a armarla después, el bug regresa por otra puerta.
+const posPayload = fn.indexOf("var sheetsPayload = {");
+const posRpc = fn.indexOf('supabaseClient.rpc("submit_order_fast"');
+if (posRpc < 0) {
+  console.error("FALLA: no se encontró la llamada a submit_order_fast");
+  process.exit(1);
+}
+if (posPayload > posRpc) {
+  console.error(
+    "FALLA: el sheetsPayload se arma DESPUÉS de la RPC.\n" +
+      "Tiene que armarse antes y viajar en p_sheets_payload, para que quede\n" +
+      "guardado en la misma transacción que crea el pedido.",
+  );
+  process.exit(1);
+}
+if (!/p_sheets_payload:\s*sheetsPayload/.test(fn)) {
+  console.error(
+    "FALLA: la RPC submit_order_fast ya no recibe p_sheets_payload.\n" +
+      "Sin eso el pedido vuelve a poder quedar guardado sin su ficha, invisible\n" +
+      "para Gestión (v_pedidos_web filtra por sheets_payload is not null).",
+  );
+  process.exit(1);
+}
+
 console.log(
   "payload-scope: OK — " +
     declaradas.size +
