@@ -16479,3 +16479,157 @@ function fcRender() {
 window.initFichaCliente = initFichaCliente;
 window.cargarFichaCliente = cargarFichaCliente;
 window.fcToggleMeses = fcToggleMeses;
+
+/* ============================================================================
+   CLIC PARA COPIAR — pantallas de clientes
+   ----------------------------------------------------------------------------
+   Pedido de Tomas: no tipear a mano codigos, CUIT, mails ni razones sociales.
+   Un clic sobre el dato lo deja en el portapapeles.
+
+   Tres decisiones que valen la pena recordar:
+
+   1. Se copia el DATO, no la fila. El selector apunta a la celda o al valor
+      suelto; si se enganchara el <tr> entero, copiar un codigo traeria tambien
+      la razon social, el CUIT y el saldo.
+
+   2. Lo que ya hace otra cosa, no copia. Si el clic cae en un boton, un link,
+      un input, un switch o un elemento con onclick propio QUE ESTE DENTRO de la
+      celda, se deja pasar: el CUIT del ABM tiene su propio boton de copiar
+      (copiarCuit) y los switches del ranking tienen que seguir accionando.
+      El caso inverso si copia: .cc-cod vive dentro de .cc-header, que expande la
+      card; ahi el clic sobre el codigo copia y NO expande, y para eso hace falta
+      escuchar en fase de CAPTURA — en burbuja el onclick del header ya corrio.
+      El stopPropagation se aplica solo en ese caso, para no romper los
+      listeners de document que cierran los menus desplegables.
+
+   3. Si hay texto seleccionado no se interfiere: alguien que arrastro para
+      marcar un pedazo quiere ese pedazo, no la celda entera.
+   ========================================================================== */
+(function () {
+  // Las pantallas de clientes del panel.
+  var ZONAS = [
+    "#ver-clientes",
+    "#ficha-cliente",
+    "#estadistica-clientes",
+    "#ranking-clientes",
+    "#grupos-clientes",
+    "#clientes-pendientes",
+    "#sucursales-pendientes",
+    "#historial-cliente",
+  ];
+
+  // Que cuenta como "un dato".
+  var DATOS = [
+    "td",
+    ".cc-cod",
+    ".cc-razon",
+    ".cc-detail-item .val",
+    ".fc-dato-val",
+    ".fc-num",
+    ".fc-kpi-num",
+    ".fc-sug-cod",
+    ".fc-sug-nom",
+    "[data-copiable]",
+  ].join(",");
+
+  var INTERACTIVO =
+    "button,a,input,select,textarea,label,svg,[onclick],[contenteditable]";
+
+  function marcarZonas() {
+    for (var i = 0; i < ZONAS.length; i++) {
+      var sec = document.querySelector(ZONAS[i]);
+      if (sec) sec.classList.add("lk-copiable");
+    }
+  }
+
+  // El texto de la celda sin los controles que tenga adentro: si al lado del
+  // numero hay un boton "Ocultar", se copia el numero y no la palabra del boton.
+  function textoDe(el) {
+    var copia = el.cloneNode(true);
+    var controles = copia.querySelectorAll(INTERACTIVO);
+    for (var i = 0; i < controles.length; i++) {
+      if (controles[i].parentNode) controles[i].parentNode.removeChild(controles[i]);
+    }
+    return (copia.innerText || copia.textContent || "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function copiar(texto, el) {
+    function listo() {
+      if (el) {
+        el.classList.add("lk-copiado");
+        setTimeout(function () {
+          el.classList.remove("lk-copiado");
+        }, 900);
+      }
+      if (typeof toast === "function") {
+        var corto = texto.length > 40 ? texto.slice(0, 40) + "…" : texto;
+        toast("Copiado: " + corto, "success");
+      }
+    }
+    // navigator.clipboard necesita contexto seguro; sirviendo por http (o si el
+    // navegador lo niega) queda el textarea invisible de toda la vida.
+    function aMano() {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = texto;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch (e) {
+        /* noop */
+      }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(listo, function () {
+        aMano();
+        listo();
+      });
+    } else {
+      aMano();
+      listo();
+    }
+  }
+
+  document.addEventListener(
+    "click",
+    function (ev) {
+      var t = ev.target;
+      if (!t || !t.closest) return;
+
+      var dato = t.closest(DATOS);
+      if (!dato || !dato.closest(".lk-copiable")) return;
+
+      // Un control DENTRO de la celda manda: ese clic no es para copiar.
+      var control = t.closest(INTERACTIVO);
+      if (control && dato.contains(control)) return;
+
+      var seleccion = window.getSelection ? String(window.getSelection()) : "";
+      if (seleccion && seleccion.length > 1) return;
+
+      var texto = textoDe(dato);
+      if (!texto || texto === "-" || texto === "—") return;
+
+      // Solo se frena el evento cuando la celda vive dentro de algo que tambien
+      // responde al clic (la card del ABM); si no, se deja burbujear para no
+      // romper los listeners que cierran menus.
+      var accionDeEncima =
+        dato.parentElement && dato.parentElement.closest("[onclick]");
+      ev.preventDefault();
+      if (accionDeEncima) ev.stopPropagation();
+
+      copiar(texto, dato);
+    },
+    true
+  );
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", marcarZonas);
+  } else {
+    marcarZonas();
+  }
+})();
