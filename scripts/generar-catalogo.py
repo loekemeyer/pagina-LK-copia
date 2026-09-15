@@ -98,7 +98,6 @@ def topbar(pref, activo):
         <nav class="prod-topbar-nav" aria-label="Secciones">
           {a(pref + SALIDA + "/index.html", "Catálogo", "catalogo")}
           {a(pref + "historia.html", "Historia", "historia")}
-          {a(pref + "comprar-por-mayor.html", "Comprar por mayor", "mayoristas")}
           <a class="prod-topbar-cta" href="{pref}mayorista.html">Pedido mayorista</a>
         </nav>
       </div>
@@ -240,9 +239,9 @@ def pagina_categoria(cat, todas):
         {cuerpo}
         <div class="prod-cta-block">
           <h2>¿Tenés un comercio?</h2>
-          <p>Pedí tu alta mayorista y accedé a la lista de precios y al pedido online.</p>
+          <p>Escribinos por WhatsApp: te damos de alta y accedés a la lista de precios y al pedido online.</p>
           <div class="catalogo-actions">
-            <a class="btn-catalogo" href="{pref}comprar-por-mayor.html">Quiero comprar por mayor</a>
+            <a class="btn-catalogo" href="{wa_url('Hola Loekemeyer, tengo un comercio y quiero comprar por mayor.')}" target="_blank" rel="noopener">Comprar por mayor por WhatsApp</a>
             <a class="btn-catalogo btn-catalogo--alt" href="{pref}pdf/catalogo.pdf" target="_blank" rel="noopener">Descargar catálogo PDF</a>
           </div>
         </div>
@@ -293,7 +292,7 @@ def pagina_index(cats, total):
           <h2>Comprá directo a la fábrica</h2>
           <p>Supermercados, bazares, distribuidores y ferreterías de todo el país. Pedido online con seguimiento de entrega.</p>
           <div class="catalogo-actions">
-            <a class="btn-catalogo" href="{pref}comprar-por-mayor.html">Quiero comprar por mayor</a>
+            <a class="btn-catalogo" href="{wa_url('Hola Loekemeyer, tengo un comercio y quiero comprar por mayor.')}" target="_blank" rel="noopener">Comprar por mayor por WhatsApp</a>
             <a class="btn-catalogo btn-catalogo--alt" href="{pref}pdf/catalogo.pdf" target="_blank" rel="noopener">Descargar catálogo PDF</a>
           </div>
         </div>

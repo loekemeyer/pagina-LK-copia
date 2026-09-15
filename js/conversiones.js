@@ -1,10 +1,10 @@
 // conversiones.js — medición para Google Ads en las páginas públicas
-// (comprar-por-mayor.html, historia.html y catalogo/*.html).
+// (historia.html y catalogo/*.html).
 //
 // QUÉ HACE. Carga el Google Tag y manda una conversión cuando el visitante:
 //   - toca un link de WhatsApp (a[href*="wa.me"])         → evento "contacto_whatsapp"
 //   - descarga el catálogo PDF (a[href$=".pdf"])          → evento "descarga_catalogo"
-//   - envía el formulario de alta mayorista (form[data-conversion]) → evento "formulario_mayorista"
+//   - envía un formulario marcado con data-conversion            → evento "formulario_mayorista" (hoy ninguna página lo usa)
 //   - toca un mailto: (a[href^="mailto:"])                → evento "contacto_email"
 //
 // CÓMO SE ACTIVA. Completar LK_ADS_ID con el ID de la cuenta de Google Ads

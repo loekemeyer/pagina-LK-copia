@@ -603,6 +603,8 @@ Cambios:
 
 ## Páginas públicas de posicionamiento (SEO / Google Ads) — BORRADOR sin linkear
 
+**Descartada el mismo día, a pedido de Tomás, la landing `comprar-por-mayor.html` para comercios nuevos: el alta de clientes se maneja por otro canal.** Si el deploy ya la subió al IIS, hay que borrarla a mano desde SolidCP (el workflow nunca borra).
+
 Creadas el 15/09/2026 para el objetivo "aparecer en Google cuando buscan utensilios" y para la
 pauta de Google Ads. **Están en el servidor pero NO linkeadas desde la home ni desde `mayorista.html`,
 NO están en `sitemap.xml` y llevan `<meta name="robots" content="noindex">`** hasta que Tomás/Thomas
@@ -610,7 +612,6 @@ las aprueben. No muestran precios.
 
 | Página | Qué es | Origen del contenido |
 |---|---|---|
-| `comprar-por-mayor.html` | Landing para comercios que todavía NO son clientes (adonde cae el clic de Ads): propuesta, líneas, cómo darse de alta, formulario que abre WhatsApp, FAQ. Distinta de `mayorista.html`, que es el portal con login. | Texto propio; logos de `img/` |
 | `historia.html` | Nuestra historia: línea de tiempo 1950→hoy, los 5 modelos industriales del INPI (12433/1969, 18279/1971, 27925/1975, 29777/1976, 66602/1999, todos vencidos: se muestran como registros históricos), marca, garantía, INAL/ADIMRA, historia del abrelatas. Tiene un comentario `QUIENES-SOMOS-2018` donde va el texto del sitio viejo cuando lo pasen. | Capturas del INPI + mails |
 | `catalogo/index.html` + `catalogo/<slug>.html` (19) | Catálogo público estático sin precios, una página por línea, fotos del bucket `products-images`. **Generado**: no editar a mano. | `scripts/generar-catalogo.py` + `scripts/catalogo-data.json` |
 | `css/publico.css` | Estilos propios de estas páginas (complementa `styles.index.css` y `productos.css`). | |
@@ -621,8 +622,7 @@ las aprueben. No muestran precios.
 - **Por qué `catalogo/` y no `/productos/`**: en el IIS, `/productos/` todavía tiene el sitio viejo
   (`abrelatas.htm`, `coladores.html`, `mates-bombillas.html`, `quienes_somos.html`…), indexado por Google.
   Cuando se retire: `SALIDA = "productos"` en el generador, regenerar y 301 desde el `web.config`.
-- **Para publicar**: `NOINDEX = False` en el generador y quitar la meta `robots` de `historia.html` y
-  `comprar-por-mayor.html`; agregar todas al `sitemap.xml`; linkear desde la home (nav, footer y el botón
+- **Para publicar**: `NOINDEX = False` en el generador y quitar la meta `robots` de `historia.html`; agregar todas al `sitemap.xml`; linkear desde la home (nav, footer y el botón
   "Ver productos online", que hoy apunta a `/productos/`).
 - El sufijo `E` en el código de artículo marca importado (`importado: true` en el JSON). El catálogo
   público NO lo muestra hasta que se confirme la regla.
