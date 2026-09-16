@@ -10745,6 +10745,156 @@ function descargarRankingInactivosExcel() {
 }
 window.descargarRankingInactivosExcel = descargarRankingInactivosExcel;
 
+// Descarga TODA la Estadística Madre a Excel: un artículo por fila, con su
+// ranking, proyección y las unidades de CADA mes del historial completo (todos
+// los meses que hay en memoria, no solo el rango del dropdown ni la búsqueda).
+// Se arma con los datos YA cargados en _estMadreFullByCod — no hace fetch.
+function descargarEstadisticaMadreExcel() {
+  var btnEl = (typeof event !== "undefined" && event && event.target) || null;
+  var textoOriginal = btnEl ? btnEl.textContent : "";
+  function restaurarBtn() {
+    if (!btnEl) return;
+    btnEl.disabled = false;
+    btnEl.textContent = textoOriginal;
+  }
+
+  if (typeof XLSX === "undefined") {
+    alert("No se pudo cargar la librería de Excel (xlsx). Recargá la página e intentá de nuevo.");
+    return;
+  }
+  if (!_estMadreFullByCod || !_estMadreFullYms || _estMadreFullYms.length === 0) {
+    alert("No hay datos cargados. Abrí la Estadística Madre y esperá a que termine de cargar antes de descargar.");
+    return;
+  }
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = "Generando…";
+  }
+
+  try {
+    // Meses: TODOS los del historial, más reciente primero (igual que la pantalla).
+    var yms = _estMadreFullYms.slice();
+    yms.reverse();
+
+    // Artículos: todos, ordenados por ranking (1 = el que más proyecta). El
+    // _rank / _proy los deja puestos aplicarRangoEstadisticaMadre sobre estos
+    // mismos objetos; si por algún motivo faltan, cae al orden natural.
+    var items = Object.values(_estMadreFullByCod).slice();
+    items.sort(function (a, b) {
+      var ra = Number(a._rank) || 999999;
+      var rb = Number(b._rank) || 999999;
+      return ra - rb;
+    });
+
+    var monthFmt = function (ym) {
+      var m = String(ym).match(/^(\d{4})-(\d{2})/);
+      if (!m) return ym;
+      var meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+      return meses[Number(m[2]) - 1] + " " + m[1].slice(2);
+    };
+
+    var encabezados = ["Ranking", "Código", "Descripción", "Familia", "Proyección"]
+      .concat(yms.map(monthFmt));
+    var aoa = [encabezados];
+
+    // Fila de totales por mes (suma de todos los artículos).
+    var totalProy = 0;
+    var totalsByYm = {};
+    yms.forEach(function (ym) { totalsByYm[ym] = 0; });
+    items.forEach(function (it) {
+      totalProy += Number(it._proy || 0);
+      yms.forEach(function (ym) {
+        totalsByYm[ym] += Number((it.byYm || {})[ym] || 0);
+      });
+    });
+    var filaTotales = ["", "", "TOTAL POR MES", "", Math.round(totalProy)]
+      .concat(yms.map(function (ym) { return Math.round(totalsByYm[ym] || 0); }));
+    aoa.push(filaTotales);
+
+    items.forEach(function (it) {
+      var byYm = it.byYm || {};
+      var fila = [
+        Number(it._rank) || "",
+        String(it.cod || ""),
+        String(it.desc || ""),
+        String(it.familia || ""),
+        Math.round(Number(it._proy) || 0),
+      ];
+      yms.forEach(function (ym) {
+        fila.push(Math.round(Number(byYm[ym]) || 0));
+      });
+      aoa.push(fila);
+    });
+
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    ws["!cols"] = [
+      { wch: 8 },   // Ranking
+      { wch: 10 },  // Código
+      { wch: 40 },  // Descripción
+      { wch: 22 },  // Familia
+      { wch: 12 },  // Proyección
+    ].concat(yms.map(function () { return { wch: 9 }; }));
+
+    ws["!autofilter"] = {
+      ref: XLSX.utils.encode_range({
+        s: { r: 0, c: 0 },
+        e: { r: aoa.length - 1, c: encabezados.length - 1 },
+      }),
+    };
+
+    var ultimaCol = encabezados.length - 1;
+    for (var c = 0; c <= ultimaCol; c++) {
+      var refHead = XLSX.utils.encode_cell({ r: 0, c: c });
+      if (ws[refHead]) {
+        ws[refHead].s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "19222F" } },
+          alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        };
+      }
+    }
+    // Estilo fila de totales (r = 1) y formato numérico de las columnas de números.
+    for (var f = 1; f < aoa.length; f++) {
+      var esTotales = f === 1;
+      for (var cc = 0; cc <= ultimaCol; cc++) {
+        var ref = XLSX.utils.encode_cell({ r: f, c: cc });
+        var cell = ws[ref];
+        if (!cell) continue;
+        var esNumero = cc === 0 || cc >= 4; // Ranking, Proyección y meses
+        if (esNumero) {
+          cell.z = "#,##0";
+          cell.s = cell.s || {};
+          cell.s.alignment = { horizontal: "right" };
+        }
+        if (esTotales) {
+          cell.s = cell.s || {};
+          cell.s.font = { bold: true };
+          cell.s.fill = { fgColor: { rgb: "EEF2F7" } };
+        }
+      }
+    }
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Estadistica Madre");
+
+    var hoy = new Date();
+    var stamp =
+      hoy.getFullYear() +
+      String(hoy.getMonth() + 1).padStart(2, "0") +
+      String(hoy.getDate()).padStart(2, "0");
+    XLSX.writeFile(wb, "estadistica_madre_" + stamp + ".xlsx");
+
+    restaurarBtn();
+  } catch (err) {
+    console.error("descargarEstadisticaMadreExcel error", err);
+    alert("Error al generar el Excel: " + (err.message || err));
+    restaurarBtn();
+  }
+}
+window.descargarEstadisticaMadreExcel = descargarEstadisticaMadreExcel;
+
 // Cargar ranking de clientes inactivos.
 // Usa la RPC get_ranking_inactivos: une pedidos web (orders) con el histórico
 // del ERP (sales_lines) y valoriza a precios de hoy NETOS: precio de lista por
