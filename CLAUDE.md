@@ -627,8 +627,40 @@ las aprueben. No muestran precios.
   reemplaza con una página nueva del mismo nombre.
 - **Para publicar**: `NOINDEX = False` en el generador y quitar la meta `robots` de `historia.html`; agregar todas al `sitemap.xml`; linkear desde la home (nav, footer y el botón
   "Ver productos online", que ya apunta a `/productos/` y empieza a funcionar solo).
-- El sufijo `E` en el código de artículo marca importado (`importado: true` en el JSON). El catálogo
-  público NO lo muestra hasta que se confirme la regla.
+- El sufijo `E` en el código de artículo marca importado (`importado: true` en el JSON). Es dato
+  interno: **el texto público NO dice que importamos** (instrucción de Tomás, 16/09/2026). Se sacó la
+  frase "completamos la línea con productos importados seleccionados" de `productos/index.html`, del
+  template de `scripts/generar-catalogo.py` y de dos lugares de `historia.html`. El badge visible
+  sigue siendo sólo `NUEVO`.
+
+### El ancho de `historia.html` (rediseño del 16/09/2026)
+
+Hasta la v2.3.406 cada sección era un `.container` de 1200 px con un párrafo de 62-72ch adentro: el
+texto quedaba pegado al borde izquierdo y sobraban ~480 px de blanco a la derecha en toda la página.
+Ahora manda **`.pub-wrap`: un solo bloque de 960 px centrado**, y todo —título, texto, tabla,
+tarjetas, dibujos— arranca y termina en el mismo borde. No conviven dos anchos distintos, que era lo
+que producía el escalonado. Lo único que no llega al borde derecho son los párrafos (`max-width:70ch`):
+eso es medida de lectura, no hueco.
+
+Reglas que quedaron fijadas en `css/publico.css`:
+
+- **Las figuras de una misma fila llevan todas la misma altura** (`height` fijo + `width:auto` +
+  `object-fit:contain`): 380 px los dibujos de patentes, 150 px las láminas del INPI. Con `width:100%`
+  los epígrafes quedaban escalonados. Pedido de Tomás, 16/09/2026.
+- La tabla va con `width:auto`: la manda el contenido de las celdas, nunca estirada.
+- Cuando hay un solo dibujo (`.pub-figuras--una`), el epígrafe va **al costado**, no abajo.
+
+### Láminas del INPI — ya están en `img/historia/inpi/`
+
+Los cinco dibujos depositados (`12433.png`, `18279.png`, `27925.png`, `29777.png`, `66602.png`) son
+las copias que sirve el portal del INPI: fotocopias de microfilm de 149 a 322 px de ancho. Se les
+corrigió el nivel de blanco y se recortó el margen; **no se ampliaron ni se pasaron por un upscaler
+de IA** (inventaría trazos en un documento de registro). Por eso se muestran a 150 px de alto: más
+grandes se ven peor.
+
+**A verificar:** los dos "empuñadura para útiles de cocina" (18.279 de 1971 y 29.777 de 1976) tienen
+el mismo texto y sólo se distinguen por el dibujo. El orden asignado es el del listado del INPI; si
+se confirma que están al revés, se intercambian los dos archivos y listo.
 
 ## File locks (edición concurrente)
 

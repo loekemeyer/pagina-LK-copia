@@ -305,7 +305,7 @@ def pagina_index(cats, total):
         </nav>
         <div class="prod-head">
           <h1>Todos nuestros utensilios de cocina</h1>
-          <p class="prod-intro">{total} artículos en {len(cats)} líneas. Fabricamos en Buenos Aires desde 1950 y completamos la línea con productos importados seleccionados. Sin precios: la lista mayorista se ve con tu usuario en la web mayorista, y el catálogo en PDF se descarga acá abajo.</p>
+          <p class="prod-intro">{total} artículos en {len(cats)} líneas. Fabricamos en Buenos Aires desde 1950. Sin precios: la lista mayorista se ve con tu usuario en la web mayorista, y el catálogo en PDF se descarga acá abajo.</p>
         </div>
         <div class="cat-grid">{cards}
         </div>

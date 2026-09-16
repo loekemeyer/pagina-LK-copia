@@ -16,9 +16,9 @@
     <meta property="og:url" content="https://loekemeyer.com/historia.html" />
     <meta property="og:image" content="https://loekemeyer.com/img/img_landing.webp" />
     <link rel="icon" type="image/png" href="img/favicon.jpg" />
-    <link rel="stylesheet" href="css/styles.index.css?v=23406" />
-    <link rel="stylesheet" href="css/productos.css?v=23406" />
-    <link rel="stylesheet" href="css/publico.css?v=23406" />
+    <link rel="stylesheet" href="css/styles.index.css?v=23407" />
+    <link rel="stylesheet" href="css/productos.css?v=23407" />
+    <link rel="stylesheet" href="css/publico.css?v=23407" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -59,14 +59,29 @@
     <main>
       <!-- ================= CABECERA ================= -->
       <section class="pub-hero">
-        <div class="container">
-          <h1>Cuatro generaciones fabricando utensilios de cocina</h1>
-          <p class="pub-lead">
-            Loekemeyer Hermanos nació en Buenos Aires en 1950. Desde entonces
-            diseñamos y fabricamos abrelatas, pelapapas, afiladores, bombillas y
-            utensilios que están en miles de cocinas argentinas, y los vendemos
-            a supermercados, bazares y distribuidores de todo el país.
-          </p>
+        <div class="pub-wrap">
+          <div class="pub-hero-grid">
+            <div>
+              <h1>Cuatro generaciones fabricando utensilios de cocina</h1>
+              <p class="pub-lead">
+                Loekemeyer Hermanos nació en Buenos Aires en 1950. Desde
+                entonces diseñamos y fabricamos abrelatas, pelapapas,
+                afiladores, bombillas y utensilios que están en miles de cocinas
+                argentinas, y los vendemos a supermercados, bazares y
+                distribuidores de todo el país.
+              </p>
+            </div>
+            <aside class="pub-ficha" aria-label="Datos de la empresa">
+              <dl>
+                <dt>Fundada</dt><dd>1950 &middot; 76 años fabricando</dd>
+                <dt>Planta</dt><dd>Cervantes 2868, Ciudad de Buenos Aires</dd>
+                <dt>Familia</dt><dd>Cuarta generación al frente</dd>
+                <dt>INPI</dt><dd>5 modelos industriales propios (1969&ndash;1999)</dd>
+                <dt>Catálogo</dt><dd>19 líneas, casi 200 artículos</dd>
+                <dt>Garantía</dt><dd>De por vida por defectos de fabricación</dd>
+              </dl>
+            </aside>
+          </div>
         </div>
       </section>
 
@@ -77,7 +92,7 @@
 
       <!-- ================= LÍNEA DE TIEMPO ================= -->
       <section class="pub-section" id="linea-de-tiempo">
-        <div class="container">
+        <div class="pub-wrap">
           <h2>De 1950 a hoy</h2>
           <p>
             Somos cuarta generación de fabricantes de utensilios. La empresa se
@@ -85,7 +100,7 @@
             planta está en Cervantes 2868, en la Ciudad de Buenos Aires, y ahí
             se estampan, arman y embalan los artículos de fabricación propia.
           </p>
-          <ol class="pub-timeline">
+          <ol class="pub-timeline pub-timeline--dos">
             <li>
               <span class="anio">1950</span>
               <p>Se funda Loekemeyer Hermanos en Buenos Aires.</p>
@@ -129,9 +144,8 @@
               <span class="anio">Hoy</span>
               <p>
                 Cuarta generación al frente. Casi 200 artículos en 19 líneas,
-                fabricación propia en Buenos Aires complementada con productos
-                importados seleccionados, y pedidos mayoristas online con
-                seguimiento de entrega.
+                fabricación propia en Buenos Aires y pedidos mayoristas online
+                con seguimiento de entrega.
               </p>
             </li>
           </ol>
@@ -139,8 +153,8 @@
       </section>
 
       <!-- ================= DISEÑOS REGISTRADOS ================= -->
-      <section class="pub-section" id="disenos-registrados">
-        <div class="container">
+      <section class="pub-section pub-section--banda" id="disenos-registrados">
+        <div class="pub-wrap">
           <h2>Diseños propios registrados en el INPI</h2>
           <p>
             Cinco modelos industriales llevan el nombre de la familia en el
@@ -168,71 +182,59 @@
               </tbody>
             </table>
           </div>
-          <!-- ===================================================================
-               LÁMINAS DEL INPI — LISTO PARA ACTIVAR
-
-               Los dibujos depositados en el INPI son los planos originales de la
-               empresa y son públicos desde el registro. Tomás los tiene; al chat
-               llegaron como imágenes pegadas, que no dejan archivo en el
-               servidor, así que hay que copiarlos al repo.
-
-               PARA ACTIVARLO, dos pasos:
-               1. Guardar los cinco archivos en img/historia/inpi/ con estos
-                  nombres exactos:
-                     12433.png   Afilador, 1969
-                     18279.png   Empuñadura para útiles de cocina, 1971
-                     27925.png   Dispositivo para pelar frutas, 1975
-                     29777.png   Empuñadura para útiles de cocina, 1976
-                     66602.png   Corta tortas, 1999
-               2. Borrar esta línea de apertura del comentario y la de cierre.
-
-               OJO CON LA CALIDAD: las copias que circularon miden entre 185 y
-               336 px de ancho (fotocopias de microfilm). Al lado de los dibujos
-               de patentes de esta misma página, que tienen 860 px, se ven
-               borrosas. Conviene bajarlas del portal del INPI en su tamaño
-               original, o pedir al INPI un nuevo testimonio de cada modelo.
-               ===================================================================
+          <!-- LÁMINAS DEL INPI. Son los dibujos depositados por la empresa al
+               registrar cada modelo: documentos propios y públicos desde el
+               registro, y además de dominio público porque los cinco modelos
+               vencieron. Copias de fotocopia de microfilm del portal del INPI,
+               de 149 a 322 px de ancho; se les corrigió el nivel de blanco y se
+               recortó el margen, nada más. Por eso se muestran a 170 px como
+               máximo: ampliadas se ven peor, no mejor.
+               A VERIFICAR: los dos "empuñadura para útiles de cocina" (18.279 y
+               29.777) son el mismo texto y sólo se distinguen por el dibujo. El
+               orden asignado es el del listado del INPI; si Tomás confirma que
+               están al revés, se intercambian los dos archivos. -->
           <div class="pub-figuras pub-figuras--laminas">
             <figure class="pub-figura">
-              <img src="img/historia/inpi/12433.png" alt="Lámina del modelo industrial 12.433, afilador de cuchillos Loekemeyer, 1969" loading="lazy" />
-              <figcaption>Afilador. Modelo industrial N° 12.433, registrado el 1 de septiembre de 1969.</figcaption>
+              <img src="img/historia/inpi/12433.png" alt="Lámina del modelo industrial 12.433, afilador de cuchillos Loekemeyer, 1969" width="322" height="374" loading="lazy" />
+              <figcaption>Afilador, 1969<br />Modelo N° 12.433</figcaption>
             </figure>
             <figure class="pub-figura">
-              <img src="img/historia/inpi/18279.png" alt="Lámina del modelo industrial 18.279, empuñadura para útiles de cocina Loekemeyer, 1971" loading="lazy" />
-              <figcaption>Empuñadura para útiles de cocina. Modelo N° 18.279, 14 de septiembre de 1971.</figcaption>
+              <img src="img/historia/inpi/18279.png" alt="Lámina del modelo industrial 18.279, empuñadura para útiles de cocina Loekemeyer, 1971" width="193" height="153" loading="lazy" />
+              <figcaption>Empuñadura, 1971<br />Modelo N° 18.279</figcaption>
             </figure>
             <figure class="pub-figura">
-              <img src="img/historia/inpi/27925.png" alt="Lámina del modelo industrial 27.925, dispositivo para pelar frutas Loekemeyer, 1975" loading="lazy" />
-              <figcaption>Dispositivo para pelar frutas. Modelo N° 27.925, 30 de mayo de 1975.</figcaption>
+              <img src="img/historia/inpi/27925.png" alt="Lámina del modelo industrial 27.925, dispositivo para pelar frutas Loekemeyer, 1975" width="149" height="102" loading="lazy" />
+              <figcaption>Pelar frutas, 1975<br />Modelo N° 27.925</figcaption>
             </figure>
             <figure class="pub-figura">
-              <img src="img/historia/inpi/29777.png" alt="Lámina del modelo industrial 29.777, empuñadura para útiles de cocina Loekemeyer, 1976" loading="lazy" />
-              <figcaption>Empuñadura para útiles de cocina. Modelo N° 29.777, 26 de enero de 1976.</figcaption>
+              <img src="img/historia/inpi/29777.png" alt="Lámina del modelo industrial 29.777, empuñadura para útiles de cocina Loekemeyer, 1976" width="259" height="313" loading="lazy" />
+              <figcaption>Empuñadura, 1976<br />Modelo N° 29.777</figcaption>
             </figure>
             <figure class="pub-figura">
-              <img src="img/historia/inpi/66602.png" alt="Lámina del modelo industrial 66.602, corta tortas Loekemeyer, 1999" loading="lazy" />
-              <figcaption>Corta tortas. Modelo N° 66.602, 1 de marzo de 1999.</figcaption>
+              <img src="img/historia/inpi/66602.png" alt="Lámina del modelo industrial 66.602, corta tortas Loekemeyer, 1999" width="219" height="162" loading="lazy" />
+              <figcaption>Corta tortas, 1999<br />Modelo N° 66.602</figcaption>
             </figure>
           </div>
-               -->
           <p class="pub-note">
-            Fuente: Instituto Nacional de la Propiedad Industrial, búsqueda
-            avanzada de modelos y diseños industriales, titular Loekemeyer.
+            Láminas originales depositadas en el Instituto Nacional de la
+            Propiedad Industrial al registrar cada modelo. Fuente: INPI,
+            búsqueda avanzada de modelos y diseños industriales, titular
+            Loekemeyer.
           </p>
         </div>
       </section>
 
       <!-- ================= CÓMO TRABAJAMOS ================= -->
-      <section class="pub-section" id="como-trabajamos">
-        <div class="container">
+      <section class="pub-section pub-section--banda" id="como-trabajamos">
+        <div class="pub-wrap">
           <h2>Cómo trabajamos hoy</h2>
           <div class="pub-cards">
             <article class="pub-card">
               <h3>Fabricación propia</h3>
               <p>
-                La mayor parte del catálogo se estampa y arma en nuestra planta
-                de Buenos Aires, con matricería propia. El resto son productos
-                importados que elegimos y controlamos nosotros.
+                Estampamos, armamos y embalamos en nuestra planta de Buenos
+                Aires. La matricería es propia: las matrices de cada pieza las
+                hacemos nosotros.
               </p>
             </article>
             <article class="pub-card">
@@ -266,8 +268,8 @@
            de dominio público, bajados de patentimages.storage.googleapis.com y
            recortados. Se pueden publicar sin licencia ni atribución obligatoria,
            pero igual se cita inventor, número y fecha en cada epígrafe. -->
-      <section class="pub-section" id="tres-inventos">
-        <div class="container">
+      <section class="pub-section pub-section--entradilla" id="tres-inventos">
+        <div class="pub-wrap">
           <h2>Tres inventos que fabricamos desde 1950</h2>
           <p>
             El abrelatas, el pelapapas y el sacacorchos resuelven problemas que
@@ -279,7 +281,7 @@
 
       <!-- ================= EL ABRELATAS ================= -->
       <section class="pub-section" id="el-abrelatas">
-        <div class="container">
+        <div class="pub-wrap">
           <h2>El abrelatas: medio siglo de latas abiertas a martillo</h2>
           <p>
             La lata de conserva se patentó en 1810, y durante casi cincuenta
@@ -332,7 +334,7 @@
 
       <!-- ================= EL PELADOR ================= -->
       <section class="pub-section" id="el-pelador">
-        <div class="container">
+        <div class="pub-wrap">
           <h2>El pelapapas: un soldado cansado de pelar papas</h2>
           <p>
             Hasta bien entrado el siglo XX las papas se pelaban con cuchillo, y
@@ -370,7 +372,7 @@
 
       <!-- ================= EL SACACORCHOS ================= -->
       <section class="pub-section" id="el-sacacorchos">
-        <div class="container">
+        <div class="pub-wrap">
           <h2>El sacacorchos: del tirabuzón de los fusiles a la doble aleta</h2>
           <p>
             El primer sacacorchos no se diseñó para el vino: era el gusano de
@@ -410,13 +412,15 @@
       </section>
 
       <!-- ================= CTA ================= -->
-      <section class="container pub-cta">
-        <div class="prod-cta-block">
+      <section class="pub-cta">
+        <div class="pub-wrap">
+          <div class="prod-cta-block">
           <h2>¿Querés vender Loekemeyer en tu comercio?</h2>
           <p>Atendemos supermercados, bazares, distribuidores y ferreterías de todo el país.</p>
           <div class="catalogo-actions">
             <a class="btn-catalogo" href="https://wa.me/5491131181021?text=Hola%20Loekemeyer%2C%20tengo%20un%20comercio%20y%20quiero%20comprar%20por%20mayor." target="_blank" rel="noopener">Comprar por mayor por WhatsApp</a>
             <a class="btn-catalogo btn-catalogo--alt" href="productos/index.html">Ver los productos</a>
+            </div>
           </div>
         </div>
       </section>
@@ -468,8 +472,8 @@
       </div>
     </div>
 
-    <script src="version.js?v=23406"></script>
-    <script src="script.index.js?v=23406"></script>
-    <script src="js/conversiones.js?v=23406"></script>
+    <script src="version.js?v=23407"></script>
+    <script src="script.index.js?v=23407"></script>
+    <script src="js/conversiones.js?v=23407"></script>
   </body>
 </html>

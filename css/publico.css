@@ -1,88 +1,167 @@
 /* ================================================================
-   publico.css — páginas públicas de posicionamiento:
-   historia.html y productos/*.html.
-   Complementa styles.index.css (variables, .container, footer, botones,
-   modal, float de WhatsApp) y productos.css (topbar, grillas).
-   Todo el ancho lo marca .container (máx. 1200px): nada se estira a
-   pantalla completa sin motivo.
+   publico.css — páginas públicas de posicionamiento: historia.html
+   (y el pie de "otras líneas" de productos/*.html).
+   Complementa styles.index.css (variables, footer, botones, modal,
+   float de WhatsApp) y productos.css (topbar, grillas).
+
+   EL ANCHO, QUE ES LO QUE SE ROMPÍA ANTES.
+   Hasta la v2.3.406 cada sección era un .container de 1200 px con un
+   párrafo de 62-72ch adentro: el texto quedaba pegado al borde
+   izquierdo y sobraban ~480 px de blanco a la derecha en TODA la
+   página. Ahora manda .pub-wrap: UN solo bloque de 960 px centrado.
+   Todo —título, texto, tabla, tarjetas, dibujos— arranca en el mismo
+   borde izquierdo y termina en el mismo derecho. No hay dos anchos
+   distintos conviviendo, que es lo que producía el escalonado.
+
+   Lo único que no llega al borde derecho son los párrafos, limitados a
+   70 caracteres (.pub-section p). Eso no es hueco: una línea de 95
+   caracteres no se lee. Los bloques que sí ganan con el ancho —línea
+   de tiempo, tarjetas, láminas, dibujos de patentes— usan los 960 px
+   completos.
    ================================================================ */
+
+/* ================= UN SOLO ANCHO ================= */
+.pub-wrap {
+  width: 100%;
+  max-width: 1008px;          /* 960 de contenido + 24 de aire a cada lado */
+  margin-inline: auto;
+  padding-inline: 24px;
+}
 
 /* ================= CABECERA DE PÁGINA ================= */
 .pub-hero {
-  padding: 56px 0 34px;
+  padding: 62px 0 46px;
   border-bottom: 1px solid var(--border);
 }
 
+.pub-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px 54px;
+  align-items: start;
+}
+
 .pub-hero h1 {
-  font-size: clamp(30px, 3.6vw, 44px);
-  line-height: 1.15;
-  letter-spacing: -0.5px;
-  margin: 0 0 14px;
-  max-width: 22ch;
+  font-size: clamp(30px, 3.4vw, 46px);
+  line-height: 1.12;
+  letter-spacing: -0.6px;
+  margin: 0 0 16px;
 }
 
 .pub-lead {
-  font-size: clamp(16px, 1.25vw, 19px);
+  font-size: 18px;
   line-height: 1.65;
-  color: #555;
-  max-width: 62ch;
-  margin: 0 0 22px;
+  color: #444;
+  margin: 0;
 }
 
-.pub-hero .catalogo-actions {
-  justify-content: flex-start;
-  margin-top: 6px;
+/* Ficha de datos duros, al lado del título: ocupa el hueco que antes
+   quedaba en blanco y de paso es el resumen que busca un comprador. */
+.pub-ficha {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 24px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
+}
+
+.pub-ficha dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 11px 18px;
+  margin: 0;
+  align-items: baseline;
+}
+
+.pub-ficha dt {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pub-ficha dd {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: #222;
 }
 
 /* ================= SECCIONES ================= */
 .pub-section {
-  padding: 46px 0 8px;
+  padding: 50px 0;
+  scroll-margin-top: 80px;   /* la topbar es sticky: si no, tapa el título */
 }
 
 .pub-section h2 {
-  font-size: clamp(22px, 2.4vw, 30px);
-  margin: 0 0 18px;
+  font-size: clamp(22px, 2.2vw, 29px);
+  line-height: 1.2;
   letter-spacing: -0.3px;
+  margin: 0 0 16px;
 }
 
 .pub-section p {
+  font-size: 17px;
   line-height: 1.7;
   color: #333;
-  max-width: 72ch;
-  margin: 0 0 14px;
+  margin: 0 0 15px;
+  max-width: 70ch;
+}
+
+/* Banda de fondo a todo el viewport, para cortar el bloque de texto
+   y que la página tenga ritmo vertical. */
+.pub-section--entradilla {
+  padding-bottom: 6px;
+}
+
+.pub-section--banda {
+  background: #fafafa;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .pub-note {
   font-size: 13.5px;
+  line-height: 1.6;
   color: var(--muted);
-  max-width: 72ch;
+  margin: 10px 0 0;
 }
 
 /* ================= LÍNEA DE TIEMPO ================= */
+/* Cada hito lleva su propia guía vertical: así entran en dos columnas
+   sin que se corte la línea, cosa que sí pasaba con el border en el <ol>. */
 .pub-timeline {
   list-style: none;
-  margin: 8px 0 0;
-  padding: 0 0 0 26px;
-  border-left: 2px solid #e2e2e2;
-  max-width: 72ch;
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0 48px;
 }
 
 .pub-timeline li {
   position: relative;
-  padding: 0 0 26px 18px;
+  border-left: 2px solid #e6e6e6;
+  padding: 0 0 26px 24px;
+}
+
+.pub-timeline li:last-child {
+  padding-bottom: 0;
 }
 
 .pub-timeline li::before {
   content: "";
   position: absolute;
-  left: -34px;
-  top: 6px;
+  left: -8px;
+  top: 5px;
   width: 14px;
   height: 14px;
   border-radius: 50%;
   background: var(--accent);
   border: 3px solid #fff;
-  box-shadow: 0 0 0 2px #e2e2e2;
+  box-shadow: 0 0 0 2px #e6e6e6;
 }
 
 .pub-timeline .anio {
@@ -96,28 +175,29 @@
 
 .pub-timeline p {
   margin: 0;
+  font-size: 16px;
 }
 
 /* ================= TABLA (diseños registrados) ================= */
 .pub-tabla-wrap {
   overflow-x: auto;
-  margin: 6px 0 14px;
+  margin: 20px 0 6px;
 }
 
 .pub-tabla {
   border-collapse: collapse;
-  width: auto;
-  min-width: 520px;
-  font-size: 14px;
+  width: auto;                /* nunca estirada: la manda el contenido */
+  min-width: 480px;
+  font-size: 14.5px;
+  background: #fff;
 }
 
 .pub-tabla th,
 .pub-tabla td {
   border: 1px solid var(--border);
-  padding: 9px 14px;
+  padding: 10px 14px;
   text-align: center;
   vertical-align: middle;
-  white-space: nowrap;
 }
 
 .pub-tabla th {
@@ -126,20 +206,21 @@
   text-transform: uppercase;
   color: #444;
   font-weight: 800;
+  background: #fff;
 }
 
 /* ================= TARJETAS DE ARGUMENTOS ================= */
 .pub-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 22px;
 }
 
 .pub-card {
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 22px 20px 18px;
+  padding: 22px 22px 20px;
   background: #fff;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
 }
@@ -156,68 +237,16 @@
   margin: 0;
 }
 
-.pub-card .pub-num {
-  display: block;
-  font-size: 30px;
-  font-weight: 900;
-  color: var(--accent);
-  line-height: 1;
-  margin-bottom: 8px;
-}
-
-/* ================= PASOS ================= */
-.pub-pasos {
-  list-style: none;
-  counter-reset: paso;
-  padding: 0;
-  margin: 8px 0 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.pub-pasos li {
-  counter-increment: paso;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 22px 20px 18px 20px;
-  position: relative;
-}
-
-.pub-pasos li::before {
-  content: counter(paso);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  font-weight: 900;
-  margin-bottom: 12px;
-}
-
-.pub-pasos h3 {
-  font-size: 16px;
-  margin: 0 0 6px;
-}
-
-.pub-pasos p {
-  font-size: 14.5px;
-  color: #555;
-  margin: 0;
-}
-
-/* ================= LÍNEAS (chips) ================= */
-.pub-lineas {
+/* ================= OTRAS LÍNEAS (pie de categoría) ================= */
+.pub-otras {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 6px;
+  align-items: center;
+  margin-top: 40px;
 }
 
-.pub-lineas a {
+.pub-otras a {
   border: 1px solid var(--border);
   border-radius: 40px;
   padding: 9px 16px;
@@ -227,147 +256,10 @@
   transition: all 0.2s ease;
 }
 
-.pub-lineas a:hover {
+.pub-otras a:hover {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
-}
-
-.pub-lineas a small {
-  font-weight: 400;
-  color: inherit;
-  opacity: 0.75;
-  margin-left: 4px;
-}
-
-/* ================= LOGOS DE CLIENTES (estático) ================= */
-.pub-logos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px 30px;
-  align-items: center;
-  margin-top: 6px;
-}
-
-.pub-logos img {
-  height: 44px;
-  width: auto;
-  filter: grayscale(1);
-  opacity: 0.8;
-  transition: all 0.2s ease;
-}
-
-.pub-logos img:hover {
-  filter: none;
-  opacity: 1;
-}
-
-/* ================= FORMULARIO ================= */
-.pub-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 18px;
-  max-width: 760px;
-  margin-top: 6px;
-}
-
-.pub-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #333;
-}
-
-.pub-form input,
-.pub-form select,
-.pub-form textarea {
-  font: inherit;
-  font-size: 15px;
-  padding: 11px 12px;
-  border: 1px solid #d6d6d6;
-  border-radius: 10px;
-  background: #fff;
-}
-
-.pub-form input:focus,
-.pub-form select:focus,
-.pub-form textarea:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-  border-color: var(--accent);
-}
-
-.pub-form .ancho {
-  grid-column: 1 / -1;
-}
-
-.pub-form-acciones {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.pub-form-ok {
-  grid-column: 1 / -1;
-  display: none;
-  background: #eef8f0;
-  border: 1px solid #bfe3c6;
-  border-radius: 10px;
-  padding: 12px 14px;
-  font-size: 14.5px;
-}
-
-.pub-form-ok.visible {
-  display: block;
-}
-
-/* ================= PREGUNTAS FRECUENTES ================= */
-.pub-faq {
-  max-width: 72ch;
-}
-
-.pub-faq details {
-  border-bottom: 1px solid var(--border);
-  padding: 12px 0;
-}
-
-.pub-faq summary {
-  cursor: pointer;
-  font-weight: 800;
-  font-size: 15.5px;
-  list-style: none;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pub-faq summary::-webkit-details-marker {
-  display: none;
-}
-
-.pub-faq summary::after {
-  content: "+";
-  color: var(--accent);
-  font-weight: 900;
-}
-
-.pub-faq details[open] summary::after {
-  content: "–";
-}
-
-.pub-faq p {
-  margin: 10px 0 0;
-  font-size: 14.5px;
-}
-
-/* ================= OTRAS LÍNEAS (pie de categoría) ================= */
-.pub-otras {
-  margin-top: 40px;
-  align-items: center;
 }
 
 .pub-otras-label {
@@ -377,75 +269,48 @@
   margin-right: 4px;
 }
 
-/* ================= CTA FINAL ================= */
-.pub-cta {
-  margin: 50px 0 70px;
-}
-
-/* ================= RESPONSIVE ================= */
-@media (max-width: 1024px) {
-  .pub-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 760px) {
-  .pub-hero {
-    padding: 36px 0 26px;
-  }
-
-  .pub-section {
-    padding: 34px 0 6px;
-  }
-
-  .pub-pasos {
-    grid-template-columns: 1fr;
-  }
-
-  .pub-form {
-    grid-template-columns: 1fr;
-  }
-
-  .pub-timeline {
-    padding-left: 18px;
-  }
-
-  .pub-timeline li::before {
-    left: -26px;
-  }
-}
-
-@media (max-width: 480px) {
-  .pub-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .pub-logos img {
-    height: 34px;
-  }
-}
-
 /* ================= FIGURAS (dibujos de patentes) ================= */
 .pub-figuras {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22px;
-  margin: 26px 0 30px;
-  max-width: 920px;
+  gap: 26px;
+  margin: 28px 0 30px;
 }
 
+/* Cuando hay un solo dibujo, el epígrafe va al costado en vez de abajo:
+   si no, quedaban 700 px de blanco a la derecha de la lámina. */
 .pub-figuras--una {
-  grid-template-columns: minmax(0, 300px);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pub-figuras--una .pub-figura {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 26px;
+  align-items: end;
+}
+
+.pub-figuras--una .pub-figura figcaption {
+  margin-top: 0;
+  max-width: 46ch;
+  font-size: 13.5px;
+  padding-bottom: 6px;
 }
 
 .pub-figura {
   margin: 0;
 }
 
+/* Todas las figuras de una fila con la MISMA ALTURA, sin importar el ancho
+   del dibujo: así los epígrafes arrancan a la misma altura en vez de
+   quedar escalonados. El ancho lo define cada lámina. */
 .pub-figura img {
-  width: 100%;
-  height: auto;
+  height: 380px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
   display: block;
+  margin-inline: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #fff;
@@ -458,21 +323,92 @@
   margin-top: 8px;
 }
 
-/* Láminas del INPI: son verticales y de distinto tamaño entre sí; se muestran
-   sobre fondo blanco, alineadas arriba y sin recortar. */
+/* Láminas del INPI: son fotocopias de microfilm de 150 a 322 px de ancho.
+   Se muestran a 170 px como máximo —nunca ampliadas más allá de su
+   tamaño real— para que se lean nítidas en vez de pixeladas. */
 .pub-figuras--laminas {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 200px));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: start;
+  gap: 18px;
+  margin-top: 22px;
 }
 
 .pub-figuras--laminas .pub-figura img {
-  object-fit: contain;
-  padding: 8px;
+  height: 150px;
+  padding: 6px;
 }
 
-@media (max-width: 760px) {
+.pub-figuras--laminas .pub-figura figcaption {
+  font-size: 11.5px;
+  text-align: center;
+}
+
+/* Los botones "Ver los abrelatas / peladores / sacacorchos" cierran un
+   bloque de texto alineado a la izquierda: centrarlos los descolgaba.
+   El CTA final sí queda centrado, porque ahí el bloque entero lo está. */
+.pub-section .catalogo-actions {
+  justify-content: flex-start;
+  margin: 22px 0 0;
+}
+
+.pub-cta .catalogo-actions {
+  justify-content: center;
+}
+
+/* ================= CTA FINAL ================= */
+.pub-cta {
+  padding: 8px 0 72px;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (min-width: 900px) {
+  /* Siete hitos en una sola columna dejaban 500 px de blanco al lado. */
+  .pub-timeline--dos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .pub-hero {
+    padding: 38px 0 30px;
+  }
+
+  .pub-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+  }
+
+  .pub-section {
+    padding: 36px 0;
+  }
+
   .pub-figuras {
-    grid-template-columns: minmax(0, 320px);
-    justify-content: center;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+  }
+
+  .pub-figuras--una .pub-figura {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  /* las cinco láminas, de a dos por fila en vez de una debajo de otra */
+  .pub-figuras--laminas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .pub-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pub-ficha dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px 0;
+  }
+
+  .pub-ficha dt {
+    margin-top: 10px;
   }
 }
