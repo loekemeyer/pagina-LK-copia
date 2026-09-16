@@ -14248,16 +14248,18 @@ function _gvFugaTemprana(f) {
   var lista = (f.lista || []).map(function (x) {
     return '<tr class="gv-drill-click" onclick="gvAbrirDrill(\'pedidos\',null,' +
       _gvQ(x.cod) + ',null,' + _gvQ(x.nom) + ',true)"><td>' + escHtml(x.nom) +
-      ' <span class="est-cod">' + escHtml(x.cod) + "</span></td><td>compra cada " +
-      _gvNum(x.mediana) + " días</td><td>hace <strong>" + _gvNum(x.dias) +
-      "</strong> que no compra</td></tr>";
+      ' <span class="est-cod">' + escHtml(x.cod) + "</span></td><td>" +
+      _gvNum(x.mediana) + " días</td><td><strong>" + _gvNum(x.dias) +
+      "</strong> días</td></tr>";
   }).join("");
   return (
     '<div class="gv-graf gv-graf-full gv-alerta"><h4>⚠ Fuga temprana — ' + f.clientes +
     " clientes se están retrasando</h4>" +
     '<p class="gv-dash-nota">Se pasaron de su ritmo habitual pero todavía no están fríos. ' +
     "Es el momento de llamarlos: agarrarlos ahora es más barato que reactivarlos después.</p>" +
-    '<table class="est-table gv-mini"><tbody>' + lista + "</tbody></table></div>"
+    '<table class="est-table gv-mini"><thead><tr><th>Cliente</th>' +
+    "<th>Compra cada</th><th>Hace que no compra</th></tr></thead><tbody>" +
+    lista + "</tbody></table></div>"
   );
 }
 
