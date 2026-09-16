@@ -451,6 +451,21 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
   normalizado, así que "15.09.2026 08:00" también entra) y `sync_pedidos_match_virgilio()` las
   copia a `lk_pedidos_match` por el FDW. Chef va `NULL` (su portal no carga OC de súper).
   `sql/pedidos_match_fecha_entrega.sql`, backup en `sql/backups/`.
+- **⚠ Y ese texto NO SE CASTEA CON `::date` — el 16/09/2026 apagó el armado automático de Gestión
+  por 2 horas.** `sheets_payload->>'fecha_entrega'` es TEXTO del proveedor: la OC del pedido 1468
+  (INC, Krikos) trajo **`"29/09/2026 14:00"`** y los tres feeds que consume Gestión
+  (`gv_pedidos_web_np_lk`, `gv_pedidos_web_np_chef`, `_chef_fdw`) lo casteaban directo →
+  `22008 date/time field value out of range`. La RPC entera devuelve 400, así que **un solo
+  pedido con turno dejó al cron de Gestión leyendo 0 NP de LK durante 24 corridas seguidas** (de
+  las 13:55 a las 15:50; ningún pedido web de LK se programó solo). Desde la v19.11 el parseo vive
+  en **`gv_fe_pactada_fecha(text)`** y **`gv_fe_pactada_hora(text)`** (`immutable`, mismo criterio
+  que `v_pedidos_match`): lo que no entienden devuelve NULL, nunca un error. Y el turno ya se VE:
+  **`v_pedidos_web_np` publica `fecha_entrega_txt`, `fecha_entrega_pactada` y
+  `hora_entrega_pactada`** (las 3 al final, y la vista conserva `security_invoker`), que es de
+  donde las lee el badge del reloj de "A Programar" de Gestión. **Regla: ninguna fecha que venga
+  de `sheets_payload` se castea directo.** SQL, medición y rollback:
+  `sql/gv_turno_entrega_oc_v1911.sql` del repo `Gestion-Virgilio` (+ §3.in de su doc de Supabase).
+  Problema 357.
 - `krikos_inbox_list` y `krikos_inbox_resolver` son `SECURITY DEFINER` con chequeo de `admins`
   adentro y `EXECUTE` revocado a `PUBLIC`/`anon`. La tabla tiene RLS de solo lectura para admins
   (escribe únicamente `service_role`) y el bucket es privado con policy de lectura para admins.
