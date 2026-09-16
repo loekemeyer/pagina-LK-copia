@@ -409,6 +409,18 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
   viejas (entrega 28/07, 03/08, 18/08) devolvieron `text/html` de 9.845 bytes en vez del PDF y
   quedaron en `estado = 'error'`; las 7 recientes bajaron bien (146-181 kB). No es un bug: en
   régimen el cron procesa el mail del día. Sólo aparece si se pide una ventana larga hacia atrás.
+- **⚠ El ingest busca por REMITENTE, así que también entran los mails de SERVICIO de Krikos360**
+  (recupero de contraseña, alta de usuario). Hasta el 16/9/2026 quedaban como `estado = 'error'`
+  con todos los campos en null, y `sync_krikos_oc_virgilio` los empujaba a la PPP de Gestión: el
+  15/09 dos de esos mails salieron en "A Programar" como *"2 órdenes de compra de súper NO se pudo
+  importar"*, con la fila vacía y sin nada que resolver. Ahora `krikos-ingest` los anota como
+  **`estado = 'ignorado'`** (se anotan igual, para no volver a bajarlos cada 10 min, pero ese
+  estado no viaja a Virgilio). **La condición NO es "no trae link"**: ese caso tapa dos cosas
+  distintas, y la otra es una OC de verdad cuyo link no matcheó `LINK_RE` — si Planexware cambia
+  el host o el formato del token caen TODAS, y mandarlas a `ignorado` sería tirar órdenes de
+  compra reales en silencio. Se mira el mail (`pareceOc`): asunto con "orden de compra", o cuerpo
+  con los campos que sólo trae una OC (Nº de Documento, Emisor … Receptor). **Parece OC y no hay
+  link → sigue en `error`, visible en la PPP.** Problema 362.
 - **Flujo**: cron `krikos-ingest-10min` (pg_cron, `*/10`) → `net.http_post` a la Edge Function
   **`krikos-ingest`** (header `x-krikos-secret`) → IMAP a la casilla → por cada mail nuevo baja el
   PDF al bucket privado **`krikos-oc`** (`<año>/<doc_id>.pdf`) e inserta en **`krikos_oc_inbox`**

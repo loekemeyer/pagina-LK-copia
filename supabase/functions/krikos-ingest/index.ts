@@ -27,6 +27,11 @@
 //   { action: "status" }
 //       → conteo por estado de la bandeja.
 //
+// Estados en `krikos_oc_inbox`: pendiente (hay que cargarla) · cargado · descartado ·
+// error (es una OC y algo falló: el link no dio PDF, o directamente no había link) ·
+// ignorado (mail del mismo remitente que NO es una OC: recupero de contraseña, alta de
+// usuario…). Sólo `pendiente` y `error` viajan a la PPP de Gestión.
+//
 // ⚠ En la casilla real los mails ENTRAN a INBOX y después los ARCHIVAN a mano en
 // otra carpeta. Mirando sólo INBOX se pierde todo lo archivado (y lo que archiven
 // antes de la próxima corrida del cron, que es cada 10 min). Por eso las carpetas
@@ -382,6 +387,23 @@ function docIdFromToken(token: string): string | null {
     return j && j.id != null ? String(j.id) : null;
   } catch { return null; }
 }
+// ¿Este mail es una notificación de OC, aunque no le hayamos podido sacar el link?
+//
+// ⚠ NO alcanza con "no trae link" para decidir que un mail no es una OC: ese mismo caso
+// tapa dos cosas muy distintas. Una es un mail de servicio de Krikos360 (recupero de
+// contraseña, alta de usuario), que llega del MISMO remitente y no es una OC. La otra es
+// una OC de verdad cuyo link no matcheó `LINK_RE` — si Planexware cambia el host o el
+// formato del token, TODAS las OC caen acá. Mandar las dos al mismo lugar significa, en el
+// segundo caso, tirar órdenes de compra reales en silencio.
+//
+// Por eso se mira el mail: asunto con "orden de compra", o el cuerpo con los campos que
+// sólo trae una OC (Nº de Documento, Emisor … Receptor). Si parece OC → queda en `error`,
+// visible en la PPP, que es lo que hay que ir a mirar. Si no → `ignorado`.
+function pareceOc(subject: string, mail: MailText): boolean {
+  if (/orden\s*de\s*compra/i.test(subject)) return true;
+  const t = ((mail.html ? htmlToText(mail.html) : mail.text) || "").replace(/\s+/g, " ");
+  return /N[°ºo]?\s*de\s*Documento/i.test(t) || /\bEmisor\b[\s\S]{0,400}?\bReceptor\b/i.test(t);
+}
 function extractOc(mail: MailText): OcInfo | null {
   const html = mail.html;
   const linkM = LINK_RE.exec(html) || LINK_RE.exec(mail.text);
@@ -490,7 +512,7 @@ async function actionSync(days: number, dryRun: boolean) {
   const started = Date.now();
   const mbs = await mailboxes();
   const { imap, auth } = await openMailbox(mbs[0]);
-  const summary = { ok: true, auth, days, dry_run: dryRun, carpetas: mbs, encontrados: 0, ya_procesados: 0, nuevos: 0, insertados: 0, errores: 0, detalle: [] as unknown[], ms: 0 };
+  const summary = { ok: true, auth, days, dry_run: dryRun, carpetas: mbs, encontrados: 0, ya_procesados: 0, nuevos: 0, insertados: 0, errores: 0, ignorados: 0, detalle: [] as unknown[], ms: 0 };
   try {
     const since = new Date(Date.now() - days * 86400000);
     // Una vuelta por carpeta: los mails entran a INBOX y después los archivan, así
@@ -529,14 +551,24 @@ async function actionSync(days: number, dryRun: boolean) {
         const oc = extractOc(mail);
         det.subject = subject;
         if (!oc) {
-          det.skip = "sin link de Krikos";
+          // El ingest busca por REMITENTE, así que del mismo `noreply@planexware.com`
+          // llegan también los mails de servicio de Krikos360. Se anotan igual (para no
+          // volver a bajarlos en cada corrida) pero como `ignorado`: ese estado NO lo
+          // empuja `sync_krikos_oc_virgilio`, así que no aparecen en la PPP de Gestión
+          // como "OC que no se pudo importar" — que es lo que pasó el 15/09 con un
+          // recupero de contraseña y un alta de usuario (filas 22 y 23, vacías y sin
+          // nada que resolver).
+          const esOc = pareceOc(subject, mail);
+          det.skip = esOc ? "parece OC pero sin link de Krikos" : "mail de servicio, no es OC";
           if (!dryRun) {
             await sb.from("krikos_oc_inbox").insert({
               link: "", mail_uid, mail_fecha: internalDateToIso(internalDate), mail_subject: subject,
-              estado: "error", error_msg: "mail sin link de documento Krikos",
+              estado: esOc ? "error" : "ignorado",
+              error_msg: esOc ? "mail sin link de documento Krikos"
+                              : "mail de servicio de Krikos360, no es una OC",
             });
           }
-          summary.errores++;
+          if (esOc) summary.errores++; else summary.ignorados++;
           continue;
         }
         det.doc_id = oc.doc_id; det.cadena = oc.cadena; det.nro = oc.nro_documento;
