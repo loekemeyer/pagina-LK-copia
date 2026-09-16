@@ -613,17 +613,20 @@ las aprueben. No muestran precios.
 | Página | Qué es | Origen del contenido |
 |---|---|---|
 | `historia.html` | Nuestra historia: línea de tiempo 1950→hoy, los 5 modelos industriales del INPI (12433/1969, 18279/1971, 27925/1975, 29777/1976, 66602/1999, todos vencidos: se muestran como registros históricos), marca, garantía, INAL/ADIMRA, historia del abrelatas. Tiene un comentario `QUIENES-SOMOS-2018` donde va el texto del sitio viejo cuando lo pasen. | Capturas del INPI + mails |
-| `catalogo/index.html` + `catalogo/<slug>.html` (19) | Catálogo público estático sin precios, una página por línea, fotos del bucket `products-images`. **Generado**: no editar a mano. | `scripts/generar-catalogo.py` + `scripts/catalogo-data.json` |
+| `productos/index.html` + `productos/<slug>.html` (19) | Catálogo público estático sin precios, una página por línea, fotos del bucket `products-images`. **Generado**: no editar a mano. | `scripts/generar-catalogo.py` + `scripts/catalogo-data.json` |
 | `css/publico.css` | Estilos propios de estas páginas (complementa `styles.index.css` y `productos.css`). | |
 | `js/conversiones.js` | Google Tag + conversiones (WhatsApp, PDF, formulario, mail). **Inactivo hasta pegar el `AW-…`** en `LK_ADS_ID`. | |
 
 - **Regenerar el catálogo**: exportar `public.products` (activos) a `scripts/catalogo-data.json` con el
   mismo formato y correr `python3 scripts/generar-catalogo.py`. `scripts/` no se sube al IIS; `catalogo/` sí.
-- **Por qué `catalogo/` y no `/productos/`**: en el IIS, `/productos/` todavía tiene el sitio viejo
-  (`abrelatas.htm`, `coladores.html`, `mates-bombillas.html`, `quienes_somos.html`…), indexado por Google.
-  Cuando se retire: `SALIDA = "productos"` en el generador, regenerar y 301 desde el `web.config`.
+- **Se publica en `/productos/`, no en `/catalogo/`**: el 16/09/2026 se verificó que `/productos/` NO
+  existe en el IIS y que el botón "VER PRODUCTOS ONLINE" (`index.html:124`) y el link "Productos" del
+  pie (`index.html:829`) daban error desde hacía tiempo. Este catálogo ocupa esa carpeta y arregla los
+  dos links sin tocar la home. Las URLs del sitio viejo (`abrelatas.htm`, `coladores.html`,
+  `quienes_somos.html`…) siguen indexadas en Google pero ya no responden: si alguna vale la pena, se
+  reemplaza con una página nueva del mismo nombre.
 - **Para publicar**: `NOINDEX = False` en el generador y quitar la meta `robots` de `historia.html`; agregar todas al `sitemap.xml`; linkear desde la home (nav, footer y el botón
-  "Ver productos online", que hoy apunta a `/productos/`).
+  "Ver productos online", que ya apunta a `/productos/` y empieza a funcionar solo).
 - El sufijo `E` en el código de artículo marca importado (`importado: true` en el JSON). El catálogo
   público NO lo muestra hasta que se confirme la regla.
 

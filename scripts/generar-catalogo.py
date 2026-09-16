@@ -15,11 +15,13 @@ CÓMO REGENERAR. Exportar los productos activos a scripts/catalogo-data.json
 (mismo formato) y correr:  python3 scripts/generar-catalogo.py
 Las carpetas scripts/ no se suben al IIS (ver deploy-iis.yml); las páginas sí.
 
-DÓNDE SE PUBLICA. SALIDA = "catalogo". El destino natural es /productos/, que
-es adonde apunta el botón "Ver productos online" de la home, pero esa carpeta
-del servidor todavía tiene el sitio viejo (abrelatas.htm, coladores.html…).
-Cuando se retire el sitio viejo: cambiar SALIDA a "productos", regenerar y
-redirigir las URLs viejas con 301 desde el web.config.
+DÓNDE SE PUBLICA. SALIDA = "productos", que es adonde ya apuntan el botón
+"VER PRODUCTOS ONLINE" (index.html:124) y el link "Productos" del pie
+(index.html:829). Hasta el 16/09/2026 se creía que esa carpeta tenía el sitio
+viejo (abrelatas.htm, coladores.html, quienes_somos.html) y por eso el catálogo
+se generaba en /catalogo/. Es falso: Tomás verificó que la carpeta NO existe en
+el IIS y que los dos links de la home dan error. Publicar acá arregla ese 404 y
+reusa las URLs que Google ya tiene indexadas del sitio viejo.
 """
 import json
 import os
@@ -28,7 +30,7 @@ from urllib.parse import quote
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATOS = os.path.join(RAIZ, "scripts", "catalogo-data.json")
-SALIDA = "catalogo"
+SALIDA = "productos"
 DOMINIO = "https://loekemeyer.com"
 
 # Mismo helper de imágenes que script.js (products-images es un bucket público,
