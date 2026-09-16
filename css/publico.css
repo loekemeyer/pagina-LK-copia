@@ -458,6 +458,18 @@
   margin-top: 8px;
 }
 
+/* Láminas del INPI: son verticales y de distinto tamaño entre sí; se muestran
+   sobre fondo blanco, alineadas arriba y sin recortar. */
+.pub-figuras--laminas {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 200px));
+  align-items: start;
+}
+
+.pub-figuras--laminas .pub-figura img {
+  object-fit: contain;
+  padding: 8px;
+}
+
 /* Fotos de producto: cuadradas y sobre fondo claro, a diferencia de las
    láminas de patente, que son verticales. */
 .pub-figuras--fotos .pub-figura img {

@@ -16,9 +16,9 @@
     <meta property="og:url" content="https://loekemeyer.com/historia.html" />
     <meta property="og:image" content="https://loekemeyer.com/img/img_landing.webp" />
     <link rel="icon" type="image/png" href="img/favicon.jpg" />
-    <link rel="stylesheet" href="css/styles.index.css?v=23402" />
-    <link rel="stylesheet" href="css/productos.css?v=23402" />
-    <link rel="stylesheet" href="css/publico.css?v=23402" />
+    <link rel="stylesheet" href="css/styles.index.css?v=23403" />
+    <link rel="stylesheet" href="css/productos.css?v=23403" />
+    <link rel="stylesheet" href="css/publico.css?v=23403" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -168,10 +168,53 @@
               </tbody>
             </table>
           </div>
-          <!-- LÁMINAS: cuando estén las 5 láminas del INPI en buena calidad
-               (img/disenos/12433.webp, 18279.webp, 27925.webp, 29777.webp,
-               66602.webp), agregar debajo de la tabla una grilla .prod-grid con
-               una <figure> por modelo: dibujo + "Modelo N° … · año". -->
+          <!-- ===================================================================
+               LÁMINAS DEL INPI — LISTO PARA ACTIVAR
+
+               Los dibujos depositados en el INPI son los planos originales de la
+               empresa y son públicos desde el registro. Tomás los tiene; al chat
+               llegaron como imágenes pegadas, que no dejan archivo en el
+               servidor, así que hay que copiarlos al repo.
+
+               PARA ACTIVARLO, dos pasos:
+               1. Guardar los cinco archivos en img/historia/inpi/ con estos
+                  nombres exactos:
+                     12433.png   Afilador, 1969
+                     18279.png   Empuñadura para útiles de cocina, 1971
+                     27925.png   Dispositivo para pelar frutas, 1975
+                     29777.png   Empuñadura para útiles de cocina, 1976
+                     66602.png   Corta tortas, 1999
+               2. Borrar esta línea de apertura del comentario y la de cierre.
+
+               OJO CON LA CALIDAD: las copias que circularon miden entre 185 y
+               336 px de ancho (fotocopias de microfilm). Al lado de los dibujos
+               de patentes de esta misma página, que tienen 860 px, se ven
+               borrosas. Conviene bajarlas del portal del INPI en su tamaño
+               original, o pedir al INPI un nuevo testimonio de cada modelo.
+               ===================================================================
+          <div class="pub-figuras pub-figuras--laminas">
+            <figure class="pub-figura">
+              <img src="img/historia/inpi/12433.png" alt="Lámina del modelo industrial 12.433, afilador de cuchillos Loekemeyer, 1969" loading="lazy" />
+              <figcaption>Afilador. Modelo industrial N° 12.433, registrado el 1 de septiembre de 1969.</figcaption>
+            </figure>
+            <figure class="pub-figura">
+              <img src="img/historia/inpi/18279.png" alt="Lámina del modelo industrial 18.279, empuñadura para útiles de cocina Loekemeyer, 1971" loading="lazy" />
+              <figcaption>Empuñadura para útiles de cocina. Modelo N° 18.279, 14 de septiembre de 1971.</figcaption>
+            </figure>
+            <figure class="pub-figura">
+              <img src="img/historia/inpi/27925.png" alt="Lámina del modelo industrial 27.925, dispositivo para pelar frutas Loekemeyer, 1975" loading="lazy" />
+              <figcaption>Dispositivo para pelar frutas. Modelo N° 27.925, 30 de mayo de 1975.</figcaption>
+            </figure>
+            <figure class="pub-figura">
+              <img src="img/historia/inpi/29777.png" alt="Lámina del modelo industrial 29.777, empuñadura para útiles de cocina Loekemeyer, 1976" loading="lazy" />
+              <figcaption>Empuñadura para útiles de cocina. Modelo N° 29.777, 26 de enero de 1976.</figcaption>
+            </figure>
+            <figure class="pub-figura">
+              <img src="img/historia/inpi/66602.png" alt="Lámina del modelo industrial 66.602, corta tortas Loekemeyer, 1999" loading="lazy" />
+              <figcaption>Corta tortas. Modelo N° 66.602, 1 de marzo de 1999.</figcaption>
+            </figure>
+          </div>
+               -->
           <p class="pub-note">
             Fuente: Instituto Nacional de la Propiedad Industrial, búsqueda
             avanzada de modelos y diseños industriales, titular Loekemeyer.
@@ -440,8 +483,8 @@
       </div>
     </div>
 
-    <script src="version.js?v=23402"></script>
-    <script src="script.index.js?v=23402"></script>
-    <script src="js/conversiones.js?v=23402"></script>
+    <script src="version.js?v=23403"></script>
+    <script src="script.index.js?v=23403"></script>
+    <script src="js/conversiones.js?v=23403"></script>
   </body>
 </html>
