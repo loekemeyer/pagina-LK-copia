@@ -1,6 +1,6 @@
 {
  "generado": "2026-09-15",
- "fuente": "public.products (active = true), proyecto kwkclwhmoygunqmlegrg",
+ "fuente": "public.products (active = true), proyecto kwkclwhmoygunqmlegrg. El campo 'imagenes' es products.images tal cual: si está cargado manda sobre el nombre derivado del código.",
  "total": 199,
  "categorias": [
   {
@@ -16,7 +16,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "510",
@@ -24,7 +25,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "501",
@@ -32,7 +34,8 @@
      "uxb": 6,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "503E",
@@ -40,7 +43,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "066",
@@ -48,7 +52,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "512",
@@ -56,7 +61,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "502",
@@ -64,7 +70,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "511",
@@ -72,7 +79,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "500",
@@ -80,7 +88,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -97,7 +106,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "513",
@@ -105,7 +115,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "586",
@@ -113,7 +124,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "587",
@@ -121,7 +133,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "598E",
@@ -129,7 +142,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "589E",
@@ -137,7 +151,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "599E",
@@ -145,7 +160,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "816E",
@@ -153,7 +169,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "569",
@@ -161,7 +178,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -178,7 +196,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "521",
@@ -186,7 +205,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "530",
@@ -194,7 +214,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "531",
@@ -202,7 +223,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "529E",
@@ -210,7 +232,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "540E",
@@ -218,7 +241,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "536E",
@@ -226,7 +250,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "539E",
@@ -234,7 +259,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "538E",
@@ -242,7 +268,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "819E",
@@ -250,7 +277,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "522E",
@@ -258,7 +286,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "523",
@@ -266,7 +295,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "585E",
@@ -274,7 +304,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "581",
@@ -282,7 +313,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "525E",
@@ -290,7 +322,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     }
    ]
   },
@@ -307,7 +340,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "574E",
@@ -315,7 +349,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "562",
@@ -323,7 +358,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "564",
@@ -331,7 +367,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "809E",
@@ -339,7 +376,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "811E",
@@ -347,7 +385,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "810E",
@@ -355,7 +394,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "559",
@@ -363,7 +403,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "812E",
@@ -371,7 +412,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "395",
@@ -379,7 +421,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "537",
@@ -387,7 +430,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "567",
@@ -395,7 +439,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -412,7 +457,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "323E",
@@ -420,7 +466,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "817E",
@@ -428,7 +475,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "368E",
@@ -436,7 +484,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "360E",
@@ -444,7 +493,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "328E",
@@ -452,7 +502,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "361E",
@@ -460,7 +511,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "363E",
@@ -468,7 +520,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "366E",
@@ -476,7 +529,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "367E",
@@ -484,7 +538,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "870E",
@@ -492,7 +547,8 @@
      "uxb": 4,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     }
    ]
   },
@@ -509,7 +565,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "034",
@@ -517,7 +574,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "026",
@@ -525,7 +583,8 @@
      "uxb": 36,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "027",
@@ -533,7 +592,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "437E",
@@ -541,7 +601,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "438E",
@@ -549,7 +610,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "439E",
@@ -557,7 +619,8 @@
      "uxb": 6,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "440E",
@@ -565,7 +628,8 @@
      "uxb": 4,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "260E",
@@ -573,7 +637,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "441",
@@ -581,7 +646,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "035E",
@@ -589,7 +655,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     }
    ]
   },
@@ -606,7 +673,8 @@
      "uxb": 6,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "404E",
@@ -614,7 +682,8 @@
      "uxb": 4,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     }
    ]
   },
@@ -631,7 +700,8 @@
      "uxb": 12,
      "subcategoria": "Madera",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "982E",
@@ -639,7 +709,8 @@
      "uxb": 12,
      "subcategoria": "Madera",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "983E",
@@ -647,7 +718,8 @@
      "uxb": 12,
      "subcategoria": "Madera",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "984E",
@@ -655,7 +727,8 @@
      "uxb": 12,
      "subcategoria": "Madera",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "985E",
@@ -663,7 +736,8 @@
      "uxb": 12,
      "subcategoria": "Madera",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "980E",
@@ -671,7 +745,8 @@
      "uxb": 12,
      "subcategoria": "Madera",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "988E",
@@ -679,7 +754,8 @@
      "uxb": 12,
      "subcategoria": "Madera",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "952E",
@@ -687,7 +763,8 @@
      "uxb": 12,
      "subcategoria": "Silicona",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "955E",
@@ -695,7 +772,8 @@
      "uxb": 12,
      "subcategoria": "Silicona",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "953E",
@@ -703,7 +781,8 @@
      "uxb": 12,
      "subcategoria": "Silicona",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "951E",
@@ -711,7 +790,8 @@
      "uxb": 12,
      "subcategoria": "Silicona",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "954E",
@@ -719,7 +799,8 @@
      "uxb": 12,
      "subcategoria": "Silicona",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "956E",
@@ -727,7 +808,8 @@
      "uxb": 12,
      "subcategoria": "Silicona",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "957E",
@@ -735,7 +817,8 @@
      "uxb": 12,
      "subcategoria": "Silicona",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "958E",
@@ -743,7 +826,8 @@
      "uxb": 12,
      "subcategoria": "Silicona",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "935E",
@@ -751,7 +835,8 @@
      "uxb": 12,
      "subcategoria": "Nylon Premium",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "936E",
@@ -759,7 +844,8 @@
      "uxb": 12,
      "subcategoria": "Nylon Premium",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "937E",
@@ -767,7 +853,8 @@
      "uxb": 12,
      "subcategoria": "Nylon Premium",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "932E",
@@ -775,7 +862,8 @@
      "uxb": 12,
      "subcategoria": "Nylon Premium",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "933E",
@@ -783,7 +871,8 @@
      "uxb": 12,
      "subcategoria": "Nylon Premium",
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "934E",
@@ -791,7 +880,8 @@
      "uxb": 12,
      "subcategoria": "Nylon Premium",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "931E",
@@ -799,7 +889,8 @@
      "uxb": 12,
      "subcategoria": "Nylon Premium",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "942E",
@@ -807,7 +898,8 @@
      "uxb": 12,
      "subcategoria": "Inoxidable",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "943E",
@@ -815,7 +907,8 @@
      "uxb": 12,
      "subcategoria": "Inoxidable",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "944E",
@@ -823,7 +916,8 @@
      "uxb": 12,
      "subcategoria": "Inoxidable",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "945E",
@@ -831,7 +925,8 @@
      "uxb": 12,
      "subcategoria": "Inoxidable",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "941E",
@@ -839,7 +934,8 @@
      "uxb": 12,
      "subcategoria": "Inoxidable",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "946E",
@@ -847,7 +943,8 @@
      "uxb": 12,
      "subcategoria": "Inoxidable",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "948E",
@@ -855,7 +952,8 @@
      "uxb": 12,
      "subcategoria": "Inoxidable",
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "315",
@@ -863,7 +961,8 @@
      "uxb": 12,
      "subcategoria": "Inoxidable",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "335",
@@ -871,7 +970,8 @@
      "uxb": 24,
      "subcategoria": "Inoxidable",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "332",
@@ -879,7 +979,8 @@
      "uxb": 24,
      "subcategoria": "Inoxidable",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "338",
@@ -887,7 +988,8 @@
      "uxb": 24,
      "subcategoria": "Inoxidable",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "570",
@@ -895,7 +997,8 @@
      "uxb": 24,
      "subcategoria": "Inoxidable",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "337",
@@ -903,7 +1006,8 @@
      "uxb": 24,
      "subcategoria": "Inoxidable",
      "badge": "LIQUIDACIÓN",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "355",
@@ -911,7 +1015,8 @@
      "uxb": 24,
      "subcategoria": "Nylon",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "393",
@@ -919,7 +1024,8 @@
      "uxb": 24,
      "subcategoria": "Nylon",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "394",
@@ -927,7 +1033,8 @@
      "uxb": 24,
      "subcategoria": "Nylon",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "392",
@@ -935,7 +1042,8 @@
      "uxb": 24,
      "subcategoria": "Nylon",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "390",
@@ -943,7 +1051,8 @@
      "uxb": 24,
      "subcategoria": "Nylon",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "391",
@@ -951,7 +1060,8 @@
      "uxb": 24,
      "subcategoria": "Nylon",
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -968,7 +1078,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "606E",
@@ -976,7 +1087,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "607E",
@@ -984,7 +1096,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "560",
@@ -992,7 +1105,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "594",
@@ -1000,7 +1114,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "595",
@@ -1008,7 +1123,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "596",
@@ -1016,7 +1132,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "517",
@@ -1024,7 +1141,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "SIN STOCK",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -1041,7 +1159,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "498",
@@ -1049,7 +1168,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "057",
@@ -1057,7 +1177,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "056E",
@@ -1065,7 +1186,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "514E",
@@ -1073,7 +1195,10 @@
      "uxb": 100,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": [
+      "514E.webp"
+     ]
     },
     {
      "cod": "516",
@@ -1081,7 +1206,10 @@
      "uxb": 100,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": [
+      "516.webp"
+     ]
     }
    ]
   },
@@ -1098,7 +1226,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "577",
@@ -1106,7 +1235,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "579",
@@ -1114,7 +1244,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -1131,7 +1262,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "580",
@@ -1139,7 +1271,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "969E",
@@ -1147,7 +1280,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "970E",
@@ -1155,7 +1289,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "971E",
@@ -1163,7 +1298,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "960E",
@@ -1171,7 +1307,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "280",
@@ -1179,7 +1316,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "590E",
@@ -1187,7 +1325,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "325",
@@ -1195,7 +1334,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "590ES",
@@ -1203,7 +1343,10 @@
      "uxb": 50,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": [
+      "590E.webp"
+     ]
     },
     {
      "cod": "326",
@@ -1211,7 +1354,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "312",
@@ -1219,7 +1363,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "547",
@@ -1227,7 +1372,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "LIQUIDACIÓN",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "509",
@@ -1235,7 +1381,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "LIQUIDACIÓN",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "515",
@@ -1243,7 +1390,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "311",
@@ -1251,7 +1399,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "LIQUIDACIÓN",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -1268,7 +1417,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "223",
@@ -1276,7 +1426,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "224",
@@ -1284,7 +1435,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "248",
@@ -1292,7 +1444,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "225",
@@ -1300,7 +1453,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "220",
@@ -1308,7 +1462,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "221",
@@ -1316,7 +1471,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "207",
@@ -1324,7 +1480,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "229",
@@ -1332,7 +1489,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "234",
@@ -1340,7 +1498,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "246",
@@ -1348,7 +1507,8 @@
      "uxb": 6,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "222",
@@ -1356,7 +1516,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "231",
@@ -1364,7 +1525,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "232",
@@ -1372,7 +1534,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "233",
@@ -1380,7 +1543,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -1397,7 +1561,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "558",
@@ -1405,7 +1570,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "659",
@@ -1413,7 +1579,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "654",
@@ -1421,7 +1588,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "658",
@@ -1429,7 +1597,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "573",
@@ -1437,7 +1606,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": "SIN STOCK",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "255",
@@ -1445,7 +1615,8 @@
      "uxb": 8,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "256",
@@ -1453,7 +1624,8 @@
      "uxb": 8,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "591",
@@ -1461,7 +1633,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "555",
@@ -1469,7 +1642,8 @@
      "uxb": 36,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "550",
@@ -1477,7 +1651,8 @@
      "uxb": 36,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "556",
@@ -1485,7 +1660,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -1502,7 +1678,8 @@
      "uxb": 6,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "518",
@@ -1510,7 +1687,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "542",
@@ -1518,7 +1696,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "543",
@@ -1526,7 +1705,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "541E",
@@ -1534,7 +1714,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "299",
@@ -1542,7 +1723,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "823",
@@ -1550,7 +1732,8 @@
      "uxb": 6,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "507",
@@ -1558,7 +1741,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "534",
@@ -1566,7 +1750,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "535",
@@ -1574,7 +1759,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "532",
@@ -1582,7 +1768,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "058",
@@ -1590,7 +1777,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "396",
@@ -1598,7 +1786,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": "LIQUIDACIÓN",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -1615,7 +1804,8 @@
      "uxb": 24,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "583E",
@@ -1623,7 +1813,8 @@
      "uxb": 15,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "584E",
@@ -1631,7 +1822,8 @@
      "uxb": 6,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "566E",
@@ -1639,7 +1831,8 @@
      "uxb": 6,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": true
+     "importado": true,
+     "imagenes": []
     }
    ]
   },
@@ -1656,7 +1849,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "059",
@@ -1664,7 +1858,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "519",
@@ -1672,7 +1867,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -1689,7 +1885,8 @@
      "uxb": 4,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     },
     {
      "cod": "070",
@@ -1697,7 +1894,8 @@
      "uxb": 4,
      "subcategoria": null,
      "badge": "NUEVO",
-     "importado": false
+     "importado": false,
+     "imagenes": []
     }
    ]
   },
@@ -1714,7 +1912,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "990E",
@@ -1722,7 +1921,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "992E",
@@ -1730,7 +1930,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "993E",
@@ -1738,7 +1939,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "996E",
@@ -1746,7 +1948,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "997E",
@@ -1754,7 +1957,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     },
     {
      "cod": "998E",
@@ -1762,7 +1966,8 @@
      "uxb": 12,
      "subcategoria": null,
      "badge": null,
-     "importado": true
+     "importado": true,
+     "imagenes": []
     }
    ]
   }

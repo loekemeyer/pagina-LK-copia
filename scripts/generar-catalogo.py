@@ -50,8 +50,27 @@ def esc(s):
     return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
 
 
-def img_url(cod):
-    return BASE_IMG + quote(cod) + ".webp" + IMG_PARAMS
+def img_url(prod):
+    """URL de la foto, con el mismo criterio que productImgUrls() de script.js:
+    si products.images está cargado manda ese nombre; si no, se deriva del código.
+
+    Verificado el 16/09/2026 contra storage.objects: los 199 artículos activos
+    terminan con foto. 196 la resuelven por código y 3 por products.images
+    (514E, 516 y 590ES, este último apunta a 590E.webp porque es el mismo pincel
+    vendido suelto). NO hardcodear excepciones acá: si falta una foto, se carga
+    en la base o se sube al bucket, que es lo que lee también el mayorista."""
+    if isinstance(prod, dict):
+        for nombre in prod.get("imagenes") or []:
+            n = str(nombre).strip()
+            if n.startswith("http"):
+                return n
+            if not n.endswith(".webp"):
+                n += ".webp"
+            return BASE_IMG + quote(n) + IMG_PARAMS
+        cod = prod.get("cod", "")
+    else:
+        cod = prod
+    return BASE_IMG + quote(str(cod)) + ".webp" + IMG_PARAMS
 
 
 def wa_url(texto):
@@ -170,7 +189,7 @@ def card(p):
           <article class="prod-card" id="p-{esc(p['cod'])}">
             <div class="prod-thumb">
               {badge}
-              <img src="{img_url(p['cod'])}" alt="{esc(p['nombre'])} Loekemeyer, código {esc(p['cod'])}" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='IMGFALLBACK'" />
+              <img src="{img_url(p)}" alt="{esc(p['nombre'])} Loekemeyer, código {esc(p['cod'])}" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='IMGFALLBACK'" />
             </div>
             <div class="prod-body">
               <h3 class="prod-name">{esc(p['nombre'])}</h3>
@@ -266,7 +285,7 @@ def pagina_index(cats, total):
     }
     cards = ""
     for c in cats:
-        primero = c["productos"][0]["cod"]
+        primero = c["productos"][0]
         cards += f"""
           <a class="cat-card" href="{c['slug']}.html">
             <div class="cat-thumb"><img src="{img_url(primero)}" alt="{esc(c['nombre'])} Loekemeyer" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='{pref}img/no-image.jpg'" /></div>
