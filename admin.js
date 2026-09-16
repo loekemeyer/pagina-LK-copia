@@ -14260,7 +14260,7 @@ function _gvFugaTemprana(f) {
     "Es el momento de llamarlos: agarrarlos ahora es más barato que reactivarlos después.</p>" +
     '<table class="est-table gv-mini" style="width:auto;table-layout:auto">' +
     "<thead><tr><th>Cliente</th>" +
-    "<th>Compra cada</th><th>Días que no compra</th><th>Dto vol</th>" +
+    "<th>Compra cada</th><th>Días que<br>no compra</th><th>Dto vol</th>" +
     "<th>Ticket prom.</th></tr></thead><tbody>" +
     lista + "</tbody></table></div>"
   );
