@@ -14245,13 +14245,25 @@ function _gvProyeccion(pr) {
 
 function _gvFugaTemprana(f) {
   if (!f.clientes) return "";
+  // Filas ordenadas por ticket desc (viene así de la RPC). Se inserta UNA línea
+  // en blanco en el corte de $1M para que el ojo no compare "$535.815" contra
+  // "$1.1 M" y le parezca más grande el primero.
+  var prevBig = null;
   var lista = (f.lista || []).map(function (x) {
-    return '<tr class="gv-drill-click" onclick="gvAbrirDrill(\'pedidos\',null,' +
+    var t = x.ticket != null ? Number(x.ticket) : null;
+    var big = t != null && t >= 1e6;
+    var sep = "";
+    if (prevBig === true && big === false) {
+      sep = '<tr class="gv-fuga-sep"><td colspan="5" style="padding:0;border:none;' +
+        'background:transparent;height:12px"></td></tr>';
+    }
+    prevBig = big;
+    return sep + '<tr class="gv-drill-click" onclick="gvAbrirDrill(\'pedidos\',null,' +
       _gvQ(x.cod) + ',null,' + _gvQ(x.nom) + ',true)"><td>' + escHtml(x.nom) +
       ' <span class="est-cod">' + escHtml(x.cod) + "</span></td><td>" +
-      _gvNum(x.mediana) + " días</td><td><strong>" + _gvNum(x.dias) +
-      "</strong> días</td><td>" + Math.round((Number(x.dto) || 0) * 100) +
-      "%</td><td>" + (x.ticket != null ? _gvPlata(x.ticket) : "—") + "</td></tr>";
+      _gvNum(x.mediana) + "</td><td><strong>" + _gvNum(x.dias) +
+      "</strong></td><td>" + Math.round((Number(x.dto) || 0) * 100) +
+      "%</td><td>" + (t != null ? _gvPlata(t) : "—") + "</td></tr>";
   }).join("");
   return (
     '<div class="gv-graf gv-graf-full gv-alerta"><h4>⚠ Fuga temprana — ' + f.clientes +
@@ -14260,7 +14272,7 @@ function _gvFugaTemprana(f) {
     "Es el momento de llamarlos: agarrarlos ahora es más barato que reactivarlos después.</p>" +
     '<table class="est-table gv-mini" style="width:auto;table-layout:auto">' +
     "<thead><tr><th>Cliente</th>" +
-    "<th>Compra cada</th><th>Días que<br>no compra</th><th>Dto vol</th>" +
+    "<th>Compra<br>Cada</th><th>Días que<br>no compra</th><th>Dto vol</th>" +
     "<th>Ticket prom.</th></tr></thead><tbody>" +
     lista + "</tbody></table></div>"
   );
