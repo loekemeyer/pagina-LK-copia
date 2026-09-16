@@ -14258,8 +14258,11 @@ function _gvFugaTemprana(f) {
     " clientes se están retrasando</h4>" +
     '<p class="gv-dash-nota">Se pasaron de su ritmo habitual pero todavía no están fríos. ' +
     "Es el momento de llamarlos: agarrarlos ahora es más barato que reactivarlos después.</p>" +
-    '<table class="est-table gv-mini"><thead><tr><th>Cliente</th>' +
-    "<th>Compra cada</th><th>Hace que no compra</th><th>Dto vol</th></tr></thead><tbody>" +
+    '<table class="est-table gv-mini">' +
+    '<colgroup><col><col style="width:120px"><col style="width:150px">' +
+    '<col style="width:90px"></colgroup>' +
+    "<thead><tr><th>Cliente</th>" +
+    "<th>Compra cada</th><th>Días que no compra</th><th>Dto vol</th></tr></thead><tbody>" +
     lista + "</tbody></table></div>"
   );
 }
