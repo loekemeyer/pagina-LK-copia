@@ -1,6 +1,6 @@
 /* ================================================================
    publico.css — páginas públicas de posicionamiento:
-   historia.html, mayoristas.html y catalogo/*.html.
+   historia.html y productos/*.html.
    Complementa styles.index.css (variables, .container, footer, botones,
    modal, float de WhatsApp) y productos.css (topbar, grillas).
    Todo el ancho lo marca .container (máx. 1200px): nada se estira a
@@ -422,5 +422,45 @@
 
   .pub-logos img {
     height: 34px;
+  }
+}
+
+/* ================= FIGURAS (dibujos de patentes) ================= */
+.pub-figuras {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  margin: 26px 0 30px;
+  max-width: 920px;
+}
+
+.pub-figuras--una {
+  grid-template-columns: minmax(0, 300px);
+}
+
+.pub-figura {
+  margin: 0;
+}
+
+.pub-figura img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.pub-figura figcaption {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+  .pub-figuras {
+    grid-template-columns: minmax(0, 320px);
+    justify-content: center;
   }
 }
