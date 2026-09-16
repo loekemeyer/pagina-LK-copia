@@ -47,7 +47,14 @@ create table if not exists public.krikos_oc_inbox (
   storage_path      text,                        -- bucket krikos-oc
   pdf_bytes         integer,
   estado            text not null default 'pendiente'
-                    check (estado in ('pendiente','cargado','descartado','error')),
+                    -- 'ignorado' se agregó el 2026-09-16 (migración
+                    -- krikos_oc_inbox_estado_ignorado): el ingest busca por REMITENTE, así
+                    -- que del mismo noreply@planexware.com entran los mails de servicio de
+                    -- Krikos360 (recupero de contraseña, alta de usuario). Quedaban como
+                    -- 'error' y sync_krikos_oc_virgilio los empujaba a la PPP de Gestión
+                    -- como "OC que no se pudo importar", con la fila vacía. Se anotan igual
+                    -- (para no volver a bajarlos cada 10 min) pero en un estado que NO viaja.
+                    check (estado in ('pendiente','cargado','descartado','error','ignorado')),
   error_msg         text,
   order_id          bigint,                      -- orders.id una vez cargado
   resuelto_por      uuid,
