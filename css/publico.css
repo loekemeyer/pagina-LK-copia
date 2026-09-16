@@ -458,6 +458,15 @@
   margin-top: 8px;
 }
 
+/* Fotos de producto: cuadradas y sobre fondo claro, a diferencia de las
+   láminas de patente, que son verticales. */
+.pub-figuras--fotos .pub-figura img {
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background: #f7f7f8;
+  padding: 10px;
+}
+
 @media (max-width: 760px) {
   .pub-figuras {
     grid-template-columns: minmax(0, 320px);
