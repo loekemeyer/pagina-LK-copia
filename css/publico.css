@@ -131,14 +131,16 @@
 }
 
 /* ================= LÍNEA DE TIEMPO ================= */
-/* Cada hito lleva su propia guía vertical: así entran en dos columnas
-   sin que se corte la línea, cosa que sí pasaba con el border en el <ol>. */
+/* Una sola columna, centrada en el bloque: partida en dos se leía como dos
+   historias distintas. Cada hito lleva su propia guía vertical (el borde va
+   en el <li>, no en el <ol>) para que la línea no se corte entre ítems. */
 .pub-timeline {
   list-style: none;
-  margin: 22px 0 0;
+  margin: 26px 0 0;
   padding: 0;
   display: grid;
-  gap: 0 48px;
+  grid-template-columns: minmax(0, 620px);
+  justify-content: center;
 }
 
 .pub-timeline li {
@@ -361,13 +363,6 @@
 }
 
 /* ================= RESPONSIVE ================= */
-@media (min-width: 900px) {
-  /* Siete hitos en una sola columna dejaban 500 px de blanco al lado. */
-  .pub-timeline--dos {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 860px) {
   .pub-hero {
     padding: 38px 0 30px;
