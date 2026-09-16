@@ -5503,7 +5503,24 @@ function _ncBuildFootBlock(p, logged) {
 function _ncBuildCardHtml(p, logged, showListPriceOnly, cloneFlag) {
   const pid = String(p.id);
   const codSafe = String(p.cod || "").trim();
-  const imgSrc = `${BASE_IMG}${encodeURIComponent(codSafe)}.webp${IMG_PARAMS}`;
+  // El carrusel armaba `{cod}.webp` a mano, así que todo producto cuyo archivo
+  // no se llama igual que su código quedaba sin foto: el 590ES presta la del
+  // 590E vía products.images y en el carrusel salía el no-image. Se respeta
+  // images[0] como hace el catálogo; sin images, sigue la principal de siempre
+  // (a propósito NO la variante "-2" con cartón: a este tamaño se lee peor).
+  const imgFromDb =
+    Array.isArray(p.images) && p.images.length
+      ? String(p.images[0] || "").trim()
+      : "";
+  const imgSrc = imgFromDb
+    ? /^https?:\/\//i.test(imgFromDb)
+      ? imgFromDb
+      : BASE_IMG +
+        encodeURIComponent(
+          /\.\w+$/.test(imgFromDb) ? imgFromDb : imgFromDb + ".webp",
+        ) +
+        IMG_PARAMS
+    : `${BASE_IMG}${encodeURIComponent(codSafe)}.webp${IMG_PARAMS}`;
   const imgFallback = "img/no-image.jpg";
   const descSafe = String(p.description || "").replace(/"/g, "&quot;");
 
