@@ -433,8 +433,11 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
   desde la Edge Function el 3/9/2026 — desde una sesión de Claude no se puede, la red bloquea todo
   lo que no sea HTTPS). No anuncia STARTTLS pero sí **`AUTH=CRAM-MD5`**, así que la Edge Function
   autentica con HMAC-MD5 (`node:crypto`) y **la contraseña nunca viaja en claro**; el contenido
-  del mail sí. Conviene pedirle al hosting que habilite el 993 y pasar `KRIKOS_IMAP_TLS=true`,
-  `KRIKOS_IMAP_PORT=993`. El cliente IMAP está escrito a mano sobre `Deno.connect` (no hay
+  del mail sí. **DECIDIDO y cerrado (Luis, 16/09/2026): NO se le pide al hosting que habilite el
+  993.** Lo que viaja son órdenes de compra de supermercados, no datos sensibles, y hace meses que
+  funciona así. **No volver a proponerlo.** (Si algún día se habilita, el cambio es de dos
+  secretos: `KRIKOS_IMAP_TLS=true` y `KRIKOS_IMAP_PORT=993`, más pasar Thunderbird a SSL/TLS 993.)
+  El cliente IMAP está escrito a mano sobre `Deno.connect` (no hay
   librería): `EXAMINE` (solo lectura) + `UID SEARCH FROM … SINCE …` + `UID FETCH … BODY.PEEK[]`,
   así **nunca marca leído ni mueve nada** y Thunderbird ve la casilla igual. Dedupe por
   `mail_uid = <UIDVALIDITY>:<UID>` y por `doc_id`.
@@ -816,11 +819,13 @@ iniciativa propia. Cuando un pendiente se resuelve, borrar la línea de acá.
   mismo día se vio que no alcanzaba: los mails se archivan fuera de INBOX, así que la función pasó
   a recorrer varias carpetas (`KRIKOS_MAILBOXES`, ver arriba). **La bandeja quedó andando**: 10 OC
   detectadas, 7 con PDF bajado (Carrefour x2, Diarco x2, La Anónima, Coto x2) y 3 con el link
-  vencido. Las 10 son de OC que ya se habían cargado a mano: hay que **descartarlas desde la
-  Bandeja Krikos** una vez.
-- **Pedir al hosting que habilite IMAP con TLS (993)** en SmarterMail. Hoy el 143 va sin cifrar
-  (la contraseña no, por CRAM-MD5; el contenido sí). Luego `KRIKOS_IMAP_TLS=true`, `KRIKOS_IMAP_PORT=993`
-  y cambiar Thunderbird también.
+  vencido. ~~Las 10 son de OC que ya se habían cargado a mano: hay que **descartarlas desde la
+  Bandeja Krikos** una vez.~~ ✅ hecho. **Al 16/9/2026 la bandeja no tiene ni un pendiente ni un
+  error**: 16 descartadas, 6 cargadas, 2 ignoradas. Las 6 de junio/julio con el link vencido se
+  descartaron ese día (backup en `zz_backups."GV_Backup_krikos_oc_error_20260916"`): no se podían
+  bajar nunca más y eran seis renglones rojos fijos.
+- ~~**Pedir al hosting que habilite IMAP con TLS (993)**~~ ❌ **NO VA** (Luis, 16/9/2026). Se
+  evaluó y se descartó: son OC de supermercados, no datos sensibles. **No volver a proponerlo.**
 - **Planexware**: consulta de plan enviada a comercial@ y mesadeayuda@ el 3/9/2026 (si el plan
   incluye SFTP/webservice, o descarga estructurada). Sin respuesta todavía.
 - ~~**Espejo en Virgilio**~~ ✅ replicado el 7/9/2026 a `/admin/admin-supercot.js` de
