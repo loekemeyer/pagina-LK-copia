@@ -38,10 +38,10 @@ DOMINIO = "https://loekemeyer.com"
 # que en script.js / historial.js / sugerencias.js.
 SUPABASE_URL = "https://kwkclwhmoygunqmlegrg.supabase.co"
 BASE_IMG = SUPABASE_URL + "/storage/v1/object/public/products-images/"
-IMG_PARAMS = "?v=20260914c"
+IMG_PARAMS = "?v=20260916"
 
 WA_VENTAS = "5491131181021"
-V = "23395"  # ?v= de assets; el hook pre-commit lo sincroniza en cada commit
+V = "23400"  # ?v= de assets; el hook pre-commit lo sincroniza en cada commit
 
 # Mientras no se publiquen (no están linkeadas desde el sitio ni en el
 # sitemap) van con noindex. Al publicar: NOINDEX = False y agregarlas al sitemap.
@@ -117,7 +117,7 @@ def topbar(pref, activo):
           <img src="{pref}img/logo.png" alt="Loekemeyer" class="logo-img" />
         </a>
         <nav class="prod-topbar-nav" aria-label="Secciones">
-          {a(pref + SALIDA + "/index.html", "Catálogo", "catalogo")}
+          {a(pref + SALIDA + "/index.html", "Productos", "productos")}
           {a(pref + "historia.html", "Historia", "historia")}
           <a class="prod-topbar-cta" href="{pref}mayorista.html">Pedido mayorista</a>
         </nav>
@@ -153,7 +153,7 @@ def footer(pref):
           <span>© 2026 Loekemeyer Hnos S.R.L. — Todos los derechos reservados.
             <span data-app-version style="font-size: 11px; color: #9a9a9a; margin-left: 6px"></span></span>
           <div class="footer-links">
-            <a href="{pref}{SALIDA}/index.html" class="footer-link">Catálogo</a>
+            <a href="{pref}{SALIDA}/index.html" class="footer-link">Productos</a>
             <a href="{pref}historia.html" class="footer-link">Historia</a>
             <a href="#" class="footer-link" data-modal="privacy">Política de privacidad</a>
             <a href="#" class="footer-link" data-modal="terms">Términos y condiciones</a>
@@ -217,7 +217,7 @@ def pagina_categoria(cat, todas):
         "isPartOf": {"@type": "WebSite", "name": "Loekemeyer Hnos S.R.L.", "url": DOMINIO + "/"},
         "breadcrumb": {"@type": "BreadcrumbList", "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "Inicio", "item": DOMINIO + "/"},
-            {"@type": "ListItem", "position": 2, "name": "Catálogo", "item": f"{DOMINIO}/{SALIDA}/"},
+            {"@type": "ListItem", "position": 2, "name": "Productos", "item": f"{DOMINIO}/{SALIDA}/"},
             {"@type": "ListItem", "position": 3, "name": cat["nombre"], "item": canonical}]},
     }
     # Subcategorías (Utensilios): subnav + subsecciones. El resto: una grilla.
@@ -247,11 +247,11 @@ def pagina_categoria(cat, todas):
     otras = "".join(
         f'<a href="{c["slug"]}.html">{esc(c["nombre"])}</a>' for c in todas if c["slug"] != slug)
     html = head(titulo, desc, canonical, pref, jsonld) + f"""
-  <body class="prod-page">{topbar(pref, "catalogo")}
+  <body class="prod-page">{topbar(pref, "productos")}
     <main class="prod-main">
       <div class="container">
         <nav class="prod-breadcrumb" aria-label="Ubicación">
-          <a href="{pref}index.html">Inicio</a> › <a href="index.html">Catálogo</a> › <span aria-current="page">{esc(cat['nombre'])}</span>
+          <a href="{pref}index.html">Inicio</a> › <a href="index.html">Productos</a> › <span aria-current="page">{esc(cat['nombre'])}</span>
         </nav>
         <div class="prod-head">
           <h1>{esc(cat['nombre'])}</h1>
@@ -274,14 +274,14 @@ def pagina_categoria(cat, todas):
 
 def pagina_index(cats, total):
     pref = "../"
-    titulo = "Catálogo de utensilios de cocina · Loekemeyer, fabricantes desde 1950"
+    titulo = "Utensilios de cocina · Productos Loekemeyer, fabricantes desde 1950"
     desc = (f"{total} utensilios de cocina en {len(cats)} líneas: abrelatas, pelapapas, sacacorchos, coladores, ralladores, "
             "bombillas, utensilios de acero inoxidable, nylon, silicona y madera. Fabricación propia en Buenos Aires y venta mayorista a todo el país.")
     canonical = f"{DOMINIO}/{SALIDA}/"
     jsonld = {
         "@context": "https://schema.org",
         "@type": "CollectionPage",
-        "name": "Catálogo Loekemeyer",
+        "name": "Productos Loekemeyer",
         "url": canonical,
         "isPartOf": {"@type": "WebSite", "name": "Loekemeyer Hnos S.R.L.", "url": DOMINIO + "/"},
     }
@@ -297,15 +297,15 @@ def pagina_index(cats, total):
             </div>
           </a>"""
     return head(titulo, desc, canonical, pref, jsonld) + f"""
-  <body class="prod-page">{topbar(pref, "catalogo")}
+  <body class="prod-page">{topbar(pref, "productos")}
     <main class="prod-main">
       <div class="container">
         <nav class="prod-breadcrumb" aria-label="Ubicación">
-          <a href="{pref}index.html">Inicio</a> › <span aria-current="page">Catálogo</span>
+          <a href="{pref}index.html">Inicio</a> › <span aria-current="page">Productos</span>
         </nav>
         <div class="prod-head">
-          <h1>Catálogo de utensilios de cocina</h1>
-          <p class="prod-intro">{total} artículos en {len(cats)} líneas. Fabricamos en Buenos Aires desde 1950 y completamos la línea con productos importados seleccionados. Sin precios: la lista mayorista se ve con tu usuario en la web mayorista.</p>
+          <h1>Todos nuestros utensilios de cocina</h1>
+          <p class="prod-intro">{total} artículos en {len(cats)} líneas. Fabricamos en Buenos Aires desde 1950 y completamos la línea con productos importados seleccionados. Sin precios: la lista mayorista se ve con tu usuario en la web mayorista, y el catálogo en PDF se descarga acá abajo.</p>
         </div>
         <div class="cat-grid">{cards}
         </div>
