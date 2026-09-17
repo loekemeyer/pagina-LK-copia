@@ -705,22 +705,34 @@ Junto con eso queda el texto **QUIENES-SOMOS-2018** (marcador en `historia.html`
 contenido de `web.archive.org/web/20180919231226/http://www.loekemeyer.com/productos/quienes_somos.html`,
 que Tomás tiene que copiar y pegar porque el proxy no llega a archive.org.
 
-### El diseño de `productos/` sigue a `historia.html` (17/09/2026)
+### `productos/` es una LÁMINA DE CATÁLOGO, no una tienda (17/09/2026)
 
-Las 20 páginas del catálogo usaban un `.container` de 1200 px y tarjetas de cuatro columnas mientras
-`historia.html` ya estaba en 960: las dos páginas del mismo sitio no alineaban. Ahora comparten
-`.pub-wrap`, `.pub-kicker` y la misma escala de títulos.
+Pedido textual de Tomás: *"que no parezca un carrito de compras sino algo distinto"*. Tenía razón:
+las tarjetas con borde, sombra, thumbnail gris y botón rojo son vocabulario de e-commerce, y esta
+página **no vende online**: no hay precio, ni carrito, ni checkout. El modelo es la lámina de un
+catálogo impreso.
 
-- **Tres columnas, no cuatro.** Con cuatro, una línea de 9 artículos dejaba tres huecos vacíos en la
-  última fila; con tres son exactamente tres filas llenas.
-- **Bug corregido en `.prod-cta`**: tenía `margin-top: auto` y más abajo, en la misma regla,
-  `margin-top: 14px`. La segunda pisaba a la primera, así que el link "Consultar por WhatsApp" no se
-  pegaba al pie de la tarjeta y quedaba a distinta altura en cada una de la fila.
-- **Jerarquía dentro de la tarjeta**: nombre 16 px en negrita, código en chip gris (es lo que el
-  comercio usa para pedir) y unidades por caja en 12,5 px. El chip lleva `align-self: flex-start`
-  porque `.prod-body` es flex y un hijo flex ignora `display: inline-block`.
-- **Todo sale del generador.** `productos/*.html` NO se edita a mano: se cambia
-  `scripts/generar-catalogo.py` y se corre `python3 scripts/generar-catalogo.py`.
+| Elemento | Antes (tienda) | Ahora (lámina) |
+|---|---|---|
+| Contenedor de la ficha | borde, radio 14 px, sombra, hover que levanta | sin cromo: el artículo apoyado sobre el papel |
+| Fondo de la foto | caja gris `#f7f7f8` | blanco, sin caja |
+| Separador | ninguno | regla de 1 px negra entre foto y ficha |
+| Orden de la ficha | nombre, código, unidades | **código**, nombre, unidades |
+| Código | chip gris | versalita roja arriba, que es lo que el comercio escribe en el pedido |
+| "NUEVO" | pastilla roja flotando sobre la foto | marca amarilla al lado del código |
+| Link | "Consultar por WhatsApp →" rojo en negrita | "Consultar disponibilidad", gris, secundario |
+| Ancho | `.container` 1200 | `.pub-wrap` 960, igual que `historia.html` |
+
+**Tres columnas y no cuatro, medido:** sobre las 19 líneas reales, con tres columnas quedan **14
+huecos** en las últimas filas de todo el catálogo y con cuatro **25**. Peladores, abrelatas,
+sacacorchos y madera cierran exacto en tres.
+
+**Bug corregido de paso:** `.prod-cta` tenía `margin-top: auto` y, más abajo en la misma regla,
+`margin-top: 14px`. La segunda pisaba a la primera, así que el link no se pegaba al pie y quedaba a
+distinta altura en cada ficha de la fila.
+
+**`productos/*.html` NO se edita a mano**: se cambia `scripts/generar-catalogo.py` y se corre
+`python3 scripts/generar-catalogo.py`.
 
 ### Jerarquía de `historia.html` (17/09/2026)
 

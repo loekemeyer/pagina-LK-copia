@@ -183,22 +183,21 @@ def footer(pref):
 
 
 def card(p):
-    badge = '<span class="prod-badge prod-badge--nuevo">NUEVO</span>' if p.get("badge") == "NUEVO" else ""
+    badge = '<span class="prod-nuevo">NUEVO</span>' if p.get("badge") == "NUEVO" else ""
     uxb = f"{p['uxb']} unidades por caja" if p.get("uxb") else "consultar unidades por caja"
     sub = f'<p class="prod-meta">{esc(p["subcategoria"])}</p>' if p.get("subcategoria") else ""
     texto = f"Hola Loekemeyer, quiero consultar por el artículo {p['cod']} {p['nombre']}."
     return f"""
           <article class="prod-card" id="p-{esc(p['cod'])}">
             <div class="prod-thumb">
-              {badge}
               <img src="{img_url(p)}" alt="{esc(p['nombre'])} Loekemeyer, código {esc(p['cod'])}" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='IMGFALLBACK'" />
             </div>
             <div class="prod-body">
+              <p class="prod-cod">{esc(p['cod'])}{badge}</p>
               <h3 class="prod-name">{esc(p['nombre'])}</h3>
-              <p class="prod-cod">Cód. {esc(p['cod'])}</p>
               <p class="prod-meta">{uxb}</p>
               {sub}
-              <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(p['cod'])}">Consultar por WhatsApp →</a>
+              <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(p['cod'])}">Consultar disponibilidad</a>
             </div>
           </article>"""
 
