@@ -177,9 +177,16 @@ def footer(pref):
     <script src="{pref}version.js?v={V}"></script>
     <script src="{pref}script.index.js?v={V}"></script>
     <script src="{pref}js/conversiones.js?v={V}"></script>
+    <script src="{pref}js/catalogo-vivo.js?v={V}" defer></script>
   </body>
 </html>
 """
+
+
+def firma(ps):
+    """Los códigos que la página ya tiene pintados. catalogo-vivo.js compara
+    contra esto: si coincide con lo que devuelve Supabase, no toca nada."""
+    return "|".join(p["cod"] for p in ps)
 
 
 def bajada(cat):
@@ -271,13 +278,13 @@ def pagina_categoria(cat, todas):
         for s in subs:
             ps = [p for p in cat["productos"] if p.get("subcategoria") == s]
             cuerpo += f"""
-        <section class="prod-subsection" id="{slugify(s)}">
+        <section class="prod-subsection" id="{slugify(s)}" data-sub="{esc(s)}">
           <h2 class="prod-subtitle">{esc(s)} <span class="prod-count">{len(ps)}</span></h2>
           {lista(ps)}
         </section>"""
         resto = [p for p in cat["productos"] if not p.get("subcategoria")]
         if resto:
-            cuerpo += f'<section class="prod-subsection"><h2 class="prod-subtitle">Otros <span class="prod-count">{len(resto)}</span></h2>{lista(resto)}</section>'
+            cuerpo += f'<section class="prod-subsection" data-sub=""><h2 class="prod-subtitle">Otros <span class="prod-count">{len(resto)}</span></h2>{lista(resto)}</section>'
     else:
         cuerpo += lista(cat["productos"])
 
@@ -285,7 +292,7 @@ def pagina_categoria(cat, todas):
         f'<a href="{c["slug"]}.html">{esc(c["nombre"])}</a>' for c in todas if c["slug"] != slug)
     html = head(titulo, desc, canonical, pref, jsonld) + f"""
   <body class="prod-page">{topbar(pref, "productos")}
-    <main class="prod-main">
+    <main class="prod-main" data-catalogo="linea" data-categoria="{esc(cat['categoria'])}" data-firma="{esc(firma(cat['productos']))}" data-vfoto="{IMG_PARAMS}">
       <div class="pub-wrap">
         <nav class="prod-breadcrumb" aria-label="Ubicación">
           <a href="{pref}index.html">Inicio</a> › <a href="index.html">Productos</a> › <span aria-current="page">{esc(cat['nombre'])}</span>
@@ -293,7 +300,7 @@ def pagina_categoria(cat, todas):
         <div class="prod-head">
           <p class="pub-kicker">Línea de producto</p>
           <h1>{esc(cat['nombre'])}</h1>
-          <p class="prod-intro">{esc(bajada(cat))}</p>
+          <p class="prod-intro" data-intro="{esc(cat['intro'])}" data-cierre="{esc(cat.get('cierre',''))}">{esc(bajada(cat))}</p>
         </div>
         {cuerpo}
         <div class="prod-cta-block">
@@ -340,7 +347,7 @@ def pagina_index(cats, total):
             celdas += (f'<span class="cat-celda"><img src="{img_url(prod)}" alt="" width="400" height="400" '
                        f'loading="lazy" onerror="this.onerror=null;this.src=\'{pref}img/no-image.jpg\'" />{mas}</span>')
         cards += f"""
-          <a class="cat-card" href="{c['slug']}.html">
+          <a class="cat-card" href="{c['slug']}.html" data-categoria="{esc(c['categoria'])}">
             <div class="cat-mosaico cat-mosaico--{min(n, 4)}" role="img" aria-label="{esc(c['nombre'])} Loekemeyer">{celdas}</div>
             <div class="cat-body">
               <h2 class="cat-name">{esc(c['nombre'])}</h2>
@@ -351,7 +358,7 @@ def pagina_index(cats, total):
 
     return head(titulo, desc, canonical, pref, jsonld) + f"""
   <body class="prod-page">{topbar(pref, "productos")}
-    <main class="prod-main">
+    <main class="prod-main" data-catalogo="indice" data-firma="{esc(firma([p for c in cats for p in c['productos']]))}" data-vfoto="{IMG_PARAMS}">
       <div class="pub-wrap">
         <nav class="prod-breadcrumb" aria-label="Ubicación">
           <a href="{pref}index.html">Inicio</a> › <span aria-current="page">Productos</span>
@@ -359,7 +366,7 @@ def pagina_index(cats, total):
         <div class="prod-head">
           <p class="pub-kicker">Catálogo completo</p>
           <h1>Todos nuestros utensilios de cocina</h1>
-          <p class="prod-intro">{total} artículos en {len(cats)} líneas. Fabricamos en Buenos Aires desde 1950. Sin precios: la lista mayorista se ve con tu usuario en la web mayorista, y el catálogo en PDF se descarga acá abajo.</p>
+          <p class="prod-intro" data-intro="{total} artículos en {len(cats)} líneas. Fabricamos en Buenos Aires desde 1950. Sin precios: la lista mayorista se ve con tu usuario en la web mayorista, y el catálogo en PDF se descarga acá abajo.">{total} artículos en {len(cats)} líneas. Fabricamos en Buenos Aires desde 1950. Sin precios: la lista mayorista se ve con tu usuario en la web mayorista, y el catálogo en PDF se descarga acá abajo.</p>
         </div>
         {cards}
         <div class="prod-cta-block">
