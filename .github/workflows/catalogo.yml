@@ -1,0 +1,47 @@
+# Regenera productos/ desde Supabase.
+#
+# HOY SÓLO SE DISPARA A MANO: Actions -> "Catálogo: exportar desde Supabase"
+# -> Run workflow. La línea del cron está comentada a propósito; descomentarla
+# lo pone a correr todos los días a las 06:00 de Buenos Aires, y a partir de
+# ahí commitea solo cuando detecta cambios.
+#
+# Qué hace: lee public.products (active = true) con la clave publishable —la
+# misma que usa el navegador, es pública por diseño—, reescribe
+# scripts/catalogo-data.json, regenera las 20 páginas y commitea SÓLO si algo
+# cambió. Un artículo nuevo, uno dado de baja (active = false) o una línea
+# nueva entran por acá.
+name: "Catálogo: exportar desde Supabase"
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 9 * * *"   # 06:00 en Buenos Aires (UTC-3)
+
+permissions:
+  contents: write
+
+jobs:
+  exportar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Exportar y regenerar
+        run: python3 scripts/exportar-catalogo.py --generar
+
+      - name: Commitear si cambió algo
+        run: |
+          if git diff --quiet; then
+            echo "Sin cambios en el catálogo."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          TOTAL=$(python3 -c "import json;print(json.load(open('scripts/catalogo-data.json'))['total'])")
+          git add -A
+          git commit -m "catálogo: exportación automática desde Supabase ($TOTAL artículos)"
+          git push

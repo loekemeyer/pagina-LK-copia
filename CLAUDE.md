@@ -655,8 +655,27 @@ las aprueben. No muestran precios.
 | `css/publico.css` | Estilos propios de estas páginas (complementa `styles.index.css` y `productos.css`). | |
 | `js/conversiones.js` | Google Tag + conversiones (WhatsApp, PDF, formulario, mail). **Inactivo hasta pegar el `AW-…`** en `LK_ADS_ID`. | |
 
-- **Regenerar el catálogo**: exportar `public.products` (activos) a `scripts/catalogo-data.json` con el
-  mismo formato y correr `python3 scripts/generar-catalogo.py`. `scripts/` no se sube al IIS; `catalogo/` sí.
+- **Regenerar el catálogo**, todo desde Supabase:
+  ```
+  python3 scripts/exportar-catalogo.py --verificar   # no escribe: dice qué cambiaría
+  python3 scripts/exportar-catalogo.py --generar     # reescribe el JSON y las 20 páginas
+  ```
+  `exportar-catalogo.py` lee `public.products` con **`active = true`**, así que un artículo puesto en
+  FALSE desaparece del catálogo en la siguiente exportación. Un artículo nuevo o una línea nueva
+  entran solos. Al 17/09/2026 hay 199 activos y 67 inactivos.
+  El workflow `.github/workflows/catalogo.yml` hace las dos cosas y commitea si algo cambió;
+  **hoy sólo se dispara a mano** (Actions → Run workflow). El cron diario está escrito y comentado.
+- **Lo único escrito a mano** de cada línea son cuatro campos del JSON: `nombre` (el título público),
+  `slug` (la URL), `intro` (qué hay en la línea) y `cierre` (el dato propio de esa línea). El
+  exportador los CONSERVA buscándolos por el nombre de categoría de la base. Si aparece una categoría
+  nueva los deja vacíos y **avisa fuerte**, porque esa página sale sin texto propio.
+- **La bajada de cada línea tiene tres partes** (`bajada()` en el generador): `intro` + un tramo
+  derivado de los datos (`"9 artículos. Caja cerrada de 6 o 12 unidades."`) + `cierre`. Antes las 19
+  páginas cerraban con la misma frase —"Fabricantes desde 1950; venta mayorista por caja cerrada a
+  comercios de todo el país"—, que además de sonar a plantilla Google la lee como contenido duplicado
+  entre páginas del mismo sitio. Verificado: **cero frases repetidas entre las 19**.
+- **El `?v=` de las fotos sale de `generado`**: si alguien reemplaza una foto en el bucket con el
+  mismo nombre, la próxima exportación cambia el parámetro y el navegador no sirve la vieja de cache.
 - **Se publica en `/productos/`, no en `/catalogo/`**: el 16/09/2026 se verificó que `/productos/` NO
   existe en el IIS y que el botón "VER PRODUCTOS ONLINE" (`index.html:124`) y el link "Productos" del
   pie (`index.html:829`) daban error desde hacía tiempo. Este catálogo ocupa esa carpeta y arregla los

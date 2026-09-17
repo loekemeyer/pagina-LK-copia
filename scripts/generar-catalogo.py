@@ -38,7 +38,7 @@ DOMINIO = "https://loekemeyer.com"
 # que en script.js / historial.js / sugerencias.js.
 SUPABASE_URL = "https://kwkclwhmoygunqmlegrg.supabase.co"
 BASE_IMG = SUPABASE_URL + "/storage/v1/object/public/products-images/"
-IMG_PARAMS = "?v=20260916"
+IMG_PARAMS = ""  # se completa en main() con la fecha de la exportación
 
 WA_VENTAS = "5491131181021"
 V = "23400"  # ?v= de assets; el hook pre-commit lo sincroniza en cada commit
@@ -182,6 +182,31 @@ def footer(pref):
 """
 
 
+def bajada(cat):
+    """Las tres partes del texto de una línea:
+       1. intro   — qué hay en la línea, escrito a mano en el JSON
+       2. derivado — cuántos artículos y cómo se despacha, sacado de los datos
+       3. cierre  — el dato propio de esa línea, escrito a mano en el JSON
+    Antes las 19 páginas cerraban con la MISMA frase ("Fabricantes desde 1950;
+    venta mayorista por caja cerrada a comercios de todo el país"). Además de
+    sonar a plantilla, Google lo lee como contenido duplicado entre páginas del
+    mismo sitio.
+    """
+    ps = cat["productos"]
+    n = len(ps)
+    cajas = sorted({p["uxb"] for p in ps if p.get("uxb")})
+    art = f"{n} artículos" if n != 1 else "1 artículo"
+    if not cajas:
+        medio = f"{art}."
+    elif len(cajas) == 1:
+        medio = f"{art}. Caja cerrada de {cajas[0]} unidades."
+    else:
+        lista = ", ".join(str(c) for c in cajas[:-1]) + f" o {cajas[-1]}"
+        medio = f"{art}. Caja cerrada de {lista} unidades."
+    partes = [cat["intro"].strip(), medio, (cat.get("cierre") or "").strip()]
+    return " ".join(x for x in partes if x)
+
+
 def card(p):
     """Una ficha del mosaico, para las páginas de línea.
 
@@ -220,7 +245,7 @@ def pagina_categoria(cat, todas):
     slug = cat["slug"]
     n = len(cat["productos"])
     titulo = f"{cat['nombre']} · Fabricante y mayorista · Loekemeyer"
-    desc = f"{cat['intro']} {n} artículos de Loekemeyer Hnos S.R.L., fabricantes de utensilios de cocina desde 1950. Venta mayorista a todo el país."
+    desc = f"{bajada(cat)} Loekemeyer Hnos S.R.L., fabricantes de utensilios de cocina desde 1950."
     canonical = f"{DOMINIO}/{SALIDA}/{slug}.html"
     jsonld = {
         "@context": "https://schema.org",
@@ -268,7 +293,7 @@ def pagina_categoria(cat, todas):
         <div class="prod-head">
           <p class="pub-kicker">Línea de producto</p>
           <h1>{esc(cat['nombre'])}</h1>
-          <p class="prod-intro">{esc(cat['intro'])} {n} artículos. Fabricantes desde 1950; venta mayorista por caja cerrada a comercios de todo el país.</p>
+          <p class="prod-intro">{esc(bajada(cat))}</p>
         </div>
         {cuerpo}
         <div class="prod-cta-block">
@@ -357,8 +382,13 @@ def slugify(s):
 
 
 def main():
+    global IMG_PARAMS
     with open(DATOS, encoding="utf-8") as f:
         datos = json.load(f)
+    # El ?v= de las fotos sale de la fecha de exportación: si alguien reemplaza
+    # una foto en el bucket con el mismo nombre, la próxima exportación cambia
+    # el parámetro y el navegador no sirve la vieja de cache.
+    IMG_PARAMS = "?v=" + datos.get("generado", "").replace("-", "")
     cats = sorted(datos["categorias"], key=lambda c: c["orden"])
     out = os.path.join(RAIZ, SALIDA)
     os.makedirs(out, exist_ok=True)

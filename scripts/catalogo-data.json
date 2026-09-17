@@ -1,1975 +1,1994 @@
 {
- "generado": "2026-09-15",
- "fuente": "public.products (active = true), proyecto kwkclwhmoygunqmlegrg. El campo 'imagenes' es products.images tal cual: si está cargado manda sobre el nombre derivado del código.",
- "total": 199,
- "categorias": [
-  {
-   "categoria": "Abrelatas",
-   "nombre": "Abrelatas",
-   "slug": "abrelatas",
-   "intro": "Abrelatas a manija, mariposa y uña. La línea histórica de la fábrica: acero estampado, mecanismos simples y piezas de repuesto disponibles.",
-   "orden": 1001,
-   "productos": [
+  "generado": "2026-09-15",
+  "fuente": "public.products (active = true), proyecto kwkclwhmoygunqmlegrg. El campo 'imagenes' es products.images tal cual: si está cargado manda sobre el nombre derivado del código.",
+  "total": 199,
+  "categorias": [
     {
-     "cod": "506",
-     "nombre": "Abrelatas Uña Rojo",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
+      "categoria": "Abrelatas",
+      "nombre": "Abrelatas",
+      "slug": "abrelatas",
+      "intro": "Abrelatas a manija, mariposa y uña. La línea histórica de la fábrica: acero estampado, mecanismos simples y piezas de repuesto disponibles.",
+      "cierre": "Es la línea con la que arrancó la fábrica: en los abrelatas a manija antiguos todavía se lee estampada la patente argentina N° 129.035.",
+      "orden": 1001,
+      "productos": [
+        {
+          "cod": "506",
+          "nombre": "Abrelatas Uña Rojo",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "510",
+          "nombre": "Abrelata Uña Cromado",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "501",
+          "nombre": "Abrelatas A Manija",
+          "uxb": 6,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "503E",
+          "nombre": "Abrelatas Doble Engranaje",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "066",
+          "nombre": "Abrelatas Super Mariposa",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "512",
+          "nombre": "Abrelatas Mariposa Capuchon Rojo",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "502",
+          "nombre": "Abrelatas Mariposa Cromado",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "511",
+          "nombre": "Abrelatas Uña 3 En 1",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "500",
+          "nombre": "Abrelata Uña Pie Color",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        }
+      ]
     },
     {
-     "cod": "510",
-     "nombre": "Abrelata Uña Cromado",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
+      "categoria": "Peladores",
+      "nombre": "Peladores y pelapapas",
+      "slug": "peladores",
+      "intro": "Pelapapas de mango plástico, metálico y ergonómico, peladores en V, dentados y pelanaranjas.",
+      "cierre": "El cuerpo plástico del pelador es un diseño propio, registrado en el INPI en 1971 y en 1976, y el 505 es el artículo más vendido de la casa.",
+      "orden": 2001,
+      "productos": [
+        {
+          "cod": "505",
+          "nombre": "Pelador mango Plástico",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "513",
+          "nombre": "Pelador mango Metálico",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "586",
+          "nombre": "Pelapapas mango Ergonomico",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "587",
+          "nombre": "Pelador Metálico Corte Laser",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "598E",
+          "nombre": "Pelador Negro Dentado",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "589E",
+          "nombre": "Pelador mango Acrílico",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "599E",
+          "nombre": "Pelador Madera Multifunción",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "816E",
+          "nombre": "Pelador V Con mango Ergonómico",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "569",
+          "nombre": "Pelanaranjas x 1 Display",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        }
+      ]
     },
     {
-     "cod": "501",
-     "nombre": "Abrelatas A Manija",
-     "uxb": 6,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
+      "categoria": "Sacacorchos",
+      "nombre": "Sacacorchos y descorchadores",
+      "slug": "sacacorchos",
+      "intro": "Sacacorchos tipo mozo, combinados con destapador, de doble aleta, doble impulso y líneas premium.",
+      "cierre": "Los tres mecanismos de la historia del sacacorchos conviven en la línea: el tipo mozo de Wienke, la doble aleta de Rosati y el combinado con destapador.",
+      "orden": 3001,
+      "productos": [
+        {
+          "cod": "520",
+          "nombre": "Sacacorcho Tipo Mozo Cromado",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "521",
+          "nombre": "Sacacorcho Combinado Cromado",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "530",
+          "nombre": "Sacacorcho Tipo Mozo Color",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "531",
+          "nombre": "Sacacorcho Combinado Color",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "529E",
+          "nombre": "Sac. Doble Impulso Acero",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "540E",
+          "nombre": "Sacacorcho Premium",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "536E",
+          "nombre": "Sacacorcho Full Black",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "539E",
+          "nombre": "Sacacorcho Negro",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "538E",
+          "nombre": "Sacacorcho Azul",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "819E",
+          "nombre": "Sacacorcho \"Fish\" 14cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "522E",
+          "nombre": "Sacacorcho Doble Aleta Premium",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "523",
+          "nombre": "Sacacorcho Doble Aleta",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "585E",
+          "nombre": "Sacacorcho Doble Aleta Fundicion",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "581",
+          "nombre": "Sacacorcho Mango Ergonómico",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "525E",
+          "nombre": "Sacacorcho Cabo De Madera",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        }
+      ]
     },
     {
-     "cod": "503E",
-     "nombre": "Abrelatas Doble Engranaje",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
+      "categoria": "Cortadores",
+      "nombre": "Cortadores",
+      "slug": "cortadores",
+      "intro": "Cortapizzas, cortaquesos, cortarravioles, cortahuevos, descorazonador de manzana y cortapalta.",
+      "cierre": "El corta queso de mango Loekemeyer, código 546, está entre los diez artículos más vendidos de la casa.",
+      "orden": 4001,
+      "productos": [
+        {
+          "cod": "546",
+          "nombre": "Corta Queso Blandos Mango Loeke",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "574E",
+          "nombre": "Corta Queso Blandos Mango Alambre",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "562",
+          "nombre": "Corta Pizza 6cm mango Loeke",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "564",
+          "nombre": "Corta Pizza 8cm mango Madera",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "809E",
+          "nombre": "Corta Pizza mango Ergonomico 6cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "811E",
+          "nombre": "Corta Pizza mango Ergonomico Ø 9cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "810E",
+          "nombre": "Corta Queso acero inoxidable (Semiduro)",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "559",
+          "nombre": "Corta Ravioles con Mango Loeke",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "812E",
+          "nombre": "Corta Huevo Marco Plástico",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "395",
+          "nombre": "Descorazonador De Manzana",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "537",
+          "nombre": "Pela y Pica ajo",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "567",
+          "nombre": "Corta Palta",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        }
+      ]
     },
     {
-     "cod": "066",
-     "nombre": "Abrelatas Super Mariposa",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
+      "categoria": "Ralladores",
+      "nombre": "Ralladores y mandolinas",
+      "slug": "ralladores",
+      "intro": "Ralladores cilíndricos, planos, de cuatro lados, hexagonales y cónicos en acero inoxidable, más mandolina de tres grosores.",
+      "cierre": "Del rallador mini al cilíndrico de 21 cm, y la mandolina como única con tres grosores de corte.",
+      "orden": 5001,
+      "productos": [
+        {
+          "cod": "321",
+          "nombre": "Rallador Cilíndrico 21cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "323E",
+          "nombre": "Rallador Mini",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "817E",
+          "nombre": "Rallador C/mango Ergonómico",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "368E",
+          "nombre": "Rallador Hexagonal inoxidable 25cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "360E",
+          "nombre": "Rallador 4 Lados A/L mango plástico",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "328E",
+          "nombre": "Rallador Plano 3 Usos acero inoxidable",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "361E",
+          "nombre": "Rallador 4 lados acero inoxidable",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "363E",
+          "nombre": "Rallador Gourmet Grano Fino",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "366E",
+          "nombre": "Rallador Cónico acero inoxidable",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "367E",
+          "nombre": "Rallador Hexagonal",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "870E",
+          "nombre": "Mandolina 3 Grosores",
+          "uxb": 4,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        }
+      ]
     },
     {
-     "cod": "512",
-     "nombre": "Abrelatas Mariposa Capuchon Rojo",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
+      "categoria": "Coladores",
+      "nombre": "Coladores y filtros",
+      "slug": "coladores",
+      "intro": "Coladores de acero inoxidable de 8 a 20 cm, coladores de pasta, extensibles, cernidor de harina, filtros de café e infusor de té.",
+      "cierre": "Es la línea con más variedad de medidas del catálogo: del colador de 8 cm al extensible que llega a 57.",
+      "orden": 6001,
+      "productos": [
+        {
+          "cod": "031",
+          "nombre": "Filtro De Café 10cm",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "034",
+          "nombre": "Filtro De Café Gastro 14cm",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "026",
+          "nombre": "Colador Ø 8cm",
+          "uxb": 36,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "027",
+          "nombre": "Colador Ø 10cm",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "437E",
+          "nombre": "Colador Ø 16cm",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "438E",
+          "nombre": "Colador Ø 20cm",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "439E",
+          "nombre": "Colador Pasta",
+          "uxb": 6,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "440E",
+          "nombre": "Colador Extensible 25x34/57cm",
+          "uxb": 4,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "260E",
+          "nombre": "Infusor de Te",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "441",
+          "nombre": "Colador de Pasta Plástico",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "035E",
+          "nombre": "Cernidor de Harina",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        }
+      ]
     },
     {
-     "cod": "502",
-     "nombre": "Abrelatas Mariposa Cromado",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
+      "categoria": "Afiladores",
+      "nombre": "Afiladores de cuchillos",
+      "slug": "afiladores",
+      "intro": "Afila cuchillos de mango, el diseño propio registrado por la fábrica en 1969, y la versión premium.",
+      "cierre": "El cuerpo del afila cuchillos 504 fue el primer diseño que la fábrica registró en el INPI, en 1969, y se sigue fabricando con la misma pieza.",
+      "orden": 7001,
+      "productos": [
+        {
+          "cod": "504",
+          "nombre": "Afila Cuchillos",
+          "uxb": 6,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "404E",
+          "nombre": "Afila Cuchillos Premium",
+          "uxb": 4,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        }
+      ]
     },
     {
-     "cod": "511",
-     "nombre": "Abrelatas Uña 3 En 1",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
+      "categoria": "Utensilios",
+      "nombre": "Utensilios de cocina",
+      "slug": "utensilios",
+      "intro": "Cucharas, cucharones, espátulas, espumaderas y pisapapas en acero inoxidable, nylon, silicona y madera.",
+      "cierre": "Cinco materiales en una misma línea —acero inoxidable, nylon, nylon premium, silicona y madera—, y es la más amplia del catálogo.",
+      "orden": 8001,
+      "productos": [
+        {
+          "cod": "981E",
+          "nombre": "Espátula Lisa Linea Premium",
+          "uxb": 12,
+          "subcategoria": "Madera",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "982E",
+          "nombre": "Cuchara Linea Premium",
+          "uxb": 12,
+          "subcategoria": "Madera",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "983E",
+          "nombre": "Cucharón Linea Premium",
+          "uxb": 12,
+          "subcategoria": "Madera",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "984E",
+          "nombre": "Cuchara Fideos Linea Premium",
+          "uxb": 12,
+          "subcategoria": "Madera",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "985E",
+          "nombre": "Espatula Calada Linea Premium",
+          "uxb": 12,
+          "subcategoria": "Madera",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "980E",
+          "nombre": "Tenedor Ensalada Linea Premium",
+          "uxb": 12,
+          "subcategoria": "Madera",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "988E",
+          "nombre": "Espumadera Linea Premium",
+          "uxb": 12,
+          "subcategoria": "Madera",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "952E",
+          "nombre": "Cuchara Silicona mango Bambú",
+          "uxb": 12,
+          "subcategoria": "Silicona",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "955E",
+          "nombre": "Espátula Silicona mango Bambú",
+          "uxb": 12,
+          "subcategoria": "Silicona",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "953E",
+          "nombre": "Cucharón Silicona mango Bambú",
+          "uxb": 12,
+          "subcategoria": "Silicona",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "951E",
+          "nombre": "Espátula Lisa Silicona mango Bambú",
+          "uxb": 12,
+          "subcategoria": "Silicona",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "954E",
+          "nombre": "Pinza Fideos Silicona mango Bambú",
+          "uxb": 12,
+          "subcategoria": "Silicona",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "956E",
+          "nombre": "Cuchara Calada Silicona mango Bambú",
+          "uxb": 12,
+          "subcategoria": "Silicona",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "957E",
+          "nombre": "Batidor Pera Silicona mango Bambú",
+          "uxb": 12,
+          "subcategoria": "Silicona",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "958E",
+          "nombre": "Pincel Silicona mango Bambú",
+          "uxb": 12,
+          "subcategoria": "Silicona",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "935E",
+          "nombre": "Espátula Calada Nylon mango Madera",
+          "uxb": 12,
+          "subcategoria": "Nylon Premium",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "936E",
+          "nombre": "Espumadera Nylon mango Madera",
+          "uxb": 12,
+          "subcategoria": "Nylon Premium",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "937E",
+          "nombre": "Batidor Pera Nylon mango Madera",
+          "uxb": 12,
+          "subcategoria": "Nylon Premium",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "932E",
+          "nombre": "Cuchara Nylon mango Madera",
+          "uxb": 12,
+          "subcategoria": "Nylon Premium",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "933E",
+          "nombre": "Cucharon Nylon mango Madera",
+          "uxb": 12,
+          "subcategoria": "Nylon Premium",
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "934E",
+          "nombre": "Cuchara Fideos Nylon mango Mad",
+          "uxb": 12,
+          "subcategoria": "Nylon Premium",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "931E",
+          "nombre": "Espátula Lisa Nylon mango Mad",
+          "uxb": 12,
+          "subcategoria": "Nylon Premium",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "942E",
+          "nombre": "Cuchara acero inoxidable",
+          "uxb": 12,
+          "subcategoria": "Inoxidable",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "943E",
+          "nombre": "Cucharon acero inoxidable",
+          "uxb": 12,
+          "subcategoria": "Inoxidable",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "944E",
+          "nombre": "Cuchara Fideos acero inoxidable",
+          "uxb": 12,
+          "subcategoria": "Inoxidable",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "945E",
+          "nombre": "Espátula Calada acero inoxidable",
+          "uxb": 12,
+          "subcategoria": "Inoxidable",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "941E",
+          "nombre": "Espátula Lisa acero inoxidable",
+          "uxb": 12,
+          "subcategoria": "Inoxidable",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "946E",
+          "nombre": "Cuchara Calada acero inoxidable",
+          "uxb": 12,
+          "subcategoria": "Inoxidable",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "948E",
+          "nombre": "Espumadera acero inoxidable",
+          "uxb": 12,
+          "subcategoria": "Inoxidable",
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "315",
+          "nombre": "Pisa Papas Acero inoxidable",
+          "uxb": 12,
+          "subcategoria": "Inoxidable",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "335",
+          "nombre": "Cuchara Calada acero inoxidable",
+          "uxb": 24,
+          "subcategoria": "Inoxidable",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "332",
+          "nombre": "Espatula Calada acero inoxidable",
+          "uxb": 24,
+          "subcategoria": "Inoxidable",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "338",
+          "nombre": "Espatula Lisa acero inoxidable",
+          "uxb": 24,
+          "subcategoria": "Inoxidable",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "570",
+          "nombre": "Pala De Canelones",
+          "uxb": 24,
+          "subcategoria": "Inoxidable",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "337",
+          "nombre": "Pinche acero inoxidable",
+          "uxb": 24,
+          "subcategoria": "Inoxidable",
+          "badge": "LIQUIDACIÓN",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "355",
+          "nombre": "Pisa Papas Nylon con mango",
+          "uxb": 24,
+          "subcategoria": "Nylon",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "393",
+          "nombre": "Espátula Calada Nylon 1 Pza",
+          "uxb": 24,
+          "subcategoria": "Nylon",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "394",
+          "nombre": "Espátula Lisa Nylon 1 Pza",
+          "uxb": 24,
+          "subcategoria": "Nylon",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "392",
+          "nombre": "Cucharon Nylon 1 Pza",
+          "uxb": 24,
+          "subcategoria": "Nylon",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "390",
+          "nombre": "Cuchara Calada Nylon 1 Pza",
+          "uxb": 24,
+          "subcategoria": "Nylon",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "391",
+          "nombre": "Cuchara Fideos Nylon 1 Pza",
+          "uxb": 24,
+          "subcategoria": "Nylon",
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        }
+      ]
     },
     {
-     "cod": "500",
-     "nombre": "Abrelata Uña Pie Color",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
+      "categoria": "Pinzas",
+      "nombre": "Pinzas de cocina",
+      "slug": "pinzas",
+      "intro": "Pinzas de acero inoxidable, con silicona, para fideos, fiambre, ensalada y hielo.",
+      "cierre": "Acero inoxidable, con o sin cabezal de silicona, para uso doméstico y para cocina profesional.",
+      "orden": 9002,
+      "productos": [
+        {
+          "cod": "601E",
+          "nombre": "Pinza Acero 30 cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "606E",
+          "nombre": "Pinza 30 cm acero inoxidable con  Silic",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "607E",
+          "nombre": "Pinza Hielo 15 cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "560",
+          "nombre": "Pinza Corta Alambre 21cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "594",
+          "nombre": "Pinza De Fideos mango Plástico 25cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "595",
+          "nombre": "Pinza De Fiambre mango Plástico 23cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "596",
+          "nombre": "Pinza De Ensalada mango Plástico 23cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "517",
+          "nombre": "Pinza Acero inoxidable 25cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "SIN STOCK",
+          "importado": false,
+          "imagenes": []
+        }
+      ]
+    },
+    {
+      "categoria": "Destapadores",
+      "nombre": "Destapadores",
+      "slug": "destapadores",
+      "intro": "Destapacoronas y llaveros destapadores, cromados y de color, sueltos o en display.",
+      "cierre": "Se despachan sueltos por caja o en display de mostrador, que es como los piden los kioscos y las vinotecas.",
+      "orden": 10002,
+      "productos": [
+        {
+          "cod": "499",
+          "nombre": "Llavero Destapador Pie Color",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "498",
+          "nombre": "Llavero Destapador Pie Cromado",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "057",
+          "nombre": "Destapa Corona x1 Cromado",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "056E",
+          "nombre": "Llavero Destapacorona Económico",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "514E",
+          "nombre": "Llavero Destapacorona Suelto",
+          "uxb": 100,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": [
+            "514E.webp"
+          ]
+        },
+        {
+          "cod": "516",
+          "nombre": "Destapa Corona x1 Cromado Suelto",
+          "uxb": 100,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": [
+            "516.webp"
+          ]
+        }
+      ]
+    },
+    {
+      "categoria": "Tapon Vino",
+      "nombre": "Tapones de vino y cerveza",
+      "slug": "tapones-de-vino",
+      "intro": "Tapones herméticos para vino y cerveza, en negro, color y versión premium.",
+      "cierre": "Cierre hermético para conservar la botella abierta, en tres terminaciones.",
+      "orden": 11002,
+      "productos": [
+        {
+          "cod": "575",
+          "nombre": "Tapón De Vino/Cerveza x1 Negro",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "577",
+          "nombre": "Tapón De Vino/Cerveza x1 Prem",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "579",
+          "nombre": "Tapón De Vino/Cerveza x1 Color",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        }
+      ]
+    },
+    {
+      "categoria": "Repostería",
+      "nombre": "Repostería",
+      "slug": "reposteria",
+      "intro": "Batidores, pinceles y espátulas de silicona, manga repostera con boquillas, palas y cortatortas.",
+      "cierre": "El corta torta de tres usos, código 326, sale del modelo N° 66.602 que la tercera generación registró en el INPI en 1999.",
+      "orden": 12002,
+      "productos": [
+        {
+          "cod": "544",
+          "nombre": "Batidor Pera Alambre",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "580",
+          "nombre": "Batidor Mini",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "969E",
+          "nombre": "Batidor Silicona",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "970E",
+          "nombre": "Cuchara Silicona",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "971E",
+          "nombre": "Espátula Silicona",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "960E",
+          "nombre": "Pincel Silicona 52 g",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "280",
+          "nombre": "Manga Repostera + 4 Boquillas",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "590E",
+          "nombre": "Pincel Silicona 11 g",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "325",
+          "nombre": "Espatula Repostera plástico 1 Pza",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "590ES",
+          "nombre": "Pincel Silicona 11 g Suelto",
+          "uxb": 50,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": [
+            "590E.webp"
+          ]
+        },
+        {
+          "cod": "326",
+          "nombre": "Corta Torta Plástica 3 Usos",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "312",
+          "nombre": "Pala De Torta Acero inoxidable",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "547",
+          "nombre": "Corta Torta",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "LIQUIDACIÓN",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "509",
+          "nombre": "Pala Batidora",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "LIQUIDACIÓN",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "515",
+          "nombre": "Batidor Resorte",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "311",
+          "nombre": "Cuchillo De Torta acero inoxidable",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "LIQUIDACIÓN",
+          "importado": false,
+          "imagenes": []
+        }
+      ]
+    },
+    {
+      "categoria": "Madera",
+      "nombre": "Utensilios de madera",
+      "slug": "madera",
+      "intro": "Cucharas de madera de 13 a 45 cm, ñoqueras, palos de amasar, prensa matambre y bate bife.",
+      "cierre": "La línea más tradicional del catálogo, en medidas de 13 a 45 cm.",
+      "orden": 13002,
+      "productos": [
+        {
+          "cod": "208",
+          "nombre": "Cucharita 13cm Azucarera Madera",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "223",
+          "nombre": "Cuchara Madera 25 Cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "224",
+          "nombre": "Cuchara Madera 30 Cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "248",
+          "nombre": "Cuchara Nylon Reforzada 33 Cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "225",
+          "nombre": "Cuchara Madera 35 Cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "220",
+          "nombre": "Cuchara Madera 40 Cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "221",
+          "nombre": "Cuchara Madera 45 Cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "207",
+          "nombre": "Ñoquera Madera mango Redondo",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "229",
+          "nombre": "Ñoquera Madera",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "234",
+          "nombre": "Palo de Amasar Frances 40 cm",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "246",
+          "nombre": "Prensa Matambre",
+          "uxb": 6,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "222",
+          "nombre": "Bate Bife Madera",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "231",
+          "nombre": "Palo de Amasar 30cm",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "232",
+          "nombre": "Palo de Amasar 40cm",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "233",
+          "nombre": "Palo de Amasar 50cm",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        }
+      ]
+    },
+    {
+      "categoria": "Mate",
+      "nombre": "Mate y bombillas",
+      "slug": "mate-y-bombillas",
+      "intro": "Bombillas de resorte, pico de loro, planas y autolimpiantes, mates térmicos y de madera, filtros, cepillos y despolvillador de yerba.",
+      "cierre": "Bombillas, mates y los accesorios que los acompañan: filtros, cepillos y despolvillador de yerba.",
+      "orden": 14002,
+      "productos": [
+        {
+          "cod": "557",
+          "nombre": "Bombilla Resorte Chata",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "558",
+          "nombre": "Bombilla Resorte Tradicional",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "659",
+          "nombre": "Bombilla Pico de Loro Acero inoxidable",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "654",
+          "nombre": "Bombilla Autolimpiante inoxidable",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "658",
+          "nombre": "Bombilla Plana Ancha Metalizada",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "573",
+          "nombre": "Bombilla Colores Metalizados",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": "SIN STOCK",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "255",
+          "nombre": "Mate inoxidable Térmico",
+          "uxb": 8,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "256",
+          "nombre": "Mate Madera Cerámica",
+          "uxb": 8,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "591",
+          "nombre": "Despolvillador de Yerba",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "555",
+          "nombre": "Cepillo Limpia Bombilla",
+          "uxb": 36,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "550",
+          "nombre": "Filtro Para Bombillas",
+          "uxb": 36,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "556",
+          "nombre": "Sacayerba",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        }
+      ]
+    },
+    {
+      "categoria": "Accesorios",
+      "nombre": "Accesorios de cocina",
+      "slug": "accesorios",
+      "intro": "Sacafuentes, ahuecadores, prensa ajo, exprimidor de cítricos, rompenueces, cepillos y cierrabolsas.",
+      "cierre": "Los artículos sueltos que completan la góndola de bazar y que se piden de a poco pero todo el año.",
+      "orden": 15002,
+      "productos": [
+        {
+          "cod": "508",
+          "nombre": "Sacafuentes Articulado",
+          "uxb": 6,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "518",
+          "nombre": "Sacafuente Pizzero",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "542",
+          "nombre": "Ahueca Papas",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "543",
+          "nombre": "Ahueca Frutas",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "541E",
+          "nombre": "Prensa Ajo",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "299",
+          "nombre": "Muñeco Silicona Antiderrame",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "823",
+          "nombre": "Exprimidor De Cítricos",
+          "uxb": 6,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "507",
+          "nombre": "Rompenueces",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "534",
+          "nombre": "Cepillo Lavavajilla",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "535",
+          "nombre": "Cepillo Limpia Vaso y Mamadera",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "532",
+          "nombre": "Cuchara De Helado",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "058",
+          "nombre": "Cierra Bolsa x2",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "396",
+          "nombre": "Enrulador de Manteca",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": "LIQUIDACIÓN",
+          "importado": false,
+          "imagenes": []
+        }
+      ]
+    },
+    {
+      "categoria": "Vidrio",
+      "nombre": "Vidrio",
+      "slug": "vidrio",
+      "intro": "Saleros, especieros y aceiteras de vidrio para mesa y cocina.",
+      "cierre": "Los únicos artículos de vidrio de todo el catálogo.",
+      "orden": 16002,
+      "productos": [
+        {
+          "cod": "582E",
+          "nombre": "Salero 90 ml",
+          "uxb": 24,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "583E",
+          "nombre": "Especiero Tapa Bamboo",
+          "uxb": 15,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "584E",
+          "nombre": "Aceitera 400 ml",
+          "uxb": 6,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "566E",
+          "nombre": "Aceitera 100 ml",
+          "uxb": 6,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": true,
+          "imagenes": []
+        }
+      ]
+    },
+    {
+      "categoria": "Cuchillos de untar",
+      "nombre": "Cuchillos de untar",
+      "slug": "cuchillos-de-untar",
+      "intro": "Cuchillos de untar de mango plástico y de madera, en packs de dos unidades.",
+      "cierre": "Cada caja lleva 12 packs: 24 cuchillos.",
+      "orden": 17002,
+      "productos": [
+        {
+          "cod": "551",
+          "nombre": "Cuchillo De Untar mango plástico x2",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "059",
+          "nombre": "Cuchillo de Untar Plástico x2",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "519",
+          "nombre": "Cuchillo Untar mango Madera x2",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": false,
+          "imagenes": []
+        }
+      ]
+    },
+    {
+      "categoria": "Contenedores",
+      "nombre": "Contenedores",
+      "slug": "contenedores",
+      "intro": "Bowls multiuso y sets de tapers para guardar alimentos.",
+      "cierre": "Plástico apto para contacto con alimentos, para guardar y llevar.",
+      "orden": 18003,
+      "productos": [
+        {
+          "cod": "071",
+          "nombre": "Bowl Multi Uso 330ml",
+          "uxb": 4,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": false,
+          "imagenes": []
+        },
+        {
+          "cod": "070",
+          "nombre": "Set Tapers 0.8 L / 1.5 L / 3 L",
+          "uxb": 4,
+          "subcategoria": null,
+          "badge": "NUEVO",
+          "importado": false,
+          "imagenes": []
+        }
+      ]
+    },
+    {
+      "categoria": "Acacia",
+      "nombre": "Línea Acacia",
+      "slug": "acacia",
+      "intro": "Utensilios con mango de madera de acacia: ralladores, cortapizza, cortarravioles, batidor, pelador y abrelatas.",
+      "cierre": "Todos los artículos de la línea comparten el mismo cabo de madera de acacia.",
+      "orden": 19000,
+      "productos": [
+        {
+          "cod": "989E",
+          "nombre": "Rallador de Limón mango Acacia",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "990E",
+          "nombre": "Corta Ravioles mango Acacia",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "992E",
+          "nombre": "Batidor Pera mango Acacia",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "993E",
+          "nombre": "Pelador V mango Acacia",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "996E",
+          "nombre": "Corta Pizza 9cm mango Acacia",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "997E",
+          "nombre": "Rallador 3 En 1 mango Acacia",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        },
+        {
+          "cod": "998E",
+          "nombre": "Abrelatas Doble Engranaje mango Acacia",
+          "uxb": 12,
+          "subcategoria": null,
+          "badge": null,
+          "importado": true,
+          "imagenes": []
+        }
+      ]
     }
-   ]
-  },
-  {
-   "categoria": "Peladores",
-   "nombre": "Peladores y pelapapas",
-   "slug": "peladores",
-   "intro": "Pelapapas de mango plástico, metálico y ergonómico, peladores en V, dentados y pelanaranjas.",
-   "orden": 2001,
-   "productos": [
-    {
-     "cod": "505",
-     "nombre": "Pelador mango Plástico",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "513",
-     "nombre": "Pelador mango Metálico",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "586",
-     "nombre": "Pelapapas mango Ergonomico",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "587",
-     "nombre": "Pelador Metálico Corte Laser",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "598E",
-     "nombre": "Pelador Negro Dentado",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "589E",
-     "nombre": "Pelador mango Acrílico",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "599E",
-     "nombre": "Pelador Madera Multifunción",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "816E",
-     "nombre": "Pelador V Con mango Ergonómico",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "569",
-     "nombre": "Pelanaranjas x 1 Display",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Sacacorchos",
-   "nombre": "Sacacorchos y descorchadores",
-   "slug": "sacacorchos",
-   "intro": "Sacacorchos tipo mozo, combinados con destapador, de doble aleta, doble impulso y líneas premium.",
-   "orden": 3001,
-   "productos": [
-    {
-     "cod": "520",
-     "nombre": "Sacacorcho Tipo Mozo Cromado",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "521",
-     "nombre": "Sacacorcho Combinado Cromado",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "530",
-     "nombre": "Sacacorcho Tipo Mozo Color",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "531",
-     "nombre": "Sacacorcho Combinado Color",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "529E",
-     "nombre": "Sac. Doble Impulso Acero",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "540E",
-     "nombre": "Sacacorcho Premium",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "536E",
-     "nombre": "Sacacorcho Full Black",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "539E",
-     "nombre": "Sacacorcho Negro",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "538E",
-     "nombre": "Sacacorcho Azul",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "819E",
-     "nombre": "Sacacorcho \"Fish\" 14cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "522E",
-     "nombre": "Sacacorcho Doble Aleta Premium",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "523",
-     "nombre": "Sacacorcho Doble Aleta",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "585E",
-     "nombre": "Sacacorcho Doble Aleta Fundicion",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "581",
-     "nombre": "Sacacorcho Mango Ergonómico",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "525E",
-     "nombre": "Sacacorcho Cabo De Madera",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Cortadores",
-   "nombre": "Cortadores",
-   "slug": "cortadores",
-   "intro": "Cortapizzas, cortaquesos, cortarravioles, cortahuevos, descorazonador de manzana y cortapalta.",
-   "orden": 4001,
-   "productos": [
-    {
-     "cod": "546",
-     "nombre": "Corta Queso Blandos Mango Loeke",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "574E",
-     "nombre": "Corta Queso Blandos Mango Alambre",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "562",
-     "nombre": "Corta Pizza 6cm mango Loeke",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "564",
-     "nombre": "Corta Pizza 8cm mango Madera",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "809E",
-     "nombre": "Corta Pizza mango Ergonomico 6cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "811E",
-     "nombre": "Corta Pizza mango Ergonomico Ø 9cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "810E",
-     "nombre": "Corta Queso acero inoxidable (Semiduro)",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "559",
-     "nombre": "Corta Ravioles con Mango Loeke",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "812E",
-     "nombre": "Corta Huevo Marco Plástico",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "395",
-     "nombre": "Descorazonador De Manzana",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "537",
-     "nombre": "Pela y Pica ajo",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "567",
-     "nombre": "Corta Palta",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Ralladores",
-   "nombre": "Ralladores y mandolinas",
-   "slug": "ralladores",
-   "intro": "Ralladores cilíndricos, planos, de cuatro lados, hexagonales y cónicos en acero inoxidable, más mandolina de tres grosores.",
-   "orden": 5001,
-   "productos": [
-    {
-     "cod": "321",
-     "nombre": "Rallador Cilíndrico 21cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "323E",
-     "nombre": "Rallador Mini",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "817E",
-     "nombre": "Rallador C/mango Ergonómico",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "368E",
-     "nombre": "Rallador Hexagonal inoxidable 25cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "360E",
-     "nombre": "Rallador 4 Lados A/L mango plástico",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "328E",
-     "nombre": "Rallador Plano 3 Usos acero inoxidable",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "361E",
-     "nombre": "Rallador 4 lados acero inoxidable",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "363E",
-     "nombre": "Rallador Gourmet Grano Fino",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "366E",
-     "nombre": "Rallador Cónico acero inoxidable",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "367E",
-     "nombre": "Rallador Hexagonal",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "870E",
-     "nombre": "Mandolina 3 Grosores",
-     "uxb": 4,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Coladores",
-   "nombre": "Coladores y filtros",
-   "slug": "coladores",
-   "intro": "Coladores de acero inoxidable de 8 a 20 cm, coladores de pasta, extensibles, cernidor de harina, filtros de café e infusor de té.",
-   "orden": 6001,
-   "productos": [
-    {
-     "cod": "031",
-     "nombre": "Filtro De Café 10cm",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "034",
-     "nombre": "Filtro De Café Gastro 14cm",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "026",
-     "nombre": "Colador Ø 8cm",
-     "uxb": 36,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "027",
-     "nombre": "Colador Ø 10cm",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "437E",
-     "nombre": "Colador Ø 16cm",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "438E",
-     "nombre": "Colador Ø 20cm",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "439E",
-     "nombre": "Colador Pasta",
-     "uxb": 6,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "440E",
-     "nombre": "Colador Extensible 25x34/57cm",
-     "uxb": 4,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "260E",
-     "nombre": "Infusor de Te",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "441",
-     "nombre": "Colador de Pasta Plástico",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "035E",
-     "nombre": "Cernidor de Harina",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Afiladores",
-   "nombre": "Afiladores de cuchillos",
-   "slug": "afiladores",
-   "intro": "Afila cuchillos de mango, el diseño propio registrado por la fábrica en 1969, y la versión premium.",
-   "orden": 7001,
-   "productos": [
-    {
-     "cod": "504",
-     "nombre": "Afila Cuchillos",
-     "uxb": 6,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "404E",
-     "nombre": "Afila Cuchillos Premium",
-     "uxb": 4,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Utensilios",
-   "nombre": "Utensilios de cocina",
-   "slug": "utensilios",
-   "intro": "Cucharas, cucharones, espátulas, espumaderas y pisapapas en acero inoxidable, nylon, silicona y madera.",
-   "orden": 8001,
-   "productos": [
-    {
-     "cod": "981E",
-     "nombre": "Espátula Lisa Linea Premium",
-     "uxb": 12,
-     "subcategoria": "Madera",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "982E",
-     "nombre": "Cuchara Linea Premium",
-     "uxb": 12,
-     "subcategoria": "Madera",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "983E",
-     "nombre": "Cucharón Linea Premium",
-     "uxb": 12,
-     "subcategoria": "Madera",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "984E",
-     "nombre": "Cuchara Fideos Linea Premium",
-     "uxb": 12,
-     "subcategoria": "Madera",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "985E",
-     "nombre": "Espatula Calada Linea Premium",
-     "uxb": 12,
-     "subcategoria": "Madera",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "980E",
-     "nombre": "Tenedor Ensalada Linea Premium",
-     "uxb": 12,
-     "subcategoria": "Madera",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "988E",
-     "nombre": "Espumadera Linea Premium",
-     "uxb": 12,
-     "subcategoria": "Madera",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "952E",
-     "nombre": "Cuchara Silicona mango Bambú",
-     "uxb": 12,
-     "subcategoria": "Silicona",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "955E",
-     "nombre": "Espátula Silicona mango Bambú",
-     "uxb": 12,
-     "subcategoria": "Silicona",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "953E",
-     "nombre": "Cucharón Silicona mango Bambú",
-     "uxb": 12,
-     "subcategoria": "Silicona",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "951E",
-     "nombre": "Espátula Lisa Silicona mango Bambú",
-     "uxb": 12,
-     "subcategoria": "Silicona",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "954E",
-     "nombre": "Pinza Fideos Silicona mango Bambú",
-     "uxb": 12,
-     "subcategoria": "Silicona",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "956E",
-     "nombre": "Cuchara Calada Silicona mango Bambú",
-     "uxb": 12,
-     "subcategoria": "Silicona",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "957E",
-     "nombre": "Batidor Pera Silicona mango Bambú",
-     "uxb": 12,
-     "subcategoria": "Silicona",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "958E",
-     "nombre": "Pincel Silicona mango Bambú",
-     "uxb": 12,
-     "subcategoria": "Silicona",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "935E",
-     "nombre": "Espátula Calada Nylon mango Madera",
-     "uxb": 12,
-     "subcategoria": "Nylon Premium",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "936E",
-     "nombre": "Espumadera Nylon mango Madera",
-     "uxb": 12,
-     "subcategoria": "Nylon Premium",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "937E",
-     "nombre": "Batidor Pera Nylon mango Madera",
-     "uxb": 12,
-     "subcategoria": "Nylon Premium",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "932E",
-     "nombre": "Cuchara Nylon mango Madera",
-     "uxb": 12,
-     "subcategoria": "Nylon Premium",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "933E",
-     "nombre": "Cucharon Nylon mango Madera",
-     "uxb": 12,
-     "subcategoria": "Nylon Premium",
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "934E",
-     "nombre": "Cuchara Fideos Nylon mango Mad",
-     "uxb": 12,
-     "subcategoria": "Nylon Premium",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "931E",
-     "nombre": "Espátula Lisa Nylon mango Mad",
-     "uxb": 12,
-     "subcategoria": "Nylon Premium",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "942E",
-     "nombre": "Cuchara acero inoxidable",
-     "uxb": 12,
-     "subcategoria": "Inoxidable",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "943E",
-     "nombre": "Cucharon acero inoxidable",
-     "uxb": 12,
-     "subcategoria": "Inoxidable",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "944E",
-     "nombre": "Cuchara Fideos acero inoxidable",
-     "uxb": 12,
-     "subcategoria": "Inoxidable",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "945E",
-     "nombre": "Espátula Calada acero inoxidable",
-     "uxb": 12,
-     "subcategoria": "Inoxidable",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "941E",
-     "nombre": "Espátula Lisa acero inoxidable",
-     "uxb": 12,
-     "subcategoria": "Inoxidable",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "946E",
-     "nombre": "Cuchara Calada acero inoxidable",
-     "uxb": 12,
-     "subcategoria": "Inoxidable",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "948E",
-     "nombre": "Espumadera acero inoxidable",
-     "uxb": 12,
-     "subcategoria": "Inoxidable",
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "315",
-     "nombre": "Pisa Papas Acero inoxidable",
-     "uxb": 12,
-     "subcategoria": "Inoxidable",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "335",
-     "nombre": "Cuchara Calada acero inoxidable",
-     "uxb": 24,
-     "subcategoria": "Inoxidable",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "332",
-     "nombre": "Espatula Calada acero inoxidable",
-     "uxb": 24,
-     "subcategoria": "Inoxidable",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "338",
-     "nombre": "Espatula Lisa acero inoxidable",
-     "uxb": 24,
-     "subcategoria": "Inoxidable",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "570",
-     "nombre": "Pala De Canelones",
-     "uxb": 24,
-     "subcategoria": "Inoxidable",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "337",
-     "nombre": "Pinche acero inoxidable",
-     "uxb": 24,
-     "subcategoria": "Inoxidable",
-     "badge": "LIQUIDACIÓN",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "355",
-     "nombre": "Pisa Papas Nylon con mango",
-     "uxb": 24,
-     "subcategoria": "Nylon",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "393",
-     "nombre": "Espátula Calada Nylon 1 Pza",
-     "uxb": 24,
-     "subcategoria": "Nylon",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "394",
-     "nombre": "Espátula Lisa Nylon 1 Pza",
-     "uxb": 24,
-     "subcategoria": "Nylon",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "392",
-     "nombre": "Cucharon Nylon 1 Pza",
-     "uxb": 24,
-     "subcategoria": "Nylon",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "390",
-     "nombre": "Cuchara Calada Nylon 1 Pza",
-     "uxb": 24,
-     "subcategoria": "Nylon",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "391",
-     "nombre": "Cuchara Fideos Nylon 1 Pza",
-     "uxb": 24,
-     "subcategoria": "Nylon",
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Pinzas",
-   "nombre": "Pinzas de cocina",
-   "slug": "pinzas",
-   "intro": "Pinzas de acero inoxidable, con silicona, para fideos, fiambre, ensalada y hielo.",
-   "orden": 9002,
-   "productos": [
-    {
-     "cod": "601E",
-     "nombre": "Pinza Acero 30 cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "606E",
-     "nombre": "Pinza 30 cm acero inoxidable con  Silic",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "607E",
-     "nombre": "Pinza Hielo 15 cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "560",
-     "nombre": "Pinza Corta Alambre 21cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "594",
-     "nombre": "Pinza De Fideos mango Plástico 25cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "595",
-     "nombre": "Pinza De Fiambre mango Plástico 23cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "596",
-     "nombre": "Pinza De Ensalada mango Plástico 23cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "517",
-     "nombre": "Pinza Acero inoxidable 25cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "SIN STOCK",
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Destapadores",
-   "nombre": "Destapadores",
-   "slug": "destapadores",
-   "intro": "Destapacoronas y llaveros destapadores, cromados y de color, sueltos o en display.",
-   "orden": 10002,
-   "productos": [
-    {
-     "cod": "499",
-     "nombre": "Llavero Destapador Pie Color",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "498",
-     "nombre": "Llavero Destapador Pie Cromado",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "057",
-     "nombre": "Destapa Corona x1 Cromado",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "056E",
-     "nombre": "Llavero Destapacorona Económico",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "514E",
-     "nombre": "Llavero Destapacorona Suelto",
-     "uxb": 100,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": [
-      "514E.webp"
-     ]
-    },
-    {
-     "cod": "516",
-     "nombre": "Destapa Corona x1 Cromado Suelto",
-     "uxb": 100,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": [
-      "516.webp"
-     ]
-    }
-   ]
-  },
-  {
-   "categoria": "Tapon Vino",
-   "nombre": "Tapones de vino y cerveza",
-   "slug": "tapones-de-vino",
-   "intro": "Tapones herméticos para vino y cerveza, en negro, color y versión premium.",
-   "orden": 11002,
-   "productos": [
-    {
-     "cod": "575",
-     "nombre": "Tapón De Vino/Cerveza x1 Negro",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "577",
-     "nombre": "Tapón De Vino/Cerveza x1 Prem",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "579",
-     "nombre": "Tapón De Vino/Cerveza x1 Color",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Repostería",
-   "nombre": "Repostería",
-   "slug": "reposteria",
-   "intro": "Batidores, pinceles y espátulas de silicona, manga repostera con boquillas, palas y cortatortas.",
-   "orden": 12002,
-   "productos": [
-    {
-     "cod": "544",
-     "nombre": "Batidor Pera Alambre",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "580",
-     "nombre": "Batidor Mini",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "969E",
-     "nombre": "Batidor Silicona",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "970E",
-     "nombre": "Cuchara Silicona",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "971E",
-     "nombre": "Espátula Silicona",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "960E",
-     "nombre": "Pincel Silicona 52 g",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "280",
-     "nombre": "Manga Repostera + 4 Boquillas",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "590E",
-     "nombre": "Pincel Silicona 11 g",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "325",
-     "nombre": "Espatula Repostera plástico 1 Pza",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "590ES",
-     "nombre": "Pincel Silicona 11 g Suelto",
-     "uxb": 50,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": [
-      "590E.webp"
-     ]
-    },
-    {
-     "cod": "326",
-     "nombre": "Corta Torta Plástica 3 Usos",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "312",
-     "nombre": "Pala De Torta Acero inoxidable",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "547",
-     "nombre": "Corta Torta",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "LIQUIDACIÓN",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "509",
-     "nombre": "Pala Batidora",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "LIQUIDACIÓN",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "515",
-     "nombre": "Batidor Resorte",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "311",
-     "nombre": "Cuchillo De Torta acero inoxidable",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "LIQUIDACIÓN",
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Madera",
-   "nombre": "Utensilios de madera",
-   "slug": "madera",
-   "intro": "Cucharas de madera de 13 a 45 cm, ñoqueras, palos de amasar, prensa matambre y bate bife.",
-   "orden": 13002,
-   "productos": [
-    {
-     "cod": "208",
-     "nombre": "Cucharita 13cm Azucarera Madera",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "223",
-     "nombre": "Cuchara Madera 25 Cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "224",
-     "nombre": "Cuchara Madera 30 Cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "248",
-     "nombre": "Cuchara Nylon Reforzada 33 Cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "225",
-     "nombre": "Cuchara Madera 35 Cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "220",
-     "nombre": "Cuchara Madera 40 Cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "221",
-     "nombre": "Cuchara Madera 45 Cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "207",
-     "nombre": "Ñoquera Madera mango Redondo",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "229",
-     "nombre": "Ñoquera Madera",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "234",
-     "nombre": "Palo de Amasar Frances 40 cm",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "246",
-     "nombre": "Prensa Matambre",
-     "uxb": 6,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "222",
-     "nombre": "Bate Bife Madera",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "231",
-     "nombre": "Palo de Amasar 30cm",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "232",
-     "nombre": "Palo de Amasar 40cm",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "233",
-     "nombre": "Palo de Amasar 50cm",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Mate",
-   "nombre": "Mate y bombillas",
-   "slug": "mate-y-bombillas",
-   "intro": "Bombillas de resorte, pico de loro, planas y autolimpiantes, mates térmicos y de madera, filtros, cepillos y despolvillador de yerba.",
-   "orden": 14002,
-   "productos": [
-    {
-     "cod": "557",
-     "nombre": "Bombilla Resorte Chata",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "558",
-     "nombre": "Bombilla Resorte Tradicional",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "659",
-     "nombre": "Bombilla Pico de Loro Acero inoxidable",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "654",
-     "nombre": "Bombilla Autolimpiante inoxidable",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "658",
-     "nombre": "Bombilla Plana Ancha Metalizada",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "573",
-     "nombre": "Bombilla Colores Metalizados",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": "SIN STOCK",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "255",
-     "nombre": "Mate inoxidable Térmico",
-     "uxb": 8,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "256",
-     "nombre": "Mate Madera Cerámica",
-     "uxb": 8,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "591",
-     "nombre": "Despolvillador de Yerba",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "555",
-     "nombre": "Cepillo Limpia Bombilla",
-     "uxb": 36,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "550",
-     "nombre": "Filtro Para Bombillas",
-     "uxb": 36,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "556",
-     "nombre": "Sacayerba",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Accesorios",
-   "nombre": "Accesorios de cocina",
-   "slug": "accesorios",
-   "intro": "Sacafuentes, ahuecadores, prensa ajo, exprimidor de cítricos, rompenueces, cepillos y cierrabolsas.",
-   "orden": 15002,
-   "productos": [
-    {
-     "cod": "508",
-     "nombre": "Sacafuentes Articulado",
-     "uxb": 6,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "518",
-     "nombre": "Sacafuente Pizzero",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "542",
-     "nombre": "Ahueca Papas",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "543",
-     "nombre": "Ahueca Frutas",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "541E",
-     "nombre": "Prensa Ajo",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "299",
-     "nombre": "Muñeco Silicona Antiderrame",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "823",
-     "nombre": "Exprimidor De Cítricos",
-     "uxb": 6,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "507",
-     "nombre": "Rompenueces",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "534",
-     "nombre": "Cepillo Lavavajilla",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "535",
-     "nombre": "Cepillo Limpia Vaso y Mamadera",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "532",
-     "nombre": "Cuchara De Helado",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "058",
-     "nombre": "Cierra Bolsa x2",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "396",
-     "nombre": "Enrulador de Manteca",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": "LIQUIDACIÓN",
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Vidrio",
-   "nombre": "Vidrio",
-   "slug": "vidrio",
-   "intro": "Saleros, especieros y aceiteras de vidrio para mesa y cocina.",
-   "orden": 16002,
-   "productos": [
-    {
-     "cod": "582E",
-     "nombre": "Salero 90 ml",
-     "uxb": 24,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "583E",
-     "nombre": "Especiero Tapa Bamboo",
-     "uxb": 15,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "584E",
-     "nombre": "Aceitera 400 ml",
-     "uxb": 6,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "566E",
-     "nombre": "Aceitera 100 ml",
-     "uxb": 6,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": true,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Cuchillos de untar",
-   "nombre": "Cuchillos de untar",
-   "slug": "cuchillos-de-untar",
-   "intro": "Cuchillos de untar de mango plástico y de madera, en packs de dos unidades.",
-   "orden": 17002,
-   "productos": [
-    {
-     "cod": "551",
-     "nombre": "Cuchillo De Untar mango plástico x2",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "059",
-     "nombre": "Cuchillo de Untar Plástico x2",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "519",
-     "nombre": "Cuchillo Untar mango Madera x2",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Contenedores",
-   "nombre": "Contenedores",
-   "slug": "contenedores",
-   "intro": "Bowls multiuso y sets de tapers para guardar alimentos.",
-   "orden": 18003,
-   "productos": [
-    {
-     "cod": "071",
-     "nombre": "Bowl Multi Uso 330ml",
-     "uxb": 4,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": false,
-     "imagenes": []
-    },
-    {
-     "cod": "070",
-     "nombre": "Set Tapers 0.8 L / 1.5 L / 3 L",
-     "uxb": 4,
-     "subcategoria": null,
-     "badge": "NUEVO",
-     "importado": false,
-     "imagenes": []
-    }
-   ]
-  },
-  {
-   "categoria": "Acacia",
-   "nombre": "Línea Acacia",
-   "slug": "acacia",
-   "intro": "Utensilios con mango de madera de acacia: ralladores, cortapizza, cortarravioles, batidor, pelador y abrelatas.",
-   "orden": 19000,
-   "productos": [
-    {
-     "cod": "989E",
-     "nombre": "Rallador de Limón mango Acacia",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "990E",
-     "nombre": "Corta Ravioles mango Acacia",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "992E",
-     "nombre": "Batidor Pera mango Acacia",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "993E",
-     "nombre": "Pelador V mango Acacia",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "996E",
-     "nombre": "Corta Pizza 9cm mango Acacia",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "997E",
-     "nombre": "Rallador 3 En 1 mango Acacia",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    },
-    {
-     "cod": "998E",
-     "nombre": "Abrelatas Doble Engranaje mango Acacia",
-     "uxb": 12,
-     "subcategoria": null,
-     "badge": null,
-     "importado": true,
-     "imagenes": []
-    }
-   ]
-  }
- ]
+  ]
 }
