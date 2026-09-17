@@ -713,42 +713,34 @@ Junto con eso queda el texto **QUIENES-SOMOS-2018** (marcador en `historia.html`
 contenido de `web.archive.org/web/20180919231226/http://www.loekemeyer.com/productos/quienes_somos.html`,
 que Tomás tiene que copiar y pegar porque el proxy no llega a archive.org.
 
-### `productos/`: LISTA en las páginas de línea, mosaico sólo en el índice (17/09/2026)
+### `productos/`: LISTA en el índice, MOSAICO adentro de cada línea (17/09/2026)
 
-Dos pedidos de Tomás, en orden: *"que no parezca un carrito de compras sino algo distinto"* y
-*"¿no creés que es mejor hacerlo como lista y no tanto como mosaicos?"*. Las dos veces tenía razón.
+Dos formatos distintos a propósito, y el criterio es **qué identifica en cada pantalla**:
 
-**Por qué lista y no mosaico, dentro de una línea.** La foto no discrimina: nueve peladores son nueve
-objetos alargados rojos y negros, y mirando miniaturas no se distingue el 505 del 513. Lo que sirve
-para elegir es el código, el nombre y las unidades por caja — o sea, columnas. Lo mismo vale para el índice, por otro motivo (ver abajo).
+| Página | Formato | Columnas / ficha | Por qué |
+|---|---|---|---|
+| `productos/index.html` | **Lista** (`.prod-lista` / `.prod-row`) | foto · línea · N artículos · "Ver la línea" | La miniatura de cada línea es la foto del artículo que quedó primero: el primer pelador no representa a los nueve y la de "Accesorios de cocina" es arbitraria. Un identificador arbitrario no identifica. |
+| `productos/<línea>.html` | **Mosaico** (`.prod-grid` / `.prod-card`) | código · nombre · u. por caja · "Consultar disponibilidad" | Adentro de una línea la foto sí es distinta artículo por artículo, y el comercio reconoce el modelo mirándola. |
 
-| Página | Formato | Columnas |
-|---|---|---|
-| `productos/index.html` | Lista | foto · línea · N artículos · "Ver la línea" |
-| `productos/<línea>.html` | Lista | foto · código + nombre · u. por caja · "Consultar" |
+En los dos casos, **sin cromo de tienda**: no hay borde, radio, sombra, caja gris detrás de la foto ni
+botón rojo. Esta página no tiene precio, ni carrito, ni checkout; el modelo es el catálogo impreso.
+El **código va arriba del nombre**, en versalita roja, porque es lo que el comercio escribe en el
+pedido. "NUEVO" es una marca amarilla al lado del código, no una pastilla sobre la foto. El link dice
+"Consultar" en gris.
 
-**El índice también es lista, y el mosaico se fue del todo.** Mostraba, por cada línea, la foto del
-artículo que quedó primero: el primer pelador no representa a los nueve y la foto de "Accesorios de
-cocina" es arbitraria. Un identificador arbitrario no identifica; el nombre de la línea y la cantidad
-de artículos, sí. La miniatura de 72 px queda como apoyo, no como identificador.
+**Mosaico de tres columnas y no cuatro**, medido sobre las 19 líneas reales: con tres quedan 14 huecos
+en las últimas filas de todo el catálogo, con cuatro 25.
 
-Reglas de la lista (`.prod-lista`, `.prod-row`):
-
-- Columnas `72px | 1fr | 128px | 104px`: foto, código+nombre, unidades por caja, "Consultar".
-- **Ancho máximo 820 px**, no los 960 del `.pub-wrap`: con 960 quedaban 500 px muertos entre el
-  nombre del artículo y las unidades por caja.
-- El **código va arriba del nombre**, en versalita roja: es lo que el comercio escribe en el pedido.
-- "NUEVO" es una marca amarilla al lado del código, no una pastilla roja sobre la foto.
-- El link dice "Consultar" en gris. En rojo y negrita parecía un botón de agregar al carrito, y esta
-  página no vende online: no hay precio, ni carrito, ni checkout.
-- En menos de 760 px la fila colapsa a foto + ficha, con las unidades y el link debajo del nombre.
+⚠ **Las clases `.prod-cod`, `.prod-name`, `.prod-meta` y `.prod-cta` las comparten los dos formatos.**
+Lo común está definido una sola vez y las diferencias van calificadas (`.prod-card .prod-cta`,
+`.prod-row .prod-name`). Ya hubo dos bugs por reglas duplicadas del mismo selector donde la segunda
+pisaba a la primera: no volver a declarar un selector suelto.
 
 **`productos/*.html` NO se edita a mano**: se cambia `scripts/generar-catalogo.py` y se corre
 `python3 scripts/generar-catalogo.py`.
 
 ⚠ **`css/productos.css` y `css/publico.css` los cargan SÓLO `historia.html` y `productos/*.html`.**
-Verificado el 17/09/2026. Ninguna otra página del sitio los lee, así que tocarlos no afecta a
-`index.html`, `mayorista.html`, `admin.html` ni al resto.
+Verificado el 17/09/2026. Ninguna otra página del sitio los lee.
 
 ### Jerarquía de `historia.html` (17/09/2026)
 

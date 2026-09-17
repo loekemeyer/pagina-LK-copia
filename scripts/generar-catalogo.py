@@ -183,37 +183,36 @@ def footer(pref):
 
 
 def card(p):
-    """Una fila de la lista de artículos.
+    """Una ficha del mosaico, para las páginas de línea.
 
-    Dentro de una línea la foto no discrimina —nueve peladores son nueve
-    objetos alargados— así que lo que manda son las columnas: código,
-    nombre y unidades por caja. El mosaico quedó sólo para el índice de
-    líneas, donde las 19 imágenes sí son distintas entre sí.
+    Adentro de una línea la ficha va en mosaico: el comercio reconoce el
+    artículo por la foto, que es distinta artículo por artículo. La lista
+    quedó para el índice de líneas, donde la miniatura es la foto de un
+    artículo cualquiera y no representa a la línea entera.
     """
-    nuevo = '<span class="prod-nuevo">NUEVO</span>' if p.get("badge") == "NUEVO" else ""
-    uxb = f"{p['uxb']} u. por caja" if p.get("uxb") else "consultar"
-    sub = f'<p class="prod-sub">{esc(p["subcategoria"])}</p>' if p.get("subcategoria") else ""
+    badge = '<span class="prod-nuevo">NUEVO</span>' if p.get("badge") == "NUEVO" else ""
+    uxb = f"{p['uxb']} unidades por caja" if p.get("uxb") else "consultar unidades por caja"
+    sub = f'<p class="prod-meta">{esc(p["subcategoria"])}</p>' if p.get("subcategoria") else ""
     texto = f"Hola Loekemeyer, quiero consultar por el artículo {p['cod']} {p['nombre']}."
     return f"""
-          <article class="prod-row" id="p-{esc(p['cod'])}">
-            <div class="prod-row-foto">
+          <article class="prod-card" id="p-{esc(p['cod'])}">
+            <div class="prod-thumb">
               <img src="{img_url(p)}" alt="{esc(p['nombre'])} Loekemeyer, código {esc(p['cod'])}" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='IMGFALLBACK'" />
             </div>
-            <div class="prod-row-id">
-              <p class="prod-cod">{esc(p['cod'])}{nuevo}</p>
+            <div class="prod-body">
+              <p class="prod-cod">{esc(p['cod'])}{badge}</p>
               <h3 class="prod-name">{esc(p['nombre'])}</h3>
+              <p class="prod-meta">{uxb}</p>
               {sub}
+              <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(p['cod'])}">Consultar disponibilidad</a>
             </div>
-            <p class="prod-caja">{uxb}</p>
-            <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(p['cod'])}">Consultar</a>
           </article>"""
 
 
 def lista(ps):
-    """La lista con su encabezado de columnas, como una lista de precios."""
-    filas = "".join(card(p) for p in ps)
-    cab = '<div class="prod-lista-head" aria-hidden="true"><span></span><span>Código y artículo</span><span>Por caja</span><span></span></div>'
-    return '<div class="prod-lista">' + cab + filas + "\n        </div>"
+    """Mosaico de fichas. Se llama lista() por compatibilidad con las tres
+    llamadas de pagina_categoria(); devuelve la grilla."""
+    return '<div class="prod-grid">' + "".join(card(p) for p in ps) + "\n        </div>"
 
 
 def pagina_categoria(cat, todas):
