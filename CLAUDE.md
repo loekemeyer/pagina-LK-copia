@@ -608,7 +608,7 @@ Documentos de planificación y replicación, NO ejecutables:
 
   | Sitio | Quién entra | Cómo se despliega |
   |---|---|---|
-  | **`www.loekemeyer.com`** (CPanel — IIS / panel SolidCP) | **los clientes — es producción** | **a mano**, `scripts\deploy-iis.ps1` |
+  | **`www.loekemeyer.com`** (CPanel — IIS / panel SolidCP) | **los clientes — es producción** | **a mano por SolidCP** (`/publicar-sitio` arma el `.zip`; `scripts\deploy-iis.ps1` si hay FTP) |
   | `loekemeyer.github.io` (GitHub Pages) | desarrollo / revisión | solo, con cada push a `main` |
 
   **Pushear a `main` NO llega a los clientes.** Hasta el 14/09 este archivo decía que el sitio "se
@@ -617,13 +617,22 @@ Documentos de planificación y replicación, NO ejecutables:
   Pages dio verde — y se dio por publicado. Los clientes seguían con la v2.3.388 y **seguían
   entrando pedidos rotos**. Lo delató el pie de la página: decía 388 con el repo en 389.
 
-  **Desde el 14/09 el deploy al IIS es automático**: el workflow
-  `.github/workflows/deploy-iis.yml` sube por FTPS el delta de cada push a `main` y después
-  **comprueba que `www.loekemeyer.com/version.js` diga la versión del repo** — si no, falla. Necesita
-  los secrets `FTP_HOST`, `FTP_USER`, `FTP_PASS` (y `FTP_DIR` si la carpeta remota no es `/`) en
-  Settings → Secrets and variables → Actions. Sin ellos el job falla avisando cuál falta.
+  ⚠⚠ **EL DEPLOY NO ES AUTOMÁTICO: las páginas se suben A MANO por SolidCP** (Luis, 2026-09-17).
+  Este párrafo decía desde el 14/09 que el workflow `.github/workflows/deploy-iis.yml` publicaba
+  solo, y **nunca publicó una sola vez**: los secrets `FTP_HOST` / `FTP_USER` / `FTP_PASS` no están
+  cargados, así que **todas** las corridas que tocan archivos mueren con *"Falta el secret
+  FTP_HOST"* (runs 57 y 59, entre otras); sólo salen en verde las de commits que no suben nada.
+  Y no se van a cargar: el canal es **SolidCP**. O sea que **pushear a `main` NO llega a los
+  clientes**, y el workflow en rojo no es una alarma nueva, es el estado normal. Problema 396.
 
-  Sólo sube; **nunca borra nada del servidor**, así que no puede tocar el `web.config`.
+  **La única prueba de que un cambio llegó es el número del pie de `www.loekemeyer.com`.** Que el
+  run de Pages esté en verde no alcanza, y que el de IIS esté en rojo no significa que algo se
+  rompió. Para armar el paquete: la skill **`/publicar-sitio`**, que deja un `.zip` con SÓLO lo que
+  cambió desde la versión que hoy está en el aire (el File Manager de SolidCP no acepta los ~31 MB
+  del sitio entero). `chefsrl.com` es igual y ni siquiera tiene workflow.
+
+  Se sube, **nunca se borra nada del servidor**, así que el `web.config` —que sólo existe allá— no
+  se toca. Ojo con el espejo (`robocopy /MIR`, `rsync --delete`): lo borraría.
 
   **A mano, si hace falta** (el workflow caído, o para recuperarse):
 
