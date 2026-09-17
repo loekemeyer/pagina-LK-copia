@@ -20,16 +20,24 @@
 -- del módulo. Hace falta traducir porque las etiquetas guardadas no coinciden
 -- con los módulos, y una colisiona:
 --
---   'Web'       -> Mayorista web            (script.js)
+--   'Web'       -> Mayorista web            (script.js)   si lo cargó cliente/vendedor
+--   'Web' admin -> Pedidos Expo             si es del 19-22/8/2026, si no "Sin Cotizador"
 --   'Cotizador' -> Cotizador                (admin.js)
 --   'Krikos'    -> Cotizador Supermercados  (admin-supercot.js, PDF de super)
---   'Excel'     -> Excel Krikos             (admin-excel-krikos.js)  si lo cargó un admin
+--   'Excel' admin -> Sin Cotizador          (plegado, ex "Excel Krikos", decisión Yanina 17/09)
 --   'Excel'     -> Excels Megashops         (vendor-import-excel.js) si lo cargó un vendedor
 --
--- La colisión de 'Excel' se desambigua por quién cargó el pedido: el módulo
--- Krikos vive en el panel admin y el de Megashops en el mayorista. En los
+-- La colisión de 'Excel' se desambigua por quién cargó el pedido: en los
 -- pedidos previos al tracking no se puede saber, y quedan como "Excel (sin
 -- identificar)".
+--
+-- RECLASIFICACIÓN DEL 17/09/2026 (pedido de Yanina): la herramienta ya NO es
+-- una traducción pura de 'source'. Cuando un ADMIN carga por el catálogo web
+-- ('Web') el pedido se cuenta como "Sin Cotizador" (mismo sentido que el módulo
+-- "Pedidos sin cot"), salvo la ventana de la expo comercial (19-22/8/2026), que
+-- va a "Pedidos Expo". Y lo que era "Excel Krikos" (admin + 'Excel') también se
+-- pliega a "Sin Cotizador". Motivo: en la expo se atendía desde el panel, no es
+-- venta web del cliente, y esas cargas de admin no usan cotizador.
 --
 -- Se traduce acá y NO se corrigen las etiquetas en el código a propósito:
 -- sheets_payload->>'source' también viaja a Google Sheets y cambiarlo
@@ -121,10 +129,21 @@ SELECT c.order_id,
        c.origen_pedido,
        CASE
          WHEN c.source_raw IS NULL          THEN 'Sin registro'
+         -- Expo comercial 19-22/8/2026: se atendio desde el panel entrando por el
+         -- catalogo web (origen admin, source 'Web'). No hay marcador propio en
+         -- sheets_payload (mode=new/edit, cliente_nuevo vacio), asi que se
+         -- identifica por ventana de fecha, igual que el corte de tracking.
+         WHEN c.source_raw = 'Web' AND c.origen_pedido = 'admin'
+              AND c.created_at >= '2026-08-19 00:00:00-03'::timestamptz
+              AND c.created_at <  '2026-08-23 00:00:00-03'::timestamptz THEN 'Pedidos Expo'
+         -- Resto de pedidos que un admin carga por el catalogo web = pedido sin
+         -- cotizador (mismo significado que el modulo "Pedidos sin cot").
+         WHEN c.source_raw = 'Web' AND c.origen_pedido = 'admin'      THEN 'Sin Cotizador'
          WHEN c.source_raw = 'Web'          THEN 'Mayorista web'
          WHEN c.source_raw = 'Cotizador'    THEN 'Cotizador'
          WHEN c.source_raw = 'Krikos'       THEN 'Cotizador Supermercados'
-         WHEN c.source_raw = 'Excel' AND c.origen_pedido = 'admin'    THEN 'Excel Krikos'
+         -- "Excel Krikos" se pliega a "Sin Cotizador" por decision de Yanina (17/09).
+         WHEN c.source_raw = 'Excel' AND c.origen_pedido = 'admin'    THEN 'Sin Cotizador'
          WHEN c.source_raw = 'Excel' AND c.origen_pedido = 'vendedor' THEN 'Excels Megashops'
          WHEN c.source_raw = 'Excel'        THEN 'Excel (sin identificar)'
          ELSE c.source_raw
