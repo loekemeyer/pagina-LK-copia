@@ -4973,6 +4973,7 @@ button.op-drill.op-open { color: #1e3a8a; }
 
 .gv-alerta { border-color: #fca5a5; background: linear-gradient(135deg, #fef2f2, #fff); }
 .gv-alerta h4 { color: #b91c1c; }
+.gv-fuga-mas-wrap { margin-top: 10px; }
 
 /* ---- Impresión / PDF del dashboard ---- */
 @media print {

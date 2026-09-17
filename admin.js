@@ -14485,26 +14485,40 @@ function _gvProyeccion(pr) {
 
 function _gvFugaTemprana(f) {
   if (!f.clientes) return "";
-  // Filas ordenadas por ticket desc (viene así de la RPC). Se inserta UNA línea
-  // en blanco en el corte de $1M para que el ojo no compare "$535.815" contra
-  // "$1.1 M" y le parezca más grande el primero.
+  // Filas ordenadas por ticket desc (viene así de la RPC). Se muestran las 15 de
+  // mayor ticket y un botón despliega el resto (la RPC ya devuelve la lista
+  // completa). Se inserta UNA línea en blanco en el corte de $1M para que el ojo
+  // no compare "$535.815" contra "$1.1 M" y le parezca más grande el primero.
+  var VISIBLE = 15;
+  var lista = f.lista || [];
+  var total = lista.length;
   var prevBig = null;
-  var lista = (f.lista || []).map(function (x) {
+  var filas = lista.map(function (x, i) {
+    var oculta = i >= VISIBLE;
+    var cls = oculta ? " gv-fuga-mas" : "";
+    var sty = oculta ? ' style="display:none"' : "";
     var t = x.ticket != null ? Number(x.ticket) : null;
     var big = t != null && t >= 1e6;
     var sep = "";
     if (prevBig === true && big === false) {
-      sep = '<tr class="gv-fuga-sep"><td colspan="5" style="padding:0;border:none;' +
+      sep = '<tr class="gv-fuga-sep' + cls + '"' + sty +
+        '><td colspan="5" style="padding:0;border:none;' +
         'background:transparent;height:12px"></td></tr>';
     }
     prevBig = big;
-    return sep + '<tr class="gv-drill-click" onclick="gvAbrirDrill(\'pedidos\',null,' +
+    return sep + '<tr class="gv-drill-click' + cls + '"' + sty +
+      ' onclick="gvAbrirDrill(\'pedidos\',null,' +
       _gvQ(x.cod) + ',null,' + _gvQ(x.nom) + ',true)"><td>' + escHtml(x.nom) +
       ' <span class="est-cod">' + escHtml(x.cod) + "</span></td><td>" +
       _gvNum(x.mediana) + "</td><td><strong>" + _gvNum(x.dias) +
       "</strong></td><td>" + Math.round((Number(x.dto) || 0) * 100) +
       "%</td><td>" + (t != null ? _gvPlata(t) : "—") + "</td></tr>";
   }).join("");
+  var boton = total > VISIBLE
+    ? '<div class="gv-fuga-mas-wrap"><button type="button" class="fc-vermas" ' +
+      'data-mas="' + (total - VISIBLE) + '" data-open="0" onclick="gvFugaToggle(this)">' +
+      "Ver los " + (total - VISIBLE) + " restantes ▾</button></div>"
+    : "";
   return (
     '<div class="gv-graf gv-graf-full gv-alerta"><h4>⚠ Fuga temprana — ' + f.clientes +
     " clientes se están retrasando</h4>" +
@@ -14514,8 +14528,22 @@ function _gvFugaTemprana(f) {
     "<thead><tr><th>Cliente</th>" +
     "<th>Compra<br>Cada</th><th>Días que<br>no compra</th><th>Dto vol</th>" +
     "<th>Ticket prom.</th></tr></thead><tbody>" +
-    lista + "</tbody></table></div>"
+    filas + "</tbody></table>" + boton + "</div>"
   );
+}
+
+// Despliega / colapsa las filas de fuga temprana que están más allá de las 15
+// visibles. No re-renderiza: solo togglea display sobre las filas .gv-fuga-mas.
+function gvFugaToggle(btn) {
+  var card = btn.closest(".gv-alerta");
+  if (!card) return;
+  var abierto = btn.getAttribute("data-open") === "1";
+  card.querySelectorAll(".gv-fuga-mas").forEach(function (r) {
+    r.style.display = abierto ? "none" : "";
+  });
+  var n = btn.getAttribute("data-mas");
+  btn.setAttribute("data-open", abierto ? "0" : "1");
+  btn.innerHTML = abierto ? "Ver los " + n + " restantes ▾" : "Ver menos ▴";
 }
 
 function _gvTablaProductos(pv) {
