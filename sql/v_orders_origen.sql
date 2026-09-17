@@ -172,3 +172,60 @@ AS $function$
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.get_origen_pedidos_resumen(text, text) TO authenticated;
+
+
+-- Desglose por CLIENTE detrás de una celda del resumen. El panel lo llama al
+-- tocar el número de "Pedidos" de una fila (origen x herramienta): devuelve qué
+-- clientes componen ese número, con su conteo de pedidos y cuántos se
+-- atribuyeron por el respaldo de auth_user_id.
+--
+-- Resuelve la razón social contra customers.business_name y, si está vacía,
+-- contra Wpp_Clientes filtrando marca='LK' (63 códigos figuran con las dos
+-- marcas y 62 con razón social distinta: sin el filtro se mezclan empresas).
+--
+-- Lleva el chequeo de admin ADENTRO (es SECURITY DEFINER y saltea RLS) y el
+-- EXECUTE revocado a PUBLIC/anon: es un módulo de admin y anon hereda de PUBLIC.
+CREATE OR REPLACE FUNCTION public.get_origen_pedidos_clientes(
+  p_origen text,
+  p_herramienta text,
+  p_desde text DEFAULT NULL,
+  p_hasta text DEFAULT NULL
+)
+RETURNS TABLE(
+  cod_cliente text,
+  razon_social text,
+  pedidos bigint,
+  inferidos bigint,
+  de_prueba bigint
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $function$
+  WITH filtrado AS (
+    SELECT v.customer_id,
+           c.cod_cliente::text AS cod_cliente,
+           COALESCE(NULLIF(btrim(c.business_name), ''), w.nombre, '(sin razón social)') AS razon_social,
+           v.origen_inferido,
+           v.es_prueba
+    FROM v_orders_origen v
+    JOIN customers c ON c.id = v.customer_id
+    LEFT JOIN "Wpp_Clientes" w ON w.cod_cli = c.cod_cliente AND w.marca = 'LK'
+    WHERE v.origen_pedido = p_origen
+      AND v.herramienta = p_herramienta
+      AND (p_desde IS NULL OR v.created_at >= (p_desde || ' 00:00:00')::timestamptz)
+      AND (p_hasta IS NULL OR v.created_at <= (p_hasta || ' 23:59:59.999')::timestamptz)
+      AND EXISTS (SELECT 1 FROM admins a WHERE a.auth_user_id = auth.uid())
+  )
+  SELECT cod_cliente,
+         min(razon_social) AS razon_social,
+         count(*)::bigint AS pedidos,
+         count(*) FILTER (WHERE origen_inferido)::bigint AS inferidos,
+         count(*) FILTER (WHERE es_prueba)::bigint AS de_prueba
+  FROM filtrado
+  GROUP BY cod_cliente
+  ORDER BY count(*) DESC, cod_cliente;
+$function$;
+
+REVOKE ALL ON FUNCTION public.get_origen_pedidos_clientes(text, text, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_origen_pedidos_clientes(text, text, text, text) TO authenticated;
