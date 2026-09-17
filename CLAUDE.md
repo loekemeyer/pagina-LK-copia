@@ -719,7 +719,7 @@ Dos formatos distintos a propósito, y el criterio es **qué identifica en cada 
 
 | Página | Formato | Columnas / ficha | Por qué |
 |---|---|---|---|
-| `productos/index.html` | **Lista** (`.prod-lista` / `.prod-row`) | foto · línea · N artículos · "Ver la línea" | La miniatura de cada línea es la foto del artículo que quedó primero: el primer pelador no representa a los nueve y la de "Accesorios de cocina" es arbitraria. Un identificador arbitrario no identifica. |
+| `productos/index.html` | **Mosaico de línea** (`.cat-grid` / `.cat-mosaico`) | hasta 4 fotos de la línea en 2×2, con "+N" en la cuarta · nombre · N artículos | Una sola foto no representaba a la línea: el primer pelador no habla por los nueve. Cuatro sí son una muestra, y el "+N" dice cuántos faltan. Idea de Tomás, al estilo de WhatsApp. |
 | `productos/<línea>.html` | **Mosaico** (`.prod-grid` / `.prod-card`) | código · nombre · u. por caja · "Consultar disponibilidad" | Adentro de una línea la foto sí es distinta artículo por artículo, y el comercio reconoce el modelo mirándola. |
 
 En los dos casos, **sin cromo de tienda**: no hay borde, radio, sombra, caja gris detrás de la foto ni
@@ -728,13 +728,17 @@ El **código va arriba del nombre**, en versalita roja, porque es lo que el come
 pedido. "NUEVO" es una marca amarilla al lado del código, no una pastilla sobre la foto. El link dice
 "Consultar" en gris.
 
-**Mosaico de tres columnas y no cuatro**, medido sobre las 19 líneas reales: con tres quedan 14 huecos
+**Grilla de tres columnas y no cuatro**, medido sobre las 19 líneas reales: con tres quedan 14 huecos
 en las últimas filas de todo el catálogo, con cuatro 25.
 
-⚠ **Las clases `.prod-cod`, `.prod-name`, `.prod-meta` y `.prod-cta` las comparten los dos formatos.**
-Lo común está definido una sola vez y las diferencias van calificadas (`.prod-card .prod-cta`,
-`.prod-row .prod-name`). Ya hubo dos bugs por reglas duplicadas del mismo selector donde la segunda
-pisaba a la primera: no volver a declarar un selector suelto.
+El mosaico de línea reparte según cuántos artículos tenga: 1 foto ocupa el cuadro entero, 2 van lado
+a lado, 3 es una grande a la izquierda y dos apiladas, y de 4 en adelante es 2×2 con el "+N" encima
+de la cuarta (`.cat-mosaico--1` a `--4`). El "+N" cuenta **N − 3**: Abrelatas tiene 9 y muestra "+6".
+
+⚠ **No declarar dos veces el mismo selector en este archivo.** Hubo tres bugs seguidos el 17/09/2026
+por reglas duplicadas donde la segunda pisaba a la primera (`margin-top: auto` de `.prod-cta`, el
+bloque muerto del mosaico, y una regla responsive de la lista). Si dos formatos comparten una clase,
+lo común se declara una vez y las diferencias se califican (`.prod-card .prod-cta`).
 
 **`productos/*.html` NO se edita a mano**: se cambia `scripts/generar-catalogo.py` y se corre
 `python3 scripts/generar-catalogo.py`.

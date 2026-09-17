@@ -298,29 +298,31 @@ def pagina_index(cats, total):
         "url": canonical,
         "isPartOf": {"@type": "WebSite", "name": "Loekemeyer Hnos S.R.L.", "url": DOMINIO + "/"},
     }
-    # El índice también es una lista. El mosaico mostraba, por cada línea, la
-    # foto del artículo que quedó primero: el primer pelador no representa a
-    # los nueve y la foto de "Accesorios de cocina" es arbitraria. Un
-    # identificador arbitrario no identifica; el nombre de la línea y la
-    # cantidad de artículos, sí.
-    filas = ""
+    # El índice vuelve al mosaico, pero cada cuadro muestra HASTA CUATRO
+    # artículos de la línea, al estilo de WhatsApp, y el cuarto lleva el
+    # "+N" con los que faltan. Así la miniatura deja de ser la foto de un
+    # artículo cualquiera —el primer pelador no representa a los nueve— y
+    # pasa a ser una muestra de la línea.
+    cards = ""
     for c in cats:
-        primero = c["productos"][0]
-        filas += f"""
-          <a class="prod-row cat-row" href="{c['slug']}.html">
-            <div class="prod-row-foto">
-              <img src="{img_url(primero)}" alt="{esc(c['nombre'])} Loekemeyer" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='{pref}img/no-image.jpg'" />
+        ps = c["productos"]
+        n = len(ps)
+        muestra = ps[:4]
+        resto = n - 3 if n > 4 else 0      # 9 artículos -> 3 a la vista y "+6"
+        celdas = ""
+        for i, prod in enumerate(muestra):
+            mas = f'<span class="cat-mas">+{resto}</span>' if (resto and i == 3) else ""
+            celdas += (f'<span class="cat-celda"><img src="{img_url(prod)}" alt="" width="400" height="400" '
+                       f'loading="lazy" onerror="this.onerror=null;this.src=\'{pref}img/no-image.jpg\'" />{mas}</span>')
+        cards += f"""
+          <a class="cat-card" href="{c['slug']}.html">
+            <div class="cat-mosaico cat-mosaico--{min(n, 4)}" role="img" aria-label="{esc(c['nombre'])} Loekemeyer">{celdas}</div>
+            <div class="cat-body">
+              <h2 class="cat-name">{esc(c['nombre'])}</h2>
+              <p class="cat-count">{n} artículos</p>
             </div>
-            <div class="prod-row-id">
-              <h2 class="prod-name">{esc(c['nombre'])}</h2>
-            </div>
-            <p class="prod-caja">{len(c['productos'])} artículos</p>
-            <span class="prod-cta">Ver la línea</span>
           </a>"""
-    cards = ('<div class="prod-lista">'
-             '<div class="prod-lista-head" aria-hidden="true">'
-             '<span></span><span>Línea</span><span>Artículos</span><span></span></div>'
-             + filas + "\n        </div>")
+    cards = '<div class="cat-grid">' + cards + "\n        </div>"
 
     return head(titulo, desc, canonical, pref, jsonld) + f"""
   <body class="prod-page">{topbar(pref, "productos")}
