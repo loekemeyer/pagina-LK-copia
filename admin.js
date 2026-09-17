@@ -7198,17 +7198,29 @@ function _renderOrigenPedidosDetalle(filas, keys) {
 
     delOrigen.forEach(function (f, idx) {
       var tr = document.createElement("tr");
+      var herr = f.herramienta || "—";
+      var nPed = Number(f.pedidos || 0);
+      // La celda Pedidos es clickeable: despliega debajo qué clientes componen
+      // ese número (origen k × herramienta). "Sin registro"/"—" no tienen
+      // herramienta identificable, pero igual se puede desglosar por cliente.
       tr.innerHTML =
         '<td style="font-weight:600">' +
         (idx === 0 ? escHtml(labels[k] || k) : "") +
         "</td>" +
-        "<td>" + escHtml(f.herramienta || "—") +
+        "<td>" + escHtml(herr) +
         (Number(f.inferidos || 0)
           ? ' <span style="color:#e67e22; font-size:11px" title="Atribuidos por el respaldo de auth_user_id, porque no registraron placed_by_auth_user_id">· ' +
             f.inferidos + " inferidos</span>"
           : "") +
         "</td>" +
-        '<td class="est-days">' + Number(f.pedidos || 0) + "</td>" +
+        '<td class="est-days">' +
+        (nPed
+          ? '<button type="button" class="op-drill" data-origen="' +
+            escHtml(k) + '" data-herr="' + escHtml(herr) + '" ' +
+            'title="Ver qué clientes componen este número">' +
+            nPed + " ▸</button>"
+          : nPed) +
+        "</td>" +
         // Los de prueba están incluidos en la columna Pedidos; se muestran al
         // lado para poder descontarlos de un vistazo.
         '<td class="est-days">' +
@@ -7219,6 +7231,84 @@ function _renderOrigenPedidosDetalle(filas, keys) {
       tbody.appendChild(tr);
     });
   });
+
+  // Delegación: un solo listener para todos los botones de desglose.
+  if (!tbody._opDrillBound) {
+    tbody.addEventListener("click", function (ev) {
+      var btn = ev.target.closest(".op-drill");
+      if (btn) _toggleOrigenClientes(btn);
+    });
+    tbody._opDrillBound = true;
+  }
+}
+
+// Despliega/oculta la lista de clientes detrás de una fila (origen × herramienta).
+// Inserta una fila de detalle justo debajo de la fila clickeada.
+async function _toggleOrigenClientes(btn) {
+  var tr = btn.closest("tr");
+  if (!tr) return;
+  var next = tr.nextElementSibling;
+  // Toggle: si ya está abierta la fila de detalle de ESTE botón, cerrarla.
+  if (next && next.classList.contains("op-detalle") && next._opOwner === btn) {
+    next.remove();
+    btn.classList.remove("op-open");
+    return;
+  }
+  // Cerrar cualquier otra fila de detalle abierta.
+  var abiertas = tr.parentNode.querySelectorAll("tr.op-detalle");
+  abiertas.forEach(function (r) {
+    if (r._opOwner) r._opOwner.classList.remove("op-open");
+    r.remove();
+  });
+
+  var origen = btn.dataset.origen;
+  var herr = btn.dataset.herr;
+  var detTr = document.createElement("tr");
+  detTr.className = "op-detalle";
+  detTr._opOwner = btn;
+  detTr.innerHTML =
+    '<td colspan="4" style="padding:0"><div class="op-detalle-box">Cargando clientes…</div></td>';
+  tr.parentNode.insertBefore(detTr, tr.nextSibling);
+  btn.classList.add("op-open");
+
+  var box = detTr.querySelector(".op-detalle-box");
+  try {
+    var desdeVal = document.getElementById("origenPedidosDesde")?.value || "";
+    var hastaVal = document.getElementById("origenPedidosHasta")?.value || "";
+    var resp = await sb.rpc("get_origen_pedidos_clientes", {
+      p_origen: origen,
+      p_herramienta: herr,
+      p_desde: desdeVal || null,
+      p_hasta: hastaVal || null,
+    });
+    if (resp.error) throw resp.error;
+    var rows = resp.data || [];
+    if (!rows.length) {
+      box.innerHTML = '<div class="op-empty">Sin clientes en el período.</div>';
+      return;
+    }
+    var html =
+      '<table class="op-cli-table"><thead><tr>' +
+      "<th>Código</th><th>Razón social</th><th>Pedidos</th>" +
+      "</tr></thead><tbody>";
+    rows.forEach(function (r) {
+      var inf = Number(r.inferidos || 0)
+        ? ' <span class="op-inf" title="Atribuidos por respaldo de auth_user_id">· ' +
+          r.inferidos + " inf.</span>"
+        : "";
+      html +=
+        "<tr><td>" + escHtml(String(r.cod_cliente || "—")) + "</td>" +
+        '<td class="op-razon">' + escHtml(r.razon_social || "—") + "</td>" +
+        '<td class="op-num">' + Number(r.pedidos || 0) + inf + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    box.innerHTML = html;
+  } catch (e) {
+    console.error("get_origen_pedidos_clientes error:", e);
+    box.innerHTML =
+      '<div class="op-empty" style="color:#c0392b">No se pudo cargar: ' +
+      escHtml(e.message || String(e)) + "</div>";
+  }
 }
 
 /* =========================================================

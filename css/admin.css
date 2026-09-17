@@ -2920,6 +2920,58 @@ input[type="number"].manual-cell {
   font-style: italic;
 }
 
+/* Origen de Pedidos: desglose de clientes por fila (origen x herramienta) */
+button.op-drill {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #2563eb;
+}
+button.op-drill:hover { text-decoration: underline; }
+button.op-drill.op-open { color: #1e3a8a; }
+.op-detalle-box {
+  padding: 8px 10px 12px 28px;
+  background: #f8fafc;
+}
+.op-empty {
+  padding: 10px;
+  color: #6b7280;
+  font-size: 13px;
+  font-style: italic;
+}
+.op-cli-table {
+  border-collapse: collapse;
+  width: auto;
+  font-size: 13px;
+}
+.op-cli-table th {
+  text-align: left;
+  padding: 4px 14px 4px 0;
+  color: #64748b;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid #e2e8f0;
+}
+.op-cli-table td {
+  padding: 3px 14px 3px 0;
+  border-bottom: 1px solid #eef2f7;
+  vertical-align: top;
+}
+.op-cli-table td.op-razon { color: #0f172a; }
+.op-cli-table td.op-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+.op-cli-table .op-inf { color: #e67e22; font-weight: 500; font-size: 11px; }
+
 /* =========================================================
    MOBILE — Estadística Clientes + tablas
    ========================================================= */
