@@ -532,9 +532,17 @@ Documentos de planificación y replicación, NO ejecutables:
 - **Run locally**: open `index.html` or `mayorista.html` in a browser, or serve the `wwwroot` directory with any static server (e.g. `python -m http.server`). There is no dev server.
 - ⚠ **Deploy: son DOS sitios, y al que usan los clientes NO llega con el push.**
 
+  > **Nombre para el equipo: "CPanel".** El servidor de producción `www.loekemeyer.com`
+  > —que en este archivo aparece históricamente como **IIS / panel SolidCP**— el equipo lo
+  > llama **CPanel** (pedido de Yanina, 17/09/2026). Es lo mismo: cuando alguien dice "subir
+  > a CPanel" / "publicar en CPanel" se refiere a este server de producción. En el chat con
+  > el equipo, decirle **CPanel**. (Aclaración técnica, por si algún día se toca el hosting
+  > real: el server es **IIS** y el panel es **SolidCP**, NO el producto cPanel de otros
+  > hostings — distinto software con el mismo nombre coloquial.)
+
   | Sitio | Quién entra | Cómo se despliega |
   |---|---|---|
-  | **`www.loekemeyer.com`** (IIS, panel SolidCP) | **los clientes — es producción** | **a mano**, `scripts\deploy-iis.ps1` |
+  | **`www.loekemeyer.com`** (CPanel — IIS / panel SolidCP) | **los clientes — es producción** | **a mano**, `scripts\deploy-iis.ps1` |
   | `loekemeyer.github.io` (GitHub Pages) | desarrollo / revisión | solo, con cada push a `main` |
 
   **Pushear a `main` NO llega a los clientes.** Hasta el 14/09 este archivo decía que el sitio "se
