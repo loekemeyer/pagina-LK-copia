@@ -357,6 +357,64 @@
   justify-content: center;
 }
 
+/* ================= LÁMINA -> PRODUCTO ================= */
+/* El par que sostiene el argumento de la página: el dibujo registrado y el
+   artículo que sale hoy de la planta, uno al lado del otro. Las dos imágenes
+   del par van a la MISMA altura, como el resto de las figuras. */
+.pub-sub {
+  font-size: 18px;
+  margin: 34px 0 4px;
+}
+
+.pub-pares {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 26px;
+  margin: 16px 0 26px;
+}
+
+.pub-par {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px 16px;
+  background: #fff;
+}
+
+.pub-par-imgs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 140px;
+}
+
+.pub-par-imgs img {
+  height: 120px;
+  width: auto;
+  max-width: 44%;
+  object-fit: contain;
+  display: block;
+}
+
+.pub-par-flecha {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.pub-par figcaption {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #555;
+  margin-top: 12px;
+}
+
+.pub-par figcaption strong {
+  color: #222;
+}
+
 /* ================= CTA FINAL ================= */
 .pub-cta {
   padding: 8px 0 72px;
@@ -390,6 +448,10 @@
   /* las cinco láminas, de a dos por fila en vez de una debajo de otra */
   .pub-figuras--laminas {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pub-pares {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
