@@ -720,14 +720,17 @@ Dos pedidos de Tomás, en orden: *"que no parezca un carrito de compras sino alg
 
 **Por qué lista y no mosaico, dentro de una línea.** La foto no discrimina: nueve peladores son nueve
 objetos alargados rojos y negros, y mirando miniaturas no se distingue el 505 del 513. Lo que sirve
-para elegir es el código, el nombre y las unidades por caja — o sea, columnas. En el **índice** pasa
-lo contrario: 19 líneas distintas entre sí, donde la imagen es el identificador más rápido, así que
-ahí **el mosaico se queda**.
+para elegir es el código, el nombre y las unidades por caja — o sea, columnas. Lo mismo vale para el índice, por otro motivo (ver abajo).
 
-| Página | Formato | Motivo |
+| Página | Formato | Columnas |
 |---|---|---|
-| `productos/index.html` | Mosaico de 3 columnas, sin cromo | 19 imágenes distintas entre sí |
-| `productos/<línea>.html` | Lista con encabezado de columnas | dentro de una línea la foto no distingue |
+| `productos/index.html` | Lista | foto · línea · N artículos · "Ver la línea" |
+| `productos/<línea>.html` | Lista | foto · código + nombre · u. por caja · "Consultar" |
+
+**El índice también es lista, y el mosaico se fue del todo.** Mostraba, por cada línea, la foto del
+artículo que quedó primero: el primer pelador no representa a los nueve y la foto de "Accesorios de
+cocina" es arbitraria. Un identificador arbitrario no identifica; el nombre de la línea y la cantidad
+de artículos, sí. La miniatura de 72 px queda como apoyo, no como identificador.
 
 Reglas de la lista (`.prod-lista`, `.prod-row`):
 

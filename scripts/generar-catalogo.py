@@ -299,17 +299,30 @@ def pagina_index(cats, total):
         "url": canonical,
         "isPartOf": {"@type": "WebSite", "name": "Loekemeyer Hnos S.R.L.", "url": DOMINIO + "/"},
     }
-    cards = ""
+    # El índice también es una lista. El mosaico mostraba, por cada línea, la
+    # foto del artículo que quedó primero: el primer pelador no representa a
+    # los nueve y la foto de "Accesorios de cocina" es arbitraria. Un
+    # identificador arbitrario no identifica; el nombre de la línea y la
+    # cantidad de artículos, sí.
+    filas = ""
     for c in cats:
         primero = c["productos"][0]
-        cards += f"""
-          <a class="cat-card" href="{c['slug']}.html">
-            <div class="cat-thumb"><img src="{img_url(primero)}" alt="{esc(c['nombre'])} Loekemeyer" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='{pref}img/no-image.jpg'" /></div>
-            <div class="cat-body">
-              <h2 class="cat-name">{esc(c['nombre'])}</h2>
-              <p class="cat-count">{len(c['productos'])} artículos</p>
+        filas += f"""
+          <a class="prod-row cat-row" href="{c['slug']}.html">
+            <div class="prod-row-foto">
+              <img src="{img_url(primero)}" alt="{esc(c['nombre'])} Loekemeyer" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='{pref}img/no-image.jpg'" />
             </div>
+            <div class="prod-row-id">
+              <h2 class="prod-name">{esc(c['nombre'])}</h2>
+            </div>
+            <p class="prod-caja">{len(c['productos'])} artículos</p>
+            <span class="prod-cta">Ver la línea</span>
           </a>"""
+    cards = ('<div class="prod-lista">'
+             '<div class="prod-lista-head" aria-hidden="true">'
+             '<span></span><span>Línea</span><span>Artículos</span><span></span></div>'
+             + filas + "\n        </div>")
+
     return head(titulo, desc, canonical, pref, jsonld) + f"""
   <body class="prod-page">{topbar(pref, "productos")}
     <main class="prod-main">
@@ -322,8 +335,7 @@ def pagina_index(cats, total):
           <h1>Todos nuestros utensilios de cocina</h1>
           <p class="prod-intro">{total} artículos en {len(cats)} líneas. Fabricamos en Buenos Aires desde 1950. Sin precios: la lista mayorista se ve con tu usuario en la web mayorista, y el catálogo en PDF se descarga acá abajo.</p>
         </div>
-        <div class="cat-grid">{cards}
-        </div>
+        {cards}
         <div class="prod-cta-block">
           <h2>Comprá directo a la fábrica</h2>
           <p>Supermercados, bazares, distribuidores y ferreterías de todo el país. Pedido online con seguimiento de entrega.</p>
