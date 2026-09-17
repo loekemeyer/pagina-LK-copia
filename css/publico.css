@@ -96,11 +96,94 @@
   scroll-margin-top: 80px;   /* la topbar es sticky: si no, tapa el título */
 }
 
+/* ---- JERARQUÍA ----------------------------------------------------------
+   Tres niveles, no siete secciones del mismo peso:
+
+   1. .pub-section--clave   el diseño propio y cómo trabajamos. Es lo único
+                            que ningún competidor puede escribir. H2 grande.
+   2. .pub-section          la empresa y la línea de tiempo. H2 normal.
+   3. .pub-section--relato  las tres historias de los inventos. Hablan de
+                            Warner, Lyman, Neweczerzal y Rosati, no de
+                            Loekemeyer: van en H3 dentro de una sola sección,
+                            con tipografía y dibujos más chicos.
+
+   Además, dentro de cada sección: volanta (.pub-kicker) para clasificarla,
+   bajada (.pub-bajada) más grande que el cuerpo, y un destacado
+   (.pub-destacado) para el dato que sostiene la página. -------------------- */
+
+.pub-section p.pub-kicker,
+.pub-kicker {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 8px;
+  max-width: none;
+}
+
 .pub-section h2 {
   font-size: clamp(22px, 2.2vw, 29px);
   line-height: 1.2;
   letter-spacing: -0.3px;
   margin: 0 0 16px;
+}
+
+.pub-section--clave h2 {
+  font-size: clamp(26px, 2.9vw, 36px);
+  letter-spacing: -0.6px;
+  margin-bottom: 18px;
+}
+
+.pub-section--clave {
+  padding: 62px 0;
+}
+
+.pub-section p.pub-bajada,
+.pub-bajada {
+  font-size: 19px;
+  line-height: 1.6;
+  color: #2b2b2b;
+  max-width: 62ch;
+  margin-bottom: 20px;
+}
+
+.pub-section p.pub-destacado,
+.pub-destacado {
+  font-size: 20px;
+  line-height: 1.5;
+  font-weight: 700;
+  color: #1c1c1c;
+  border-left: 4px solid var(--accent);
+  padding: 4px 0 4px 20px;
+  margin: 28px 0 8px;
+  max-width: 58ch;
+}
+
+/* Nivel 3: los relatos pesan menos que todo lo anterior. */
+.pub-section--relato h2 {
+  font-size: clamp(20px, 2vw, 26px);
+}
+
+.pub-relato-titulo {
+  font-size: 19px;
+  line-height: 1.3;
+  margin: 46px 0 12px;
+  padding-top: 26px;
+  border-top: 1px solid var(--border);
+}
+
+.pub-section.pub-section--relato p {
+  font-size: 16px;
+}
+
+.pub-section--relato p.pub-bajada {
+  font-size: 18px;
+}
+
+/* Los dibujos de patentes ilustran a otros inventores: bajan de 380 a 270. */
+.pub-section--relato .pub-figura img {
+  height: 270px;
 }
 
 .pub-section p {
@@ -113,16 +196,13 @@
 
 /* Banda de fondo a todo el viewport, para cortar el bloque de texto
    y que la página tenga ritmo vertical. */
-.pub-section--entradilla {
-  padding-bottom: 6px;
-}
-
 .pub-section--banda {
   background: #fafafa;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }
 
+.pub-section p.pub-note,
 .pub-note {
   font-size: 13.5px;
   line-height: 1.6;
