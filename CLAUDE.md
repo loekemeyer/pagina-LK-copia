@@ -680,6 +680,31 @@ Reglas que quedaron fijadas en `css/publico.css`:
 - La tabla va con `width:auto`: la manda el contenido de las celdas, nunca estirada.
 - Cuando hay un solo dibujo (`.pub-figuras--una`), el epígrafe va **al costado**, no abajo.
 
+### PENDIENTE: pulir la línea de tiempo con material de archivo (pedido de Tomás, 17/09/2026)
+
+La línea de tiempo hoy son siete hitos de texto verificados. Falta el trabajo que la convierte en
+una historia: **imágenes de archivo reales de cada época** que acompañen la narrativa, y **una foto
+del equipo actual al cierre**, para humanizar la marca.
+
+Qué hace falta y quién lo trae:
+
+| Qué | Para qué hito | Quién |
+|---|---|---|
+| Fotos de la planta o de la familia, años 50-60 | 1950, fundación | Tomás / archivo familiar |
+| Catálogos, folletos o listas de precios viejos | 1969-1999, los modelos del INPI | Tomás / archivo |
+| Foto de un abrelatas a manija con la leyenda "Patente N° 129.035" | El abrelatas | Tomás |
+| Foto del equipo actual en Cervantes 2868 | Cierre, "Hoy" | Tomás |
+
+**Claude no puede conseguirlas solo:** el proxy de la sesión bloquea `web.archive.org`, el portal del
+INPI y Mercado Libre, y no corresponde poner fotos de archivo genéricas de internet como si fueran de
+la empresa. Cuando Tomás las mande (adjuntas o por Drive), van a `img/historia/archivo/` con nombre
+descriptivo, y se integran en `.pub-timeline` con la misma regla de altura pareja que el resto de las
+figuras de la página.
+
+Junto con eso queda el texto **QUIENES-SOMOS-2018** (marcador en `historia.html`, línea ~88): el
+contenido de `web.archive.org/web/20180919231226/http://www.loekemeyer.com/productos/quienes_somos.html`,
+que Tomás tiene que copiar y pegar porque el proxy no llega a archive.org.
+
 ### Láminas del INPI — ya están en `img/historia/inpi/`
 
 Los cinco dibujos depositados (`12433.png`, `18279.png`, `27925.png`, `29777.png`, `66602.png`) son
@@ -688,9 +713,15 @@ corrigió el nivel de blanco y se recortó el margen; **no se ampliaron ni se pa
 de IA** (inventaría trazos en un documento de registro). Por eso se muestran a 150 px de alto: más
 grandes se ven peor.
 
-**A verificar:** los dos "empuñadura para útiles de cocina" (18.279 de 1971 y 29.777 de 1976) tienen
-el mismo texto y sólo se distinguen por el dibujo. El orden asignado es el del listado del INPI; si
-se confirma que están al revés, se intercambian los dos archivos y listo.
+**Qué protege cada modelo:** en los cinco casos, la **pieza plástica**, no el producto armado
+(confirmado por Tomás el 16-17/09/2026 con las fotos de los productos actuales). Por eso el 18.279 y
+el 29.777 figuran en el INPI como "empuñadura para útiles de cocina" aunque el producto sea el
+pelador: se registró el cuerpo. El orden 18.279 (1971) / 29.777 (1976) quedó confirmado.
+
+**Bloque "De la lámina al mostrador"**: el plano registrado al lado de la foto del artículo actual,
+sólo para el pelador 505 y el afila cuchillos 504 —los dos que sostienen el argumento y están entre
+los más vendidos—. Las fotos están en `img/historia/producto-*.webp`, derivadas de las que mandó
+Tomás; no se usa el bucket `products-images` para que la página no dependa de él.
 
 ## File locks (edición concurrente)
 
