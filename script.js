@@ -1247,14 +1247,47 @@ function _syncRetiroUI() {
   if (!block) return;
   const retira = _esRetira();
   block.hidden = !retira;
+  const inp = $("retiroFecha");
   if (retira) {
-    const inp = $("retiroFecha");
     if (inp) {
       inp.min = _retiroMinIso();
-      if (inp.value && !_retiroFechaValida(inp.value)) inp.value = "";
+      // v19.52: si la fecha dejó de ser válida se borra — y hay que RECALCULAR el botón,
+      // porque si no queda habilitado con el campo vacío y el pedido sale sin día.
+      if (inp.value && !_retiroFechaValida(inp.value)) {
+        inp.value = "";
+        if (typeof refreshSubmitEnabled === "function") refreshSubmitEnabled();
+      }
     }
+  } else {
+    // v19.52: dejó de ser Retira (cambió de sucursal) → la elección anterior no vale más.
+    // Sin esto el día y la franja quedaban cargados y viajaban igual en el payload.
+    if (inp && inp.value) inp.value = "";
+    document.querySelectorAll('input[name="retiroFranja"]').forEach((r) => (r.checked = false));
   }
 }
+/* v19.52 de Gestión (Luis, 2026-09-17) — GUARD DURO DE RETIRA, EN EL SUBMIT.
+   Hasta hoy lo único que exigía día + franja era el estado `disabled` del botón Confirmar
+   (`mustChooseRetiro` en refreshSubmitEnabled). Alcanza mientras nadie toque el estado después
+   de esa comprobación — y algo lo toca: `_syncRetiroUI()` corre en CADA render del carrito
+   (updateCart → _syncEntregaEstimada) y BORRA la fecha si deja de ser válida, sin volver a
+   pedir el recálculo del botón. Resultado medido en LK: de los 6 Retira que la página sí
+   atendió entre el 14 y el 17/09, el 1482 llegó sin fecha ni franja y el 1466 con franja y
+   SIN fecha. Sin día no hay nada que programar: el pedido se queda en A Programar a mano.
+   El chequeo va acá, que es el último lugar por el que pasan todos los caminos. */
+function _retiroGuardOk() {
+  if (!_esRetira()) return true;
+  var _rs = _retiroSeleccion();
+  if (_retiroFechaValida(_rs.fecha) && _rs.franja) return true;
+  _syncRetiroUI();
+  if (typeof refreshSubmitEnabled === "function") refreshSubmitEnabled();
+  setOrderStatus(
+    "Retira: elegí el día (desde 3 días hábiles, lunes a viernes) y la franja horaria antes de confirmar.",
+    "err",
+  );
+  try { document.getElementById("retiroBlock")?.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (_e) {}
+  return false;
+}
+
 function _resetRetiro() {
   const inp = $("retiroFecha");
   if (inp) inp.value = "";
@@ -8869,6 +8902,7 @@ async function _submitSingleOrder(
 }
 
 async function submitOrder() {
+  if (!_retiroGuardOk()) return;
   // EXPO: no dejar enviar el pedido si el cliente nuevo está incompleto.
   if (_expoClientMode && !_expoClientComplete) {
     setOrderStatus(
