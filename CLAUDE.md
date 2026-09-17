@@ -705,6 +705,36 @@ Junto con eso queda el texto **QUIENES-SOMOS-2018** (marcador en `historia.html`
 contenido de `web.archive.org/web/20180919231226/http://www.loekemeyer.com/productos/quienes_somos.html`,
 que Tomás tiene que copiar y pegar porque el proxy no llega a archive.org.
 
+### El diseño de `productos/` sigue a `historia.html` (17/09/2026)
+
+Las 20 páginas del catálogo usaban un `.container` de 1200 px y tarjetas de cuatro columnas mientras
+`historia.html` ya estaba en 960: las dos páginas del mismo sitio no alineaban. Ahora comparten
+`.pub-wrap`, `.pub-kicker` y la misma escala de títulos.
+
+- **Tres columnas, no cuatro.** Con cuatro, una línea de 9 artículos dejaba tres huecos vacíos en la
+  última fila; con tres son exactamente tres filas llenas.
+- **Bug corregido en `.prod-cta`**: tenía `margin-top: auto` y más abajo, en la misma regla,
+  `margin-top: 14px`. La segunda pisaba a la primera, así que el link "Consultar por WhatsApp" no se
+  pegaba al pie de la tarjeta y quedaba a distinta altura en cada una de la fila.
+- **Jerarquía dentro de la tarjeta**: nombre 16 px en negrita, código en chip gris (es lo que el
+  comercio usa para pedir) y unidades por caja en 12,5 px. El chip lleva `align-self: flex-start`
+  porque `.prod-body` es flex y un hijo flex ignora `display: inline-block`.
+- **Todo sale del generador.** `productos/*.html` NO se edita a mano: se cambia
+  `scripts/generar-catalogo.py` y se corre `python3 scripts/generar-catalogo.py`.
+
+### Jerarquía de `historia.html` (17/09/2026)
+
+Tres niveles, no siete secciones del mismo peso: `.pub-section--clave` (H2 de 36 px) para el diseño
+propio y cómo trabajamos, `.pub-section` (29 px) para la empresa, y `.pub-section--relato` (H3 de
+19 px, cuerpo 16 px, dibujos de 270 px) para las tres historias de los inventos, que hablan de Warner,
+Lyman, Neweczerzal y Rosati, no de Loekemeyer. Dentro de cada sección: `.pub-kicker` (volanta),
+`.pub-bajada` (19 px) y `.pub-destacado`.
+
+⚠ **Cuidado con la especificidad en `publico.css`.** `.pub-section p` es (0,1,1) y le gana a
+`.pub-note`, `.pub-kicker`, `.pub-bajada` y `.pub-destacado`, que son (0,1,0) y se aplican a `<p>`.
+Por eso están escritos como `.pub-section p.pub-note, .pub-note { … }`. Si se agrega otra clase de
+párrafo a estas páginas, hay que calificarla igual o sale en 17 px.
+
 ### Láminas del INPI — ya están en `img/historia/inpi/`
 
 Los cinco dibujos depositados (`12433.png`, `18279.png`, `27925.png`, `29777.png`, `66602.png`) son

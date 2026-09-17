@@ -195,7 +195,8 @@ def card(p):
             </div>
             <div class="prod-body">
               <h3 class="prod-name">{esc(p['nombre'])}</h3>
-              <p class="prod-meta">Cód. {esc(p['cod'])} · {uxb}</p>
+              <p class="prod-cod">Cód. {esc(p['cod'])}</p>
+              <p class="prod-meta">{uxb}</p>
               {sub}
               <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(p['cod'])}">Consultar por WhatsApp →</a>
             </div>
@@ -249,11 +250,12 @@ def pagina_categoria(cat, todas):
     html = head(titulo, desc, canonical, pref, jsonld) + f"""
   <body class="prod-page">{topbar(pref, "productos")}
     <main class="prod-main">
-      <div class="container">
+      <div class="pub-wrap">
         <nav class="prod-breadcrumb" aria-label="Ubicación">
           <a href="{pref}index.html">Inicio</a> › <a href="index.html">Productos</a> › <span aria-current="page">{esc(cat['nombre'])}</span>
         </nav>
         <div class="prod-head">
+          <p class="pub-kicker">Línea de producto</p>
           <h1>{esc(cat['nombre'])}</h1>
           <p class="prod-intro">{esc(cat['intro'])} {n} artículos. Fabricantes desde 1950; venta mayorista por caja cerrada a comercios de todo el país.</p>
         </div>
@@ -299,11 +301,12 @@ def pagina_index(cats, total):
     return head(titulo, desc, canonical, pref, jsonld) + f"""
   <body class="prod-page">{topbar(pref, "productos")}
     <main class="prod-main">
-      <div class="container">
+      <div class="pub-wrap">
         <nav class="prod-breadcrumb" aria-label="Ubicación">
           <a href="{pref}index.html">Inicio</a> › <span aria-current="page">Productos</span>
         </nav>
         <div class="prod-head">
+          <p class="pub-kicker">Catálogo completo</p>
           <h1>Todos nuestros utensilios de cocina</h1>
           <p class="prod-intro">{total} artículos en {len(cats)} líneas. Fabricamos en Buenos Aires desde 1950. Sin precios: la lista mayorista se ve con tu usuario en la web mayorista, y el catálogo en PDF se descarga acá abajo.</p>
         </div>
