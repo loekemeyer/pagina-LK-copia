@@ -183,23 +183,37 @@ def footer(pref):
 
 
 def card(p):
-    badge = '<span class="prod-nuevo">NUEVO</span>' if p.get("badge") == "NUEVO" else ""
-    uxb = f"{p['uxb']} unidades por caja" if p.get("uxb") else "consultar unidades por caja"
-    sub = f'<p class="prod-meta">{esc(p["subcategoria"])}</p>' if p.get("subcategoria") else ""
+    """Una fila de la lista de artículos.
+
+    Dentro de una línea la foto no discrimina —nueve peladores son nueve
+    objetos alargados— así que lo que manda son las columnas: código,
+    nombre y unidades por caja. El mosaico quedó sólo para el índice de
+    líneas, donde las 19 imágenes sí son distintas entre sí.
+    """
+    nuevo = '<span class="prod-nuevo">NUEVO</span>' if p.get("badge") == "NUEVO" else ""
+    uxb = f"{p['uxb']} u. por caja" if p.get("uxb") else "consultar"
+    sub = f'<p class="prod-sub">{esc(p["subcategoria"])}</p>' if p.get("subcategoria") else ""
     texto = f"Hola Loekemeyer, quiero consultar por el artículo {p['cod']} {p['nombre']}."
     return f"""
-          <article class="prod-card" id="p-{esc(p['cod'])}">
-            <div class="prod-thumb">
+          <article class="prod-row" id="p-{esc(p['cod'])}">
+            <div class="prod-row-foto">
               <img src="{img_url(p)}" alt="{esc(p['nombre'])} Loekemeyer, código {esc(p['cod'])}" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='IMGFALLBACK'" />
             </div>
-            <div class="prod-body">
-              <p class="prod-cod">{esc(p['cod'])}{badge}</p>
+            <div class="prod-row-id">
+              <p class="prod-cod">{esc(p['cod'])}{nuevo}</p>
               <h3 class="prod-name">{esc(p['nombre'])}</h3>
-              <p class="prod-meta">{uxb}</p>
               {sub}
-              <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(p['cod'])}">Consultar disponibilidad</a>
             </div>
+            <p class="prod-caja">{uxb}</p>
+            <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(p['cod'])}">Consultar</a>
           </article>"""
+
+
+def lista(ps):
+    """La lista con su encabezado de columnas, como una lista de precios."""
+    filas = "".join(card(p) for p in ps)
+    cab = '<div class="prod-lista-head" aria-hidden="true"><span></span><span>Código y artículo</span><span>Por caja</span><span></span></div>'
+    return '<div class="prod-lista">' + cab + filas + "\n        </div>"
 
 
 def pagina_categoria(cat, todas):
@@ -235,14 +249,13 @@ def pagina_categoria(cat, todas):
             cuerpo += f"""
         <section class="prod-subsection" id="{slugify(s)}">
           <h2 class="prod-subtitle">{esc(s)} <span class="prod-count">{len(ps)}</span></h2>
-          <div class="prod-grid">{''.join(card(p) for p in ps)}
-          </div>
+          {lista(ps)}
         </section>"""
         resto = [p for p in cat["productos"] if not p.get("subcategoria")]
         if resto:
-            cuerpo += f'<section class="prod-subsection"><h2 class="prod-subtitle">Otros <span class="prod-count">{len(resto)}</span></h2><div class="prod-grid">{"".join(card(p) for p in resto)}</div></section>'
+            cuerpo += f'<section class="prod-subsection"><h2 class="prod-subtitle">Otros <span class="prod-count">{len(resto)}</span></h2>{lista(resto)}</section>'
     else:
-        cuerpo += f'<div class="prod-grid">{"".join(card(p) for p in cat["productos"])}\n        </div>'
+        cuerpo += lista(cat["productos"])
 
     otras = "".join(
         f'<a href="{c["slug"]}.html">{esc(c["nombre"])}</a>' for c in todas if c["slug"] != slug)

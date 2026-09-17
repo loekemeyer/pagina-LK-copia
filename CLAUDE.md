@@ -713,34 +713,39 @@ Junto con eso queda el texto **QUIENES-SOMOS-2018** (marcador en `historia.html`
 contenido de `web.archive.org/web/20180919231226/http://www.loekemeyer.com/productos/quienes_somos.html`,
 que Tomás tiene que copiar y pegar porque el proxy no llega a archive.org.
 
-### `productos/` es una LÁMINA DE CATÁLOGO, no una tienda (17/09/2026)
+### `productos/`: LISTA en las páginas de línea, mosaico sólo en el índice (17/09/2026)
 
-Pedido textual de Tomás: *"que no parezca un carrito de compras sino algo distinto"*. Tenía razón:
-las tarjetas con borde, sombra, thumbnail gris y botón rojo son vocabulario de e-commerce, y esta
-página **no vende online**: no hay precio, ni carrito, ni checkout. El modelo es la lámina de un
-catálogo impreso.
+Dos pedidos de Tomás, en orden: *"que no parezca un carrito de compras sino algo distinto"* y
+*"¿no creés que es mejor hacerlo como lista y no tanto como mosaicos?"*. Las dos veces tenía razón.
 
-| Elemento | Antes (tienda) | Ahora (lámina) |
+**Por qué lista y no mosaico, dentro de una línea.** La foto no discrimina: nueve peladores son nueve
+objetos alargados rojos y negros, y mirando miniaturas no se distingue el 505 del 513. Lo que sirve
+para elegir es el código, el nombre y las unidades por caja — o sea, columnas. En el **índice** pasa
+lo contrario: 19 líneas distintas entre sí, donde la imagen es el identificador más rápido, así que
+ahí **el mosaico se queda**.
+
+| Página | Formato | Motivo |
 |---|---|---|
-| Contenedor de la ficha | borde, radio 14 px, sombra, hover que levanta | sin cromo: el artículo apoyado sobre el papel |
-| Fondo de la foto | caja gris `#f7f7f8` | blanco, sin caja |
-| Separador | ninguno | regla de 1 px negra entre foto y ficha |
-| Orden de la ficha | nombre, código, unidades | **código**, nombre, unidades |
-| Código | chip gris | versalita roja arriba, que es lo que el comercio escribe en el pedido |
-| "NUEVO" | pastilla roja flotando sobre la foto | marca amarilla al lado del código |
-| Link | "Consultar por WhatsApp →" rojo en negrita | "Consultar disponibilidad", gris, secundario |
-| Ancho | `.container` 1200 | `.pub-wrap` 960, igual que `historia.html` |
+| `productos/index.html` | Mosaico de 3 columnas, sin cromo | 19 imágenes distintas entre sí |
+| `productos/<línea>.html` | Lista con encabezado de columnas | dentro de una línea la foto no distingue |
 
-**Tres columnas y no cuatro, medido:** sobre las 19 líneas reales, con tres columnas quedan **14
-huecos** en las últimas filas de todo el catálogo y con cuatro **25**. Peladores, abrelatas,
-sacacorchos y madera cierran exacto en tres.
+Reglas de la lista (`.prod-lista`, `.prod-row`):
 
-**Bug corregido de paso:** `.prod-cta` tenía `margin-top: auto` y, más abajo en la misma regla,
-`margin-top: 14px`. La segunda pisaba a la primera, así que el link no se pegaba al pie y quedaba a
-distinta altura en cada ficha de la fila.
+- Columnas `72px | 1fr | 128px | 104px`: foto, código+nombre, unidades por caja, "Consultar".
+- **Ancho máximo 820 px**, no los 960 del `.pub-wrap`: con 960 quedaban 500 px muertos entre el
+  nombre del artículo y las unidades por caja.
+- El **código va arriba del nombre**, en versalita roja: es lo que el comercio escribe en el pedido.
+- "NUEVO" es una marca amarilla al lado del código, no una pastilla roja sobre la foto.
+- El link dice "Consultar" en gris. En rojo y negrita parecía un botón de agregar al carrito, y esta
+  página no vende online: no hay precio, ni carrito, ni checkout.
+- En menos de 760 px la fila colapsa a foto + ficha, con las unidades y el link debajo del nombre.
 
 **`productos/*.html` NO se edita a mano**: se cambia `scripts/generar-catalogo.py` y se corre
 `python3 scripts/generar-catalogo.py`.
+
+⚠ **`css/productos.css` y `css/publico.css` los cargan SÓLO `historia.html` y `productos/*.html`.**
+Verificado el 17/09/2026. Ninguna otra página del sitio los lee, así que tocarlos no afecta a
+`index.html`, `mayorista.html`, `admin.html` ni al resto.
 
 ### Jerarquía de `historia.html` (17/09/2026)
 
