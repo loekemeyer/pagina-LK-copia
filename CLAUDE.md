@@ -916,6 +916,25 @@ a un cliente que hoy compra fuerte: Diarco compró $15,5 M y devolvió $4,9 M �
 las devoluciones quedan a la vista sin distorsionar el orden. 18 de 121 clientes tenían
 devoluciones.
 
+**Y una parte de esas "devoluciones" NO es mercadería devuelta: es REFACTURACIÓN.** Un `boxes`
+negativo puede ser una NC que **anula una factura que se re-emite idéntica** días después
+(típico de las FCE MiPyME rechazadas/no aceptadas a término), no una devolución física. La
+cadena es `Factura → NC (mismo importe y cantidades) → Refactura (mismo remito)`; el neto de las
+tres es una sola venta, así que la valorización neta no se rompe, pero **contarla como devolución
+sí infla el reporte**. Medido el 16/9/2026 sobre todo `sales_lines` (empresa lk): de 61.444 cajas
+negativas, **~5.880 (9,6%, 39 clientes) son refacturación** y el resto devolución real —
+**no es sólo de supermercados** (los súper aportan 3.654; hay ~2.226 de clientes comunes). La
+base **no distingue** los dos casos (ambos son `NC MIPYME A` / `NC Electr. A` en
+`virgilio.isis_ventas`, que además es **sólo facturación**: no trae pedidos ni remitos, sólo 11
+líneas `Pedido de Clte.` en total). El único proxy desde la base es el espejo: NC negativa que
+tiene una **re-factura idéntica** (mismo cliente, artículo y cantidad) dentro de ~15 días → es
+refacturación. La traza real (qué factura referencia la NC, fecha de pedido y remito) vive en el
+**ERP / los PDF de `X:\PDF_ISIS`**, no acá. Caso testigo verificado: NC MiPyME A a Carrefour del
+31/08/2026 (685 cajas) = anulación de la FCE `0005-00000901` (27/07), re-emitida como `0005-00000906`
+(03/09), mismo remito `0001-00091251` — **no volvió nada**. Todo reporte de devoluciones tiene
+que separar refacturación de devolución real, o dirá que un cliente devolvió lo que en realidad
+sólo se le re-facturó.
+
 ## 4. Un mismo artículo puede estar cargado con varias grafías
 
 Buscar `item_code = '504'` no encuentra `504L`, que es el mismo Afila Cuchillos. Desde julio
