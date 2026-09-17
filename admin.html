@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin - Loekemeyer</title>
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg?v=2" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23433" />
-    <link rel="stylesheet" href="css/admin.css?v=23433" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23434" />
+    <link rel="stylesheet" href="css/admin.css?v=23434" />
     <link
       href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
       rel="stylesheet"
@@ -1493,36 +1493,65 @@
             </button>
           </div>
 
+          <!-- 6 categorías activas. El % de cada una es sobre la SUMA de las 6
+               (cliente+vendedor+admin+expo+super+sin cot). Desconocido y Previo
+               al tracking quedan aparte y NO entran en el %. -->
           <div
             id="origenPedidosStats"
             style="
               display: grid;
-              grid-template-columns: repeat(5, 1fr);
+              grid-template-columns: repeat(6, minmax(0, 1fr));
               gap: 12px;
-              margin-bottom: 16px;
+              margin-bottom: 10px;
             "
           >
             <div class="stat-box stat-ok">
               <div class="stat-num" id="origenPedidosCliente">–</div>
-              <div class="stat-label">Cliente</div>
+              <div class="stat-pct" id="origenPedidosClientePct"></div>
+              <div class="stat-label" title="Pedidos que cargó el propio cliente desde el mayorista web.">Cliente</div>
             </div>
             <div class="stat-box stat-neutral">
               <div class="stat-num" id="origenPedidosVendedor">–</div>
-              <div class="stat-label">Vendedor</div>
+              <div class="stat-pct" id="origenPedidosVendedorPct"></div>
+              <div class="stat-label" title="Cargó un vendedor con Pedir para / Excel Megashops.">Vendedor</div>
             </div>
             <div class="stat-box stat-neutral">
               <div class="stat-num" id="origenPedidosAdmin">–</div>
-              <div class="stat-label">Admin</div>
+              <div class="stat-pct" id="origenPedidosAdminPct"></div>
+              <div class="stat-label" title="Cargó un admin con el Cotizador.">Admin</div>
             </div>
-            <!-- Desconocido = posterior al tracking y aun así sin registrar:
-                 es una anomalía, no un dato viejo. Por eso va en stat-warn. -->
+            <div class="stat-box stat-neutral">
+              <div class="stat-num" id="origenPedidosExpo">–</div>
+              <div class="stat-pct" id="origenPedidosExpoPct"></div>
+              <div class="stat-label" title="Pedidos tomados en la expo (19-22/8/2026) desde el panel. Categoría propia, aunque se carguen desde el admin.">Expo</div>
+            </div>
+            <div class="stat-box stat-neutral">
+              <div class="stat-num" id="origenPedidosSuper">–</div>
+              <div class="stat-pct" id="origenPedidosSuperPct"></div>
+              <div class="stat-label" title="OC de supermercados (Cotizador Supermercados / Krikos). Categoría propia, aunque se carguen desde el admin.">Super</div>
+            </div>
+            <div class="stat-box stat-neutral">
+              <div class="stat-num" id="origenPedidosSinCot">–</div>
+              <div class="stat-pct" id="origenPedidosSinCotPct"></div>
+              <div class="stat-label" title="Pedidos cargados sin cotizador. Categoría propia, aunque se carguen desde el admin.">Sin cot</div>
+            </div>
+          </div>
+          <!-- Fuera del %: no son canal de venta. -->
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(2, minmax(0, 150px));
+              gap: 12px;
+              margin-bottom: 16px;
+            "
+          >
             <div class="stat-box stat-warn">
               <div class="stat-num" id="origenPedidosDesconocido">–</div>
-              <div class="stat-label" title="Pedidos posteriores al inicio del tracking que igual no registraron quién los cargó. Si este número crece, alguna vía de carga dejó de guardar el origen.">Desconocido</div>
+              <div class="stat-label" title="Pedidos posteriores al inicio del tracking que igual no registraron quién los cargó. Si este número crece, alguna vía de carga dejó de guardar el origen. NO entra en el %.">Desconocido</div>
             </div>
             <div class="stat-box stat-neutral">
               <div class="stat-num" id="origenPedidosPrevioTracking">–</div>
-              <div class="stat-label" title="Pedidos anteriores al 15/07/2026, cuando el sistema todavía no registraba el origen. Es esperable.">Previo al tracking</div>
+              <div class="stat-label" title="Pedidos anteriores al 15/07/2026, cuando el sistema todavía no registraba el origen. Es esperable. NO entra en el %.">Previo al tracking</div>
             </div>
           </div>
 
@@ -1537,7 +1566,7 @@
               </colgroup>
               <thead>
                 <tr>
-                  <th>Origen</th>
+                  <th>Categoría</th>
                   <th>Herramienta</th>
                   <th>Pedidos</th>
                   <th title="Pedidos de los clientes internos: 3878 Tierra Nativa SA y 1 Loekemeyer SRL. Están incluidos en la columna Pedidos.">Pedidos de prueba</th>
@@ -3650,15 +3679,15 @@
       </div>
     </div>
 
-    <script src="./version.js?v=23433"></script>
+    <script src="./version.js?v=23434"></script>
     <script src="excel-parser-smart.js"></script>
-    <script src="argentina-map-data.js?v=23433"></script>
-    <script src="admin.js?v=23433"></script>
-    <script src="admin-supercot.js?v=23433"></script>
-    <script src="admin-excel-krikos.js?v=23433"></script>
-    <script src="analisis-venta-cliente.js?v=23433"></script>
+    <script src="argentina-map-data.js?v=23434"></script>
+    <script src="admin.js?v=23434"></script>
+    <script src="admin-supercot.js?v=23434"></script>
+    <script src="admin-excel-krikos.js?v=23434"></script>
+    <script src="analisis-venta-cliente.js?v=23434"></script>
     <!-- OSA: reusa la capa de datos del Formato OSA (parsers + escritura a Supabase) -->
-    <script src="osa/js/store.js?v=23433"></script>
-    <script src="admin-osa.js?v=23433"></script>
+    <script src="osa/js/store.js?v=23434"></script>
+    <script src="admin-osa.js?v=23434"></script>
   </body>
 </html>

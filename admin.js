@@ -7089,24 +7089,35 @@ async function marcarSucursalCargada(customerId, slot) {
    ========================================================= */
 async function cargarOrigenPedidos() {
   var statusEl = document.getElementById("origenPedidosStatus");
-  var els = {
-    cliente: document.getElementById("origenPedidosCliente"),
-    vendedor: document.getElementById("origenPedidosVendedor"),
-    admin: document.getElementById("origenPedidosAdmin"),
-    desconocido: document.getElementById("origenPedidosDesconocido"),
-    previo_tracking: document.getElementById("origenPedidosPrevioTracking"),
+  // 6 categorías activas (cuentan para el %) + 2 fuera del % (desconocido, previo).
+  var ACTIVAS = ["cliente", "vendedor", "admin", "expo", "super", "sin_cot"];
+  var ID_NUM = {
+    cliente: "origenPedidosCliente", vendedor: "origenPedidosVendedor",
+    admin: "origenPedidosAdmin", expo: "origenPedidosExpo",
+    super: "origenPedidosSuper", sin_cot: "origenPedidosSinCot",
+    desconocido: "origenPedidosDesconocido", previo_tracking: "origenPedidosPrevioTracking",
   };
-  if (!els.cliente) return;
+  var ID_PCT = {
+    cliente: "origenPedidosClientePct", vendedor: "origenPedidosVendedorPct",
+    admin: "origenPedidosAdminPct", expo: "origenPedidosExpoPct",
+    super: "origenPedidosSuperPct", sin_cot: "origenPedidosSinCotPct",
+  };
+  if (!document.getElementById(ID_NUM.cliente)) return;
 
   var desdeVal = document.getElementById("origenPedidosDesde")?.value || "";
   var hastaVal = document.getElementById("origenPedidosHasta")?.value || "";
 
   if (statusEl) statusEl.textContent = "Cargando…";
 
+  // % de una categoría sobre la suma de las 6 activas, una decimal y coma decimal.
+  function _pctTxt(n, d) {
+    if (!d) return "";
+    var v = Math.round((Number(n || 0) / d) * 1000) / 10;
+    return v.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+  }
+
   try {
-    // Una sola llamada: la RPC devuelve una fila por (origen, herramienta).
-    // Antes eran N consultas .eq() y el front tenía que conocer de antemano
-    // las herramientas posibles; así descubre las que realmente existen.
+    // Una sola llamada: la RPC devuelve una fila por (categoría, herramienta).
     var resp = await sb.rpc("get_origen_pedidos_resumen", {
       p_desde: desdeVal || null,
       p_hasta: hastaVal || null,
@@ -7114,26 +7125,29 @@ async function cargarOrigenPedidos() {
     if (resp.error) throw resp.error;
     var filas = resp.data || [];
 
-    var keys = ["cliente", "vendedor", "admin", "desconocido", "previo_tracking"];
+    var keys = ["cliente", "vendedor", "admin", "expo", "super", "sin_cot", "desconocido", "previo_tracking"];
     var counts = {};
     keys.forEach(function (k) { counts[k] = 0; });
     filas.forEach(function (f) {
-      var k = f.origen_pedido;
+      var k = f.categoria;
       counts[k] = (counts[k] || 0) + Number(f.pedidos || 0);
     });
 
-    els.cliente.textContent = counts.cliente;
-    els.vendedor.textContent = counts.vendedor;
-    els.admin.textContent = counts.admin;
-    els.desconocido.textContent = counts.desconocido;
-    if (els.previo_tracking) {
-      els.previo_tracking.textContent = counts.previo_tracking;
-    }
+    // Denominador del % = suma de las 6 categorías activas (excluye desconocido y previo).
+    var denom = 0;
+    ACTIVAS.forEach(function (k) { denom += counts[k] || 0; });
+
+    keys.forEach(function (k) {
+      var el = document.getElementById(ID_NUM[k]);
+      if (el) el.textContent = counts[k] || 0;
+    });
+    ACTIVAS.forEach(function (k) {
+      var pe = document.getElementById(ID_PCT[k]);
+      if (pe) pe.textContent = _pctTxt(counts[k], denom);
+    });
 
     _renderOrigenPedidosDetalle(filas, keys);
 
-    var total = 0;
-    Object.keys(counts).forEach(function (k) { total += counts[k]; });
     var inferidos = 0;
     var dePrueba = 0;
     filas.forEach(function (f) {
@@ -7152,12 +7166,17 @@ async function cargarOrigenPedidos() {
       ? " " + inferidos + " atribuidos por respaldo (sin registro directo del origen)."
       : "";
     var pruebaTxt = dePrueba
-      ? " " + dePrueba + " son de clientes internos (prueba): " +
-        (total - dePrueba) + " reales."
+      ? " " + dePrueba + " de clientes internos (prueba)."
       : "";
+    // El % es sobre las 6 activas; previo y desconocido se muestran aparte.
+    var afueraTxt =
+      " Previo al tracking: " + (counts.previo_tracking || 0) +
+      " · Desconocido: " + (counts.desconocido || 0) + " (fuera del %).";
     if (statusEl) {
       statusEl.textContent =
-        "Total: " + total + " pedidos." + rangoTxt + pruebaTxt + inferidosTxt;
+        "6 categorías activas: " + denom + " pedidos. Directo del cliente: " +
+        _pctTxt(counts.cliente, denom) + "." + rangoTxt + afueraTxt +
+        pruebaTxt + inferidosTxt;
     }
   } catch (e) {
     console.error("cargarOrigenPedidos error:", e);
@@ -7179,6 +7198,9 @@ function _renderOrigenPedidosDetalle(filas, keys) {
     cliente: "Cliente",
     vendedor: "Vendedor",
     admin: "Admin",
+    expo: "Expo",
+    super: "Super",
+    sin_cot: "Sin cot",
     desconocido: "Desconocido",
     previo_tracking: "Previo al tracking",
   };
@@ -7193,16 +7215,15 @@ function _renderOrigenPedidosDetalle(filas, keys) {
   }
 
   keys.forEach(function (k) {
-    var delOrigen = filas.filter(function (f) { return f.origen_pedido === k; });
-    if (!delOrigen.length) return;
+    var delCat = filas.filter(function (f) { return f.categoria === k; });
+    if (!delCat.length) return;
 
-    delOrigen.forEach(function (f, idx) {
+    delCat.forEach(function (f, idx) {
       var tr = document.createElement("tr");
       var herr = f.herramienta || "—";
       var nPed = Number(f.pedidos || 0);
       // La celda Pedidos es clickeable: despliega debajo qué clientes componen
-      // ese número (origen k × herramienta). "Sin registro"/"—" no tienen
-      // herramienta identificable, pero igual se puede desglosar por cliente.
+      // ese número (categoría k × herramienta).
       tr.innerHTML =
         '<td style="font-weight:600">' +
         (idx === 0 ? escHtml(labels[k] || k) : "") +
@@ -7215,7 +7236,7 @@ function _renderOrigenPedidosDetalle(filas, keys) {
         "</td>" +
         '<td class="est-days">' +
         (nPed
-          ? '<button type="button" class="op-drill" data-origen="' +
+          ? '<button type="button" class="op-drill" data-cat="' +
             escHtml(k) + '" data-herr="' + escHtml(herr) + '" ' +
             'title="Ver qué clientes componen este número">' +
             nPed + " ▸</button>"
@@ -7261,7 +7282,7 @@ async function _toggleOrigenClientes(btn) {
     r.remove();
   });
 
-  var origen = btn.dataset.origen;
+  var cat = btn.dataset.cat;
   var herr = btn.dataset.herr;
   var detTr = document.createElement("tr");
   detTr.className = "op-detalle";
@@ -7276,7 +7297,7 @@ async function _toggleOrigenClientes(btn) {
     var desdeVal = document.getElementById("origenPedidosDesde")?.value || "";
     var hastaVal = document.getElementById("origenPedidosHasta")?.value || "";
     var resp = await sb.rpc("get_origen_pedidos_clientes", {
-      p_origen: origen,
+      p_categoria: cat,
       p_herramienta: herr,
       p_desde: desdeVal || null,
       p_hasta: hastaVal || null,

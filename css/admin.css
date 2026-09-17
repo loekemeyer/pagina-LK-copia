@@ -2258,6 +2258,16 @@ input[type="number"].manual-cell {
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
+/* % de la categoría sobre la suma de las 6 activas (Origen de Pedidos) */
+.stat-box .stat-pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2563eb;
+  line-height: 1.1;
+  margin-top: 2px;
+  min-height: 15px;
+}
+.stat-box.stat-ok .stat-pct { color: #1f7a3a; }
 .stat-box.stat-ok {
   border-color: #2e7d32;
   background: rgba(46, 125, 50, 0.08);

@@ -88,6 +88,18 @@
 -- ese MIN saltaría a febrero y reclasificaría todo el histórico como
 -- "desconocido", que es justo lo contrario de lo que se busca.
 
+-- CATEGORIA (col nueva, pedido de Yanina 17/09/2026): es la clasificacion que
+-- muestra el panel. Son 6 categorias ACTIVAS —cliente, vendedor, admin, expo,
+-- super, sin_cot— mas previo_tracking y desconocido, que quedan visibles pero
+-- FUERA del %. El panel calcula el % de cada activa sobre la suma de las 6.
+-- expo/super/sin_cot salen de adentro de admin (admin queda solo el Cotizador):
+--   expo    <- herramienta 'Pedidos Expo'
+--   super   <- herramienta 'Cotizador Supermercados'
+--   sin_cot <- herramienta 'Sin Cotizador'
+-- previo_tracking y desconocido se chequean PRIMERO en el CASE: un pedido
+-- pre-tracking conserva su etiqueta vieja (aunque su herramienta sea, p.ej.,
+-- 'Cotizador Supermercados') y NO entra al %.
+
 CREATE OR REPLACE VIEW public.v_orders_origen AS
 WITH base AS (
   SELECT o.id AS order_id,
@@ -120,14 +132,10 @@ clasificado AS (
           ELSE 'vendedor'::text
       END AS origen_pedido
   FROM base b
-)
-SELECT c.order_id,
-       c.customer_id,
-       c.created_at,
-       c.placed_by_auth_user_id,
-       c.customer_auth_user_id,
-       c.origen_pedido,
-       CASE
+),
+etiquetado AS (
+  SELECT c.*,
+      CASE
          WHEN c.source_raw IS NULL          THEN 'Sin registro'
          -- Expo comercial 19-22/8/2026: se atendio desde el panel entrando por el
          -- catalogo web (origen admin, source 'Web'). No hay marcador propio en
@@ -148,9 +156,27 @@ SELECT c.order_id,
          WHEN c.source_raw = 'Excel'        THEN 'Excel (sin identificar)'
          ELSE c.source_raw
        END AS herramienta,
-       (c.por_respaldo AND c.origen_pedido NOT IN ('previo_tracking', 'desconocido')) AS origen_inferido,
-       c.es_prueba
-FROM clasificado c;
+       (c.por_respaldo AND c.origen_pedido NOT IN ('previo_tracking', 'desconocido')) AS origen_inferido
+  FROM clasificado c
+)
+SELECT e.order_id,
+       e.customer_id,
+       e.created_at,
+       e.placed_by_auth_user_id,
+       e.customer_auth_user_id,
+       e.origen_pedido,
+       e.herramienta,
+       e.origen_inferido,
+       e.es_prueba,
+       CASE
+         WHEN e.origen_pedido IN ('previo_tracking','desconocido') THEN e.origen_pedido
+         WHEN e.herramienta = 'Pedidos Expo'            THEN 'expo'
+         WHEN e.herramienta = 'Cotizador Supermercados' THEN 'super'
+         WHEN e.herramienta = 'Sin Cotizador'           THEN 'sin_cot'
+         WHEN e.origen_pedido = 'admin'                 THEN 'admin'
+         ELSE e.origen_pedido
+       END AS categoria
+FROM etiquetado e;
 
 
 -- Resumen que consume el panel: una fila por (origen, herramienta), con el
@@ -168,7 +194,7 @@ CREATE OR REPLACE FUNCTION public.get_origen_pedidos_resumen(
   p_hasta text DEFAULT NULL
 )
 RETURNS TABLE(
-  origen_pedido text,
+  categoria text,
   herramienta text,
   pedidos bigint,
   inferidos bigint,
@@ -178,7 +204,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 AS $function$
-  SELECT v.origen_pedido,
+  SELECT v.categoria,
          v.herramienta,
          count(*)::bigint AS pedidos,
          count(*) FILTER (WHERE v.origen_inferido)::bigint AS inferidos,
@@ -186,8 +212,8 @@ AS $function$
   FROM v_orders_origen v
   WHERE (p_desde IS NULL OR v.created_at >= (p_desde || ' 00:00:00')::timestamptz)
     AND (p_hasta IS NULL OR v.created_at <= (p_hasta || ' 23:59:59.999')::timestamptz)
-  GROUP BY v.origen_pedido, v.herramienta
-  ORDER BY v.origen_pedido, count(*) DESC;
+  GROUP BY v.categoria, v.herramienta
+  ORDER BY v.categoria, count(*) DESC;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.get_origen_pedidos_resumen(text, text) TO authenticated;
@@ -204,8 +230,10 @@ GRANT EXECUTE ON FUNCTION public.get_origen_pedidos_resumen(text, text) TO authe
 --
 -- Lleva el chequeo de admin ADENTRO (es SECURITY DEFINER y saltea RLS) y el
 -- EXECUTE revocado a PUBLIC/anon: es un módulo de admin y anon hereda de PUBLIC.
+DROP FUNCTION IF EXISTS public.get_origen_pedidos_clientes(text, text, text, text);
+
 CREATE OR REPLACE FUNCTION public.get_origen_pedidos_clientes(
-  p_origen text,
+  p_categoria text,
   p_herramienta text,
   p_desde text DEFAULT NULL,
   p_hasta text DEFAULT NULL
@@ -230,7 +258,7 @@ AS $function$
     FROM v_orders_origen v
     JOIN customers c ON c.id = v.customer_id
     LEFT JOIN "Wpp_Clientes" w ON w.cod_cli = c.cod_cliente AND w.marca = 'LK'
-    WHERE v.origen_pedido = p_origen
+    WHERE v.categoria = p_categoria
       AND v.herramienta = p_herramienta
       AND (p_desde IS NULL OR v.created_at >= (p_desde || ' 00:00:00')::timestamptz)
       AND (p_hasta IS NULL OR v.created_at <= (p_hasta || ' 23:59:59.999')::timestamptz)
