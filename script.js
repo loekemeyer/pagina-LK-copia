@@ -3596,6 +3596,8 @@ async function openProfile() {
   await loadMyAddressesUI();
   loadDraftCarts();
   loadVendorNotificationsUI();
+  initVendorInactivosUI();
+  loadVendorInactivosUI();
 
   // Análisis de compras embebido (modo customer): exponemos customerProfile
   // global para que el módulo lo lea cuando el usuario expanda la card.
@@ -4723,6 +4725,8 @@ async function openNotificationsFromMenu() {
   loadMyAddressesUI();
   loadDraftCarts();
   await loadVendorNotificationsUI();
+  initVendorInactivosUI();
+  loadVendorInactivosUI();
   // Scroll a la card
   setTimeout(function () {
     var el = document.getElementById("vendorNotifsCard");
@@ -10153,6 +10157,240 @@ async function loadLinkedCustomers() {
     }
   }
 }
+
+/* ============================================================
+   Clientes que no están comprando (card del perfil del vendedor)
+   Fuente: RPC get_mis_clientes_inactivos(p_meses) — resuelve la cartera
+   por user_customer_links de auth.uid() y sólo contesta si el perfil es
+   un vendedor (cod 100XX o Loekemeyer SRL). Nunca se filtra del lado del
+   navegador: un cliente común recibe 0 filas de la propia RPC.
+   ============================================================ */
+var _vendorInactivos = [];
+var _vendorInactivosVerTodos = false;
+var _vendorInactivosCargando = false;
+var VENDOR_INACTIVOS_TOPE = 10;
+
+function _vinactNum(n) {
+  var v = Number(n || 0);
+  return "$" + v.toLocaleString("es-AR", { maximumFractionDigits: 0 });
+}
+
+function _vinactFecha(iso) {
+  var m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[3] + "/" + m[2] + "/" + m[1] : String(iso || "");
+}
+
+function _vinactMeses(dias) {
+  if (dias == null) return "";
+  var m = Math.round(Number(dias) / 30.44);
+  if (m < 12) return m + (m === 1 ? " mes" : " meses");
+  var a = Math.floor(m / 12);
+  var r = m % 12;
+  return a + (a === 1 ? " año" : " años") + (r ? " " + r + "m" : "");
+}
+
+function _vinactNorm(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+function _vinactFiltrados() {
+  var q = _vinactNorm(
+    (document.getElementById("vendorInactivosBuscar") || {}).value
+  ).trim();
+  if (!q) return _vendorInactivos;
+  return _vendorInactivos.filter(function (r) {
+    return (
+      _vinactNorm(r.razon_social).indexOf(q) >= 0 ||
+      _vinactNorm(r.localidad).indexOf(q) >= 0 ||
+      String(r.cod_cliente || "").indexOf(q) >= 0
+    );
+  });
+}
+
+function _vinactRender() {
+  var box = document.getElementById("vendorInactivosBox");
+  var badge = document.getElementById("vendorInactivosBadge");
+  var btnMas = document.getElementById("btnVendorInactivosToggle");
+  var btnXls = document.getElementById("btnVendorInactivosExcel");
+  if (!box) return;
+
+  var filas = _vinactFiltrados();
+
+  if (badge) {
+    badge.textContent = String(_vendorInactivos.length);
+    badge.hidden = _vendorInactivos.length === 0;
+  }
+  if (btnXls) btnXls.hidden = _vendorInactivos.length === 0;
+
+  if (!filas.length) {
+    box.innerHTML =
+      '<div class="vinact-vacio">' +
+      (_vendorInactivos.length
+        ? "Ningún cliente coincide con la búsqueda."
+        : "Todos tus clientes compraron dentro del período. 👏") +
+      "</div>";
+    if (btnMas) btnMas.hidden = true;
+    return;
+  }
+
+  var visibles = _vendorInactivosVerTodos
+    ? filas
+    : filas.slice(0, VENDOR_INACTIVOS_TOPE);
+
+  var html = '<ul class="vinact-lista">';
+  visibles.forEach(function (r) {
+    var wpp = String(r.whatsapp || "").replace(/\D/g, "");
+    var chef = r.chef_ultima
+      ? '<span class="vinact-chef" title="Le sigue comprando a Chef">Compra en Chef</span>'
+      : "";
+    html +=
+      '<li class="vinact-item">' +
+      '<div class="vinact-top">' +
+      '<span class="vinact-nombre">' +
+      escapeHtml(r.razon_social || "(sin razón social)") +
+      "</span>" +
+      '<span class="vinact-importe">' +
+      (r.importe_ultima != null ? _vinactNum(r.importe_ultima) : "—") +
+      "</span>" +
+      "</div>" +
+      '<div class="vinact-sub">' +
+      (r.ultima_compra
+        ? "Última compra " +
+          _vinactFecha(r.ultima_compra) +
+          ' <span class="vinact-meses">· hace ' +
+          _vinactMeses(r.dias) +
+          "</span>"
+        : '<span class="vinact-nunca">Sin compras registradas</span>') +
+      (r.localidad ? " · " + escapeHtml(r.localidad) : "") +
+      chef +
+      (wpp
+        ? ' · <a class="vinact-wpp" target="_blank" rel="noopener" href="https://wa.me/' +
+          (wpp.length <= 11 ? "54" + wpp.replace(/^54/, "") : wpp) +
+          '">WhatsApp</a>'
+        : "") +
+      "</div>" +
+      "</li>";
+  });
+  html += "</ul>";
+  box.innerHTML = html;
+
+  if (btnMas) {
+    btnMas.hidden = filas.length <= VENDOR_INACTIVOS_TOPE;
+    btnMas.textContent = _vendorInactivosVerTodos
+      ? "Ver menos"
+      : "Ver Más (" + (filas.length - VENDOR_INACTIVOS_TOPE) + ")";
+  }
+}
+
+async function loadVendorInactivosUI() {
+  var card = document.getElementById("vendorInactivosCard");
+  if (!card) return;
+
+  // Igual que las notificaciones: sólo al vendedor en su perfil propio.
+  if (typeof isVendorOwnMode !== "function" || !isVendorOwnMode()) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+
+  if (_vendorInactivosCargando) return;
+  _vendorInactivosCargando = true;
+
+  var sel = document.getElementById("vendorInactivosMeses");
+  var meses = Number((sel && sel.value) || 6) || 6;
+  var box = document.getElementById("vendorInactivosBox");
+  if (box) box.innerHTML = '<div class="vinact-vacio">Cargando…</div>';
+
+  try {
+    var res = await supabaseClient.rpc("get_mis_clientes_inactivos", {
+      p_meses: meses,
+    });
+    if (res.error) throw res.error;
+    _vendorInactivos = res.data || [];
+    _vendorInactivosVerTodos = false;
+    _vinactRender();
+  } catch (e) {
+    console.error("get_mis_clientes_inactivos:", e);
+    if (box)
+      box.innerHTML =
+        '<div class="vinact-vacio">No se pudo cargar el listado.</div>';
+  } finally {
+    _vendorInactivosCargando = false;
+  }
+}
+
+function descargarVendorInactivosExcel() {
+  if (!window.XLSX || !_vendorInactivos.length) return;
+  var sel = document.getElementById("vendorInactivosMeses");
+  var meses = Number((sel && sel.value) || 6) || 6;
+
+  var filas = _vendorInactivos.map(function (r) {
+    return {
+      Cliente: r.razon_social || "",
+      "Últ. factura": r.ultima_compra ? _vinactFecha(r.ultima_compra) : "sin compras",
+      "Importe últ. factura": r.importe_ultima != null ? Number(r.importe_ultima) : "",
+      "Sin comprar": _vinactMeses(r.dias),
+      Localidad: r.localidad || "",
+      WhatsApp: r.whatsapp || "",
+      "Compra en Chef": r.chef_ultima ? _vinactFecha(r.chef_ultima) : "",
+    };
+  });
+
+  var ws = XLSX.utils.json_to_sheet(filas);
+  // Ancho pegado al dato (cuadro sinóptico): manda el contenido, no el título.
+  var cols = Object.keys(filas[0]);
+  ws["!cols"] = cols.map(function (c) {
+    var ancho = c.length;
+    filas.forEach(function (f) {
+      ancho = Math.max(ancho, String(f[c] == null ? "" : f[c]).length);
+    });
+    return { wch: Math.min(ancho + 2, 40) };
+  });
+
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Sin comprar");
+  XLSX.writeFile(
+    wb,
+    "mis-clientes-sin-comprar-" + meses + "m.xlsx"
+  );
+}
+
+function initVendorInactivosUI() {
+  var sel = document.getElementById("vendorInactivosMeses");
+  if (sel && !sel._vinactBound) {
+    sel._vinactBound = true;
+    sel.addEventListener("change", function () {
+      loadVendorInactivosUI();
+    });
+  }
+  var buscar = document.getElementById("vendorInactivosBuscar");
+  if (buscar && !buscar._vinactBound) {
+    buscar._vinactBound = true;
+    buscar.addEventListener("input", function () {
+      _vendorInactivosVerTodos = false;
+      _vinactRender();
+    });
+  }
+  var btnMas = document.getElementById("btnVendorInactivosToggle");
+  if (btnMas && !btnMas._vinactBound) {
+    btnMas._vinactBound = true;
+    btnMas.addEventListener("click", function () {
+      _vendorInactivosVerTodos = !_vendorInactivosVerTodos;
+      _vinactRender();
+    });
+  }
+  var btnXls = document.getElementById("btnVendorInactivosExcel");
+  if (btnXls && !btnXls._vinactBound) {
+    btnXls._vinactBound = true;
+    btnXls.addEventListener("click", descargarVendorInactivosExcel);
+  }
+}
+
+window.loadVendorInactivosUI = loadVendorInactivosUI;
+window.descargarVendorInactivosExcel = descargarVendorInactivosExcel;
 
 function isVendorProfile() {
   return linkedCustomers.length > 0;

@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23443" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23443" />
+    <link rel="stylesheet" href="css/styles.css?v=23444" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23444" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -856,6 +856,51 @@
                 hidden
               >
                 Marcar todas leídas
+              </button>
+            </div>
+          </div>
+
+          <!-- Clientes que dejaron de comprar (solo vendedor, perfil propio) -->
+          <div class="profile-card wide" id="vendorInactivosCard" hidden>
+            <div class="profile-card-title">
+              Clientes que no están comprando
+              <span id="vendorInactivosBadge" class="notif-badge" hidden>0</span>
+            </div>
+            <div class="vinact-controls">
+              <label class="vinact-label" for="vendorInactivosMeses">
+                Sin comprar hace más de
+              </label>
+              <select id="vendorInactivosMeses" class="vinact-select">
+                <option value="3">3 meses</option>
+                <option value="6" selected>6 meses</option>
+                <option value="12">12 meses</option>
+                <option value="24">24 meses</option>
+              </select>
+              <input
+                type="search"
+                id="vendorInactivosBuscar"
+                class="vinact-buscar"
+                placeholder="Buscar cliente o localidad…"
+                autocomplete="off"
+              />
+            </div>
+            <div id="vendorInactivosBox" class="profile-box">Cargando…</div>
+            <div class="profile-card-actions">
+              <button
+                type="button"
+                class="profile-btn"
+                id="btnVendorInactivosToggle"
+                hidden
+              >
+                Ver Más
+              </button>
+              <button
+                type="button"
+                class="profile-btn subtle"
+                id="btnVendorInactivosExcel"
+                hidden
+              >
+                Descargar Excel
               </button>
             </div>
           </div>
@@ -2163,14 +2208,14 @@
     <!-- La versión ya se muestra en el footer; se quitó el badge flotante. -->
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23443"></script>
-    <script src="script.js?v=23443"></script>
+    <script src="./version.js?v=23444"></script>
+    <script src="script.js?v=23444"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23443"></script>
+    <script src="analisis-venta-cliente.js?v=23444"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23443"></script>
-    <script src="admin-excel-krikos.js?v=23443"></script>
-    <script src="vendor-import-excel.js?v=23443"></script>
+    <script src="scotapi-shim.js?v=23444"></script>
+    <script src="admin-excel-krikos.js?v=23444"></script>
+    <script src="vendor-import-excel.js?v=23444"></script>
   </body>
 </html>

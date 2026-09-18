@@ -16114,3 +16114,101 @@ body { top: 0 !important; }
   background: #f4f4f4;
   border-color: #bbb;
 }
+
+/* ============================================================
+   Clientes que no están comprando — card del perfil del vendedor
+   ============================================================ */
+.vinact-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+.vinact-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 600;
+}
+.vinact-select {
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fff;
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111;
+}
+.vinact-buscar {
+  flex: 1 1 180px;
+  min-width: 140px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 0 10px;
+  font-size: 14px;
+}
+.vinact-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.vinact-item {
+  padding: 9px 0;
+  border-bottom: 1px solid #eee;
+}
+.vinact-item:last-child {
+  border-bottom: 0;
+}
+.vinact-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.vinact-nombre {
+  font-weight: 700;
+  color: #111;
+}
+.vinact-importe {
+  font-weight: 800;
+  color: #111;
+  white-space: nowrap;
+}
+.vinact-sub {
+  font-size: 12.5px;
+  color: #777;
+  margin-top: 2px;
+}
+.vinact-meses {
+  color: #b00020;
+  font-weight: 700;
+}
+.vinact-nunca {
+  color: #b26b00;
+  font-weight: 700;
+}
+.vinact-chef {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #eef6ee;
+  color: #1e7b34;
+  font-weight: 700;
+  font-size: 11.5px;
+}
+.vinact-wpp {
+  color: #1e7b34;
+  font-weight: 700;
+  text-decoration: none;
+}
+.vinact-wpp:hover {
+  text-decoration: underline;
+}
+.vinact-vacio {
+  color: #777;
+  font-size: 13.5px;
+  padding: 6px 0;
+}
