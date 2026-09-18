@@ -367,3 +367,61 @@ END;
 $$;
 
 -- No hace falta revoke: el chequeo de admins esta adentro de ambas.
+
+-- ============================================================================
+-- get_ficha_precios — precios para el Excel de la ficha (18/09/2026)
+-- ----------------------------------------------------------------------------
+-- Va APARTE de get_ficha_cliente a proposito: esa funcion devuelve el neto ya
+-- calculado y no expone ni `uxb` ni el precio unitario, que son las dos columnas
+-- que pide el Excel ($ Lista y $ Compra). Agregarlas alla obligaba a reescribir
+-- un cuerpo de 9 kB entero; esto es aditivo y se puede borrar sin tocar nada.
+--
+-- La fuente es `v_item_precio`, NO `products` a secas: ver el checklist de
+-- reportes del CLAUDE.md, `products` deja ~47% de los articulos sin precio.
+-- `p_cods` acota a los articulos de la ficha; sin eso vuelve la vista entera.
+--
+-- $ Compra = list_price x (1 - dto_vol) x (1 - web_order_discount), la misma
+-- cadena que arma un pedido real en script.js. El dto_vol es de Loekemeyer, asi
+-- que el frontend NO se lo aplica a los articulos de Chef.
+--
+-- SECURITY DEFINER con el chequeo de admins adentro, y EXECUTE revocado a
+-- PUBLIC/anon (la anon key es publica: esto devolveria la lista de precios).
+-- ============================================================================
+create or replace function public.get_ficha_precios(p_cod text, p_cods text[] default null)
+returns jsonb
+language plpgsql
+security definer
+as $function$
+declare
+  v_wd  numeric;
+  v_dto numeric;
+begin
+  if not exists (select 1 from admins a where a.auth_user_id = auth.uid()) then
+    raise exception 'no autorizado';
+  end if;
+
+  select coalesce((select s.value::numeric from app_settings s where s.key = 'web_order_discount'), 0.02)
+    into v_wd;
+
+  select coalesce(c.dto_vol, 0) into v_dto
+    from customers c
+   where c.cod_cliente::text = btrim(coalesce(p_cod, ''));
+  v_dto := coalesce(v_dto, 0);
+
+  return jsonb_build_object(
+    'dto_vol', v_dto,
+    'web_discount', v_wd,
+    'items', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'cod', p.cod,
+               'uxb', p.uxb,
+               'list_price', p.list_price))
+        from v_item_precio p
+       where p_cods is null or p.cod = any (p_cods)
+    ), '[]'::jsonb)
+  );
+end
+$function$;
+
+revoke execute on function public.get_ficha_precios(text, text[]) from public, anon;
+grant  execute on function public.get_ficha_precios(text, text[]) to authenticated, service_role;

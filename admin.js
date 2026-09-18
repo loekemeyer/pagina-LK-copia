@@ -16826,155 +16826,263 @@ function fcRender() {
 
 /* ----------------------------------------------------------------------------
    DESCARGAR LA FICHA A EXCEL
-   El .xlsx sale de `_fcData`, o sea de la MISMA respuesta de `get_ficha_cliente`
-   que pinto la pantalla: no hay una segunda consulta que pueda dar otro numero.
-   Dos diferencias a proposito contra lo que se ve:
-     - la matriz va con los 12 meses del payload, no con los 6 del default;
-       recortar un archivo que se abre en Excel no tiene sentido.
-     - los montos y las cajas van como NUMERO, no como texto con "$", asi la
-       columna se puede sumar sin limpiarla a mano.
+   ----------------------------------------------------------------------------
+   Forma pedida por Thomas (18/09/2026, con una planilla de muestra): una sola
+   hoja con el articulo por fila y DOS bloques de meses en paralelo — cajas a la
+   izquierda, plata a la derecha — con UxB, $ Lista y $ Compra en el medio, y la
+   fila de totales por mes arriba del bloque de plata.
+
+   De donde sale cada cosa:
+     - cajas por mes: el mapa `mm` de `get_ficha_cliente`, lo mismo que pinta la
+       matriz en pantalla.
+     - UxB y $ Lista: `get_ficha_precios`, que lee `v_item_precio` (NO `products`
+       a secas: ver el checklist de reportes, `products` deja ~47% sin precio).
+     - $ Compra = $ Lista x (1 - dto_vol) x (1 - web_order_discount), la misma
+       cadena que arma un pedido real en `script.js`. El `dto_vol` es de
+       Loekemeyer, asi que NO se le aplica a los articulos de Chef.
+     - $ del mes = cajas x UxB x $ Compra.
+
+   Solo se listan los meses con movimiento: una columna entera en blanco no dice
+   nada y corre las demas fuera de la pantalla.
 ---------------------------------------------------------------------------- */
-function fcDescargarExcel() {
+async function fcDescargarExcel() {
   if (!_fcData) return;
   if (typeof XLSX === "undefined") {
     alert("No se pudo cargar la librería de Excel. Recargá la página.");
     return;
   }
-  var f = _fcData;
-  var d = f.datos || {};
-  var cod = d.cod_cliente != null ? d.cod_cliente : f.cod;
-  var rs = d.business_name || "(sin razón social)";
-  var money = "#,##0";
+  var btn = document.querySelector(".fc-excel");
+  var txtBtn = btn ? btn.textContent : "";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Generando…";
+  }
+  try {
+    var f = _fcData;
+    var d = f.datos || {};
+    var cod = d.cod_cliente != null ? d.cod_cliente : f.cod;
+    var rs = d.business_name || "(sin razón social)";
+    var money = "#,##0";
+    var meses = Array.isArray(f.meses) ? f.meses : [];
+    var arts = Array.isArray(f.articulos) ? f.articulos : [];
 
-  function hoja(wb, nombre, aoa, cols, fmt) {
-    var ws = XLSX.utils.aoa_to_sheet(aoa);
-    if (cols) ws["!cols"] = cols;
-    // fmt: { <indice de columna>: "formato" }, aplicado a las filas de datos.
-    if (fmt) {
-      var rango = XLSX.utils.decode_range(ws["!ref"]);
-      for (var c in fmt) {
-        for (var r = 1; r <= rango.e.r; r++) {
-          var cel = ws[XLSX.utils.encode_cell({ c: Number(c), r: r })];
-          if (cel && cel.t === "n") cel.z = fmt[c];
+    // --- Precios: una sola llamada, acotada a los articulos de la ficha ---
+    var precios = {};
+    var dtoVol = 0;
+    var wd = 0.02;
+    var rp = await sb.rpc("get_ficha_precios", {
+      p_cod: String(cod),
+      p_cods: arts.map(function (a) {
+        return a.cod;
+      }),
+    });
+    if (rp.error) throw rp.error;
+    if (rp.data) {
+      dtoVol = Number(rp.data.dto_vol) || 0;
+      wd = Number(rp.data.web_discount) || 0;
+      (rp.data.items || []).forEach(function (it) {
+        precios[it.cod] = it;
+      });
+    }
+
+    function precioCompra(a) {
+      var pr = precios[a.cod];
+      if (!pr || pr.list_price == null) return null;
+      // El dto por volumen es de Loekemeyer; a Chef no se le aplica.
+      var dto = a.empresa === "chef" ? 0 : dtoVol;
+      return Number(pr.list_price) * (1 - dto) * (1 - wd);
+    }
+
+    // --- Meses con movimiento, del mas nuevo al mas viejo ---
+    var mesesConMov = meses.filter(function (m) {
+      return arts.some(function (a) {
+        return Number((a.mm || {})[m]) > 0;
+      });
+    });
+    var n = mesesConMov.length;
+
+    function hoja(wb, nombre, aoa, cols, fmt) {
+      var ws = XLSX.utils.aoa_to_sheet(aoa);
+      if (cols) ws["!cols"] = cols;
+      if (fmt) {
+        var rango = XLSX.utils.decode_range(ws["!ref"]);
+        for (var c in fmt) {
+          for (var r = fmt._desde || 1; r <= rango.e.r; r++) {
+            var cel = ws[XLSX.utils.encode_cell({ c: Number(c), r: r })];
+            if (cel && cel.t === "n") cel.z = fmt[c];
+          }
         }
       }
+      XLSX.utils.book_append_sheet(wb, ws, nombre);
     }
-    XLSX.utils.book_append_sheet(wb, ws, nombre);
-  }
 
-  var wb = XLSX.utils.book_new();
+    var wb = XLSX.utils.book_new();
 
-  // --- Datos del cliente ---
-  var datos = [
-    ["Campo", "Valor"],
-    ["Código LK", cod],
-    ["Razón social", rs],
-    ["Códigos Chef", (Array.isArray(d.chef_cods) ? d.chef_cods : []).join(", ")],
-    ["CUIT", d.cuit || ""],
-    ["Localidad", d.localidad || ""],
-    ["Vendedor", d.vendedor || d.vend || ""],
-    ["Dto. volumen", d.dto_vol != null ? Number(d.dto_vol) : ""],
-    ["Cond. pago", d.payment_term != null ? d.payment_term : ""],
-    ["Deuda", d.debt != null ? Number(d.debt) : ""],
-    ["Límite crédito", d.credit_limit != null ? Number(d.credit_limit) : ""],
-    ["Mail", d.mail || ""],
-    ["WhatsApp", d.whatsapp || ""],
-  ];
-  (Array.isArray(f.direcciones) ? f.direcciones : []).forEach(function (a, i) {
-    datos.push([
-      "Dirección de entrega " + (i + 1),
-      [a.label, a.localidad, a.provincia, a.zona_expreso]
-        .filter(Boolean)
-        .join(" · "),
-    ]);
-  });
-  hoja(wb, "Cliente", datos, [{ wch: 24 }, { wch: 52 }]);
+    // ========================= HOJA PRINCIPAL =========================
+    // Columnas: Cód | Descripción | <n meses de cajas> | UxB | $ Lista |
+    //           $ Compra | (separador) | <n meses de plata> | $ total
+    var C_MES_CAJ = 2;
+    var C_UXB = C_MES_CAJ + n;
+    var C_MES_PLATA = C_UXB + 4; // UxB, $ Lista, $ Compra y una columna vacia
+    var C_TOTAL = C_MES_PLATA + n;
 
-  // --- Facturación por año ---
-  var fact = Array.isArray(f.facturacion_anio) ? f.facturacion_anio : [];
-  var aoaF = [["Año", "LK", "Chef", "Total", "Compras", "Cajas"]];
-  fact.forEach(function (y) {
-    aoaF.push([
-      Number(y.anio),
-      Number(y.lk) || 0,
-      Number(y.chef) || 0,
-      Number(y.total) || 0,
-      Number(y.compras) || 0,
-      Number(y.cajas) || 0,
-    ]);
-  });
-  hoja(
-    wb,
-    "Facturación por año",
-    aoaF,
-    [{ wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 10 }],
-    { 1: money, 2: money, 3: money },
-  );
+    function filaVacia() {
+      var r = [];
+      for (var i = 0; i <= C_TOTAL; i++) r.push("");
+      return r;
+    }
 
-  // --- Pedidos del portal (último trimestre) ---
-  var pt = Array.isArray(f.pedidos_trimestre) ? f.pedidos_trimestre : [];
-  var aoaP = [["Fecha", "Estado", "Total", "Pago", "Origen", "Ítems"]];
-  pt.forEach(function (o) {
-    aoaP.push([
-      String(o.created_at || "").slice(0, 10),
-      o.status || "",
-      o.total != null ? Number(o.total) : 0,
-      o.payment_method || "",
-      o.origen || "",
-      Number(o.items) || 0,
-    ]);
-  });
-  hoja(
-    wb,
-    "Pedidos portal",
-    aoaP,
-    [{ wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 24 }, { wch: 16 }, { wch: 8 }],
-    { 2: money },
-  );
+    // Fila 1: el rotulo "Cajas" sobre su bloque y los totales sobre el de plata.
+    var fila1 = filaVacia();
+    fila1[C_MES_CAJ] = n ? "Cajas" : "";
+    fila1[C_MES_PLATA - 1] = n ? "Total $" : "";
 
-  // --- Matriz artículo x mes (los 12 meses, no los 6 de pantalla) ---
-  var meses = Array.isArray(f.meses) ? f.meses : [];
-  var arts = Array.isArray(f.articulos) ? f.articulos : [];
-  var aoaM = [
-    ["Cód", "Descripción", "Empresa"]
-      .concat(meses.map(fcMesLabel))
-      .concat([
-        "Cajas " + meses.length + "m",
-        "Cajas hist.",
-        "$ hist.",
-        "Última compra",
-      ]),
-  ];
-  arts.forEach(function (a) {
-    var mm = a.mm || {};
-    var ventana = 0;
-    var fila = [a.cod, a.descripcion || "", a.empresa || ""];
-    meses.forEach(function (m) {
-      var v = Number(mm[m]) || 0;
-      ventana += v;
-      fila.push(v);
+    // Fila 2: encabezados.
+    var fila2 = filaVacia();
+    fila2[0] = "Cód";
+    fila2[1] = "Descripción";
+    mesesConMov.forEach(function (m, i) {
+      fila2[C_MES_CAJ + i] = fcMesLabel(m);
+      fila2[C_MES_PLATA + i] = fcMesLabel(m);
     });
-    fila.push(ventana, Number(a.cajas) || 0, Number(a.neto) || 0, a.ultima || "");
-    aoaM.push(fila);
-  });
-  var fmtM = {};
-  fmtM[3 + meses.length + 2] = money; // $ hist.
-  hoja(
-    wb,
-    "Artículos por mes",
-    aoaM,
-    [{ wch: 9 }, { wch: 34 }, { wch: 9 }]
-      .concat(meses.map(function () { return { wch: 8 }; }))
-      .concat([{ wch: 11 }, { wch: 11 }, { wch: 15 }, { wch: 13 }]),
-    fmtM,
-  );
+    fila2[C_UXB] = "UxB";
+    fila2[C_UXB + 1] = "$ Lista";
+    fila2[C_UXB + 2] = "$ Compra";
+    fila2[C_TOTAL] = "$ total";
 
-  var hoy = new Date();
-  var stamp =
-    hoy.getFullYear() +
-    String(hoy.getMonth() + 1).padStart(2, "0") +
-    String(hoy.getDate()).padStart(2, "0");
-  XLSX.writeFile(wb, "ficha_cliente_" + cod + "_" + stamp + ".xlsx");
+    var aoa = [fila1, fila2];
+    var totMes = mesesConMov.map(function () {
+      return 0;
+    });
+    var totGeneral = 0;
+
+    arts.forEach(function (a) {
+      var mm = a.mm || {};
+      var pr = precios[a.cod] || {};
+      var uxb = Number(pr.uxb) || 0;
+      var comp = precioCompra(a);
+      var fila = filaVacia();
+      fila[0] = a.cod;
+      fila[1] = a.descripcion || "";
+      fila[C_UXB] = uxb || "";
+      fila[C_UXB + 1] = pr.list_price != null ? Number(pr.list_price) : "";
+      fila[C_UXB + 2] = comp != null ? Math.round(comp) : "";
+      var totFila = 0;
+      mesesConMov.forEach(function (m, i) {
+        var cj = Number(mm[m]) || 0;
+        // Celda en blanco y no 0: una grilla de ceros tapa los meses que si
+        // tienen movimiento, que es lo unico que se mira.
+        fila[C_MES_CAJ + i] = cj || "";
+        var plata = comp != null && uxb ? Math.round(cj * uxb * comp) : 0;
+        fila[C_MES_PLATA + i] = plata || "-";
+        totMes[i] += plata;
+        totFila += plata;
+      });
+      fila[C_TOTAL] = totFila || "-";
+      totGeneral += totFila;
+      aoa.push(fila);
+    });
+
+    mesesConMov.forEach(function (m, i) {
+      fila1[C_MES_PLATA + i] = totMes[i];
+    });
+    fila1[C_TOTAL] = totGeneral;
+
+    var colsM = [{ wch: 9 }, { wch: 34 }];
+    for (var i = 0; i < n; i++) colsM.push({ wch: 8 });
+    colsM.push({ wch: 7 }, { wch: 11 }, { wch: 11 }, { wch: 3 });
+    for (var j = 0; j < n; j++) colsM.push({ wch: 12 });
+    colsM.push({ wch: 14 });
+
+    var fmtM = { _desde: 0 };
+    fmtM[C_UXB + 1] = "#,##0.00";
+    fmtM[C_UXB + 2] = money;
+    for (var k = 0; k < n; k++) fmtM[C_MES_PLATA + k] = money;
+    fmtM[C_TOTAL] = money;
+
+    hoja(wb, "Cajas y $ por mes", aoa, colsM, fmtM);
+
+    // ========================= HOJAS DE CONTEXTO =========================
+    var datos = [
+      ["Campo", "Valor"],
+      ["Código LK", cod],
+      ["Razón social", rs],
+      ["Códigos Chef", (Array.isArray(d.chef_cods) ? d.chef_cods : []).join(", ")],
+      ["CUIT", d.cuit || ""],
+      ["Localidad", d.localidad || ""],
+      ["Vendedor", d.vendedor || d.vend || ""],
+      ["Dto. volumen", dtoVol],
+      ["Dto. pedido web", wd],
+      ["Cond. pago", d.payment_term != null ? d.payment_term : ""],
+      ["Deuda", d.debt != null ? Number(d.debt) : ""],
+      ["Límite crédito", d.credit_limit != null ? Number(d.credit_limit) : ""],
+      ["Mail", d.mail || ""],
+      ["WhatsApp", d.whatsapp || ""],
+    ];
+    (Array.isArray(f.direcciones) ? f.direcciones : []).forEach(function (a, i) {
+      datos.push([
+        "Dirección de entrega " + (i + 1),
+        [a.label, a.localidad, a.provincia, a.zona_expreso]
+          .filter(Boolean)
+          .join(" · "),
+      ]);
+    });
+    hoja(wb, "Cliente", datos, [{ wch: 24 }, { wch: 52 }]);
+
+    var fact = Array.isArray(f.facturacion_anio) ? f.facturacion_anio : [];
+    var aoaF = [["Año", "LK", "Chef", "Total", "Compras", "Cajas"]];
+    fact.forEach(function (y) {
+      aoaF.push([
+        Number(y.anio),
+        Number(y.lk) || 0,
+        Number(y.chef) || 0,
+        Number(y.total) || 0,
+        Number(y.compras) || 0,
+        Number(y.cajas) || 0,
+      ]);
+    });
+    hoja(
+      wb,
+      "Facturación por año",
+      aoaF,
+      [{ wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 10 }],
+      { 1: money, 2: money, 3: money },
+    );
+
+    var pt = Array.isArray(f.pedidos_trimestre) ? f.pedidos_trimestre : [];
+    var aoaP = [["Fecha", "Estado", "Total", "Pago", "Origen", "Ítems"]];
+    pt.forEach(function (o) {
+      aoaP.push([
+        String(o.created_at || "").slice(0, 10),
+        o.status || "",
+        o.total != null ? Number(o.total) : 0,
+        o.payment_method || "",
+        o.origen || "",
+        Number(o.items) || 0,
+      ]);
+    });
+    hoja(
+      wb,
+      "Pedidos portal",
+      aoaP,
+      [{ wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 24 }, { wch: 16 }, { wch: 8 }],
+      { 2: money },
+    );
+
+    var hoy = new Date();
+    var stamp =
+      hoy.getFullYear() +
+      String(hoy.getMonth() + 1).padStart(2, "0") +
+      String(hoy.getDate()).padStart(2, "0");
+    XLSX.writeFile(wb, "ficha_cliente_" + cod + "_" + stamp + ".xlsx");
+  } catch (err) {
+    alert("No se pudo generar el Excel: " + (err.message || err));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = txtBtn || "Descargar Excel";
+    }
+  }
 }
 
 window.initFichaCliente = initFichaCliente;
