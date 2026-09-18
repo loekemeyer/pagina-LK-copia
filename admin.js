@@ -7089,27 +7089,34 @@ async function marcarSucursalCargada(customerId, slot) {
    ========================================================= */
 async function cargarOrigenPedidos() {
   var statusEl = document.getElementById("origenPedidosStatus");
-  // 6 categorías activas (cuentan para el %) + 2 fuera del % (desconocido, previo).
-  var ACTIVAS = ["cliente", "vendedor", "admin", "expo", "super", "sin_cot"];
-  var ID_NUM = {
-    cliente: "origenPedidosCliente", vendedor: "origenPedidosVendedor",
-    admin: "origenPedidosAdmin", expo: "origenPedidosExpo",
-    super: "origenPedidosSuper", sin_cot: "origenPedidosSinCot",
-    desconocido: "origenPedidosDesconocido", previo_tracking: "origenPedidosPrevioTracking",
+  // Las tarjetas de arriba muestran 4 GRUPOS (cuentan para el %); las categorías
+  // finas que devuelve la RPC se siguen viendo enteras en la tabla de abajo.
+  // "clientes_web" = cliente + vendedor (entró por la web, lo cargue el cliente
+  // o un vendedor con Pedir para) y "no_pasados" = admin + sin_cot (el cliente
+  // no lo pasó por la web y lo cargó un admin). Expo y Super quedan solas.
+  var GRUPOS = [
+    { key: "clientes_web", cats: ["cliente", "vendedor"],
+      num: "origenPedidosClientesWeb", pct: "origenPedidosClientesWebPct" },
+    { key: "no_pasados", cats: ["admin", "sin_cot"],
+      num: "origenPedidosNoPasados", pct: "origenPedidosNoPasadosPct" },
+    { key: "expo", cats: ["expo"],
+      num: "origenPedidosExpo", pct: "origenPedidosExpoPct" },
+    { key: "super", cats: ["super"],
+      num: "origenPedidosSuper", pct: "origenPedidosSuperPct" },
+  ];
+  // Fuera del %: no son canal de venta.
+  var ID_NUM_FUERA = {
+    desconocido: "origenPedidosDesconocido",
+    previo_tracking: "origenPedidosPrevioTracking",
   };
-  var ID_PCT = {
-    cliente: "origenPedidosClientePct", vendedor: "origenPedidosVendedorPct",
-    admin: "origenPedidosAdminPct", expo: "origenPedidosExpoPct",
-    super: "origenPedidosSuperPct", sin_cot: "origenPedidosSinCotPct",
-  };
-  if (!document.getElementById(ID_NUM.cliente)) return;
+  if (!document.getElementById(GRUPOS[0].num)) return;
 
   var desdeVal = document.getElementById("origenPedidosDesde")?.value || "";
   var hastaVal = document.getElementById("origenPedidosHasta")?.value || "";
 
   if (statusEl) statusEl.textContent = "Cargando…";
 
-  // % de una categoría sobre la suma de las 6 activas, una decimal y coma decimal.
+  // % de un grupo sobre la suma de los 4 activos, una decimal y coma decimal.
   function _pctTxt(n, d) {
     if (!d) return "";
     var v = Math.round((Number(n || 0) / d) * 1000) / 10;
@@ -7133,17 +7140,26 @@ async function cargarOrigenPedidos() {
       counts[k] = (counts[k] || 0) + Number(f.pedidos || 0);
     });
 
-    // Denominador del % = suma de las 6 categorías activas (excluye desconocido y previo).
+    // Total de cada grupo y denominador del % = suma de los 4 grupos activos
+    // (excluye desconocido y previo al tracking).
+    var totGrupo = {};
     var denom = 0;
-    ACTIVAS.forEach(function (k) { denom += counts[k] || 0; });
-
-    keys.forEach(function (k) {
-      var el = document.getElementById(ID_NUM[k]);
-      if (el) el.textContent = counts[k] || 0;
+    GRUPOS.forEach(function (g) {
+      var t = 0;
+      g.cats.forEach(function (k) { t += counts[k] || 0; });
+      totGrupo[g.key] = t;
+      denom += t;
     });
-    ACTIVAS.forEach(function (k) {
-      var pe = document.getElementById(ID_PCT[k]);
-      if (pe) pe.textContent = _pctTxt(counts[k], denom);
+
+    GRUPOS.forEach(function (g) {
+      var el = document.getElementById(g.num);
+      if (el) el.textContent = totGrupo[g.key];
+      var pe = document.getElementById(g.pct);
+      if (pe) pe.textContent = _pctTxt(totGrupo[g.key], denom);
+    });
+    Object.keys(ID_NUM_FUERA).forEach(function (k) {
+      var el = document.getElementById(ID_NUM_FUERA[k]);
+      if (el) el.textContent = counts[k] || 0;
     });
 
     _renderOrigenPedidosDetalle(filas, keys);
@@ -7168,14 +7184,14 @@ async function cargarOrigenPedidos() {
     var pruebaTxt = dePrueba
       ? " " + dePrueba + " de clientes internos (prueba)."
       : "";
-    // El % es sobre las 6 activas; previo y desconocido se muestran aparte.
+    // El % es sobre los 4 grupos; previo y desconocido se muestran aparte.
     var afueraTxt =
       " Previo al tracking: " + (counts.previo_tracking || 0) +
       " · Desconocido: " + (counts.desconocido || 0) + " (fuera del %).";
     if (statusEl) {
       statusEl.textContent =
-        "6 categorías activas: " + denom + " pedidos. Directo del cliente: " +
-        _pctTxt(counts.cliente, denom) + "." + rangoTxt + afueraTxt +
+        "4 grupos activos: " + denom + " pedidos. Clientes web: " +
+        _pctTxt(totGrupo.clientes_web, denom) + "." + rangoTxt + afueraTxt +
         pruebaTxt + inferidosTxt;
     }
   } catch (e) {
