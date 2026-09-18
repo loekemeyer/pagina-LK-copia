@@ -563,7 +563,38 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
 | `analisis-venta-cliente.html` | `analisis-venta-cliente.js` + `css/analisis-venta-cliente.css` | Análisis de venta por cliente (standalone y embebido en mayorista). Tiene su propio Supabase client. |
 | `analisis-cobranzas.html` | `analisis-cobranzas.js` + `css/analisis-cobranzas.css` | Módulo de análisis de cobranzas. |
 | `carga-pedidos.html` | — | Carga de pedidos por Excel (cotizador). |
+| `consulta.html` | `consulta.js` + `css/consulta.css` | **Consulta de clientes**: login propio con CUIT+clave (tabla `consulta_usuarios`), solo lectura. Se elige un cliente y aparecen dos botones: qué compra y qué NO compra y debería. RPC en `sql/consulta_clientes.sql`. |
 | `expo-qr-test.html` | `jsqr.js` | Página de prueba del escáner QR para el modo expo (ferias). |
+
+## Módulo Consulta de clientes (`consulta.html`)
+
+Pantalla de **solo lectura** para un empleado que no es admin ni cliente (el primero es
+**Poli**). Entra con **CUIT + clave** por el mismo esquema sintético `<dígitos>@cuit.loekemeyer`
+del resto del sitio, elige un cliente por razón social / CUIT / código, y recién ahí aparecen
+**dos botones**: *Artículos que compra* y *Artículos que NO compra*. No hay carrito, ni alta de
+pedidos, ni padrón editable.
+
+- **Quién entra lo decide `consulta_usuarios`** (no `admins`): una fila por persona, con
+  `activo` para dar de baja sin borrar. Los admins también pasan el guard, para poder probarlo.
+- **Cinco RPC en `sql/consulta_clientes.sql`**, todas `SECURITY DEFINER` con el guard adentro Y
+  `EXECUTE` revocado a `PUBLIC`/`anon`. El guard va con un `IF` de plpgsql y **no** colgado del
+  `FROM` de una función SQL (Postgres elimina la subconsulta y el guard no se evalúa — el mismo
+  pozo de `gv_es_admin`). Medidas: buscar 16 ms, historial 9 ms, faltantes 158 ms.
+- **"No compra y debería" = penetración**: sobre los clientes de Loekemeyer que compraron algo
+  en los últimos 12 meses (sin las cadenas de súper, que sacan de `precios_super.cadena`), qué %
+  compra ese artículo. Mismo criterio que `sugerencias_cliente` pero con ventana de 12 meses en
+  vez de 6, sin tope de 30 filas, y devolviendo además **lo que el cliente compraba antes y
+  dejó** (`ultima_compra` / `cajas_hist`), que es la fila que se usa para vender.
+- ⚠ **"Última compra" NO es `max(invoice_date)`.** `sales_lines` tiene **390 líneas de lk con
+  `boxes = 0`** (en 40 clientes) y **6.611 negativas**: con el max pelado, Relca (2444) figuraba
+  comprando el 510 el 31/01/2026 cuando su última compra real fue el 31/07/2025 — lo del medio
+  son ceros mensuales. Las tres RPC usan `max(invoice_date) FILTER (WHERE boxes > 0)`. Vale para
+  cualquier reporte nuevo que calcule fechas de compra.
+- **Espejado en Chef** (`paginach`, `consulta.html` + `sql/consulta_clientes.sql`). La versión de
+  Chef es **autocontenida**: esa base no tiene `v_item_precio`, `item_precios`,
+  `sales_excluded_items`, `ficha_norm` ni `precios_super`, así que valoriza con `products` y trae
+  su propia `consulta_norm()`. Al tocar uno, mirar el otro.
+- **No va en `sitemap.xml`** (está detrás de login) y lleva `<meta name="robots" content="noindex,nofollow">`.
 
 ## Módulo Expo (ferias)
 
