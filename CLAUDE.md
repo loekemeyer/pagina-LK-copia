@@ -222,6 +222,21 @@ es breve. Regla: si no se puede leer de un vistazo, es demasiado largo.
 
 - **"resumen del día"**: Reporte del trabajo de hoy en bullet points. Estilo ejecutivo. Incluye: completadas, en progreso, bloqueeos, próximos pasos.
 
+- **"cuadro sinóptico"**: formato fijo de Excel definido por Thomas el 18/09/2026. Cada vez
+  que pida un **cuadro sinóptico**, el `.xlsx` sale así, sin volver a preguntar:
+
+  | Regla | Detalle |
+  |---|---|
+  | Ancho de columna | **pegado al dato**, no al título. Se mide el contenido más largo de la columna y se le deja apenas el margen. Manda la información. |
+  | Títulos | se **abrevian** y se parten **hasta en tres renglones** (`wrap_text`, alto de fila acorde) para que nunca sean ellos los que estiran la columna. En **negrita**. |
+  | Columna en blanco | **una última columna vacía y ancha** al final, después de optimizar las demás. Absorbe el sobrante de la pantalla y evita que Excel desparrame la info a lo ancho. |
+  | Recuadro | **todas** las celdas con borde, filas y columnas (la columna en blanco va sin borde). |
+  | Grisados | **ninguno**. Nada de filas cebra ni fondos de color. |
+  | Letra | **Arial 14 como mínimo** — el cuadro se imprime. Las notas al pie pueden ir más chicas. |
+  | Datos faltantes | la fila **se deja igual**, con la celda vacía o un guión. Un cliente sin compras figura, sin fecha. |
+
+  Lo demás (qué columnas, qué filas) lo dice el pedido de ese momento.
+
 ---
 
 # CAVEMAN MODE
