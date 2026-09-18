@@ -112,13 +112,32 @@ select cron.alter_job(46, schedule := '8-59/10 * * * *');
 --    intentos muertos esperando el lock. Hay que hacerlo con la base tranquila.
 --    Vaciar la tabla del todo no hizo falta (y sería borrar datos: lo autoriza
 --    el dueño, no Claude).
--- b) La instancia es chica para lo que se le fue colgando (siete syncs a
---    Virgilio, Krikos, Telegram, WhatsApp). Subir el compute es plata, o sea
---    decisión comercial del dueño. **SIGUE ABIERTO al 18/09 09:30 ART** — medido
---    ese día: `max_worker_processes` sigue en 6, `shared_buffers` en 224 MB,
---    `max_connections` en 60, y `pg_postmaster_start_time()` da **2026-06-23**
---    (86 días de uptime). Un cambio de compute REINICIA la base, así que el
---    uptime alcanza para saber si se tocó sin depender de la memoria de nadie.
+-- b) ❌ **DECIDIDO y cerrado (Thomas, 18/09/2026): SE QUEDA EN MICRO.** No volver
+--    a proponer subir el compute.
+--
+--    Estado medido ese día: `max_worker_processes` 6, `shared_buffers` 224 MB,
+--    `max_connections` 60, y `pg_postmaster_start_time()` = **2026-06-23** (86
+--    días de uptime). Un cambio de compute REINICIA la base, así que el uptime
+--    alcanza para saber si se tocó, sin depender de la memoria de nadie.
+--
+--    Los dos motivos de la decisión:
+--    1. El problema se saneó SIN gastar plata: crons escalonados, `vacuum full`
+--       de `net._http_response` y el job 48 a cada 10 min. Medido: **0 job
+--       startup timeout desde las 07:00 ART**, y el peor minuto quedó en 5 jobs
+--       sobre 6 slots.
+--    2. **No está confirmado que Small suba `max_worker_processes` de 6**, que
+--       es lo único que rompió. La doc de Supabase no publica esa tabla y no hay
+--       con qué comparar: Gestión Virgilio (`hrxfctzncixxqmpfhskv`) está en el
+--       MISMO tamaño (6 workers, 60 conexiones, shared_buffers 256 MB). O sea
+--       que los ~5 USD/mes no garantizaban arreglar el problema puntual.
+--
+--    **Si vuelve a pasar** (el síntoma es `event_message like '%job startup
+--    timeout%'` en los logs de Postgres), ahí sí se pasa a Small: Settings →
+--    Compute and Disk. Precios al 18/09, org en plan **Pro** con USD 10/mes de
+--    compute credits: Micro ~$10 (queda en $0), **Small ~$15 (neto ~$5/mes)**,
+--    Medium ~$60. Se prorratea por hora y es reversible.
+--    ⚠ Claude NO puede apretarlo: el MCP de Supabase no tiene herramienta para
+--    redimensionar la instancia. Es dashboard o Management API.
 -- c) ✅ HECHO el 18/09 09:30 ART, pedido por el dueño. `sincronizar_chef_orders(90)`
 --    (job 48, FDW contra el proyecto de Chef, que está en OTRA organización) pasó
 --    de `2-59/5` a **`2-59/10`**: de 288 corridas por día a 144.

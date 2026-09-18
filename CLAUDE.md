@@ -1529,8 +1529,23 @@ minuto pasó de 11 jobs a 5).
    significa que un job no llegó a arrancar, y pg_cron no lo reintenta.
 
 ⚠ **Y un job lento ocupa el slot todo lo que tarde.** `sincronizar_chef_orders(90)` (FDW contra
-el proyecto de Chef, que está en OTRA organización) tiene 12,9 s de media pero llegó a **117 s**:
-con eso solo se come un sexto de la capacidad de workers durante minutos.
+el proyecto de Chef, que está en OTRA organización) tenía 12,9 s de media y llegó a **117 s**:
+con eso solo se come un sexto de la capacidad de workers durante minutos. **Bajado a cada 10
+minutos el 18/09** (`2-59/10`, de 288 corridas por día a 144): es margen, no un fix — el job
+corre en 7,2 s antes y después del apagón, y lo que lo justifica es que su peor caso fue de
+**299,7 s contra un schedule de 300 s**. Se paga con frescura: un pedido web de Chef puede tardar
+hasta 10 min (antes 5) en entrar al armado de Gestión. Son 23 NP.
+
+❌ **Y NO se sube el compute: DECIDIDO por Thomas el 18/09/2026, se queda en Micro.** No volver a
+proponerlo. Dos motivos: (1) el problema se saneó sin gastar plata —crons escalonados, el vacuum
+de abajo y el job 48 a cada 10 min— y quedó en **0 `job startup timeout` desde las 07:00 ART**,
+con el peor minuto en 5 jobs sobre 6 slots; (2) **no está confirmado que Small suba
+`max_worker_processes` de 6**, que es lo único que rompió: la doc de Supabase no publica esa
+tabla y **Gestión Virgilio está en el mismo tamaño** (6 workers, 60 conexiones), así que no hay
+con qué comparar. Si vuelve a aparecer un `job startup timeout`, ahí sí se pasa a **Small**
+(Settings → Compute and Disk; org en plan Pro con USD 10/mes de credits, así que el neto es
+**~5 USD/mes**, prorrateado por hora y reversible). ⚠ **Claude no lo puede apretar**: el MCP de
+Supabase no tiene herramienta para redimensionar la instancia.
 
 ⚠ **`net._http_response` se bloata y hay que compactarla cada tanto.** El 18/09 estaba en
 **105 MB con 437 filas vivas** (10.729 páginas, o sea 24 por fila) con el último autovacuum del
