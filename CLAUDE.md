@@ -1491,3 +1491,45 @@ select n.nspname, c.relname
    and has_table_privilege('anon', c.oid, 'SELECT')
    and n.nspname not in ('pg_catalog','information_schema','pg_toast');
 ```
+
+## ⚠ REGLA: la base de LK tiene SEIS worker slots — no colgarle otro cron en el minuto :00
+
+**2026-09-18, problema 402.** `max_worker_processes = 6` (instancia chica: shared_buffers
+224 MB, effective_cache_size 384 MB, max_connections 60). **pg_cron usa un worker por cada job
+que arranca**, pg_net se queda con uno fijo y `max_parallel_workers = 2` sale de la misma bolsa.
+
+El 17/09 a las 21:00 UTC había **once crons arrancando juntos en el minuto :00** (1, 5, 20, 21,
+24, 26, 28, 38, 39, 41, 46) y la base se cayó en pedazos durante **nueve horas**: los logs
+tiraban `cron job N job startup timeout` sin parar (0 por hora antes, 92 a 166 después),
+consultas triviales de 12 a 15 s, un checkpoint de 128 s contra los 23 normales, y
+**`gv_pedidos_web_np_lk` contestando `57014` / `504`**. Ese último es el feed que lee Gestión
+Virgilio: **el armado automático de pedidos web estuvo 5 h 40 sin correr** por esto.
+
+Nadie lo hizo mal de golpe: los jobs 42, 43, 47 y 48 ya estaban escalonados a mano. Lo que pasó
+es que los syncs a Virgilio fueron creciendo (24, 38, 39, 41, 46, 47, 48) y cada uno se sumó al
+`*/N`, que es lo que sale natural. Se escalonaron en `sql/lk_crons_escalonados.sql` (el peor
+minuto pasó de 11 jobs a 5).
+
+**Al crear o mover un cron en LK:**
+
+1. **Nunca `*/N` a secas.** Va con offset: `3-59/5`, `8-59/10`, `11-59/15`. El minuto :00 tiene
+   que quedar con los dos de cada minuto (5 y 28) y poco más.
+2. **Contar cuántos caen en el mismo minuto** antes de darlo por bueno — no puede pasar de 5:
+   ```sql
+   select jobid, jobname, schedule from cron.job where active order by schedule;
+   ```
+3. **Ojo con el orden de Krikos**, que no es libre: 26 baja los mails (minuto 0) → 43 auto-importa
+   (minuto 3) → 42 empuja a Virgilio (minuto 5). Por eso **26 se queda en `*/10`**.
+4. **El síntoma se busca así** (dashboard → Logs → postgres, o el MCP `query_logs`):
+   `event_message like '%job startup timeout%'`. **Si aparece una sola vez, ya hay que mirar**:
+   significa que un job no llegó a arrancar, y pg_cron no lo reintenta.
+
+⚠ **Y un job lento ocupa el slot todo lo que tarde.** `sincronizar_chef_orders(90)` (FDW contra
+el proyecto de Chef, que está en OTRA organización) tiene 12,9 s de media pero llegó a **117 s**:
+con eso solo se come un sexto de la capacidad de workers durante minutos.
+
+⚠ **`net._http_response` está en 105 MB con 437 filas vivas** (24 páginas por fila) y el último
+autovacuum es del 2026-08-05. La limpieza de pg_net corre sobre esa tabla todo el tiempo:
+165.421 llamadas, 1.066 ms de media, **3.127 s la peor**. Se arregla con
+`vacuum (full) net._http_response` —no borra datos, sólo compacta— y conviene hacerlo con la base
+tranquila. Vaciarla del todo (es transitoria, TTL 6 h) **lo autoriza el dueño, no Claude**.

@@ -1,0 +1,130 @@
+-- ============================================================================
+-- 2026-09-18 — LOS CRONS DE LK ESCALONADOS: once arrancaban juntos en el :00
+--              y la instancia tiene SEIS worker slots
+--
+-- Problema 402 (github_repo_problemas, proyecto hrxfctzncixxqmpfhskv).
+--
+-- ── QUÉ PASÓ ────────────────────────────────────────────────────────────────
+-- Desde el 2026-09-17 21:00 UTC (18:00 ART) los logs de Postgres de LK tiran
+--   cron job N job startup timeout
+-- sin parar. Medido por hora sobre `postgres_logs`:
+--
+--   | hora UTC    | job startup timeout | canceling statement |
+--   |-------------|---------------------|---------------------|
+--   | 14:00→20:00 | 0                   | 0                   |
+--   | 21:00       | 92                  | 53                  |
+--   | 22:00       | 166                 | 110                 |
+--   | 23:00       | 146                 | 93                  |
+--   | 00:00→04:00 | 102 a 163 por hora  | 35 a 76 por hora    |
+--
+-- Nueve horas seguidas. Lo que se veía del lado de la app:
+--   · consultas triviales de 12 a 15 s (`select 1` llegó a no entrar);
+--   · checkpoint de 128 s contra los 23 s normales de las horas anteriores;
+--   · la limpieza de `net._http_response` de pg_net con corridas de hasta
+--     **3.127 s** (max_exec_time) y 1.066 ms de media sobre 165.421 llamadas;
+--   · y sobre todo `gv_pedidos_web_np_lk` devolviendo `57014` / `504`.
+--
+-- Ese último es el que dolió: es el FEED que lee Gestión Virgilio. **El armado
+-- automático de pedidos web de Gestión no corrió entre las 18:20 y las 00:01
+-- ART** y encima quedó anotado en verde (eso es el problema 403, y se arregló
+-- del otro lado, en `gv-ppp-web-tandas-diarias`).
+--
+-- ── LA CAUSA ────────────────────────────────────────────────────────────────
+-- `max_worker_processes = 6` (instancia chica: shared_buffers 224 MB,
+-- effective_cache_size 384 MB, max_connections 60). pg_cron necesita **un
+-- worker por job que arranca**, pg_net se queda con uno fijo, y
+-- `max_parallel_workers = 2` sale de la misma bolsa.
+--
+-- En el minuto :00 arrancaban ONCE jobs juntos:
+--   1 retry-sheets · 5 notify-tracking · 20 detectar-pedidos-anomalos
+--   21 wa_outbox_flush · 24 sync-pedidos-match-virgilio · 26 krikos-ingest
+--   28 telegram-outbox-flush · 38 sincronizar-fact-live
+--   39 sync-reingresos-virgilio · 41 sync-diferido-virgilio
+--   46 gv-lk-rellenar-payload
+--
+-- No es que alguien lo hizo mal: los jobs 42, 43, 47 y 48 YA estaban
+-- escalonados a mano (5-59/10, 3-59/10, 7-59/15, 2-59/5). Lo que pasó es que
+-- los syncs a Virgilio fueron creciendo (24, 38, 39, 41, 46, 47, 48) y se
+-- fueron sumando al :00 con `*/N`, que es lo que sale natural. El disparador
+-- final fue `sincronizar_chef_orders` (FDW contra el proyecto de Chef, que está
+-- en OTRA organización): su media histórica es 12,9 s pero anoche tardó 40, 44,
+-- 46 y hasta 107 s, o sea que se quedaba con un slot durante minutos.
+--
+-- ── QUÉ SE CAMBIÓ ───────────────────────────────────────────────────────────
+-- SÓLO el minuto de arranque. Ni una frecuencia, ni un comando, ni un dato.
+-- Todo reversible con el bloque de abajo.
+--
+--   | job | qué es                        | antes  | ahora      |
+--   |-----|-------------------------------|--------|------------|
+--   |  1  | retry-sheets-cron             | */5    | 3-59/5     |
+--   | 20  | detectar-pedidos-anomalos     | */5    | 4-59/5     |
+--   | 24  | sync-pedidos-match-virgilio   | */15   | 11-59/15   |
+--   | 38  | sincronizar-fact-live         | */30   | 6,36       |
+--   | 39  | sync-reingresos-virgilio      | */30   | 9,39       |
+--   | 41  | sync-diferido-virgilio        | */10   | 4-59/10    |
+--   | 46  | gv-lk-rellenar-payload        | */10   | 8-59/10    |
+--
+-- ⚠ **El job 26 (`krikos-ingest-10min`) se deja en `*/10` a propósito.** La
+--   cadena de Krikos tiene un ORDEN que hay que respetar: 26 baja los mails
+--   (minuto 0), 43 auto-importa (minuto 3) y 42 empuja a Virgilio (minuto 5).
+--   Moverlo más tarde daría vuelta el pipeline y la OC llegaría un ciclo tarde.
+--
+-- Cómo queda el peor minuto (contando los recurrentes): pasa de **11 jobs a 5**
+-- (minuto 4: 5, 28, 21, 20, 41), con un slot de sobra sobre los 6.
+-- ============================================================================
+
+select cron.alter_job(1,  schedule := '3-59/5 * * * *');
+select cron.alter_job(20, schedule := '4-59/5 * * * *');
+select cron.alter_job(24, schedule := '11-59/15 * * * *');
+select cron.alter_job(38, schedule := '6,36 * * * *');
+select cron.alter_job(39, schedule := '9,39 * * * *');
+select cron.alter_job(41, schedule := '4-59/10 * * * *');
+select cron.alter_job(46, schedule := '8-59/10 * * * *');
+
+-- ============================================================================
+-- CHEQUEO
+-- ============================================================================
+-- 1) los horarios quedaron como arriba:
+--    select jobid, jobname, schedule, active from cron.job order by jobid;
+--
+-- 2) el síntoma tiene que desaparecer (esto se mira en los logs del dashboard,
+--    source postgres_logs, o con el MCP query_logs):
+--      countIf(event_message like '%job startup timeout%') por cada 5 minutos
+--    Antes del cambio: 8 a 17 cada cinco minutos, sin parar.
+--
+-- 3) y el feed que consume Gestión tiene que volver a entrar en los 8 s:
+--    with t as (select clock_timestamp() a),
+--         q as (select count(*) n from public.gv_pedidos_web_np_lk(current_date - 30))
+--    select q.n filas, round(extract(epoch from (clock_timestamp()-t.a))*1000) ms from t, q;
+--    -- medido el 18/09 04:20 ART, con la base ya respirando: 392 filas en 1.179 ms
+--    -- (y el de Chef, `gv_pedidos_web_np_chef(30)`: 37 filas en 477 ms)
+
+-- ============================================================================
+-- LO QUE QUEDA ABIERTO — no es de Claude, es decisión del dueño
+-- ============================================================================
+-- a) `net._http_response` está en **105 MB para 437 filas vivas** (10.729
+--    páginas, 24 páginas por fila) y el último autovacuum es del **2026-08-05**.
+--    La limpieza de pg_net corre sobre eso todo el tiempo. Lo que lo arregla es
+--    un `vacuum (full) net._http_response` (no borra datos, sólo compacta) o
+--    directamente vaciar la tabla, que es transitoria por diseño (TTL 6 h).
+--    **Vaciar es borrar datos reales: lo tiene que autorizar el dueño.** Se
+--    intentó el `vacuum full` esta madrugada y no llegó a tomar el lock con la
+--    base en ese estado; conviene reintentarlo con la base tranquila.
+-- b) La instancia es chica para lo que se le fue colgando (siete syncs a
+--    Virgilio, Krikos, Telegram, WhatsApp). Subir el compute es plata, o sea
+--    decisión comercial del dueño.
+-- c) `sincronizar_chef_orders(90)` cada 5 minutos, con FDW a otra organización,
+--    es el job más caro (12,9 s de media, 117 s el peor). Bajarlo a cada 10
+--    minutos parte el costo al medio; lo que se pierde es frescura de los
+--    pedidos de Chef para el armado de Gestión. Es una decisión de negocio.
+
+-- ============================================================================
+-- ROLLBACK EXACTO
+-- ============================================================================
+-- select cron.alter_job(1,  schedule := '*/5 * * * *');
+-- select cron.alter_job(20, schedule := '*/5 * * * *');
+-- select cron.alter_job(24, schedule := '*/15 * * * *');
+-- select cron.alter_job(38, schedule := '*/30 * * * *');
+-- select cron.alter_job(39, schedule := '*/30 * * * *');
+-- select cron.alter_job(41, schedule := '*/10 * * * *');
+-- select cron.alter_job(46, schedule := '*/10 * * * *');
