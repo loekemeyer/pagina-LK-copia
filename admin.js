@@ -7089,23 +7089,24 @@ async function marcarSucursalCargada(customerId, slot) {
    ========================================================= */
 async function cargarOrigenPedidos() {
   var statusEl = document.getElementById("origenPedidosStatus");
-  // Las tarjetas de arriba muestran 4 GRUPOS (cuentan para el %); las categorías
-  // finas que devuelve la RPC se siguen viendo enteras en la tabla de abajo.
+  // Las tarjetas de arriba muestran 2 GRUPOS, y el % de cada uno es sobre la
+  // suma de esos dos: es la comparación que interesa (entró por la web contra
+  // lo que hubo que cargar a mano). Las categorías finas que devuelve la RPC se
+  // siguen viendo enteras en la tabla de abajo.
   // "clientes_web" = cliente + vendedor (entró por la web, lo cargue el cliente
   // o un vendedor con Pedir para) y "no_pasados" = admin + sin_cot (el cliente
-  // no lo pasó por la web y lo cargó un admin). Expo y Super quedan solas.
+  // no lo pasó por la web y lo cargó un admin).
   var GRUPOS = [
     { key: "clientes_web", cats: ["cliente", "vendedor"],
       num: "origenPedidosClientesWeb", pct: "origenPedidosClientesWebPct" },
     { key: "no_pasados", cats: ["admin", "sin_cot"],
       num: "origenPedidosNoPasados", pct: "origenPedidosNoPasadosPct" },
-    { key: "expo", cats: ["expo"],
-      num: "origenPedidosExpo", pct: "origenPedidosExpoPct" },
-    { key: "super", cats: ["super"],
-      num: "origenPedidosSuper", pct: "origenPedidosSuperPct" },
   ];
-  // Fuera del %: no son canal de venta.
+  // Fuera del %: expo y super son canales propios que no se miden contra la
+  // web; desconocido y previo al tracking no son canal de venta.
   var ID_NUM_FUERA = {
+    expo: "origenPedidosExpo",
+    super: "origenPedidosSuper",
     desconocido: "origenPedidosDesconocido",
     previo_tracking: "origenPedidosPrevioTracking",
   };
@@ -7116,7 +7117,7 @@ async function cargarOrigenPedidos() {
 
   if (statusEl) statusEl.textContent = "Cargando…";
 
-  // % de un grupo sobre la suma de los 4 activos, una decimal y coma decimal.
+  // % de un grupo sobre la suma de los 2 activos, una decimal y coma decimal.
   function _pctTxt(n, d) {
     if (!d) return "";
     var v = Math.round((Number(n || 0) / d) * 1000) / 10;
@@ -7140,8 +7141,8 @@ async function cargarOrigenPedidos() {
       counts[k] = (counts[k] || 0) + Number(f.pedidos || 0);
     });
 
-    // Total de cada grupo y denominador del % = suma de los 4 grupos activos
-    // (excluye desconocido y previo al tracking).
+    // Total de cada grupo y denominador del % = suma de los 2 grupos activos
+    // (excluye expo, super, desconocido y previo al tracking).
     var totGrupo = {};
     var denom = 0;
     GRUPOS.forEach(function (g) {
@@ -7184,13 +7185,15 @@ async function cargarOrigenPedidos() {
     var pruebaTxt = dePrueba
       ? " " + dePrueba + " de clientes internos (prueba)."
       : "";
-    // El % es sobre los 4 grupos; previo y desconocido se muestran aparte.
+    // El % es sobre los 2 grupos; el resto se muestra aparte.
     var afueraTxt =
-      " Previo al tracking: " + (counts.previo_tracking || 0) +
+      " Expo: " + (counts.expo || 0) +
+      " · Super: " + (counts.super || 0) +
+      " · Previo al tracking: " + (counts.previo_tracking || 0) +
       " · Desconocido: " + (counts.desconocido || 0) + " (fuera del %).";
     if (statusEl) {
       statusEl.textContent =
-        "4 grupos activos: " + denom + " pedidos. Clientes web: " +
+        "2 grupos activos: " + denom + " pedidos. Clientes web: " +
         _pctTxt(totGrupo.clientes_web, denom) + "." + rangoTxt + afueraTxt +
         pruebaTxt + inferidosTxt;
     }
