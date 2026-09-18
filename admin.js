@@ -7102,14 +7102,6 @@ async function cargarOrigenPedidos() {
     { key: "no_pasados", cats: ["admin", "sin_cot"],
       num: "origenPedidosNoPasados", pct: "origenPedidosNoPasadosPct" },
   ];
-  // Fuera del %: expo y super son canales propios que no se miden contra la
-  // web; desconocido y previo al tracking no son canal de venta.
-  var ID_NUM_FUERA = {
-    expo: "origenPedidosExpo",
-    super: "origenPedidosSuper",
-    desconocido: "origenPedidosDesconocido",
-    previo_tracking: "origenPedidosPrevioTracking",
-  };
   if (!document.getElementById(GRUPOS[0].num)) return;
 
   var desdeVal = document.getElementById("origenPedidosDesde")?.value || "";
@@ -7158,10 +7150,6 @@ async function cargarOrigenPedidos() {
       var pe = document.getElementById(g.pct);
       if (pe) pe.textContent = _pctTxt(totGrupo[g.key], denom);
     });
-    Object.keys(ID_NUM_FUERA).forEach(function (k) {
-      var el = document.getElementById(ID_NUM_FUERA[k]);
-      if (el) el.textContent = counts[k] || 0;
-    });
 
     _renderOrigenPedidosDetalle(filas, keys);
 
@@ -7185,7 +7173,8 @@ async function cargarOrigenPedidos() {
     var pruebaTxt = dePrueba
       ? " " + dePrueba + " de clientes internos (prueba)."
       : "";
-    // El % es sobre los 2 grupos; el resto se muestra aparte.
+    // El % es sobre los 2 grupos. Expo, super, desconocido y previo al tracking
+    // no tienen tarjeta: se leen acá y en la tabla de detalle.
     var afueraTxt =
       " Expo: " + (counts.expo || 0) +
       " · Super: " + (counts.super || 0) +
