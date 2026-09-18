@@ -51,7 +51,7 @@ git log --format=%H -S "2.3.374" -- version.js | tail -1
 
 ```bash
 git diff --name-only <commit_base> HEAD \
-  | grep -vE '^(web\.config$|\.locks/|hooks/|scripts/|docs/|sql/|supabase/|\.github/|\.claude/)|\.md$|\.sql$|^LOCKS\.txt$|^config-claude\.json$|^caveman-state\.json$|^vercel\.json$|^\.gitignore$' \
+  | grep -vE '^(web\.config$|\.locks/|hooks/|scripts/|docs/|sql/|supabase/|tests/|\.github/|\.claude/)|\.md$|\.sql$|^LOCKS\.txt$|^config-claude\.json$|^caveman-state\.json$|^vercel\.json$|^\.gitignore$' \
   | while read f; do [ -f "$f" ] && echo "$f"; done > /tmp/delta.txt
 
 rm -rf /tmp/zip && mkdir -p /tmp/zip
@@ -62,12 +62,13 @@ while read f; do mkdir -p "/tmp/zip/$(dirname "$f")"; cp "$f" "/tmp/zip/$f"; don
 **Nunca incluir `web.config`.** El del servidor IIS es el unico que existe (no
 esta en el repo) y pisarlo tira el sitio entero: ya paso una vez en LK, ver
 `CLAUDE.md`. Tampoco van `sql/`, `docs/`, `supabase/`, `.claude/` ni los `.md`:
-son material interno.
+son material interno. **Ni `tests/`**: el 18/09/2026 se coló `tests/payload-scope.cjs` en un
+paquete real — no rompe nada, pero es codigo interno en un server publico.
 
 Antes de entregarlo, verificar que no se colo nada de eso:
 
 ```bash
-unzip -l /tmp/deploy.zip | grep -cE 'web\.config|sql/|docs/|supabase/|\.md$'   # tiene que dar 0
+unzip -l /tmp/deploy.zip | grep -cE 'web\.config|sql/|docs/|supabase/|tests/|\.md$'   # tiene que dar 0
 ```
 
 ## 4. Entregarlo
