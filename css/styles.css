@@ -10983,6 +10983,17 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
   z-index: 500 !important;
 }
 
+/* ...y ADEMAS la card, no solo la row. Dirección de entrega y Observaciones son
+   dos .ship-card HERMANAS dentro de la misma .ship-row-split, y las dos llevan
+   `position: relative; z-index: 1` (bloque "CARRITO / PAGO NUNCA TAPAN EL NAV").
+   Con el mismo z-index manda el orden del DOM, así que Observaciones —que viene
+   después— se pintaba ENCIMA del popup de sucursales y tapaba media lista: sólo
+   se veían la primera opción y "+ Agregar sucursal". Subir la row no alcanza,
+   porque el que gana adentro de la row es el hermano. */
+#carrito .ship-card:has(.cs-popup:not([hidden])) {
+  z-index: 600 !important;
+}
+
 #carrito .ship-card:hover,
 #carrito .pay-card:hover {
   border-color: #d8d8d8;
