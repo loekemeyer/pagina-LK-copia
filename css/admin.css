@@ -5364,6 +5364,26 @@ button.op-drill.op-open { color: #1e3a8a; }
 
 .fc-cabecera {
   margin: 16px 0 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.fc-excel {
+  border: 1px solid #1d7044;
+  color: #1d7044;
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fc-excel:hover {
+  background: #1d7044;
+  color: #fff;
 }
 .fc-cab-nom {
   font-size: 22px;
@@ -5395,6 +5415,16 @@ button.op-drill.op-open { color: #1e3a8a; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 10px 18px;
+}
+/* El mail no entra en 160px y se partia al medio ("proveed1@torresyliva." /
+   "com"). Ocupa dos celdas y corta por el @ o el punto, nunca en cualquier
+   lado. Vale para cualquier dato largo que se agregue despues. */
+.fc-dato--ancho {
+  grid-column: span 2;
+}
+.fc-dato--ancho .fc-dato-val {
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 .fc-dato {
   display: flex;
@@ -5450,6 +5480,23 @@ button.op-drill.op-open { color: #1e3a8a; }
 .fc-tabla .fc-num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+/* El `th` tambien lleva `fc-num`: con el encabezado a la izquierda y el valor a
+   la derecha, en una tabla de 6 columnas al ancho de la pagina el numero queda
+   debajo del titulo de la columna SIGUIENTE. */
+.fc-tabla thead th.fc-num {
+  text-align: right;
+}
+/* Las tablas de pocas columnas no se estiran al ancho de la pagina: el hueco
+   entre columnas es justamente lo que desconecta el dato de su encabezado. */
+.fc-tabla--ajustada {
+  width: auto;
+  min-width: min(100%, 560px);
+}
+/* El total historico convive con el de la ventana de meses; se atenua para que
+   no compita con el numero que SI cierra contra los meses de al lado. */
+.fc-tabla td.fc-hist {
+  color: var(--text2);
 }
 .fc-tabla tbody tr:hover {
   background: var(--bg3);
