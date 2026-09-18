@@ -622,8 +622,12 @@ Documentos de planificación y replicación, NO ejecutables:
   solo, y **nunca publicó una sola vez**: los secrets `FTP_HOST` / `FTP_USER` / `FTP_PASS` no están
   cargados, así que **todas** las corridas que tocan archivos mueren con *"Falta el secret
   FTP_HOST"* (runs 57 y 59, entre otras); sólo salen en verde las de commits que no suben nada.
-  Y no se van a cargar: el canal es **SolidCP**. O sea que **pushear a `main` NO llega a los
-  clientes**, y el workflow en rojo no es una alarma nueva, es el estado normal. Problema 396.
+  Hoy el canal real es **SolidCP, a mano**, así que **pushear a `main` NO llega a los clientes** y
+  el workflow en rojo **no es una alarma nueva: es el estado normal**. Problema 396.
+
+  ⚠ **El workflow NO se borra** (Luis, 17/09/2026: *"no la borres, es un proyecto pendiente"*).
+  Automatizar el deploy sigue siendo la intención; lo que falta es cargar los tres secrets. Hasta
+  entonces convive en rojo a propósito: **no interpretarlo como CI rota ni proponer borrarlo.**
 
   **La única prueba de que un cambio llegó es el número del pie de `www.loekemeyer.com`.** Que el
   run de Pages esté en verde no alcanza, y que el de IIS esté en rojo no significa que algo se
