@@ -114,11 +114,33 @@ select cron.alter_job(46, schedule := '8-59/10 * * * *');
 --    el dueño, no Claude).
 -- b) La instancia es chica para lo que se le fue colgando (siete syncs a
 --    Virgilio, Krikos, Telegram, WhatsApp). Subir el compute es plata, o sea
---    decisión comercial del dueño.
--- c) `sincronizar_chef_orders(90)` cada 5 minutos, con FDW a otra organización,
---    es el job más caro (12,9 s de media, 117 s el peor). Bajarlo a cada 10
---    minutos parte el costo al medio; lo que se pierde es frescura de los
---    pedidos de Chef para el armado de Gestión. Es una decisión de negocio.
+--    decisión comercial del dueño. **SIGUE ABIERTO al 18/09 09:30 ART** — medido
+--    ese día: `max_worker_processes` sigue en 6, `shared_buffers` en 224 MB,
+--    `max_connections` en 60, y `pg_postmaster_start_time()` da **2026-06-23**
+--    (86 días de uptime). Un cambio de compute REINICIA la base, así que el
+--    uptime alcanza para saber si se tocó sin depender de la memoria de nadie.
+-- c) ✅ HECHO el 18/09 09:30 ART, pedido por el dueño. `sincronizar_chef_orders(90)`
+--    (job 48, FDW contra el proyecto de Chef, que está en OTRA organización) pasó
+--    de `2-59/5` a **`2-59/10`**: de 288 corridas por día a 144.
+--
+--    Medido ANTES de tocarlo, y el número importa porque desmiente la lectura fácil:
+--
+--      | ventana                     | corridas | fallidas | media   | peor    |
+--      |-----------------------------|----------|----------|---------|---------|
+--      | 17/09 13:00-17:00 ART       |  55      |   0      |  7,5 s  |  11,2 s |
+--      | 17/09 18:00 -> 18/09 06:00  | 144      | 102 ⚠    | 22-49 s | 299,7 s |
+--      | 18/09 07:00-09:20 ART       |  29      |   0      |  7,2 s  |   7,5 s |
+--
+--    O sea que **las 102 fallas fueron del apagón, no del job**: antes y después
+--    corre en 7,2-7,5 s. El dato feo es el peor caso de anoche, **299,7 s contra
+--    un schedule de 300 s**: una corrida a punto de pisarse con la siguiente.
+--
+--    Por eso el cambio NO arregla nada que hoy esté roto: es MARGEN para la próxima
+--    vez que el FDW de Chef se ponga lento. Lo que se paga es frescura: un pedido
+--    web de Chef puede tardar hasta 10 min (antes 5) en entrar al armado de Gestión.
+--    Son 23 NP, así que pesa poco.
+--
+--    Rollback: select cron.alter_job(48, schedule := '2-59/5 * * * *');
 
 -- ============================================================================
 -- ROLLBACK EXACTO
