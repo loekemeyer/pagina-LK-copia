@@ -16434,6 +16434,7 @@ async function pscSubmit() {
 // =====================================================================
 var _fcWired = false;
 var _fcData = null; // ultima ficha cargada (JSON de get_ficha_cliente)
+var _fcAcuerdo = null; // JSON de get_acuerdo_cliente (acuerdo y dto maximo)
 var _fcMesesExpandido = false; // false = 6 meses, true = 12
 var _fcBuscarTimer = null;
 var FC_MESES_DEFAULT = 6;
@@ -16561,9 +16562,16 @@ async function cargarFichaCliente(cod) {
   if (status) status.textContent = "Cargando ficha del cliente " + cod + "…";
   if (cont) cont.innerHTML = "";
   try {
-    var r = await sb.rpc("get_ficha_cliente", { p_cod: String(cod) });
+    // Las dos en paralelo: la ficha es cara y el acuerdo no depende de ella.
+    var par = await Promise.all([
+      sb.rpc("get_ficha_cliente", { p_cod: String(cod) }),
+      sb.rpc("get_acuerdo_cliente", { p_cod: String(cod) }),
+    ]);
+    var r = par[0];
     if (r.error) throw r.error;
     _fcData = r.data;
+    // Si falla el acuerdo la ficha se muestra igual: es un dato de apoyo.
+    _fcAcuerdo = par[1] && !par[1].error ? par[1].data : null;
     _fcMesesExpandido = false;
     if (status) status.textContent = "";
     fcRender();
@@ -16634,6 +16642,70 @@ function fcRender() {
     dato("Mail", d.mail) +
     dato("WhatsApp", d.whatsapp) +
     "</div></div>";
+
+  // ---- Acuerdo (que margen deja este cliente y cuanto dto admite) ----
+  // Criterio del duenio, 18/09/2026: el dto de volumen se resta sobre la lista,
+  // el 25% de pago sobre ese saldo y el 2% del cotizador sobre el siguiente (eso
+  // es el CHEQUE); recien ahi se restan flete y comision, los dos sobre el cheque
+  // y NO encadenados entre si. Los parametros salen de la tabla acuerdo_parametros.
+  var ac = _fcAcuerdo;
+  if (ac) {
+    var enRojo = Number(ac.acuerdo) < 0;
+    var margen = Number(ac.margen_dto);
+    html +=
+      '<div class="fc-card"><div class="fc-card-tit">Acuerdo</div>' +
+      '<div class="fc-acu-fila">' +
+      '<div class="fc-acu-box"><span class="fc-acu-lbl">Recibo</span>' +
+      '<span class="fc-acu-val ' + (enRojo ? "fc-acu-rojo" : "fc-acu-verde") + '">' +
+      Number(ac.recibo).toFixed(2) + "</span></div>" +
+      '<div class="fc-acu-box"><span class="fc-acu-lbl">Acuerdo</span>' +
+      '<span class="fc-acu-val ' + (enRojo ? "fc-acu-rojo" : "fc-acu-verde") + '">' +
+      (Number(ac.acuerdo) > 0 ? "+" : "") + Number(ac.acuerdo).toFixed(2) + "</span></div>" +
+      '<div class="fc-acu-box"><span class="fc-acu-lbl">Factor</span>' +
+      '<span class="fc-acu-val">' + Number(ac.factor).toFixed(3) + "</span></div>" +
+      '<div class="fc-acu-box"><span class="fc-acu-lbl">Dto. máximo</span>' +
+      '<span class="fc-acu-val">' + Number(ac.dto_max).toFixed(0) + "%</span></div>" +
+      "</div>" +
+      '<div class="fc-acu-nota">' +
+      "Hoy tiene <strong>" + Number(ac.dto_vol).toFixed(2) + "%</strong> de dto. y paga <strong>" +
+      Number(ac.comision).toFixed(2) + "%</strong> de comisión" +
+      (ac.vendedor ? " (" + escapeHtml(ac.vendedor) + ")" : "") + ". " +
+      (margen > 0
+        ? 'Le podés dar <strong>' + margen.toFixed(0) + " punto(s) más</strong> de descuento sin bajar de 100."
+        : margen === 0
+          ? "Está justo en el máximo."
+          : '<span class="fc-acu-rojo">Está ' + Math.abs(margen).toFixed(0) +
+            " punto(s) por encima del máximo: hoy no llega a 100.</span>") +
+      " Cheque " + Number(ac.cheque).toFixed(2) + "." +
+      "</div>" +
+      // Gancho para el cliente dormido: cuando compraba, el pago contado era 8%.
+      '<div class="fc-acu-nota fc-acu-pago">Pago contado: hoy <strong>' +
+      Number(ac.dto_pago_hoy).toFixed(0) + "%</strong>, antes " +
+      Number(ac.dto_pago_antes).toFixed(0) + "% — el precio de contado quedó <strong>" +
+      Number(ac.mejora_pago).toFixed(1) + "% mejor</strong> que cuando regía el viejo." +
+      "</div>";
+
+    var sim = Array.isArray(ac.simulacion) ? ac.simulacion : [];
+    if (sim.length) {
+      html +=
+        '<div class="fc-acu-sim-tit">Si se cambia la comisión</div>' +
+        '<div class="fc-tabla-wrap"><table class="fc-tabla fc-acu-sim"><thead><tr>' +
+        "<th>Comisión</th><th>Dto. máximo</th><th>Acuerdo con el dto. de hoy</th>" +
+        "</tr></thead><tbody>";
+      sim.forEach(function (x) {
+        var esHoy = Math.abs(Number(x.comision) - Number(ac.comision)) < 0.01;
+        var a2 = Number(x.acuerdo_con_dto_actual);
+        html +=
+          '<tr class="' + (esHoy ? "fc-acu-hoy" : "") + '"><td>' +
+          Number(x.comision).toFixed(0) + "%" + (esHoy ? " <em>(hoy)</em>" : "") +
+          '</td><td class="fc-num">' + Number(x.dto_max).toFixed(0) + "%" +
+          '</td><td class="fc-num ' + (a2 < 0 ? "fc-acu-rojo" : "fc-acu-verde") + '">' +
+          (a2 > 0 ? "+" : "") + a2.toFixed(2) + "</td></tr>";
+      });
+      html += "</tbody></table></div>";
+    }
+    html += "</div>";
+  }
 
   // ---- Direcciones de entrega ----
   var dirs = Array.isArray(f.direcciones) ? f.direcciones : [];

@@ -5564,3 +5564,61 @@ button.op-drill.op-open { color: #1e3a8a; }
     transition: none;
   }
 }
+
+/* ============================================================
+   Ficha de Cliente — tarjeta "Acuerdo"
+   ============================================================ */
+.fc-acu-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.fc-acu-box {
+  flex: 1 1 110px;
+  min-width: 100px;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fc-acu-lbl {
+  font-size: 11.5px;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 700;
+}
+.fc-acu-val {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111;
+  line-height: 1.1;
+}
+.fc-acu-verde { color: #1e7b34; }
+.fc-acu-rojo  { color: #b00020; }
+.fc-acu-nota {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.45;
+}
+.fc-acu-pago {
+  margin-top: 6px;
+  padding: 7px 9px;
+  border-left: 3px solid #1e7b34;
+  background: #f4faf5;
+  border-radius: 0 8px 8px 0;
+}
+.fc-acu-sim-tit {
+  margin: 12px 0 6px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.fc-acu-sim td,
+.fc-acu-sim th { white-space: nowrap; }
+.fc-acu-hoy { background: #fffbe6; font-weight: 700; }
