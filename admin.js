@@ -16581,6 +16581,7 @@ function fcRender() {
   var chefCods = Array.isArray(d.chef_cods) ? d.chef_cods : [];
   html +=
     '<div class="fc-cabecera">' +
+    '<div class="fc-cab-txt">' +
     '<div class="fc-cab-nom">' +
     escapeHtml(d.business_name || "(sin razón social)") +
     "</div>" +
@@ -16591,15 +16592,20 @@ function fcRender() {
       ? ' · Chef ' + escapeHtml(chefCods.join(", "))
       : "") +
     "</div>" +
+    "</div>" +
+    '<button type="button" class="fc-excel" onclick="fcDescargarExcel()">' +
+    "Descargar Excel</button>" +
     "</div>";
 
   // ---- Grilla de datos ----
   // El tercer argumento marca el valor como copiable con un clic. Hoy lo usa
   // solo el CUIT: ver el modulo del final del archivo.
-  function dato(lbl, val, copiable) {
+  function dato(lbl, val, copiable, ancho) {
     var vacio = val === "" || val == null;
     return (
-      '<div class="fc-dato"><span class="fc-dato-lbl">' +
+      '<div class="fc-dato' +
+      (ancho ? " fc-dato--ancho" : "") +
+      '"><span class="fc-dato-lbl">' +
       escapeHtml(lbl) +
       '</span><span class="fc-dato-val"' +
       (copiable && !vacio ? ' data-copiable="' + escapeHtml(val) + '"' : "") +
@@ -16623,7 +16629,7 @@ function fcRender() {
       "Límite crédito",
       d.credit_limit != null ? "$ " + formatMoney(d.credit_limit) : "—",
     ) +
-    dato("Mail", d.mail) +
+    dato("Mail", d.mail, false, true) +
     dato("WhatsApp", d.whatsapp) +
     "</div></div>";
 
@@ -16652,8 +16658,11 @@ function fcRender() {
   if (fact.length) {
     html +=
       '<div class="fc-card"><div class="fc-card-tit">Facturación por año (neto)</div>' +
-      '<div class="fc-tabla-wrap"><table class="fc-tabla"><thead><tr>' +
-      "<th>Año</th><th>LK</th><th>Chef</th><th>Total</th><th>Compras</th><th>Cajas</th>" +
+      '<div class="fc-tabla-wrap"><table class="fc-tabla fc-tabla--ajustada"><thead><tr>' +
+      "<th>Año</th>" +
+      '<th class="fc-num">LK</th><th class="fc-num">Chef</th>' +
+      '<th class="fc-num">Total</th><th class="fc-num">Compras</th>' +
+      '<th class="fc-num">Cajas</th>' +
       "</tr></thead><tbody>";
     fact.forEach(function (y) {
       var vacio = Number(y.total) === 0 && Number(y.cajas) === 0;
@@ -16692,8 +16701,11 @@ function fcRender() {
     "</div>";
   if (pt.length) {
     html +=
-      '<div class="fc-tabla-wrap"><table class="fc-tabla"><thead><tr>' +
-      "<th>Fecha</th><th>Estado</th><th>Total</th><th>Pago</th><th>Origen</th><th>Ítems</th>" +
+      '<div class="fc-tabla-wrap"><table class="fc-tabla fc-tabla--ajustada"><thead><tr>' +
+      "<th>Fecha</th><th>Estado</th>" +
+      '<th class="fc-num">Total</th>' +
+      "<th>Pago</th><th>Origen</th>" +
+      '<th class="fc-num">Ítems</th>' +
       "</tr></thead><tbody>";
     pt.forEach(function (o) {
       var fecha = String(o.created_at || "").slice(0, 10);
@@ -16758,7 +16770,17 @@ function fcRender() {
     mesesShow.forEach(function (m) {
       html += '<th class="fc-num">' + escapeHtml(fcMesLabel(m)) + "</th>";
     });
-    html += '<th class="fc-num">Cajas 12m</th><th class="fc-num">$ neto</th></tr></thead><tbody>';
+    // `a.cajas` y `a.neto` de la RPC son el total HISTORICO (`_art_ficha` agrega
+    // todo `_sl_ficha`, sin corte de fecha), no los 12 meses. La columna decia
+    // "Cajas 12m" y no cerraba contra la suma de los meses de al lado. Ahora el
+    // total de la ventana se calcula sobre `mm`, asi que suma en pantalla por
+    // construccion, y el historico queda en su propia columna, dicho con todas
+    // las letras.
+    html +=
+      '<th class="fc-num">Cajas ' +
+      nShow +
+      'm</th><th class="fc-num">Cajas hist.</th><th class="fc-num">$ hist.</th>' +
+      "</tr></thead><tbody>";
     arts.forEach(function (a) {
       var mm = a.mm || {};
       var esChef = a.empresa === "chef";
@@ -16771,8 +16793,10 @@ function fcRender() {
         '">' +
         escapeHtml(a.descripcion || "(sin descripción)") +
         "</td>";
+      var cajasVentana = 0;
       mesesShow.forEach(function (m) {
         var v = mm[m];
+        cajasVentana += Number(v) || 0;
         html +=
           '<td class="fc-num' +
           (v ? "" : " fc-cero") +
@@ -16782,8 +16806,10 @@ function fcRender() {
       });
       html +=
         '<td class="fc-num"><strong>' +
+        cajasVentana +
+        '</strong></td><td class="fc-num fc-hist">' +
         (Number(a.cajas) || 0) +
-        '</strong></td><td class="fc-num">' +
+        '</td><td class="fc-num fc-hist">' +
         (Number(a.neto) ? "$ " + formatMoney(a.neto) : "—") +
         "</td></tr>";
     });
@@ -16798,9 +16824,163 @@ function fcRender() {
   cont.innerHTML = html;
 }
 
+/* ----------------------------------------------------------------------------
+   DESCARGAR LA FICHA A EXCEL
+   El .xlsx sale de `_fcData`, o sea de la MISMA respuesta de `get_ficha_cliente`
+   que pinto la pantalla: no hay una segunda consulta que pueda dar otro numero.
+   Dos diferencias a proposito contra lo que se ve:
+     - la matriz va con los 12 meses del payload, no con los 6 del default;
+       recortar un archivo que se abre en Excel no tiene sentido.
+     - los montos y las cajas van como NUMERO, no como texto con "$", asi la
+       columna se puede sumar sin limpiarla a mano.
+---------------------------------------------------------------------------- */
+function fcDescargarExcel() {
+  if (!_fcData) return;
+  if (typeof XLSX === "undefined") {
+    alert("No se pudo cargar la librería de Excel. Recargá la página.");
+    return;
+  }
+  var f = _fcData;
+  var d = f.datos || {};
+  var cod = d.cod_cliente != null ? d.cod_cliente : f.cod;
+  var rs = d.business_name || "(sin razón social)";
+  var money = "#,##0";
+
+  function hoja(wb, nombre, aoa, cols, fmt) {
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    if (cols) ws["!cols"] = cols;
+    // fmt: { <indice de columna>: "formato" }, aplicado a las filas de datos.
+    if (fmt) {
+      var rango = XLSX.utils.decode_range(ws["!ref"]);
+      for (var c in fmt) {
+        for (var r = 1; r <= rango.e.r; r++) {
+          var cel = ws[XLSX.utils.encode_cell({ c: Number(c), r: r })];
+          if (cel && cel.t === "n") cel.z = fmt[c];
+        }
+      }
+    }
+    XLSX.utils.book_append_sheet(wb, ws, nombre);
+  }
+
+  var wb = XLSX.utils.book_new();
+
+  // --- Datos del cliente ---
+  var datos = [
+    ["Campo", "Valor"],
+    ["Código LK", cod],
+    ["Razón social", rs],
+    ["Códigos Chef", (Array.isArray(d.chef_cods) ? d.chef_cods : []).join(", ")],
+    ["CUIT", d.cuit || ""],
+    ["Localidad", d.localidad || ""],
+    ["Vendedor", d.vendedor || d.vend || ""],
+    ["Dto. volumen", d.dto_vol != null ? Number(d.dto_vol) : ""],
+    ["Cond. pago", d.payment_term != null ? d.payment_term : ""],
+    ["Deuda", d.debt != null ? Number(d.debt) : ""],
+    ["Límite crédito", d.credit_limit != null ? Number(d.credit_limit) : ""],
+    ["Mail", d.mail || ""],
+    ["WhatsApp", d.whatsapp || ""],
+  ];
+  (Array.isArray(f.direcciones) ? f.direcciones : []).forEach(function (a, i) {
+    datos.push([
+      "Dirección de entrega " + (i + 1),
+      [a.label, a.localidad, a.provincia, a.zona_expreso]
+        .filter(Boolean)
+        .join(" · "),
+    ]);
+  });
+  hoja(wb, "Cliente", datos, [{ wch: 24 }, { wch: 52 }]);
+
+  // --- Facturación por año ---
+  var fact = Array.isArray(f.facturacion_anio) ? f.facturacion_anio : [];
+  var aoaF = [["Año", "LK", "Chef", "Total", "Compras", "Cajas"]];
+  fact.forEach(function (y) {
+    aoaF.push([
+      Number(y.anio),
+      Number(y.lk) || 0,
+      Number(y.chef) || 0,
+      Number(y.total) || 0,
+      Number(y.compras) || 0,
+      Number(y.cajas) || 0,
+    ]);
+  });
+  hoja(
+    wb,
+    "Facturación por año",
+    aoaF,
+    [{ wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 10 }],
+    { 1: money, 2: money, 3: money },
+  );
+
+  // --- Pedidos del portal (último trimestre) ---
+  var pt = Array.isArray(f.pedidos_trimestre) ? f.pedidos_trimestre : [];
+  var aoaP = [["Fecha", "Estado", "Total", "Pago", "Origen", "Ítems"]];
+  pt.forEach(function (o) {
+    aoaP.push([
+      String(o.created_at || "").slice(0, 10),
+      o.status || "",
+      o.total != null ? Number(o.total) : 0,
+      o.payment_method || "",
+      o.origen || "",
+      Number(o.items) || 0,
+    ]);
+  });
+  hoja(
+    wb,
+    "Pedidos portal",
+    aoaP,
+    [{ wch: 12 }, { wch: 14 }, { wch: 16 }, { wch: 24 }, { wch: 16 }, { wch: 8 }],
+    { 2: money },
+  );
+
+  // --- Matriz artículo x mes (los 12 meses, no los 6 de pantalla) ---
+  var meses = Array.isArray(f.meses) ? f.meses : [];
+  var arts = Array.isArray(f.articulos) ? f.articulos : [];
+  var aoaM = [
+    ["Cód", "Descripción", "Empresa"]
+      .concat(meses.map(fcMesLabel))
+      .concat([
+        "Cajas " + meses.length + "m",
+        "Cajas hist.",
+        "$ hist.",
+        "Última compra",
+      ]),
+  ];
+  arts.forEach(function (a) {
+    var mm = a.mm || {};
+    var ventana = 0;
+    var fila = [a.cod, a.descripcion || "", a.empresa || ""];
+    meses.forEach(function (m) {
+      var v = Number(mm[m]) || 0;
+      ventana += v;
+      fila.push(v);
+    });
+    fila.push(ventana, Number(a.cajas) || 0, Number(a.neto) || 0, a.ultima || "");
+    aoaM.push(fila);
+  });
+  var fmtM = {};
+  fmtM[3 + meses.length + 2] = money; // $ hist.
+  hoja(
+    wb,
+    "Artículos por mes",
+    aoaM,
+    [{ wch: 9 }, { wch: 34 }, { wch: 9 }]
+      .concat(meses.map(function () { return { wch: 8 }; }))
+      .concat([{ wch: 11 }, { wch: 11 }, { wch: 15 }, { wch: 13 }]),
+    fmtM,
+  );
+
+  var hoy = new Date();
+  var stamp =
+    hoy.getFullYear() +
+    String(hoy.getMonth() + 1).padStart(2, "0") +
+    String(hoy.getDate()).padStart(2, "0");
+  XLSX.writeFile(wb, "ficha_cliente_" + cod + "_" + stamp + ".xlsx");
+}
+
 window.initFichaCliente = initFichaCliente;
 window.cargarFichaCliente = cargarFichaCliente;
 window.fcToggleMeses = fcToggleMeses;
+window.fcDescargarExcel = fcDescargarExcel;
 
 /* ============================================================================
    CLIC PARA COPIAR — solo CUIT y PIN
