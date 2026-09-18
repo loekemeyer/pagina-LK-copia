@@ -1,7 +1,3 @@
 {
-  "locks": [
-    { "file": "script.js", "owner": "thomasloke1@gmail.com@claude-remote", "acquired": "2026-09-18T14:40:00Z", "note": "panel inactivos vendedor" },
-    { "file": "mayorista.html", "owner": "thomasloke1@gmail.com@claude-remote", "acquired": "2026-09-18T14:40:00Z", "note": "panel inactivos vendedor" },
-    { "file": "css/styles.css", "owner": "thomasloke1@gmail.com@claude-remote", "acquired": "2026-09-18T14:40:00Z", "note": "panel inactivos vendedor" }
-  ]
+  "locks": []
 }
