@@ -39,9 +39,12 @@ const $ = (id) => document.getElementById(id);
 
 let PERFIL = null; // { nombre, es_admin }
 let CLIENTE = null; // { cod_cliente, business_name, cuit, ... }
-let FALTANTES = [];
-let HISTORIAL = [];
-let TAB = "falta"; // "falta" | "compra"
+// null = todavia no se pidio a la base. Cada boton trae SOLO lo suyo, y una
+// sola vez por cliente: el que quiere ver que compra no paga los 158 ms de
+// los faltantes.
+let FALTANTES = null;
+let HISTORIAL = null;
+let TAB = null; // "falta" | "compra" | null (todavia no eligio)
 let buscarTimer = null;
 
 // ================= HELPERS =================
@@ -203,37 +206,28 @@ async function buscar() {
   });
 }
 
-// ================= FICHA =================
-async function abrirCliente(cli) {
+// ================= CLIENTE ELEGIDO =================
+// El modulo tiene tres pasos y no mas: elegir cliente -> elegir que ver ->
+// la tabla. Al elegir cliente NO se trae nada todavia; se trae cuando aprieta
+// uno de los dos botones.
+function abrirCliente(cli) {
   CLIENTE = cli;
-  $("fichaCard").hidden = false;
+  FALTANTES = null;
+  HISTORIAL = null;
+  TAB = null;
+
+  const m = mesesDesde(cli.ultima_compra);
   $("fichaNombre").textContent = cli.business_name;
-  $("fichaMeta").textContent = `Código ${cli.cod_cliente} · CUIT ${cuitLindo(cli.cuit)}`;
-  $("kpis").innerHTML = `<div class="kpi"><div class="kpi-lab">Cargando</div><div class="kpi-val">…</div></div>`;
-  $("tablaBody").innerHTML = "";
-  $("tablaPie").textContent = "";
-  $("filtroInput").value = "";
-  $("chkAntes").checked = false;
+  $("fichaMeta").textContent =
+    `Código ${cli.cod_cliente} · CUIT ${cuitLindo(cli.cuit)} · ` +
+    (cli.ultima_compra
+      ? `última compra ${fecha(cli.ultima_compra)}${m != null && m >= 6 ? ` · ⚠ hace ${m} meses` : ""}`
+      : "sin compras registradas");
+
+  $("fichaCard").hidden = false;
+  $("elegir").hidden = false;
+  $("vista").hidden = true;
   $("fichaCard").scrollIntoView({ behavior: "smooth", block: "start" });
-
-  const cod = String(cli.cod_cliente);
-  const [rf, rh] = await Promise.all([
-    sb.rpc("consulta_faltantes", { p_cod: cod, p_limit: 500 }),
-    sb.rpc("consulta_historial", { p_cod: cod }),
-  ]);
-
-  if (rf.error || rh.error) {
-    $("kpis").innerHTML = "";
-    $("tablaPie").textContent =
-      "No se pudieron traer los datos: " +
-      esc((rf.error || rh.error).message || "");
-    return;
-  }
-
-  FALTANTES = rf.data || [];
-  HISTORIAL = rh.data || [];
-  renderKpis();
-  renderTabla();
 }
 
 function cerrarFicha() {
@@ -243,36 +237,47 @@ function cerrarFicha() {
   $("buscarInput").select();
 }
 
-function renderKpis() {
-  const compra12 = HISTORIAL.filter((h) => Number(h.cajas_12m) > 0);
-  const cajas12 = compra12.reduce((a, h) => a + Number(h.cajas_12m || 0), 0);
-  const neto12 = compra12.reduce((a, h) => a + Number(h.neto_12m || 0), 0);
-  const dejaron = FALTANTES.filter((f) => Number(f.cajas_hist) > 0);
-  const m = mesesDesde(CLIENTE.ultima_compra);
+// Vuelve de la tabla a los dos botones (no al buscador: el cliente sigue elegido).
+function volverAElegir() {
+  $("vista").hidden = true;
+  $("elegir").hidden = false;
+}
 
-  const kpis = [
-    ["Última compra", CLIENTE.ultima_compra ? fecha(CLIENTE.ultima_compra) : "—"],
-    ["Artículos que compra", num(compra12.length)],
-    ["Cajas 12 meses", num(cajas12)],
-    ["Facturado 12 meses", plata(neto12)],
-    ["No le compran", num(FALTANTES.length), true],
-    ["Compraba y dejó", num(dejaron.length), true],
-  ];
+async function ver(tab) {
+  if (!CLIENTE) return;
+  TAB = tab;
+  const cod = String(CLIENTE.cod_cliente);
 
-  $("kpis").innerHTML = kpis
-    .map(
-      ([lab, val, alerta]) => `
-      <div class="kpi${alerta ? " kpi--alerta" : ""}">
-        <div class="kpi-lab">${esc(lab)}</div>
-        <div class="kpi-val">${esc(val)}</div>
-      </div>`,
-    )
-    .join("");
+  $("elegir").hidden = true;
+  $("vista").hidden = false;
+  $("filtroInput").value = "";
+  $("chkAntes").checked = false;
+  $("vistaTit").textContent =
+    tab === "falta"
+      ? "Artículos que NO compra"
+      : "Artículos que compra";
 
-  if (m != null && m >= 6) {
-    $("fichaMeta").textContent +=
-      ` · ⚠ sin comprar hace ${m} meses`;
+  if ((tab === "falta" && FALTANTES === null) ||
+      (tab === "compra" && HISTORIAL === null)) {
+    $("tablaHead").innerHTML = "";
+    $("tablaBody").innerHTML = "";
+    $("tablaPie").textContent = "Buscando…";
+
+    const r =
+      tab === "falta"
+        ? await sb.rpc("consulta_faltantes", { p_cod: cod, p_limit: 500 })
+        : await sb.rpc("consulta_historial", { p_cod: cod });
+
+    if (r.error) {
+      $("tablaPie").textContent =
+        "No se pudieron traer los datos: " + esc(r.error.message || "");
+      return;
+    }
+    if (tab === "falta") FALTANTES = r.data || [];
+    else HISTORIAL = r.data || [];
   }
+
+  renderTabla();
 }
 
 // ================= TABLA =================
@@ -280,7 +285,7 @@ function renderKpis() {
 function filasVisibles() {
   const q = ($("filtroInput").value || "").trim().toLowerCase();
   const soloAntes = $("chkAntes").checked;
-  let filas = TAB === "falta" ? FALTANTES : HISTORIAL;
+  let filas = (TAB === "falta" ? FALTANTES : HISTORIAL) || [];
 
   if (TAB === "falta" && soloAntes) {
     filas = filas.filter((f) => Number(f.cajas_hist) > 0);
@@ -435,6 +440,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   $("logoutBtn").addEventListener("click", salir);
   $("cerrarFicha").addEventListener("click", cerrarFicha);
+  $("btnVerCompra").addEventListener("click", () => ver("compra"));
+  $("btnVerFalta").addEventListener("click", () => ver("falta"));
+  $("volverBtn").addEventListener("click", volverAElegir);
   $("btnExcel").addEventListener("click", descargarExcel);
 
   $("buscarInput").addEventListener("input", () => {
@@ -444,17 +452,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   $("filtroInput").addEventListener("input", renderTabla);
   $("chkAntes").addEventListener("change", renderTabla);
-
-  document.querySelectorAll(".tab").forEach((t) => {
-    t.addEventListener("click", () => {
-      TAB = t.dataset.tab;
-      document
-        .querySelectorAll(".tab")
-        .forEach((x) => x.classList.toggle("is-active", x === t));
-      $("filtroInput").value = "";
-      renderTabla();
-    });
-  });
 
   // Sesion ya abierta (volvio a la pagina sin cerrar): se entra derecho.
   const { data } = await sb.auth.getSession();

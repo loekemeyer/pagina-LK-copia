@@ -18,7 +18,7 @@
     <!-- xlsx-js-style: mismo fork de SheetJS que usa el panel admin -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
-    <link rel="stylesheet" href="css/consulta.css?v=23445" />
+    <link rel="stylesheet" href="css/consulta.css?v=23446" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="shortcut icon" href="img/favicon.jpg" />
   </head>
@@ -85,7 +85,7 @@
         <div id="resultados" class="resultados"></div>
       </section>
 
-      <!-- Ficha del cliente -->
+      <!-- Cliente elegido: primero los dos botones, nada mas -->
       <section class="card" id="fichaCard" hidden>
         <div class="ficha-head">
           <div>
@@ -95,39 +95,48 @@
           <button class="btn-ghost" id="cerrarFicha">Cambiar de cliente</button>
         </div>
 
-        <div class="kpis" id="kpis"></div>
-
-        <div class="tabs">
-          <button class="tab is-active" data-tab="falta" id="tabFalta">
-            No le compran
+        <!-- Paso 2: que quiere ver -->
+        <div class="elegir" id="elegir">
+          <button class="big-btn" id="btnVerCompra">
+            <span class="big-btn-tit">Artículos que compra</span>
+            <span class="big-btn-sub">Lo que le vendemos hoy, con cajas y facturación</span>
           </button>
-          <button class="tab" data-tab="compra" id="tabCompra">
-            Sí le compran
+          <button class="big-btn big-btn--alerta" id="btnVerFalta">
+            <span class="big-btn-tit">Artículos que NO compra</span>
+            <span class="big-btn-sub">Lo que compra el resto de los clientes y él no</span>
           </button>
         </div>
 
-        <div class="tabla-toolbar">
-          <input
-            id="filtroInput"
-            type="text"
-            class="filtro-input"
-            placeholder="Filtrar por código o artículo…"
-            autocomplete="off"
-          />
-          <label class="chk" id="chkAntesWrap">
-            <input type="checkbox" id="chkAntes" />
-            Solo lo que compraba antes y dejó
-          </label>
-          <button class="btn-excel" id="btnExcel">Descargar Excel</button>
-        </div>
+        <!-- Paso 3: la tabla que eligio -->
+        <div class="vista" id="vista" hidden>
+          <div class="vista-head">
+            <button class="btn-ghost" id="volverBtn">← Volver</button>
+            <span class="vista-tit" id="vistaTit"></span>
+          </div>
 
-        <div class="tabla-wrap">
-          <table class="tabla" id="tabla">
-            <thead id="tablaHead"></thead>
-            <tbody id="tablaBody"></tbody>
-          </table>
+          <div class="tabla-toolbar">
+            <input
+              id="filtroInput"
+              type="text"
+              class="filtro-input"
+              placeholder="Filtrar por código o artículo…"
+              autocomplete="off"
+            />
+            <label class="chk" id="chkAntesWrap">
+              <input type="checkbox" id="chkAntes" />
+              Solo lo que compraba antes y dejó
+            </label>
+            <button class="btn-excel" id="btnExcel">Descargar Excel</button>
+          </div>
+
+          <div class="tabla-wrap">
+            <table class="tabla" id="tabla">
+              <thead id="tablaHead"></thead>
+              <tbody id="tablaBody"></tbody>
+            </table>
+          </div>
+          <div class="tabla-pie" id="tablaPie"></div>
         </div>
-        <div class="tabla-pie" id="tablaPie"></div>
       </section>
 
       <footer class="pie">
@@ -135,7 +144,7 @@
       </footer>
     </div>
 
-    <script src="version.js?v=23445"></script>
-    <script src="consulta.js?v=23445"></script>
+    <script src="version.js?v=23446"></script>
+    <script src="consulta.js?v=23446"></script>
   </body>
 </html>

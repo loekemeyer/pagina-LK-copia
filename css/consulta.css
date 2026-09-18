@@ -213,43 +213,55 @@ body {
 .ficha-nombre { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
 .ficha-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
 
-.kpis {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 18px;
+/* ===== PASO 2: los dos botones ===== */
+/* Es TODA la pantalla despues de elegir el cliente: dos botones y nada mas.
+   Pedido de Thomas (18/09/2026): "tiene que ser muy simple". */
+.elegir {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 4px;
 }
-.kpi {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 9px 14px;
-  background: #fcfcfd;
-}
-.kpi-lab {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-.kpi-val { font-size: 17px; font-weight: 800; margin-top: 2px; letter-spacing: -0.01em; }
-.kpi--alerta .kpi-val { color: var(--brand); }
-
-/* ===== TABS ===== */
-.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
-.tab {
-  padding: 9px 16px;
-  font-size: 14px;
-  font-weight: 600;
+.big-btn {
+  display: block;
+  text-align: left;
+  padding: 22px 22px;
   font-family: inherit;
-  color: var(--muted);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
+  background: #fcfcfd;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 14px;
   cursor: pointer;
-  margin-bottom: -1px;
+  transition: background 0.12s, transform 0.12s;
 }
-.tab.is-active { color: var(--brand); border-bottom-color: var(--brand); }
+.big-btn:hover { background: #fff; transform: translateY(-1px); }
+.big-btn--alerta { border-left-color: var(--brand); }
+.big-btn-tit {
+  display: block;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.big-btn--alerta .big-btn-tit { color: var(--brand); }
+.big-btn-sub {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+/* ===== PASO 3: la tabla ===== */
+.vista-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.vista-tit { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
 
 /* ===== TOOLBAR ===== */
 .tabla-toolbar {
@@ -359,5 +371,7 @@ body {
   .buscador-hint { white-space: normal; }
   .res-item { flex-wrap: wrap; }
   .res-meta { margin-left: 0; width: 100%; white-space: normal; }
+  .elegir { grid-template-columns: 1fr; }
+  .big-btn { padding: 18px 16px; }
   .tabla-foto { display: none; }
 }
