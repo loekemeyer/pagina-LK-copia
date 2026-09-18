@@ -1532,8 +1532,18 @@ minuto pasó de 11 jobs a 5).
 el proyecto de Chef, que está en OTRA organización) tiene 12,9 s de media pero llegó a **117 s**:
 con eso solo se come un sexto de la capacidad de workers durante minutos.
 
-⚠ **`net._http_response` está en 105 MB con 437 filas vivas** (24 páginas por fila) y el último
-autovacuum es del 2026-08-05. La limpieza de pg_net corre sobre esa tabla todo el tiempo:
-165.421 llamadas, 1.066 ms de media, **3.127 s la peor**. Se arregla con
-`vacuum (full) net._http_response` —no borra datos, sólo compacta— y conviene hacerlo con la base
-tranquila. Vaciarla del todo (es transitoria, TTL 6 h) **lo autoriza el dueño, no Claude**.
+⚠ **`net._http_response` se bloata y hay que compactarla cada tanto.** El 18/09 estaba en
+**105 MB con 437 filas vivas** (10.729 páginas, o sea 24 por fila) con el último autovacuum del
+**2026-08-05**: la limpieza de pg_net corre sobre esa tabla en cada vuelta de su worker, así que
+la escaneaba entera todo el tiempo — 165.421 llamadas, **1.085 ms de media y 3.127 s la peor**.
+
+**Se arregla con `vacuum (full) net._http_response`** (no borra datos, sólo compacta). Medido el
+18/09 a las 08:30 ART, con la base ya respirando: **105 MB → 392 kB, 10.729 páginas → 44**, y la
+limpieza de pg_net pasó a costar **0 s** (10 corridas en 6 minutos sin sumar tiempo medible).
+
+⚠ **Con la base ahogada el `vacuum full` NO entra**: se intentó tres veces de madrugada y las
+tres murieron esperando el lock (ni siquiera abría conexión). Hay que hacerlo con la base
+tranquila, y si hace falta destrabarla antes: `select net.worker_restart();`.
+
+Vaciar la tabla del todo (es transitoria, TTL 6 h) **no hace falta** — con el `vacuum full`
+alcanza — y además sería borrar datos, o sea que **lo autoriza el dueño, no Claude**.

@@ -102,14 +102,16 @@ select cron.alter_job(46, schedule := '8-59/10 * * * *');
 -- ============================================================================
 -- LO QUE QUEDA ABIERTO — no es de Claude, es decisión del dueño
 -- ============================================================================
--- a) `net._http_response` está en **105 MB para 437 filas vivas** (10.729
---    páginas, 24 páginas por fila) y el último autovacuum es del **2026-08-05**.
---    La limpieza de pg_net corre sobre eso todo el tiempo. Lo que lo arregla es
---    un `vacuum (full) net._http_response` (no borra datos, sólo compacta) o
---    directamente vaciar la tabla, que es transitoria por diseño (TTL 6 h).
---    **Vaciar es borrar datos reales: lo tiene que autorizar el dueño.** Se
---    intentó el `vacuum full` esta madrugada y no llegó a tomar el lock con la
---    base en ese estado; conviene reintentarlo con la base tranquila.
+-- a) ✅ HECHO el 18/09 08:30 ART. `net._http_response` estaba en **105 MB para
+--    437 filas vivas** (10.729 páginas, 24 por fila) con el último autovacuum del
+--    **2026-08-05**, y la limpieza de pg_net la escaneaba entera en cada vuelta
+--    de su worker. `vacuum (full, analyze) net._http_response` la dejó en
+--    **392 kB / 44 páginas** y esa limpieza pasó a costar **0 s** (venía de
+--    1.085 ms de media y 3.127 s la peor).
+--    ⚠ De madrugada, con la base ahogada, el mismo `vacuum full` NO entró: tres
+--    intentos muertos esperando el lock. Hay que hacerlo con la base tranquila.
+--    Vaciar la tabla del todo no hizo falta (y sería borrar datos: lo autoriza
+--    el dueño, no Claude).
 -- b) La instancia es chica para lo que se le fue colgando (siete syncs a
 --    Virgilio, Krikos, Telegram, WhatsApp). Subir el compute es plata, o sea
 --    decisión comercial del dueño.
