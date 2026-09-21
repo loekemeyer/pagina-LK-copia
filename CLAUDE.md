@@ -447,6 +447,54 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
 - `app_settings.web_order_discount` is read at load time as the web-order discount (fallback `0.02`).
 - **Los módulos de estadística valorizan en NETO, no a precio de lista.** `get_ranking_inactivos` y `get_ranking_inactivos_export` hacen `boxes * products.uxb * products.list_price * (1 - customers.dto_vol) * (1 - app_settings.web_order_discount)`. **`list_price` es el precio POR UNIDAD, no por caja**, así que el `uxb` NO es opcional: sin él el monto sale dividido por las unidades por caja (promedio 12,1, rango 1 a 100). Es el mismo cálculo que hace el carrito en `script.js` (`listUnit * (uxb * cajas)`) — la misma cadena multiplicativa que arma un pedido real en `script.js` (`listUnit * (1 - dtoVol) * (1 - webDiscountRate) * (1 - extraRate)`). El descuento por medio de pago queda afuera: depende de cómo se pagó cada pedido y `sales_lines` no lo guarda. Las dos RPC tienen que usar el MISMO factor: una alimenta la tabla en pantalla y la otra el Excel descargable del mismo módulo, así que si divergen muestran números distintos para el mismo cliente.
 
+## ⚠ REGLA (Thomas, 2026-09-21): el badge SIN STOCK se valida en el BACKEND
+
+**Thomas, textual:** *"NO DEBERIA DEJARLO PEDIR. YA CON ESA LOGICA ESTA EL 517"*.
+
+`products.badge_status = 'SIN STOCK'` pinta el cartel y deshabilita el botón, pero **frenaba sólo
+en el front**: el guard vive en `agregarAlCarrito` (`script.js` ~7375) y hay **unos 10 lugares que
+meten líneas al carrito sin pasar por ahí** — el carrito de `localStorage` (`hydrateCartFromLS`),
+los carritos guardados en la DB (`saved_carts`), el pedido en edición, las sugerencias del
+vendedor, el Excel de vendedores. `submit_order_fast` y `edit_order_fast` **no miraban ni `active`
+ni `badge_status`**, así que por cualquiera de esos caminos el pedido entraba igual.
+
+Medido el 21/09: el **573** (Bombilla Colores Metalizados), marcado SIN STOCK y con 0 cajas en el
+libro de stock de Gestión, entró igual — pedido **1507**, 3 cajas, 10:43 ART, ya enviado al Sheet.
+⚠ La cronología del badge **no se puede probar**: `products` no tiene `updated_at`.
+
+Desde hoy lo frena **`pedido_items_sin_stock(p_items jsonb)`**, llamada desde las dos RPC. Bloquea
+`SIN STOCK`, `PROXIMAMENTE` y `active = false`; para la línea Loke sólo `active`, porque
+`loke_products` no tiene `badge_status`. `sql/guard_sin_stock_pedidos.sql`, rollback en
+`zz_backups."LK_Backup_funcdef_pedidos_20260921"`.
+
+⚠ **NO aplica al admin**, igual que el guard anti-reintento: `admin-supercot.js` y
+`admin-excel-krikos.js` cargan **OC de supermercados en ráfaga**, y el súper pide lo que pide.
+Frenarlo dejaría una OC de Coto sin poder cargarse.
+
+⚠⚠ **Al EDITAR, el guard va SÓLO sobre lo que se AGREGA** (`nuevo.cajas > coalesce(viejo.cajas,0)`).
+Mirar el pedido entero deja **intrabajable** a cualquier pedido viejo que ya tenga adentro un código
+que después quedó sin stock: el otro guard prohíbe QUITAR líneas, así que no habría forma de
+confirmar la edición ni de sacar el código. Probado: a un pedido que ya tenía 573 se le puede
+agregar 332 (pasa), pero no subirle las cajas del 573 (frena).
+
+⚠ **El aviso temprano en el carrito NO está hecho**: el cliente se entera al confirmar, con el
+mensaje de la RPC (el front ya propaga `e.message`). Sacar la línea del carrito al restaurarlo
+tiene la misma trampa de arriba — si el carrito está EN EDICIÓN, quitarla hace que el guard de
+"sólo se puede AGREGAR" frene la confirmación.
+
+⚠ **Y un `active = false` NO es lo mismo que SIN STOCK**: el catálogo filtra `.eq("active", true)`,
+así que el inactivo **desaparece** (y se cae solo del carrito, por `normalizeCartAgainstProducts`).
+Para que el cliente **vea** que existe y no pueda pedirlo va `active = true` + badge `SIN STOCK`
+— el patrón del **517** y del **573**, y el que se aplicó a 333, 334, 336 y 337 el 21/09.
+
+**Chequeo:**
+
+```sql
+select p.proname, position('pedido_items_sin_stock' in pg_get_functiondef(p.oid)) > 0 as tiene_guard
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.proname in ('submit_order_fast','edit_order_fast');
+```
+
 ## Integración Krikos (OC de supermercados por mail)
 
 - **Krikos360 es el portal EDI de Planexware** por el que las cadenas (Coto, Carrefour/INC, Día,
