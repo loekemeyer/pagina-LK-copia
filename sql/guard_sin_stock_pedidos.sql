@@ -187,7 +187,12 @@ end $do$;
 -- no se revierte, y no hay nada que valide que los numeros de pedido sean seguidos.
 --
 -- CHEQUEO, para volver a medirlo:
---   select p.proname, position('pedido_items_sin_stock' in pg_get_functiondef(p.oid)) > 0 as tiene_guard
+--   -- OJO: se busca 'GUARD SIN STOCK', que esta en las dos. Buscar el nombre del
+--   -- helper da FALSO NEGATIVO en edit_order_fast, que lo lleva inline (necesita
+--   -- comparar viejo vs nuevo y el helper no sabe de eso).
+--   select p.proname,
+--          position('GUARD SIN STOCK' in pg_get_functiondef(p.oid)) > 0 as tiene_guard
 --     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 --    where n.nspname = 'public' and p.proname in ('submit_order_fast','edit_order_fast');
+--   -- al 21/09: las dos en true
 -- ============================================================================
