@@ -3287,8 +3287,14 @@
       ? state.customer.cod_cliente + " - " + (state.customer.business_name || "")
       : "(sin cliente)";
 
+    // Luis, 22/09/2026: "lo de la L deberia aplicar unicamente a CENCOSUD y a pedidos
+    // que van a TIERRA DEL FUEGO". La L NO la decide "el super factura por Chef": la decide
+    // si sus ARTICULOS son de Loekemeyer. Cencosud factura por Chef y matchea contra el
+    // catalogo de LK -> lleva L. Dorinka factura por Chef y sus articulos SON de Chef
+    // (usesChefProducts) -> NO lleva L. Se deriva de precios_super.cadena, no se hardcodea;
+    // si la config no cargo, isChefSuper da false y no se pone L (fail-safe).
     var addLSuffix =
-      state.superKey === "cencosud" || state.superKey === "dorinka";
+      isChefSuper(state.superKey) && !usesChefProducts(state.superKey);
 
     // Calcular totales
     var totalCajas = 0;
@@ -3531,7 +3537,11 @@
 
     try {
       var isChef = isChefSuper(state.superKey);
-      var addLSuffix = isChef;
+      // Luis, 22/09/2026 - ver el comentario largo de addLSuffix mas arriba: la L es
+      // de los supers que facturan por Chef con articulos de LK (Cencosud), no de todos los
+      // que facturan por Chef. Con "isChef" a secas, Dorinka salia con L y el picking iba a
+      // la gondola de Loekemeyer, donde no hay una sola caja de sus articulos.
+      var addLSuffix = isChef && !usesChefProducts(state.superKey);
       // Mapeo de códigos especiales por supermercado.
       // Coto: artículo 505 se envía como 505I a la sheet Pedidos Web (y PPP),
       // NO afecta a la web ni a otros supermercados — solo Coto en PDF Krikos.
