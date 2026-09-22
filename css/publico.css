@@ -93,7 +93,7 @@
 /* ================= SECCIONES ================= */
 .pub-section {
   padding: 50px 0;
-  scroll-margin-top: 80px;   /* la topbar es sticky: si no, tapa el título */
+  scroll-margin-top: 118px;  /* topbar + barra de índice, las dos sticky */
 }
 
 /* ---- JERARQUÍA ----------------------------------------------------------
@@ -666,50 +666,65 @@
   font-size: 22px;
 }
 
-/* ================= ÍNDICE DE LA PÁGINA =================
-   Nueve secciones que abren todas igual (volanta + H2 + bajada) y 9.900 px de
-   scroll: sin un mapa arriba, el lector no sabe cuánto falta ni qué viene. Tres
-   entradas, una por bloque; las sub-secciones van en una línea chica para que
-   el índice ocupe tres renglones y no una pantalla. */
-.pub-indice {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 28px;
+/* ================= BARRA DE ÍNDICE =================
+   Va DENTRO del <header class="prod-topbar">, que ya es sticky: como segunda
+   fila viaja pegada con él y no hay que calcular la altura de la topbar (que
+   además cambia en mobile, donde el logo baja de 46 a 38 px). Dos sticky
+   hermanos con top:0 se pisarían.
+
+   El markup sólo existe en historia.html, así que estas reglas no tocan las
+   páginas de productos, que comparten productos.css y publico.css. */
+.pub-subnav {
+  background: #17181a;
+  border-top: 1px solid #2f2f2f;
 }
 
-.pub-indice a {
-  display: grid;
-  gap: 3px;
-  padding: 16px 18px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: #fff;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+.pub-subnav-row {
+  max-width: 1200px;
+  margin: auto;
+  padding: 0 20px;
+  display: flex;
+  gap: 4px;
+  /* en pantallas angostas la barra se desliza en vez de cortar una entrada */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.pub-indice a:hover {
-  border-color: var(--accent);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+.pub-subnav-row::-webkit-scrollbar {
+  display: none;
 }
 
-.pub-indice-num {
-  font-size: 12px;
+.pub-subnav a {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #9aa0a6;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.pub-subnav a b {
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 1.6px;
-  color: var(--accent);
+  letter-spacing: 1px;
+  color: #6f7479;
 }
 
-.pub-indice-tit {
-  font-size: 17px;
-  font-weight: 800;
-  color: #111;
+.pub-subnav a:hover {
+  color: #fff;
 }
 
-.pub-indice-sub {
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--muted);
+.pub-subnav a.es-activo {
+  color: #fff;
+  border-bottom-color: #c94a4a;   /* el --accent no se ve sobre el negro */
+}
+
+.pub-subnav a.es-activo b {
+  color: #c94a4a;
 }
 
 /* ================= PORTADILLAS DE BLOQUE =================
@@ -723,7 +738,7 @@
   color: #fff;
   /* sin bajada, así que la banda es más baja: es un corte, no una sección */
   padding: 30px 0 28px;
-  scroll-margin-top: 70px;   /* la topbar es sticky */
+  scroll-margin-top: 118px;  /* topbar + barra de índice, las dos sticky */
 }
 
 .pub-bloque-num {
@@ -786,8 +801,7 @@
   }
 
   .pub-pasos,
-  .pub-ctas,
-  .pub-indice {
+  .pub-ctas {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -808,6 +822,18 @@
 
   .pub-ficha dt {
     margin-top: 10px;
+  }
+
+  /* que las tres entradas entren en un teléfono de 390 px sin tener que
+     deslizar la barra: si la tercera queda cortada, no se ve que existe */
+  .pub-subnav-row {
+    padding: 0 10px;
+  }
+
+  .pub-subnav a {
+    padding: 10px 8px;
+    font-size: 12px;
+    gap: 5px;
   }
 
   .pub-logos {

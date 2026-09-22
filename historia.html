@@ -16,9 +16,9 @@
     <meta property="og:url" content="https://loekemeyer.com/historia.html" />
     <meta property="og:image" content="https://loekemeyer.com/img/img_landing.webp" />
     <link rel="icon" type="image/png" href="img/favicon.jpg" />
-    <link rel="stylesheet" href="css/styles.index.css?v=23449" />
-    <link rel="stylesheet" href="css/productos.css?v=23449" />
-    <link rel="stylesheet" href="css/publico.css?v=23449" />
+    <link rel="stylesheet" href="css/styles.index.css?v=23450" />
+    <link rel="stylesheet" href="css/productos.css?v=23450" />
+    <link rel="stylesheet" href="css/publico.css?v=23450" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -54,6 +54,18 @@
           <a class="prod-topbar-cta" href="mayorista.html">Pedido mayorista</a>
         </nav>
       </div>
+      <!-- ÍNDICE DE LA PÁGINA. Estaba como tres tarjetas dentro del hero y
+           arrancaba a los 1.020 px: abajo del fold en cualquier pantalla, así
+           que había que scrollear para descubrirlo y se pasaba de largo sin
+           enterarse. Acá se ve desde el primer segundo y acompaña todo el
+           scroll marcando en qué bloque estás. -->
+      <nav class="pub-subnav" aria-label="Contenido de la página">
+        <div class="pub-subnav-row">
+          <a href="#bloque-empresa"><b>I</b> La empresa</a>
+          <a href="#bloque-comercio"><b>II</b> Para tu comercio</a>
+          <a href="#bloque-inventos"><b>III</b> De dónde vienen</a>
+        </div>
+      </nav>
     </header>
 
     <main>
@@ -102,28 +114,6 @@
             </figcaption>
           </figure>
 
-          <!-- ÍNDICE. La página hace tres trabajos (contar la empresa, vender a
-               un comercio y publicar el origen de los inventos) y son 9 secciones
-               con la misma apertura: volanta + H2 + bajada. Sin un mapa arriba el
-               lector no sabe cuánto falta ni qué viene, que es lo que la hacía
-               sentir desordenada. Tres entradas, una por bloque. -->
-          <nav class="pub-indice" aria-label="Contenido de la página">
-            <a href="#bloque-empresa">
-              <span class="pub-indice-num">I</span>
-              <span class="pub-indice-tit">La empresa</span>
-              <span class="pub-indice-sub">Clientes · Diseños propios · De 1950 a hoy</span>
-            </a>
-            <a href="#bloque-comercio">
-              <span class="pub-indice-num">II</span>
-              <span class="pub-indice-tit">Para tu comercio</span>
-              <span class="pub-indice-sub">Por qué la fábrica · Marca propia · Cómo empezar</span>
-            </a>
-            <a href="#bloque-inventos">
-              <span class="pub-indice-num">III</span>
-              <span class="pub-indice-tit">De dónde vienen</span>
-              <span class="pub-indice-sub">Abrelatas · Pelapapas · Sacacorchos</span>
-            </a>
-          </nav>
         </div>
       </section>
 
@@ -448,14 +438,11 @@
            cómo. Los tres pasos son los que el sistema ya hace de verdad
            (alta del cliente + usuario de la web mayorista + pedido online con
            seguimiento), así que no hay nada prometido de más.
-           ⚠ PENDIENTE DEL DUEÑO — tres datos que NO están en ningún lado del
-           sistema y que son los que más pregunta un cliente nuevo:
-             1. mínimo de compra (no existe regla en script.js ni en la base),
-             2. plazo de entrega por zona (es la tarea "Th Fecha estimada de
-                entrega por zona", todavía abierta),
-             3. formas y plazos de pago.
-           Apenas los defina Thomas, van como cuarta tarjeta o como línea abajo
-           de los pasos. No se inventan. -->
+           MÍNIMO DE COMPRA, PLAZO DE ENTREGA Y FORMAS DE PAGO NO SE PUBLICAN:
+           se averiguan por WhatsApp (Tomás B., 22/09/2026). No es un hueco
+           sino una decisión, y encima juega a favor: dependen de la zona y del
+           rubro, y son el motivo por el que el comercio escribe. Por eso el
+           paso 1 los nombra en vez de callarlos. NO cargarlos acá después. -->
       <section class="pub-section pub-section--banda" id="como-empezar">
         <div class="pub-wrap">
           <p class="pub-kicker">Clientes nuevos</p>
@@ -470,7 +457,8 @@
               <h3>Escribinos</h3>
               <p>
                 Por WhatsApp o por mail, contándonos qué comercio tenés y en qué
-                zona estás.
+                zona estás. Ahí mismo te pasamos mínimo de compra, plazo de
+                entrega a tu zona y formas de pago.
               </p>
             </li>
             <li>
@@ -721,8 +709,34 @@
       </div>
     </div>
 
-    <script src="version.js?v=23449"></script>
-    <script src="script.index.js?v=23449"></script>
-    <script src="js/conversiones.js?v=23449"></script>
+    <script>
+      // Resalta en la barra el bloque que se está leyendo. Es un agregado: si
+      // no corre, la barra navega igual. Se usa offsetTop y no
+      // IntersectionObserver porque las tres portadillas cuelgan directo de
+      // <main> y basta con saber cuál fue la última que pasó por arriba.
+      (function () {
+        var links = [].slice.call(document.querySelectorAll(".pub-subnav a"));
+        if (!links.length) return;
+        var bloques = links.map(function (a) {
+          return document.querySelector(a.getAttribute("href"));
+        });
+        function marcar() {
+          var y = window.pageYOffset + 150; // topbar + barra + un poco de aire
+          var activo = -1;
+          bloques.forEach(function (b, i) {
+            if (b && b.offsetTop <= y) activo = i;
+          });
+          links.forEach(function (a, i) {
+            a.classList.toggle("es-activo", i === activo);
+          });
+        }
+        marcar();
+        window.addEventListener("scroll", marcar, { passive: true });
+        window.addEventListener("resize", marcar);
+      })();
+    </script>
+    <script src="version.js?v=23450"></script>
+    <script src="script.index.js?v=23450"></script>
+    <script src="js/conversiones.js?v=23450"></script>
   </body>
 </html>
