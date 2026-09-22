@@ -349,6 +349,50 @@ function _zoomDoc() {
 }
 window._zoomDoc = _zoomDoc;
 
+/* Carga diferida PROPIA de las fotos de la persiana (tarjetas con 2ª foto).
+   No usan loading="lazy": en Chrome 109 (el último para Windows 7/8, que usan
+   vendedores) esas imágenes NUNCA cargaban fuera de la primera pantalla —
+   quedaban dentro de .pc-persiana (overflow:hidden) en una card con
+   preserve-3d, y el lazy nativo nunca las veía entrar al viewport. Medido
+   en un video del 22/09/2026: todas las cards vacías tenían {cod}-2.webp y
+   todas las de foto única se veían. Acá se observa la CARD (que el
+   navegador sí ve bien) y recién ahí se pasa data-src → src. */
+let _pcLazyIO = null;
+function _pcLazyCargar(card) {
+  card.querySelectorAll("img[data-src]").forEach((img) => {
+    // Si el hover/flechas ya le pusieron otra foto, no pisarla.
+    if (!img.getAttribute("src")) img.setAttribute("src", img.getAttribute("data-src"));
+    img.removeAttribute("data-src");
+  });
+}
+function _pcLazyObservar(root) {
+  const cards = [];
+  (root || document).querySelectorAll(".pc-persiana img[data-src]").forEach((img) => {
+    const card = img.closest(".product-card");
+    if (card && cards.indexOf(card) < 0) cards.push(card);
+  });
+  if (!cards.length) return;
+  if (!("IntersectionObserver" in window)) {
+    cards.forEach(_pcLazyCargar);
+    return;
+  }
+  if (!_pcLazyIO) {
+    _pcLazyIO = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          _pcLazyIO.unobserve(e.target);
+          _pcLazyCargar(e.target);
+        });
+      },
+      { rootMargin: "800px 0px" },
+    );
+  }
+  // La grilla se re-renderiza entera: soltar las cards viejas (ya fuera del DOM).
+  _pcLazyIO.disconnect();
+  cards.forEach((c) => _pcLazyIO.observe(c));
+}
+
 const PC_HOVER_DELAY = 3000; // ms que hay que sostener el mouse
 let _pcHoverTimer = null;
 let _pcHoverEl = null;
@@ -4953,17 +4997,16 @@ function renderProducts() {
         ${pcArrowsHtml}
         ${
           pcBack
-            ? `<img class="pc-back" src="${pcBack}" alt="" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='${imgFallback}'">`
+            ? `<img class="pc-back" data-src="${pcBack}" alt="" width="400" height="400" onerror="this.onerror=null;this.src='${imgFallback}'">`
             : ""
         }
         <img
           id="img-${pid}"
           class="pc-front"
-          src="${pcFront}"
+          ${pcBack ? `data-src="${pcFront}"` : `src="${pcFront}" loading="lazy"`}
           alt="${altAttr}"
           width="400"
           height="400"
-          loading="lazy"
           style="cursor:zoom-in"
           onerror="this.onerror=null;this.src='${imgFallback}'"
         >
@@ -5082,6 +5125,7 @@ function renderProducts() {
         ${items.map(buildCard).join("")}
       </div>
     `;
+    _pcLazyObservar(container);
     return;
   }
 
@@ -5169,6 +5213,8 @@ function renderProducts() {
     `;
     return;
   }
+
+  _pcLazyObservar(container);
 
   // 🎬 Entrance stagger: SOLO la primera vez. Filtros/sort posteriores no re-animan.
   if (!__productsEntranceFired) {
