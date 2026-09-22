@@ -10242,18 +10242,196 @@ function _vinactNorm(s) {
     .toLowerCase();
 }
 
+/* Lo que el vendedor marca sobre cada cliente (Thomas, 22/09/2026). "Pendiente revisión"
+   es el estado por defecto y va PRIMERO; los otros los elige el vendedor. Se guardan con
+   vinact_marcar (historial en vendedor_inactivo_notas). Cerró / Contáctenlo ustedes / Otro
+   viajan solos a Gestión (A Programar → 📣 Avisos de vendedores) y le abren tarea a Luis.
+   Si el cliente vuelve a comprar, la marca deja de aplicar sola (la RPC sólo devuelve
+   la nota posterior a la última compra). */
+var VINACT_ESTADOS = [
+  ["pendiente_revision", "Pendiente revisión"],
+  ["lo_contacto_yo", "Lo contacto yo"],
+  ["otra_razon_social", "Compra por otra razón social"],
+  ["cerro", "Cerró"],
+  ["contactenlo_ustedes", "Contáctenlo ustedes"],
+  ["otro", "Otro"],
+];
+var VINACT_A_GESTION = { cerro: 1, contactenlo_ustedes: 1, otro: 1 };
+var _vinactEdit = null; // { cod, estado, err, guardando }
+
+function _vinactLabel(e) {
+  for (var i = 0; i < VINACT_ESTADOS.length; i++) if (VINACT_ESTADOS[i][0] === e) return VINACT_ESTADOS[i][1];
+  return e;
+}
+function _vinactEstado(r) {
+  return r.nota_estado || "pendiente_revision";
+}
+function _vinactVencido(r) {
+  if (_vinactEstado(r) !== "lo_contacto_yo" || !r.nota_fecha_seg) return false;
+  return String(r.nota_fecha_seg).slice(0, 10) < new Date().toISOString().slice(0, 10);
+}
+// Orden: seguimientos vencidos arriba, después lo pendiente, lo que está en gestión, y al
+// final lo descartado (cerró / compra con otra razón social). Dentro, el orden de la RPC.
+function _vinactPeso(r) {
+  var e = _vinactEstado(r);
+  if (_vinactVencido(r)) return 0;
+  if (e === "pendiente_revision") return 1;
+  if (e === "cerro" || e === "otra_razon_social") return 3;
+  return 2;
+}
+function _vinactPendientes() {
+  return _vendorInactivos.filter(function (r) {
+    return _vinactPeso(r) <= 1;
+  }).length;
+}
+
+function _vinactEstadoHtml(r) {
+  var cod = String(r.cod_cliente || "");
+  var codJs = cod.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  var actual = _vinactEstado(r);
+  var h = '<div class="vinact-est">';
+  VINACT_ESTADOS.forEach(function (e) {
+    h +=
+      '<button type="button" class="vinact-est-btn' + (e[0] === actual ? " on" : "") +
+      (VINACT_A_GESTION[e[0]] ? " gestion" : "") + '"' +
+      ' title="' + (VINACT_A_GESTION[e[0]] ? "Le llega a la oficina (Gestión) como aviso" : "") + '"' +
+      " onclick=\"vinactElegir('" + codJs + "','" + e[0] + "')\">" + e[1] + "</button>";
+  });
+  h += "</div>";
+
+  if (r.nota_estado) {
+    var det = [];
+    if (r.nota_at) det.push(_vinactFecha(String(r.nota_at).slice(0, 10)));
+    if (actual === "lo_contacto_yo" && r.nota_fecha_seg)
+      det.push(
+        (_vinactVencido(r) ? '<b class="vinact-vencido">venció el ' : "hasta ") +
+          _vinactFecha(r.nota_fecha_seg) + (_vinactVencido(r) ? "</b>" : "")
+      );
+    if (VINACT_A_GESTION[actual]) det.push("avisado a la oficina");
+    if (r.nota_cod_rel) det.push("cód. " + escapeHtml(r.nota_cod_rel));
+    h +=
+      '<div class="vinact-nota">📌 <b>' + escapeHtml(_vinactLabel(actual)) + "</b>" +
+      (det.length ? " · " + det.join(" · ") : "") +
+      (r.nota_texto ? ' · <span class="vinact-nota-txt">"' + escapeHtml(r.nota_texto) + '"</span>' : "") +
+      "</div>";
+  }
+
+  if (_vinactEdit && _vinactEdit.cod === cod) h += _vinactEditorHtml(_vinactEdit, codJs);
+  return h;
+}
+
+function _vinactEditorHtml(ed, codJs) {
+  var e = ed.estado;
+  var campo = "";
+  if (e === "lo_contacto_yo") {
+    var d = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    campo =
+      '<label class="vinact-ed-l">¿Hasta cuándo lo seguís vos?</label>' +
+      '<input type="date" id="vinactEdFecha" class="vinact-ed-in" value="' + d + '">';
+  } else if (e === "otra_razon_social") {
+    campo =
+      '<label class="vinact-ed-l">¿Con qué razón social o código compra ahora?</label>' +
+      '<input type="text" id="vinactEdTexto" class="vinact-ed-in" maxlength="200" placeholder="Razón social o código">';
+  } else {
+    campo =
+      '<label class="vinact-ed-l">' +
+      (e === "otro" ? "¿Qué pasa con este cliente?" : "Comentario para la oficina (opcional)") +
+      "</label>" +
+      '<textarea id="vinactEdTexto" class="vinact-ed-in" rows="2" maxlength="500"></textarea>';
+  }
+  return (
+    '<div class="vinact-ed">' + campo +
+    (VINACT_A_GESTION[e] ? '<div class="vinact-ed-hint">Le llega como aviso a la oficina (Gestión) y se le arma una tarea.</div>' : "") +
+    (ed.err ? '<div class="vinact-ed-err">' + escapeHtml(ed.err) + "</div>" : "") +
+    '<div class="vinact-ed-acc">' +
+    '<button type="button" class="profile-btn" ' + (ed.guardando ? "disabled" : "") +
+    " onclick=\"vinactGuardar('" + codJs + "')\">" + (ed.guardando ? "Guardando…" : "Guardar " + escapeHtml(_vinactLabel(e))) + "</button>" +
+    '<button type="button" class="profile-btn subtle" onclick="vinactCancelar()">Cancelar</button>' +
+    "</div></div>"
+  );
+}
+
+function vinactElegir(cod, estado) {
+  var r = _vendorInactivos.find(function (x) { return String(x.cod_cliente) === String(cod); });
+  if (!r) return;
+  if (estado === "pendiente_revision") {
+    if (_vinactEstado(r) === "pendiente_revision") return;
+    _vinactEdit = { cod: String(cod), estado: estado };
+    vinactGuardar(cod);
+    return;
+  }
+  _vinactEdit = { cod: String(cod), estado: estado };
+  _vinactRender();
+}
+window.vinactElegir = vinactElegir;
+
+function vinactCancelar() {
+  _vinactEdit = null;
+  _vinactRender();
+}
+window.vinactCancelar = vinactCancelar;
+
+async function vinactGuardar(cod) {
+  if (!_vinactEdit || _vinactEdit.cod !== String(cod) || _vinactEdit.guardando) return;
+  var ed = _vinactEdit;
+  var t = document.getElementById("vinactEdTexto");
+  var f = document.getElementById("vinactEdFecha");
+  var texto = t ? String(t.value || "").trim() : "";
+  var fecha = f && f.value ? f.value : null;
+  if ((ed.estado === "otro" || ed.estado === "otra_razon_social") && !texto) {
+    ed.err = ed.estado === "otro" ? "Escribí qué pasa con el cliente." : "Indicá con qué razón social o código compra.";
+    _vinactRender();
+    return;
+  }
+  ed.guardando = true;
+  ed.err = "";
+  _vinactRender();
+  try {
+    var res = await supabaseClient.rpc("vinact_marcar", {
+      p_cod: String(cod),
+      p_estado: ed.estado,
+      p_texto: texto || null,
+      p_fecha: fecha,
+      p_cod_rel: null,
+    });
+    if (res.error) throw res.error;
+    var r = _vendorInactivos.find(function (x) { return String(x.cod_cliente) === String(cod); });
+    if (r) {
+      r.nota_id = res.data;
+      r.nota_estado = ed.estado;
+      r.nota_texto = texto || null;
+      r.nota_fecha_seg = ed.estado === "lo_contacto_yo" ? (fecha || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)) : null;
+      r.nota_at = new Date().toISOString();
+    }
+    _vinactEdit = null;
+    _vinactRender();
+  } catch (e) {
+    console.error("vinact_marcar:", e);
+    ed.guardando = false;
+    ed.err = (e && e.message) || "No se pudo guardar.";
+    _vinactRender();
+  }
+}
+window.vinactGuardar = vinactGuardar;
+
 function _vinactFiltrados() {
   var q = _vinactNorm(
     (document.getElementById("vendorInactivosBuscar") || {}).value
   ).trim();
-  if (!q) return _vendorInactivos;
-  return _vendorInactivos.filter(function (r) {
-    return (
-      _vinactNorm(r.razon_social).indexOf(q) >= 0 ||
-      _vinactNorm(r.localidad).indexOf(q) >= 0 ||
-      String(r.cod_cliente || "").indexOf(q) >= 0
-    );
-  });
+  var base = !q
+    ? _vendorInactivos.slice()
+    : _vendorInactivos.filter(function (r) {
+        return (
+          _vinactNorm(r.razon_social).indexOf(q) >= 0 ||
+          _vinactNorm(r.localidad).indexOf(q) >= 0 ||
+          String(r.cod_cliente || "").indexOf(q) >= 0
+        );
+      });
+  // Orden estable por estado (ver _vinactPeso); dentro, el orden que trae la RPC.
+  return base
+    .map(function (r, i) { return { r: r, i: i }; })
+    .sort(function (a, b) { return _vinactPeso(a.r) - _vinactPeso(b.r) || a.i - b.i; })
+    .map(function (x) { return x.r; });
 }
 
 function _vinactRender() {
@@ -10266,8 +10444,11 @@ function _vinactRender() {
   var filas = _vinactFiltrados();
 
   if (badge) {
-    badge.textContent = String(_vendorInactivos.length);
-    badge.hidden = _vendorInactivos.length === 0;
+    // Cuenta lo que falta revisar (pendientes + seguimientos vencidos), no el total.
+    var pend = _vinactPendientes();
+    badge.textContent = String(pend);
+    badge.title = pend + " para revisar de " + _vendorInactivos.length;
+    badge.hidden = pend === 0;
   }
   if (btnXls) btnXls.hidden = _vendorInactivos.length === 0;
 
@@ -10293,7 +10474,7 @@ function _vinactRender() {
       ? '<span class="vinact-chef" title="Le sigue comprando a Chef">Compra en Chef</span>'
       : "";
     html +=
-      '<li class="vinact-item">' +
+      '<li class="vinact-item vinact-e-' + _vinactEstado(r) + (_vinactVencido(r) ? " vinact-vencida" : "") + '">' +
       '<div class="vinact-top">' +
       '<span class="vinact-nombre">' +
       escapeHtml(r.razon_social || "(sin razón social)") +
@@ -10318,6 +10499,7 @@ function _vinactRender() {
           '">WhatsApp</a>'
         : "") +
       "</div>" +
+      _vinactEstadoHtml(r) +
       "</li>";
   });
   html += "</ul>";
@@ -10357,6 +10539,7 @@ async function loadVendorInactivosUI() {
     if (res.error) throw res.error;
     _vendorInactivos = res.data || [];
     _vendorInactivosVerTodos = false;
+    _vinactEdit = null;
     _vinactRender();
   } catch (e) {
     console.error("get_mis_clientes_inactivos:", e);
@@ -10382,6 +10565,9 @@ function descargarVendorInactivosExcel() {
       Localidad: r.localidad || "",
       WhatsApp: r.whatsapp || "",
       "Compra en Chef": r.chef_ultima ? _vinactFecha(r.chef_ultima) : "",
+      Estado: _vinactLabel(_vinactEstado(r)),
+      Comentario: r.nota_texto || "",
+      "Seguimiento hasta": r.nota_fecha_seg ? _vinactFecha(r.nota_fecha_seg) : "",
     };
   });
 

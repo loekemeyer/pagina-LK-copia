@@ -16223,3 +16223,99 @@ body { top: 0 !important; }
   font-size: 13.5px;
   padding: 6px 0;
 }
+/* Estado que marca el vendedor (22/09/2026). "Pendiente revisión" va primero. */
+.vinact-est {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+.vinact-est-btn {
+  width: auto;
+  margin: 0;
+  padding: 3px 9px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: #fff;
+  color: #555;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  cursor: pointer;
+}
+.vinact-est-btn:hover {
+  border-color: #999;
+  color: #111;
+}
+.vinact-est-btn.gestion {
+  border-style: dashed;
+}
+.vinact-est-btn.on {
+  background: #111;
+  border-color: #111;
+  border-style: solid;
+  color: #fff;
+}
+.vinact-nota {
+  margin-top: 5px;
+  font-size: 12.5px;
+  color: #444;
+}
+.vinact-nota-txt {
+  color: #666;
+  font-style: italic;
+}
+.vinact-vencido {
+  color: #b00020;
+}
+.vinact-item.vinact-e-cerro,
+.vinact-item.vinact-e-otra_razon_social {
+  opacity: 0.6;
+}
+.vinact-item.vinact-vencida {
+  background: #fff5f5;
+}
+.vinact-ed {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  background: #fafafa;
+}
+.vinact-ed-l {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 4px;
+}
+.vinact-ed-in {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 9px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.vinact-ed-hint {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #777;
+}
+.vinact-ed-err {
+  margin-top: 5px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #b00020;
+}
+.vinact-ed-acc {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.vinact-ed-acc .profile-btn {
+  width: auto;
+  padding: 6px 14px;
+  font-size: 13px;
+}

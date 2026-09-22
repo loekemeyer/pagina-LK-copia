@@ -1,0 +1,19 @@
+-- 22/09/2026 (Thomas): el vendedor marca cada cliente de "Clientes que no están comprando".
+-- Aplicado en la base (LK kwkclwhmoygunqmlegrg). La base es la fuente de verdad; esto documenta.
+--
+-- vendedor_inactivo_notas  historial (RLS sin policies: sólo por RPC)
+-- vinact_marcar(p_cod text, p_estado text, p_texto text, p_fecha date, p_cod_rel text) → bigint
+--   * sólo un vendedor (cod 100XX o 1) y sólo clientes de su cartera (mismo criterio que
+--     get_mis_clientes_inactivos). EXECUTE: authenticated.
+--   * estados: pendiente_revision (default, el primero) · lo_contacto_yo (fecha, +7 días por
+--     defecto) · otra_razon_social (texto obligatorio) · cerro · contactenlo_ustedes · otro
+--     (texto obligatorio).
+--   * cerro / contactenlo_ustedes / otro → sync_vendedor_avisos_virgilio() al momento
+--     (y el cron 24 reintenta) → Gestión "GV_Vendedor_Avisos" → tarea Planify a Luis (52).
+-- get_mis_clientes_inactivos(p_meses) devuelve además nota_id, nota_estado, nota_texto,
+--   nota_fecha_seg, nota_cod_rel, nota_at, nota_vendedor: la última nota POSTERIOR a la
+--   última compra (si el cliente vuelve a comprar, la marca deja de aplicar sola).
+--   Backup de la versión anterior: zz_backups."LK_Backup_funcdef_vinact_20260922".
+-- virgilio.gv_vendedor_avisos: foreign table SIN recibido_at (postgres_fdw manda NULL en
+--   todas las columnas declaradas y pisaría el default NOT NULL del otro lado).
+-- Lado Gestión: sql/gv_vendedor_avisos_v2135.sql del repo Gestion-Virgilio.
