@@ -16,9 +16,9 @@
     <meta property="og:url" content="https://loekemeyer.com/historia.html" />
     <meta property="og:image" content="https://loekemeyer.com/img/img_landing.webp" />
     <link rel="icon" type="image/png" href="img/favicon.jpg" />
-    <link rel="stylesheet" href="css/styles.index.css?v=23447" />
-    <link rel="stylesheet" href="css/productos.css?v=23447" />
-    <link rel="stylesheet" href="css/publico.css?v=23447" />
+    <link rel="stylesheet" href="css/styles.index.css?v=23448" />
+    <link rel="stylesheet" href="css/productos.css?v=23448" />
+    <link rel="stylesheet" href="css/publico.css?v=23448" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -82,6 +82,62 @@
               </dl>
             </aside>
           </div>
+          <!-- La página abría sin una sola imagen: "cuatro generaciones" en texto
+               pelado no se cree. Va la foto de los cuatro artículos insignia, que
+               además son los que la página argumenta más abajo (504, 505, el
+               sacacorchos y el abrelatas). Es la misma que usa la home y la que
+               viaja como og:image, así que no suma peso nuevo al sitio. -->
+          <figure class="pub-hero-foto">
+            <img
+              src="img/img_landing.webp"
+              alt="Afila cuchillos, sacacorchos tipo mozo, pelapapas y abrelatas Loekemeyer sobre una mesada"
+              width="1536"
+              height="1024"
+              fetchpriority="high"
+            />
+            <figcaption>
+              Cuatro de los artículos con los que se conoce la marca. El afila
+              cuchillos 504 y el pelapapas 505 salen de matrices que diseñamos
+              nosotros y registramos en 1969 y 1971.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ================= PRUEBA SOCIAL =================
+           Bloque nuevo (22/09/2026). Era lo que más faltaba: la página
+           argumentaba sola, sin un solo tercero que la respalde. Los once
+           logos son los MISMOS que ya están en el carrusel público de
+           index.html desde antes, así que no se expone ningún cliente que no
+           estuviera expuesto. No se inventa ninguna cifra de puntos de venta:
+           el dato no existe en ningún lado y una cifra inflada acá destruye
+           toda la página. -->
+      <section class="pub-section pub-section--banda" id="clientes">
+        <div class="pub-wrap">
+          <p class="pub-kicker">Quiénes nos compran</p>
+          <h2>Nuestros artículos están en las góndolas de las principales cadenas</h2>
+          <p class="pub-bajada">
+            Supermercados nacionales, mayoristas, distribuidores y cadenas de
+            bazar trabajan nuestras líneas. Lo que se fabrica en Cervantes 2868
+            se vende en sus locales de todo el país, y también se exporta.
+          </p>
+          <div class="pub-logos" role="list" aria-label="Clientes de Loekemeyer">
+            <span role="listitem"><img src="img/coto_logo.png" alt="Coto" width="150" height="80" loading="lazy" /></span>
+            <span role="listitem"><img src="img/dia_logo.png" alt="DIA" width="150" height="80" loading="lazy" /></span>
+            <span role="listitem"><img src="img/jumbo_logo.png" alt="Jumbo" width="150" height="80" loading="lazy" /></span>
+            <span role="listitem"><img src="img/laanonima_logo.png" alt="La Anónima" width="150" height="80" loading="lazy" /></span>
+            <span role="listitem"><img src="img/changomas_logo.png" alt="ChangoMas" width="150" height="80" loading="lazy" /></span>
+            <span role="listitem"><img src="img/msanchez_logo.png" alt="M Sanchez" width="150" height="80" loading="lazy" /></span>
+            <span role="listitem"><img src="img/mullerymuller_logo.png" alt="Muller y Muller" width="150" height="80" loading="lazy" /></span>
+            <span role="listitem"><img src="img/osa_logo.png" alt="Osa Distribuidora" width="150" height="80" loading="lazy" /></span>
+            <span role="listitem"><img src="img/torresyliva_logo.png" alt="Torres y Liva" width="150" height="80" loading="lazy" /></span>
+            <span role="listitem"><img src="img/bazarchef_logo.png" alt="Bazar Chef" width="150" height="80" loading="lazy" /></span>
+            <span role="listitem"><img src="img/noblex_logo.png" alt="Bazar Noblex" width="150" height="80" loading="lazy" /></span>
+          </div>
+          <p class="pub-note">
+            Las marcas pertenecen a sus titulares y se muestran para identificar
+            a nuestros clientes.
+          </p>
         </div>
       </section>
 
@@ -101,86 +157,8 @@
            desarrollados en la Argentina, y la exportación. "Más de 10 líneas"
            se actualizó a las 19 de hoy. -->
 
-      <!-- ================= LÍNEA DE TIEMPO ================= -->
-      <section class="pub-section" id="linea-de-tiempo">
-        <div class="pub-wrap">
-          <p class="pub-kicker">La empresa</p>
-          <h2>De 1950 a hoy</h2>
-          <p class="pub-bajada">
-            Somos cuarta generación de fabricantes de utensilios. La empresa se
-            fundó como sociedad de hermanos en 1950 y sigue siendo familiar: la
-            planta está en Cervantes 2868, en la Ciudad de Buenos Aires, y ahí
-            se estampan, arman y embalan los artículos de fabricación propia.
-          </p>
-          <p>
-            En estas siete décadas desarrollamos en el país cosas que antes
-            llegaban de afuera: el primer pelapapas y el primer sacacorchos de
-            doble aleta fabricados en la Argentina salieron de esta planta. Hoy
-            son diecinueve líneas, en los principales comercios del país y
-            también exportadas.
-          </p>
-          <ol class="pub-timeline">
-            <li>
-              <span class="anio">1950</span>
-              <p>Se funda Loekemeyer Hermanos en Buenos Aires.</p>
-            </li>
-            <li>
-              <span class="anio">1969</span>
-              <p>
-                Primer diseño registrado en el Instituto Nacional de la
-                Propiedad Industrial (INPI): el modelo industrial N° 12.433, la
-                forma del cuerpo plástico del afilador. Es el afila cuchillos
-                código 504, que seguimos fabricando con la misma pieza.
-              </p>
-            </li>
-            <li>
-              <span class="anio">1971 y 1976</span>
-              <p>
-                Dos modelos más, N° 18.279 y N° 29.777: el cuerpo plástico del
-                pelador, el marco alargado que sostiene la cuchilla basculante.
-                En el registro figuran como "empuñadura para útiles de cocina"
-                porque lo que se protege es esa pieza, no el pelador armado.
-              </p>
-            </li>
-            <li>
-              <span class="anio">1975</span>
-              <p>
-                Dispositivo para pelar frutas, modelo N° 27.925: el
-                pelanaranjas que seguimos fabricando, código 569. Es una sola
-                pieza de plástico, sin acero.
-              </p>
-            </li>
-            <li>
-              <span class="anio">1999</span>
-              <p>
-                Corta tortas, modelo N° 66.602, registrado por la tercera
-                generación: la pala triangular que corta la porción y la
-                levanta. Es el corta torta 3 usos, código 326.
-              </p>
-            </li>
-            <li>
-              <span class="anio">2014 y 2015</span>
-              <!-- Fechas deducidas del plazo de la declaración de uso (12/01/2020): confirmar con G. Breuer. -->
-              <p>
-                La marca LOEKEMEYER queda registrada en el INPI en las clases 8
-                (cuchillería y herramientas de mano), 20 y 21 (utensilios de
-                cocina y menaje).
-              </p>
-            </li>
-            <li>
-              <span class="anio">Hoy</span>
-              <p>
-                Cuarta generación al frente. Casi 200 artículos en 19 líneas,
-                fabricación propia en Buenos Aires, exportación y pedidos
-                mayoristas online con seguimiento de entrega.
-              </p>
-            </li>
-          </ol>
-        </div>
-      </section>
-
       <!-- ================= DISEÑOS REGISTRADOS ================= -->
-      <section class="pub-section pub-section--banda pub-section--clave" id="disenos-registrados">
+      <section class="pub-section pub-section--clave" id="disenos-registrados">
         <div class="pub-wrap">
           <p class="pub-kicker">Lo que nos separa del resto</p>
           <h2>Cinco diseños propios, y dos todavía en producción</h2>
@@ -308,43 +286,214 @@
         </div>
       </section>
 
-      <!-- ================= CÓMO TRABAJAMOS ================= -->
+      <!-- ================= LÍNEA DE TIEMPO ================= -->
+      <section class="pub-section" id="linea-de-tiempo">
+        <div class="pub-wrap">
+          <p class="pub-kicker">La empresa</p>
+          <h2>De 1950 a hoy</h2>
+          <p class="pub-bajada">
+            Somos cuarta generación de fabricantes de utensilios. La empresa se
+            fundó como sociedad de hermanos en 1950 y sigue siendo familiar: la
+            planta está en Cervantes 2868, en la Ciudad de Buenos Aires, y ahí
+            se estampan, arman y embalan los artículos de fabricación propia.
+          </p>
+          <p>
+            En estas siete décadas desarrollamos en el país cosas que antes
+            llegaban de afuera: el primer pelapapas y el primer sacacorchos de
+            doble aleta fabricados en la Argentina salieron de esta planta. Hoy
+            son diecinueve líneas, en los principales comercios del país y
+            también exportadas.
+          </p>
+          <ol class="pub-timeline">
+            <li>
+              <span class="anio">1950</span>
+              <p>Se funda Loekemeyer Hermanos en Buenos Aires.</p>
+            </li>
+            <li>
+              <span class="anio">1969</span>
+              <p>
+                Primer diseño registrado en el Instituto Nacional de la
+                Propiedad Industrial (INPI): el modelo industrial N° 12.433, la
+                forma del cuerpo plástico del afilador. Es el afila cuchillos
+                código 504, que seguimos fabricando con la misma pieza.
+              </p>
+            </li>
+            <li>
+              <span class="anio">1971 y 1976</span>
+              <p>
+                Dos modelos más, N° 18.279 y N° 29.777: el cuerpo plástico del
+                pelador, el marco alargado que sostiene la cuchilla basculante.
+                En el registro figuran como "empuñadura para útiles de cocina"
+                porque lo que se protege es esa pieza, no el pelador armado.
+              </p>
+            </li>
+            <li>
+              <span class="anio">1975</span>
+              <p>
+                Dispositivo para pelar frutas, modelo N° 27.925: el
+                pelanaranjas que seguimos fabricando, código 569. Es una sola
+                pieza de plástico, sin acero.
+              </p>
+            </li>
+            <li>
+              <span class="anio">1999</span>
+              <p>
+                Corta tortas, modelo N° 66.602, registrado por la tercera
+                generación: la pala triangular que corta la porción y la
+                levanta. Es el corta torta 3 usos, código 326.
+              </p>
+            </li>
+            <!-- HITO "2014 y 2015 — marca LOEKEMEYER registrada en las clases 8,
+                 20 y 21" RETIRADO el 22/09/2026. Las fechas estaban DEDUCIDAS del
+                 plazo de la declaración de uso (12/01/2020) y nunca se confirmaron
+                 con G. Breuer, el estudio que lleva la marca. Esta página existe
+                 para demostrar que la historia es real: una fecha deducida es
+                 justo lo que no puede tener. Vuelve apenas G. Breuer confirme año,
+                 número de registro y clases. -->
+            <li>
+              <span class="anio">Hoy</span>
+              <p>
+                Cuarta generación al frente. Casi 200 artículos en 19 líneas,
+                fabricación propia en Buenos Aires, exportación y pedidos
+                mayoristas online con seguimiento de entrega.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ================= POR QUÉ A LA FÁBRICA =================
+           Era "Cómo trabajamos hoy": cuatro tarjetas parejas, sin jerarquía y
+           sin decir contra qué compite el comprador. Se reescribió con el eje
+           que importa —fábrica contra importador— y se le sacó el reclamo de
+           repuestos generalizado: HOY SÓLO ESTÁ VERIFICADO PARA ABRELATAS, que
+           es donde lo dice el propio catálogo. Si mantenemos repuesto de otras
+           líneas, se amplía la tarjeta; inventarlo sería regalar la objeción. -->
       <section class="pub-section pub-section--banda pub-section--clave" id="como-trabajamos">
         <div class="pub-wrap">
           <p class="pub-kicker">Para tu comercio</p>
-          <h2>Cómo trabajamos hoy</h2>
+          <h2>Por qué conviene comprarle a la fábrica</h2>
+          <p class="pub-bajada">
+            Casi todo lo que compite con nosotros en la góndola viene de un
+            contenedor. La diferencia no es el precio de la primera compra: es
+            qué pasa cuando hace falta reponer, cuando una pieza sale mal o
+            cuando el cliente vuelve con el producto roto.
+          </p>
           <div class="pub-cards">
             <article class="pub-card">
-              <h3>Fabricación propia</h3>
+              <h3>Fabricación y matricería propias</h3>
               <p>
                 Estampamos, armamos y embalamos en nuestra planta de Buenos
-                Aires. La matricería es propia: las matrices de cada pieza las
-                hacemos nosotros.
+                Aires, y las matrices de cada pieza las hacemos nosotros. Un
+                cambio de diseño se resuelve acá, no a noventa días de flete.
+              </p>
+            </article>
+            <article class="pub-card">
+              <h3>Repuestos en la línea de abrelatas</h3>
+              <p>
+                De los abrelatas mantenemos piezas de repuesto. Un abrelatas
+                importado que se rompe se tira; uno nuestro se arregla, y esa es
+                la diferencia que el cliente recuerda.
               </p>
             </article>
             <article class="pub-card">
               <h3>Garantía de por vida</h3>
               <p>
                 Nuestros productos tienen garantía de por vida por defectos de
-                fabricación. No cubre el desgaste por el uso habitual.
+                fabricación. No cubre el desgaste por el uso habitual. Si algo
+                falla, respondemos nosotros y no un proveedor del exterior.
               </p>
             </article>
             <article class="pub-card">
-              <h3>Habilitaciones</h3>
+              <h3>Habilitaciones en regla</h3>
               <p>
                 Los artículos en contacto con alimentos que lo requieren se
                 tramitan ante el INAL (ANMAT). Para exportar, emitimos
                 certificados de origen a través de ADIMRA.
               </p>
             </article>
-            <article class="pub-card">
-              <h3>Fabricamos con tu marca</h3>
-              <p>
-                Producimos líneas con marca propia para cadenas de supermercados
-                y distribuidores, con el mismo estándar que la línea Loekemeyer.
-              </p>
-            </article>
           </div>
+          <p class="pub-destacado">
+            Setenta y seis años en la misma actividad, con la matricería adentro
+            de la planta. Eso es lo que no puede ofrecer un importador.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= MARCA PROPIA =================
+           Estaba en una tarjeta de tres líneas dentro de "cómo trabajamos".
+           Es el negocio de mayor margen y el que menos competencia tiene, así
+           que va en sección propia con su CTA. Los términos (volumen mínimo,
+           plazos, matriz nueva) NO se publican: se acuerdan por operación y no
+           hay un número que el dueño haya fijado. -->
+      <section class="pub-section pub-section--clave" id="marca-propia">
+        <div class="pub-wrap">
+          <p class="pub-kicker">Marca propia</p>
+          <h2>Fabricamos tu línea con tu marca</h2>
+          <p class="pub-bajada">
+            Producimos líneas completas con la marca de la cadena o del
+            distribuidor, con las mismas matrices, el mismo acero y el mismo
+            control que la línea Loekemeyer. Es lo que ya hacemos para
+            supermercados que venden nuestros artículos bajo su propia marca.
+          </p>
+          <ul class="pub-lista">
+            <li>Con nuestras matrices, o desarrollando una matriz nueva para tu línea.</li>
+            <li>Packaging con tu diseño y tu marca: blíster, caja o granel.</li>
+            <li>Habilitación ante el INAL para los artículos que la requieren.</li>
+            <li>Certificado de origen por ADIMRA si la línea se exporta.</li>
+          </ul>
+          <div class="catalogo-actions">
+            <a class="btn-catalogo" href="https://wa.me/5491131181021?text=Hola%20Loekemeyer%2C%20quiero%20consultar%20por%20fabricaci%C3%B3n%20con%20marca%20propia." target="_blank" rel="noopener">Consultar por marca propia</a>
+            <a class="btn-catalogo btn-catalogo--alt" href="mailto:ventas@loekemeyer.com?subject=Consulta%20por%20marca%20propia">Escribir por mail</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= CÓMO EMPEZAR =================
+           Bloque nuevo. Un comercio que entra no sabe si le van a vender ni
+           cómo. Los tres pasos son los que el sistema ya hace de verdad
+           (alta del cliente + usuario de la web mayorista + pedido online con
+           seguimiento), así que no hay nada prometido de más.
+           ⚠ PENDIENTE DEL DUEÑO — tres datos que NO están en ningún lado del
+           sistema y que son los que más pregunta un cliente nuevo:
+             1. mínimo de compra (no existe regla en script.js ni en la base),
+             2. plazo de entrega por zona (es la tarea "Th Fecha estimada de
+                entrega por zona", todavía abierta),
+             3. formas y plazos de pago.
+           Apenas los defina Thomas, van como cuarta tarjeta o como línea abajo
+           de los pasos. No se inventan. -->
+      <section class="pub-section pub-section--banda" id="como-empezar">
+        <div class="pub-wrap">
+          <p class="pub-kicker">Clientes nuevos</p>
+          <h2>Cómo empezar a comprarnos</h2>
+          <p class="pub-bajada">
+            Vendemos por mayor a comercios: supermercados, bazares,
+            distribuidores y ferreterías. Son tres pasos y el primero lleva un
+            minuto.
+          </p>
+          <ol class="pub-pasos">
+            <li>
+              <h3>Escribinos</h3>
+              <p>
+                Por WhatsApp o por mail, contándonos qué comercio tenés y en qué
+                zona estás.
+              </p>
+            </li>
+            <li>
+              <h3>Te damos de alta</h3>
+              <p>
+                Te abrimos la cuenta y te mandamos tu usuario de la web
+                mayorista, donde ves el catálogo con tu lista de precios.
+              </p>
+            </li>
+            <li>
+              <h3>Pedís online</h3>
+              <p>
+                Cargás el pedido desde la web, a cualquier hora, y seguís la
+                entrega desde el mismo lugar.
+              </p>
+            </li>
+          </ol>
         </div>
       </section>
 
@@ -352,7 +501,11 @@
            Los dibujos son de patentes de Estados Unidos: documentos oficiales,
            de dominio público, bajados de patentimages.storage.googleapis.com y
            recortados. Se pueden publicar sin licencia ni atribución obligatoria,
-           pero igual se cita inventor, número y fecha en cada epígrafe. -->
+           pero igual se cita inventor, número y fecha en cada epígrafe.
+           OJO CON EL PESO DE ESTA SECCIÓN: habla de Warner, Lyman, Neweczerzal
+           y Rosati, no de Loekemeyer. Es buen contenido y buen SEO, pero no
+           vende: por eso va ÚLTIMA, después de todo lo propio. Si alguna vez
+           crece, que crezca para abajo. -->
       <section class="pub-section pub-section--relato" id="tres-inventos">
         <div class="pub-wrap">
           <p class="pub-kicker">De dónde vienen</p>
@@ -492,15 +645,29 @@
         </div>
       </section>
 
-      <!-- ================= CTA ================= -->
+      <!-- ================= CTA =================
+           Dos puertas, no una. Antes había un solo botón de WhatsApp para
+           todo el mundo: el que todavía no es cliente y el que ya compra y sólo
+           quiere reponer terminaban escribiendo al mismo número. Y el mail
+           quedaba únicamente en el pie, que es donde nadie lo busca. -->
       <section class="pub-cta">
         <div class="pub-wrap">
-          <div class="prod-cta-block">
-          <h2>¿Querés vender Loekemeyer en tu comercio?</h2>
-          <p>Atendemos supermercados, bazares, distribuidores y ferreterías de todo el país.</p>
-          <div class="catalogo-actions">
-            <a class="btn-catalogo" href="https://wa.me/5491131181021?text=Hola%20Loekemeyer%2C%20tengo%20un%20comercio%20y%20quiero%20comprar%20por%20mayor." target="_blank" rel="noopener">Comprar por mayor por WhatsApp</a>
-            <a class="btn-catalogo btn-catalogo--alt" href="productos/index.html">Ver los productos</a>
+          <div class="pub-ctas">
+            <div class="prod-cta-block">
+              <h2>¿Todavía no nos comprás?</h2>
+              <p>Atendemos supermercados, bazares, distribuidores y ferreterías de todo el país.</p>
+              <div class="catalogo-actions">
+                <a class="btn-catalogo" href="https://wa.me/5491131181021?text=Hola%20Loekemeyer%2C%20tengo%20un%20comercio%20y%20quiero%20comprar%20por%20mayor." target="_blank" rel="noopener">Abrir cuenta por WhatsApp</a>
+                <a class="btn-catalogo btn-catalogo--alt" href="mailto:ventas@loekemeyer.com?subject=Quiero%20comprar%20por%20mayor">ventas@loekemeyer.com</a>
+              </div>
+            </div>
+            <div class="prod-cta-block">
+              <h2>¿Ya sos cliente?</h2>
+              <p>Entrá con tu usuario y cargá el pedido, o mirá antes el catálogo completo.</p>
+              <div class="catalogo-actions">
+                <a class="btn-catalogo" href="mayorista.html">Entrar a la web mayorista</a>
+                <a class="btn-catalogo btn-catalogo--alt" href="productos/index.html">Ver los productos</a>
+              </div>
             </div>
           </div>
         </div>
@@ -553,8 +720,8 @@
       </div>
     </div>
 
-    <script src="version.js?v=23447"></script>
-    <script src="script.index.js?v=23447"></script>
-    <script src="js/conversiones.js?v=23447"></script>
+    <script src="version.js?v=23448"></script>
+    <script src="script.index.js?v=23448"></script>
+    <script src="js/conversiones.js?v=23448"></script>
   </body>
 </html>

@@ -500,6 +500,172 @@
   padding: 8px 0 72px;
 }
 
+/* ================= FOTO DE CABECERA =================
+   La página abría sin una sola imagen. La foto va a todo el ancho del bloque
+   (960 px), debajo del título y la ficha: si fuera al costado del H1 competiría
+   con la ficha de datos y las dos perderían. */
+.pub-hero-foto {
+  margin: 34px 0 0;
+}
+
+.pub-hero-foto img {
+  display: block;
+  width: 100%;
+  /* Recortada a 2:1 y no a su 3:2 original: a 960 px de ancho la foto entera
+     mide 640 de alto y empuja los logos de clientes fuera de la primera
+     pantalla. El encuadre baja al 58% porque los cuatro artículos están en la
+     mitad inferior; centrado se comía el abrelatas. */
+  aspect-ratio: 2 / 1;
+  height: auto;
+  object-fit: cover;
+  object-position: center 58%;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.09);
+}
+
+.pub-hero-foto figcaption {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin-top: 10px;
+  max-width: 70ch;
+}
+
+/* ================= LOGOS DE CLIENTES =================
+   Grilla estática, NO el carrusel animado de la home (.clientes-track): acá el
+   visitante está leyendo, y once logos desfilando lo obligan a esperar a que
+   vuelva a pasar el que reconoció. Van EN COLOR y no en escala de grises: el
+   bloque existe para que el comprador reconozca a su propia cadena de un
+   vistazo, y un logo gris se reconoce peor. La caja de altura fija los empareja
+   aunque cada archivo tenga otra proporción. */
+.pub-logos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px 16px;
+  margin-top: 26px;
+}
+
+.pub-logos span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 128px;
+  max-width: 176px;
+  height: 64px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.pub-logos img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* ================= LISTA DE ARGUMENTOS ================= */
+.pub-lista {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 11px;
+  max-width: 70ch;
+}
+
+.pub-lista li {
+  position: relative;
+  padding-left: 30px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.pub-lista li::before {
+  content: "\2713";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+/* ================= PASOS (cómo empezar) ================= */
+.pub-pasos {
+  list-style: none;
+  counter-reset: paso;
+  margin: 26px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.pub-pasos li {
+  counter-increment: paso;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
+}
+
+.pub-pasos li::before {
+  content: counter(paso);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.pub-pasos h3 {
+  font-size: 17px;
+  margin: 0 0 8px;
+}
+
+/* Calificado a propósito: `.pub-section p` es (0,1,1) y le gana a cualquier
+   clase suelta aplicada a un <p> (ver la nota de especificidad del CLAUDE.md).
+   Sin los dos niveles, el texto del paso sale en 17 px y con max-width 70ch. */
+.pub-section .pub-pasos p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: #555;
+  margin: 0;
+  max-width: none;
+}
+
+/* ================= CTA DOBLE =================
+   Dos puertas: el que todavía no es cliente y el que ya compra. El
+   .prod-cta-block de productos.css trae margin-top: 60px pensado para ir solo
+   al final de una página; acá los separa de más y se anula. */
+.pub-ctas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin-top: 52px;
+}
+
+.pub-ctas .prod-cta-block {
+  margin-top: 0;
+  padding: 40px 24px;
+}
+
+.pub-ctas .prod-cta-block h2 {
+  font-size: 22px;
+}
+
 /* ================= RESPONSIVE ================= */
 @media (max-width: 860px) {
   .pub-hero {
@@ -533,6 +699,11 @@
   .pub-pares {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .pub-pasos,
+  .pub-ctas {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 560px) {
@@ -547,5 +718,15 @@
 
   .pub-ficha dt {
     margin-top: 10px;
+  }
+
+  .pub-logos {
+    gap: 10px;
+  }
+
+  .pub-logos span {
+    flex-basis: 96px;
+    height: 54px;
+    padding: 6px 8px;
   }
 }
