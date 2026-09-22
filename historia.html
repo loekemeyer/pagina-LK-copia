@@ -16,9 +16,9 @@
     <meta property="og:url" content="https://loekemeyer.com/historia.html" />
     <meta property="og:image" content="https://loekemeyer.com/img/img_landing.webp" />
     <link rel="icon" type="image/png" href="img/favicon.jpg" />
-    <link rel="stylesheet" href="css/styles.index.css?v=23448" />
-    <link rel="stylesheet" href="css/productos.css?v=23448" />
-    <link rel="stylesheet" href="css/publico.css?v=23448" />
+    <link rel="stylesheet" href="css/styles.index.css?v=23449" />
+    <link rel="stylesheet" href="css/productos.css?v=23449" />
+    <link rel="stylesheet" href="css/publico.css?v=23449" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -101,8 +101,40 @@
               nosotros y registramos en 1969 y 1971.
             </figcaption>
           </figure>
+
+          <!-- ÍNDICE. La página hace tres trabajos (contar la empresa, vender a
+               un comercio y publicar el origen de los inventos) y son 9 secciones
+               con la misma apertura: volanta + H2 + bajada. Sin un mapa arriba el
+               lector no sabe cuánto falta ni qué viene, que es lo que la hacía
+               sentir desordenada. Tres entradas, una por bloque. -->
+          <nav class="pub-indice" aria-label="Contenido de la página">
+            <a href="#bloque-empresa">
+              <span class="pub-indice-num">I</span>
+              <span class="pub-indice-tit">La empresa</span>
+              <span class="pub-indice-sub">Clientes · Diseños propios · De 1950 a hoy</span>
+            </a>
+            <a href="#bloque-comercio">
+              <span class="pub-indice-num">II</span>
+              <span class="pub-indice-tit">Para tu comercio</span>
+              <span class="pub-indice-sub">Por qué la fábrica · Marca propia · Cómo empezar</span>
+            </a>
+            <a href="#bloque-inventos">
+              <span class="pub-indice-num">III</span>
+              <span class="pub-indice-tit">De dónde vienen</span>
+              <span class="pub-indice-sub">Abrelatas · Pelapapas · Sacacorchos</span>
+            </a>
+          </nav>
         </div>
       </section>
+
+
+      <!-- ================= BLOQUE I ================= -->
+      <header class="pub-bloque" id="bloque-empresa">
+        <div class="pub-wrap">
+          <p class="pub-bloque-num">I</p>
+          <h2 class="pub-bloque-tit">La empresa</h2>
+        </div>
+      </header>
 
       <!-- ================= PRUEBA SOCIAL =================
            Bloque nuevo (22/09/2026). Era lo que más faltaba: la página
@@ -166,11 +198,9 @@
             Cinco modelos industriales llevan el nombre de la familia en el
             registro argentino. Son registros históricos: un modelo industrial
             protege cinco años, renovables hasta quince, así que hoy son de
-            dominio público. Los mostramos porque cuentan cómo se diseñó cada
-            producto, y porque esos diseños siguen en producción. El artículo
-            más vendido de la casa sale de acá: el pelador de mango plástico,
-            código 505, se hace con el cuerpo que registramos en 1971, y el
-            afila cuchillos 504 con el que dibujamos en 1969.
+            dominio público. Los mostramos porque esos diseños siguen en
+            producción: de las cinco piezas registradas, dos se fabrican hoy
+            con la misma matriz.
           </p>
           <div class="pub-tabla-wrap">
             <table class="pub-tabla">
@@ -236,12 +266,6 @@
               <figcaption>Corta torta 3 usos, 1999<br />Modelo N° 66.602</figcaption>
             </figure>
           </div>
-          <p class="pub-destacado">
-            El cuerpo plástico del pelador que más vendemos es un diseño nuestro
-            registrado en 1971. El del afila cuchillos, uno de 1969. Los dos
-            siguen saliendo de la misma planta.
-          </p>
-
           <h3 class="pub-sub">De la lámina al mostrador</h3>
           <div class="pub-pares">
             <figure class="pub-par">
@@ -273,15 +297,12 @@
           <p class="pub-note">
             La columna "naturaleza" es la que figura en el registro. En un
             modelo industrial se protege la forma de una pieza, no el producto
-            entero, y en los cinco casos esa pieza es la parte plástica: el
-            cuerpo del afila cuchillos, el del pelador —inscripto como
-            "empuñadura para útiles de cocina"—, la pala del corta torta y el
-            pelanaranjas, que es plástico entero. Donde hay acero, la cuchilla
-            o los discos van montados aparte: lo que se diseña y se registra es
-            la matriz del plástico. Láminas
-            originales depositadas en el Instituto Nacional de la Propiedad
-            Industrial al registrar cada modelo. Fuente: INPI, búsqueda
-            avanzada de modelos y diseños industriales, titular Loekemeyer.
+            entero, y en los cinco casos esa pieza es la parte plástica. Donde
+            hay acero, la cuchilla o los discos van montados aparte: lo que se
+            diseña y se registra es la matriz del plástico. Láminas originales
+            depositadas en el Instituto Nacional de la Propiedad Industrial al
+            registrar cada modelo. Fuente: INPI, búsqueda avanzada de modelos y
+            diseños industriales, titular Loekemeyer.
           </p>
         </div>
       </section>
@@ -289,67 +310,31 @@
       <!-- ================= LÍNEA DE TIEMPO ================= -->
       <section class="pub-section" id="linea-de-tiempo">
         <div class="pub-wrap">
-          <p class="pub-kicker">La empresa</p>
+          <p class="pub-kicker">Cuatro generaciones</p>
           <h2>De 1950 a hoy</h2>
           <p class="pub-bajada">
-            Somos cuarta generación de fabricantes de utensilios. La empresa se
-            fundó como sociedad de hermanos en 1950 y sigue siendo familiar: la
-            planta está en Cervantes 2868, en la Ciudad de Buenos Aires, y ahí
-            se estampan, arman y embalan los artículos de fabricación propia.
-          </p>
-          <p>
             En estas siete décadas desarrollamos en el país cosas que antes
             llegaban de afuera: el primer pelapapas y el primer sacacorchos de
-            doble aleta fabricados en la Argentina salieron de esta planta. Hoy
-            son diecinueve líneas, en los principales comercios del país y
-            también exportadas.
+            doble aleta fabricados en la Argentina salieron de esta planta, en
+            Cervantes 2868, donde se sigue estampando, armando y embalando.
           </p>
           <ol class="pub-timeline">
             <li>
               <span class="anio">1950</span>
-              <p>Se funda Loekemeyer Hermanos en Buenos Aires.</p>
-            </li>
-            <li>
-              <span class="anio">1969</span>
               <p>
-                Primer diseño registrado en el Instituto Nacional de la
-                Propiedad Industrial (INPI): el modelo industrial N° 12.433, la
-                forma del cuerpo plástico del afilador. Es el afila cuchillos
-                código 504, que seguimos fabricando con la misma pieza.
+                Se funda Loekemeyer Hermanos en Buenos Aires, como sociedad de
+                hermanos. La planta nunca se mudó de la Ciudad.
               </p>
             </li>
             <li>
-              <span class="anio">1971 y 1976</span>
+              <span class="anio">1969&ndash;1999</span>
               <p>
-                Dos modelos más, N° 18.279 y N° 29.777: el cuerpo plástico del
-                pelador, el marco alargado que sostiene la cuchilla basculante.
-                En el registro figuran como "empuñadura para útiles de cocina"
-                porque lo que se protege es esa pieza, no el pelador armado.
+                Tres generaciones registran en el INPI
+                <a href="#disenos-registrados">los cinco modelos industriales</a>
+                propios de la casa. Dos de esas piezas siguen hoy en producción,
+                con la misma matriz.
               </p>
             </li>
-            <li>
-              <span class="anio">1975</span>
-              <p>
-                Dispositivo para pelar frutas, modelo N° 27.925: el
-                pelanaranjas que seguimos fabricando, código 569. Es una sola
-                pieza de plástico, sin acero.
-              </p>
-            </li>
-            <li>
-              <span class="anio">1999</span>
-              <p>
-                Corta tortas, modelo N° 66.602, registrado por la tercera
-                generación: la pala triangular que corta la porción y la
-                levanta. Es el corta torta 3 usos, código 326.
-              </p>
-            </li>
-            <!-- HITO "2014 y 2015 — marca LOEKEMEYER registrada en las clases 8,
-                 20 y 21" RETIRADO el 22/09/2026. Las fechas estaban DEDUCIDAS del
-                 plazo de la declaración de uso (12/01/2020) y nunca se confirmaron
-                 con G. Breuer, el estudio que lleva la marca. Esta página existe
-                 para demostrar que la historia es real: una fecha deducida es
-                 justo lo que no puede tener. Vuelve apenas G. Breuer confirme año,
-                 número de registro y clases. -->
             <li>
               <span class="anio">Hoy</span>
               <p>
@@ -362,6 +347,15 @@
         </div>
       </section>
 
+
+      <!-- ================= BLOQUE II ================= -->
+      <header class="pub-bloque" id="bloque-comercio">
+        <div class="pub-wrap">
+          <p class="pub-bloque-num">II</p>
+          <h2 class="pub-bloque-tit">Para tu comercio</h2>
+        </div>
+      </header>
+
       <!-- ================= POR QUÉ A LA FÁBRICA =================
            Era "Cómo trabajamos hoy": cuatro tarjetas parejas, sin jerarquía y
            sin decir contra qué compite el comprador. Se reescribió con el eje
@@ -371,7 +365,7 @@
            líneas, se amplía la tarjeta; inventarlo sería regalar la objeción. -->
       <section class="pub-section pub-section--banda pub-section--clave" id="como-trabajamos">
         <div class="pub-wrap">
-          <p class="pub-kicker">Para tu comercio</p>
+          <p class="pub-kicker">Contra el importado</p>
           <h2>Por qué conviene comprarle a la fábrica</h2>
           <p class="pub-bajada">
             Casi todo lo que compite con nosotros en la góndola viene de un
@@ -497,6 +491,15 @@
         </div>
       </section>
 
+
+      <!-- ================= BLOQUE III ================= -->
+      <header class="pub-bloque" id="bloque-inventos">
+        <div class="pub-wrap">
+          <p class="pub-bloque-num">III</p>
+          <h2 class="pub-bloque-tit">De dónde vienen</h2>
+        </div>
+      </header>
+
       <!-- ================= TRES INVENTOS =================
            Los dibujos son de patentes de Estados Unidos: documentos oficiales,
            de dominio público, bajados de patentimages.storage.googleapis.com y
@@ -508,7 +511,6 @@
            crece, que crezca para abajo. -->
       <section class="pub-section pub-section--relato" id="tres-inventos">
         <div class="pub-wrap">
-          <p class="pub-kicker">De dónde vienen</p>
           <h2>Tres inventos que fabricamos desde 1950</h2>
           <p class="pub-bajada">
             El abrelatas, el pelapapas y el sacacorchos resuelven problemas que
@@ -588,16 +590,15 @@
           </p>
 
           <p>
-            En la Argentina el primer pelapapas lo desarrollamos nosotros. De
-            ahí salen los modelos N° 18.279 y N° 29.777 que registramos en el
-            INPI en 1971 y 1976: el cuerpo plástico del pelador que todavía
-            fabricamos.
+            En la Argentina el primer pelapapas lo desarrollamos nosotros, y de
+            ahí salen los dos modelos de empuñadura que registramos en el INPI:
+            el cuerpo plástico del pelador que todavía fabricamos.
           </p>
           <p>
             Nuestra línea de peladores tiene nueve modelos, del clásico de mango
             plástico al de cuchilla de corte láser, e incluye el pelanaranjas,
             heredero directo del "dispositivo para pelar frutas" que la empresa
-            registró en el INPI en 1975 con el modelo N° 27.925.
+            registró en 1975.
           </p>
           <div class="catalogo-actions">
             <a class="btn-catalogo" href="productos/peladores.html">Ver los peladores</a>
@@ -720,8 +721,8 @@
       </div>
     </div>
 
-    <script src="version.js?v=23448"></script>
-    <script src="script.index.js?v=23448"></script>
-    <script src="js/conversiones.js?v=23448"></script>
+    <script src="version.js?v=23449"></script>
+    <script src="script.index.js?v=23449"></script>
+    <script src="js/conversiones.js?v=23449"></script>
   </body>
 </html>

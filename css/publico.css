@@ -666,6 +666,91 @@
   font-size: 22px;
 }
 
+/* ================= ÍNDICE DE LA PÁGINA =================
+   Nueve secciones que abren todas igual (volanta + H2 + bajada) y 9.900 px de
+   scroll: sin un mapa arriba, el lector no sabe cuánto falta ni qué viene. Tres
+   entradas, una por bloque; las sub-secciones van en una línea chica para que
+   el índice ocupe tres renglones y no una pantalla. */
+.pub-indice {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.pub-indice a {
+  display: grid;
+  gap: 3px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pub-indice a:hover {
+  border-color: var(--accent);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+}
+
+.pub-indice-num {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  color: var(--accent);
+}
+
+.pub-indice-tit {
+  font-size: 17px;
+  font-weight: 800;
+  color: #111;
+}
+
+.pub-indice-sub {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* ================= PORTADILLAS DE BLOQUE =================
+   Las tres bandas oscuras son lo que separa los tres trabajos de la página:
+   contar la empresa, vender a un comercio y publicar el origen de los inventos.
+   Van a todo el ancho (el <header> cuelga de <main>, no de una sección) y en
+   oscuro a propósito: es el único corte que no se confunde con la banda gris
+   que ya usan las secciones. */
+.pub-bloque {
+  background: #22262b;
+  color: #fff;
+  /* sin bajada, así que la banda es más baja: es un corte, no una sección */
+  padding: 30px 0 28px;
+  scroll-margin-top: 70px;   /* la topbar es sticky */
+}
+
+.pub-bloque-num {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  /* el --accent (#8b1e1e) no contrasta sobre el fondo oscuro: se aclara */
+  color: #e6a9a9;
+  margin: 0 0 8px;
+}
+
+.pub-bloque-tit {
+  font-size: clamp(24px, 2.8vw, 34px);
+  line-height: 1.15;
+  letter-spacing: -0.4px;
+  color: #fff;
+  margin: 0;
+}
+
+.pub-bloque-baj {
+  font-size: 16px;
+  line-height: 1.55;
+  color: #c9ccd1;
+  margin: 0;
+  max-width: 70ch;
+}
+
 /* ================= RESPONSIVE ================= */
 @media (max-width: 860px) {
   .pub-hero {
@@ -701,8 +786,13 @@
   }
 
   .pub-pasos,
-  .pub-ctas {
+  .pub-ctas,
+  .pub-indice {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pub-bloque {
+    padding: 24px 0 22px;
   }
 }
 
