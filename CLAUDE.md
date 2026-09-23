@@ -473,7 +473,7 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
 - `app_settings.web_order_discount` is read at load time as the web-order discount (fallback `0.02`).
 - **Los módulos de estadística valorizan en NETO, no a precio de lista.** `get_ranking_inactivos` y `get_ranking_inactivos_export` hacen `boxes * products.uxb * products.list_price * (1 - customers.dto_vol) * (1 - app_settings.web_order_discount)`. **`list_price` es el precio POR UNIDAD, no por caja**, así que el `uxb` NO es opcional: sin él el monto sale dividido por las unidades por caja (promedio 12,1, rango 1 a 100). Es el mismo cálculo que hace el carrito en `script.js` (`listUnit * (uxb * cajas)`) — la misma cadena multiplicativa que arma un pedido real en `script.js` (`listUnit * (1 - dtoVol) * (1 - webDiscountRate) * (1 - extraRate)`). El descuento por medio de pago queda afuera: depende de cómo se pagó cada pedido y `sales_lines` no lo guarda. Las dos RPC tienen que usar el MISMO factor: una alimenta la tabla en pantalla y la otra el Excel descargable del mismo módulo, así que si divergen muestran números distintos para el mismo cliente.
 
-## ⚠ REGLA (Thomas, 2026-09-23): el EXPRESO lo elige el cliente, y NUNCA le frena el pedido
+## ⚠ REGLA (Thomas, 2026-09-23, v2.3.460): el EXPRESO lo elige el cliente, y NUNCA le frena el pedido
 
 **Thomas, textual:** *"La prioridad es que el cliente termine de mandar el pedido, sin ninguna
 limitación administrativa. Que la carga de dirección donde entregamos nosotros sea opcional"*.
