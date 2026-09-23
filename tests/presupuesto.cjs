@@ -54,6 +54,26 @@ if (!mSel) {
   ok("loadProductsFromDB: sin precio no pide list_price, con precio sí");
 }
 
+// A1b. Ninguna consulta a `customers` puede nombrar `modo_presupuesto` dentro de
+//      su lista de columnas. PostgREST no devuelve la fila sin esa columna: si
+//      no existe todavía rechaza la consulta ENTERA con un 400 y el cliente se
+//      queda SIN PERFIL, sin ningún mensaje. Tiene que ir por `_customerSelect`,
+//      que reintenta sin ella. (23/09/2026: 13 errores 400 en una hora.)
+if (!/async function _customerSelect\(/.test(src)) {
+  mal("se perdió _customerSelect: el front vuelve a romperse si falta la columna");
+} else if (!/r\.error && \/modo_presupuesto\/i/.test(src)) {
+  mal("_customerSelect dejó de reintentar sin la columna");
+} else {
+  ok("_customerSelect reintenta sin modo_presupuesto si la base no la tiene");
+}
+const selDirecto = src.match(/[a-z_],modo_presupuesto"/g);
+if (selDirecto) {
+  mal("hay " + selDirecto.length + " select() de customers que pide modo_presupuesto " +
+      "en la lista de columnas: si la base no la tiene, 400 y cliente sin perfil");
+} else {
+  ok("ningún select() de customers nombra modo_presupuesto directo");
+}
+
 // A2. La línea Loke, lo mismo.
 if (!/isPresupuestoMode\(\)\s*\n?\s*\?\s*"id,cod,description,category,uxb/.test(src)) {
   mal("loadLokeProducts volvió a pedir list_price siempre");

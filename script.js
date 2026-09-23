@@ -1531,6 +1531,38 @@ function isListPriceOnlyClient() {
 function isPresupuestoMode() {
   return !!customerProfile?.modo_presupuesto;
 }
+
+/**
+ * Trae UNA fila de `customers` pidiendo también `modo_presupuesto`, y si la base
+ * todavía no tiene esa columna, la vuelve a pedir SIN ella.
+ *
+ * ⚠ POR QUÉ EXISTE (23/09/2026). El front se publica por un lado y el SQL de
+ * este repo se corre A MANO por otro, así que hay una ventana en la que el
+ * navegador pide una columna que la base todavía no tiene. Y PostgREST no
+ * devuelve la fila sin esa columna: rechaza la consulta ENTERA con un 400. O
+ * sea que el cliente no "pierde el modo presupuesto" — se queda SIN PERFIL y no
+ * puede hacer nada, sin ningún mensaje en pantalla.
+ *
+ * Pasó de verdad: apenas se pushó el modo presupuesto aparecieron 13 errores
+ * 400 en /rest/v1/customers en una hora, contra 0 en las 13 horas anteriores.
+ *
+ * Es el mismo patrón que ya se usaba para el expreso de Chef: si la columna no
+ * está, el front cae solo en vez de romperse.
+ */
+async function _customerSelect(colsBase, aplicarFiltro) {
+  const pedir = (cols) =>
+    aplicarFiltro(supabaseClient.from("customers").select(cols)).maybeSingle();
+
+  let r = await pedir(colsBase + ",modo_presupuesto");
+  if (r && r.error && /modo_presupuesto/i.test(r.error.message || "")) {
+    console.warn(
+      "customers.modo_presupuesto no existe en esta base todavía: hay que correr " +
+        "sql/modo_presupuesto.sql. Mientras tanto se sigue sin el modo presupuesto.",
+    );
+    r = await pedir(colsBase);
+  }
+  return r;
+}
 // Con qué modo se cargaron los productos que hay en memoria. Si un vendedor
 // cambia de cliente y el modo se da vuelta, hay que volver a pedirlos: los que
 // están cargados o tienen precio de más o les falta.
@@ -2368,13 +2400,10 @@ async function refreshAuthState(sessionOverride) {
   }
   syncAdminCheckoutUI();
 
-  const { data: custRow } = await supabaseClient
-    .from("customers")
-    .select(
-      "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit,escala_activa,modo_presupuesto",
-    )
-    .eq("auth_user_id", currentSession.user.id)
-    .maybeSingle();
+  const { data: custRow } = await _customerSelect(
+    "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit,escala_activa",
+    (q) => q.eq("auth_user_id", currentSession.user.id),
+  );
 
   customerProfile = custRow || null;
   // Modo presupuesto: se sincroniza APENAS se sabe qué cliente es, no
@@ -14638,13 +14667,10 @@ async function onLinkedCustomerSelected(opts) {
     }
   }
 
-  var result = await supabaseClient
-    .from("customers")
-    .select(
-      "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit,modo_presupuesto",
-    )
-    .eq("id", customerId)
-    .maybeSingle();
+  var result = await _customerSelect(
+    "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit",
+    (q) => q.eq("id", customerId),
+  );
 
   if (result.error || !result.data) {
     console.error("onLinkedCustomerSelected error:", result.error);

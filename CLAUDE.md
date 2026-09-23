@@ -533,6 +533,20 @@ columna `list_price`** (ni `loadLokeProducts`), así que el precio **no baja al 
 Esconderlo por estilos lo habría dejado a un F12 de distancia. El CSS (`.is-presupuesto` en
 `css/styles.css`) sólo tapa los renglones que, sin precio, quedarían mostrando **"$0"**.
 
+⚠⚠ **EL FRONT SE PUBLICA APARTE DEL SQL, Y ESO YA ROMPIÓ LA PÁGINA (23/09/2026).** El `select`
+del perfil pasó a pedir `modo_presupuesto` **antes** de que nadie corriera el `alter`, y PostgREST
+**no devuelve la fila sin esa columna: rechaza la consulta ENTERA con un 400**. O sea que el
+cliente no perdía el modo presupuesto — se quedaba **SIN PERFIL**, sin poder hacer nada y sin
+ningún mensaje en pantalla. Medido: **13 errores 400 en `/rest/v1/customers` en una hora, contra
+0 en las 13 anteriores**, justo desde el push a `main` (que publica solo en GitHub Pages;
+`loekemeyer.com` no se había tocado, así que los clientes reales nunca lo vieron).
+
+Por eso toda lectura de `customers` va por **`_customerSelect(colsBase, filtro)`**, que pide la
+columna y, si la base no la tiene, **reintenta sin ella**. Es el mismo patrón del expreso de Chef:
+si la columna no está, el front cae solo en vez de romperse. **Regla general: una columna nueva
+que el front pide antes de que el SQL esté corrido tiene que tener fallback, o se publica el SQL
+primero.** `tests/presupuesto.cjs` falla si alguien vuelve a nombrarla dentro de un `.select()`.
+
 ⚠ **La bandera es del CLIENTE, no de quien está logueado.** Si un vendedor o el admin carga el
 pedido POR él, sigue siendo un presupuesto: lo que se cotiza es la operación del cliente, no la
 pantalla del que tipea. Por eso `isPresupuestoMode()` mira sólo `customerProfile`.
