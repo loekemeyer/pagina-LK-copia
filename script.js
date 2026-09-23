@@ -1430,6 +1430,27 @@ function estadoStock(cod) {
   return { tipo: "reingreso", fecha: fmtDdMm(_reingresoMap.get(c)) };
 }
 
+// Luis (23/09): un pedido que mezcla artículos EN STOCK con artículos que dicen
+// "Sin stock hasta dd/mm" entra como DOS pedidos, cada uno con su número: el de
+// lo que hay sale como siempre y el de lo que falta, a partir del reingreso. Se
+// decide con lo mismo que ve el cliente (el cartel). Si TODO el carrito espera
+// reingreso, es un solo pedido. `fecha` = el reingreso más tardío (ISO).
+function _splitPorReingreso(items) {
+  var ahora = [], reingreso = [], fecha = "";
+  (items || []).forEach(function (it) {
+    var p = findAnyProduct(it.productId);
+    var cod = p ? p.cod : "";
+    if (cod && estadoStock(cod).tipo === "reingreso") {
+      reingreso.push(it);
+      var iso = String(_reingresoMap.get(_canonCod(cod)) || "");
+      if (iso && iso > fecha) fecha = iso;
+    } else {
+      ahora.push(it);
+    }
+  });
+  return { ahora: ahora, reingreso: reingreso, fecha: fecha };
+}
+
 /***********************
  * STATE
  ***********************/
@@ -2219,11 +2240,13 @@ async function logout() {
 /***********************
  * BOTÓN TRADUCIR AL CHINO (中文)
  * Regla (10/9/2026): el traductor NO va para cualquier cliente logueado.
- * Visitante sin login → se muestra. Cliente logueado → solo si su código
+ * Visitante sin login → NO se muestra (Luis, 23/09). Cliente logueado → solo si su código
  * está en CLIENTES_CHINOS. Cuando llegue el listado de clientes chinos se
  * cargan acá los cod_cliente y el botón vuelve a aparecer para ellos.
  ***********************/
-const CLIENTES_CHINOS = new Set([]); // ej: ["1234", "5678"]
+// v23/09 (Luis): lista de clientes chinos, por cod_cliente de ESTA empresa. Sacada del
+// padrón de WhatsApp + padrón vivo, por apellido (el Excel no traía otra marca): agregar o sacar acá.
+const CLIENTES_CHINOS = new Set(["503", "1413", "2127", "2150", "2151", "2185", "2259", "2269", "2278", "2289", "2399", "2402", "2475", "3843", "3913", "3940", "3966", "3975", "3988", "4003", "4012", "4013", "4022", "4029", "4038", "4086", "4106", "4120", "4128", "4131", "4154", "4164", "4172", "4187", "4212", "4227", "4228", "4232", "4235", "4244", "4253", "4255", "4260", "4262", "4274", "4275", "4279", "10024", "10025"]);
 
 function puedeVerTraductorCn() {
   if (!currentSession) {
@@ -2232,7 +2255,7 @@ function puedeVerTraductorCn() {
     try {
       if (localStorage.getItem("is_logged") === "1") return false;
     } catch (e) {}
-    return true; // visitante: sí
+    return false; // visitante sin login: NO (Luis, 23/09)
   }
   const cod = String(customerProfile?.cod_cliente || "").trim();
   return cod !== "" && CLIENTES_CHINOS.has(cod);
@@ -9084,6 +9107,7 @@ async function _submitSingleOrder(
   clienteNuevoValue,
   deliveryChoiceSnapshot,
   editOrderId,
+  opts,
 ) {
   var paymentDiscount = getPaymentDiscount();
   var webDiscountRate = (isPresupuestoMode() || (isAdmin && !_expoActiveCustomer))
@@ -9228,6 +9252,13 @@ async function _submitSingleOrder(
       };
     }),
   };
+
+  // Pedido de los artículos que esperan reingreso: se deja escrito de qué pedido
+  // salió y desde cuándo puede salir (Gestión lo programa con eso).
+  if (opts && opts.reingreso) {
+    sheetsPayload.reingreso_desde = opts.fecha || null;
+    sheetsPayload.pedido_origen = opts.origen || null;
+  }
 
   // RPC call — el 30% extra ya viene BAKED-IN en p_total.
   // `source` (módulo desde el que se agregó cada producto) tiene que viajar acá:
@@ -9523,7 +9554,7 @@ async function submitOrder() {
     }
 
     // ---- Split cart: regular (pedido X) vs promo (pedido X+1) ----
-    const regularItems = cart.filter(function (i) {
+    let regularItems = cart.filter(function (i) {
       return !i.isUpsellPromo;
     });
     const promoItems = cart.filter(function (i) {
@@ -9533,6 +9564,19 @@ async function submitOrder() {
     if (regularItems.length === 0 && promoItems.length === 0) {
       setOrderStatus("Carrito vacio.", "err");
       return;
+    }
+
+    // ---- Split por reingreso: lo que hay (X) vs lo que espera reingreso (Y) ----
+    // Luis (23/09): son DOS pedidos distintos, con dos números. Editando no se parte.
+    var reingresoItems = [];
+    var reingresoFecha = "";
+    if (!editOrderIdSnapshot) {
+      var _spR = _splitPorReingreso(regularItems);
+      if (_spR.reingreso.length && _spR.ahora.length) {
+        regularItems = _spR.ahora;
+        reingresoItems = _spR.reingreso;
+        reingresoFecha = _spR.fecha;
+      }
     }
 
     // ---- Snapshot deliveryChoice antes de resetear ----
@@ -9597,6 +9641,32 @@ async function submitOrder() {
       }
     }
 
+    // ---- Submit pedido de los artículos sin stock (Y) ----
+    // Si falla, el pedido X ya está grabado: no se tumba la confirmación, los
+    // artículos vuelven al carrito y se le avisa al cliente que lo reenvíe.
+    var reingresoResult = null;
+    var reingresoFallo = "";
+    if (reingresoItems.length > 0) {
+      debugStep("Confirmando el pedido de los artículos sin stock...");
+      try {
+        reingresoResult = await _submitSingleOrder(
+          reingresoItems,
+          0,
+          clienteNuevoValue,
+          deliveryChoiceSnapshot,
+          null,
+          {
+            reingreso: true,
+            fecha: reingresoFecha,
+            origen: regularResult ? regularResult.orderId : null,
+          },
+        );
+      } catch (e) {
+        console.error("Reingreso order error:", e);
+        reingresoFallo = e.message || String(e);
+      }
+    }
+
     // ---- Datos para PDF ----
     var primaryResult = regularResult || promoResult;
     if (primaryResult) {
@@ -9618,6 +9688,17 @@ async function submitOrder() {
         paymentDiscount: Number(primaryResult.paymentDiscount || 0),
         webDiscount: Number(primaryResult.webDiscount || 0),
         dtoVol: Number(primaryResult.dtoVol || 0),
+        // Pedido de los artículos sin stock, aparte (va al PDF y a la pantalla).
+        reingresoOrder: reingresoResult
+          ? {
+              orderId: reingresoResult.orderId,
+              fecha: reingresoFecha,
+              subtotal: Number(reingresoResult.subtotal || 0),
+              descuentos: Number(reingresoResult.totalDiscounts || 0),
+              total: Number(reingresoResult.finalTotal || 0),
+              items: reingresoResult.pdfItems,
+            }
+          : null,
         // Si hubo regular + promo, guardamos el promo aparte para renderizarlo en el PDF
         promoOrder:
           regularResult && promoResult
@@ -9679,10 +9760,23 @@ async function submitOrder() {
         if (_onEl) {
           var _oid = primaryResult.orderId || "";
           var _oid2 = (promoResult && regularResult) ? promoResult.orderId : "";
-          _onEl.textContent = _oid2
-            ? "Pedido N° " + _oid + " y N° " + _oid2
-            : "Pedido N° " + _oid;
+          var _nums = ["Pedido N° " + _oid];
+          if (_oid2) _nums.push("Pedido N° " + _oid2);
+          if (reingresoResult) {
+            var _rf = fmtDdMm(reingresoFecha);
+            _nums.push("Pedido N° " + reingresoResult.orderId +
+              " (artículos sin stock: sale " + (_rf ? "a partir del " + _rf : "cuando reingresen") + ")");
+          }
+          _onEl.textContent = _nums.length > 1
+            ? _nums.slice(0, -1).join(", ") + " y " + _nums[_nums.length - 1]
+            : _nums[0];
+          if (reingresoFallo) {
+            _onEl.textContent += " — ⚠ El pedido de los artículos sin stock NO se pudo cargar: " +
+              "quedaron en el carrito, volvé a confirmarlo.";
+          }
           _onEl.style.display = _oid ? "" : "none";
+          var _stEl = document.querySelector("#pedidoConfirmado .success-title");
+          if (_stEl) _stEl.textContent = _nums.length > 1 ? "¡Pedidos confirmados!" : "¡Pedido confirmado!";
         }
       } catch (e) {}
       _expoShowConfirmPanel();
@@ -9697,6 +9791,10 @@ async function submitOrder() {
     setEditingOrderId(null);
     setEditBanner(null);
     cart.length = 0;
+    // El pedido de los artículos sin stock no entró: vuelven al carrito.
+    if (reingresoFallo && reingresoItems.length) {
+      reingresoItems.forEach(function (it) { cart.push(it); });
+    }
     saveCartToLS();
 
     // Borrar draft asociado si este pedido venía de "Pedidos sin Confirmar"
@@ -10236,8 +10334,25 @@ async function descargarPedidoPDF(soloSubir = false) {
   // =========================================================
   // SECCIÓN PEDIDO PROMO (X+1) — sólo si hubo items de upsell
   // =========================================================
+  // Pedidos aparte del principal: el promo (X+1) y el de artículos sin stock.
+  const _extrasPdf = [];
   if (lastConfirmedOrder.promoOrder) {
-    const promo = lastConfirmedOrder.promoOrder;
+    _extrasPdf.push(Object.assign({}, lastConfirmedOrder.promoOrder, {
+      _banner: `PROMO · Pedido Nº ${lastConfirmedOrder.promoOrder.orderId} — 30% OFF lanzamiento`,
+      _fill: [255, 235, 180],
+      _color: [150, 80, 0],
+    }));
+  }
+  if (lastConfirmedOrder.reingresoOrder) {
+    const _ro = lastConfirmedOrder.reingresoOrder;
+    const _rf = fmtDdMm(_ro.fecha);
+    _extrasPdf.push(Object.assign({}, _ro, {
+      _banner: `Pedido Nº ${_ro.orderId} — sin stock: sale ${_rf ? "a partir del " + _rf : "cuando reingrese"}`,
+      _fill: [224, 242, 254],
+      _color: [3, 105, 161],
+    }));
+  }
+  for (const promo of _extrasPdf) {
 
     y += 10;
     if (y > 245) {
@@ -10246,16 +10361,12 @@ async function descargarPedidoPDF(soloSubir = false) {
     }
 
     // Banner promo
-    doc.setFillColor(255, 235, 180);
+    doc.setFillColor(promo._fill[0], promo._fill[1], promo._fill[2]);
     doc.rect(14, y - 5, 182, 10, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.setTextColor(150, 80, 0);
-    doc.text(
-      `PROMO · Pedido Nº ${promo.orderId} — 30% OFF lanzamiento`,
-      16,
-      y + 2,
-    );
+    doc.setTextColor(promo._color[0], promo._color[1], promo._color[2]);
+    doc.text(promo._banner, 16, y + 2);
     doc.setTextColor(0, 0, 0);
     y += 14;
 
