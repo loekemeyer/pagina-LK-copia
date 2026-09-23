@@ -664,8 +664,13 @@ body {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-  opacity: 0;
-  transition: opacity 0.18s ease, background 0.18s ease;
+  /* Siempre visibles (pedido del usuario, 23/9/2026): antes nacían en
+     opacity 0 y sólo aparecían con :hover sobre .pc-media, así que en el
+     catálogo no se veía que el producto tuviera más de una foto hasta
+     pasar el mouse por encima. Se deja la transición de fondo para que
+     el hover siga marcando cuál está apuntada. */
+  opacity: 1;
+  transition: background 0.18s ease;
   z-index: 3;
 }
 .pc-arrow.prev {
@@ -673,9 +678,6 @@ body {
 }
 .pc-arrow.next {
   right: 4px;
-}
-.pc-media:hover .pc-arrow {
-  opacity: 1;
 }
 .pc-arrow:hover {
   background: #fff;
@@ -699,13 +701,9 @@ body {
 .pc-dot.on {
   background: rgba(0, 0, 0, 0.7);
 }
-/* En touch no hay hover: las flechas quedan visibles siempre. */
-@media (hover: none) {
-  .pc-arrow {
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.7);
-  }
-}
+/* (Se sacó la excepción de touch: antes acá se forzaba opacity 1 porque en
+   touch no hay :hover. Ahora las flechas nacen visibles en todos lados, así
+   que la regla quedaba duplicando lo de arriba.) */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .product-card:hover {
     transform: translateY(-4px);
