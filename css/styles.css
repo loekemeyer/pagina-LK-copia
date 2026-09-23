@@ -1247,6 +1247,7 @@ body {
 .success-entrega strong {
   font-size: 16px;
 }
+.success-entrega[hidden] { display: none; }
 .ship-label {
   font-size: 12px;
   color: #444;

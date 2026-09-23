@@ -1430,6 +1430,50 @@ function estadoStock(cod) {
   return { tipo: "reingreso", fecha: fmtDdMm(_reingresoMap.get(c)) };
 }
 
+// Luis (23/09): "Tu pedido estará listo antes del dd/mm/aa" = 14 días corridos desde
+// el envío y, si ese día no es hábil, el próximo hábil. El día hábil lo dice Gestión
+// (RPC get_fecha_listo del proyecto LK, espejo de gv_es_dia_habil). Si la RPC no
+// contesta en 3 s, se calcula acá salteando sólo el fin de semana.
+function fmtDdMmAa(iso) {
+  const m = String(iso || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : "";
+}
+function _fechaListoLocal() {
+  const hoy = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }));
+  const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + 14);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+async function _fechaListo() {
+  try {
+    const r = await Promise.race([
+      supabaseClient.rpc("get_fecha_listo"),
+      new Promise((res) => setTimeout(() => res({ error: "timeout" }), 3000)),
+    ]);
+    if (r && !r.error && /^\d{4}-\d{2}-\d{2}/.test(String(r.data || ""))) return String(r.data).slice(0, 10);
+  } catch (e) {}
+  return _fechaListoLocal();
+}
+// Pinta el renglón de la pantalla de confirmación. `modo`:
+//   "listo"     → pedido normal: "Tu pedido estará listo antes del dd/mm/aa"
+//   "reingreso" → TODO el pedido espera reingreso: desde cuándo sale
+function _pintarFechaListo(el, modo, fechaReingreso) {
+  if (!el) return;
+  if (modo === "reingreso") {
+    const f = fmtDdMm(fechaReingreso);
+    el.innerHTML = "Tu pedido sale " + (f ? "a partir del <strong>" + f + "</strong>" : "cuando reingresen los artículos");
+    el.hidden = false;
+    return;
+  }
+  el.hidden = true;
+  _fechaListo().then(function (iso) {
+    const f = fmtDdMmAa(iso);
+    if (!f) return;
+    el.innerHTML = "Tu pedido estará listo antes del <strong>" + f + "</strong>";
+    el.hidden = false;
+  });
+}
+
 // Luis (23/09): un pedido que mezcla artículos EN STOCK con artículos que dicen
 // "Sin stock hasta dd/mm" entra como DOS pedidos, cada uno con su número: el de
 // lo que hay sale como siempre y el de lo que falta, a partir del reingreso. Se
@@ -9579,6 +9623,12 @@ async function submitOrder() {
       }
     }
 
+    // Si TODO lo que queda espera reingreso, la pantalla dice desde cuándo sale y no
+    // "listo antes del".
+    var _spTodo = (!editOrderIdSnapshot && !reingresoItems.length) ? _splitPorReingreso(regularItems) : null;
+    var todoReingreso = !!(_spTodo && regularItems.length && !_spTodo.ahora.length);
+    var todoReingresoFecha = _spTodo ? _spTodo.fecha : "";
+
     // ---- Snapshot deliveryChoice antes de resetear ----
     var deliveryChoiceSnapshot = {
       slot: deliveryChoice.slot,
@@ -9743,11 +9793,10 @@ async function submitOrder() {
             "Retirás el <strong>" + _seRet + "</strong> de " +
             (lastConfirmedOrder.retiroFranja || "");
           _seEl.hidden = false;
-        } else if (_seDdMm) {
-          _seEl.innerHTML = "Fecha estimada de entrega: <strong>" + _seDdMm + "</strong>";
-          _seEl.hidden = false;
+        } else if (editOrderIdSnapshot) {
+          _seEl.hidden = true;   // editando: la fecha es la del pedido original
         } else {
-          _seEl.hidden = true;
+          _pintarFechaListo(_seEl, todoReingreso ? "reingreso" : "listo", todoReingresoFecha);
         }
       }
       // Escala activa: fijar el dto_vol permanente tras el primer pedido.
