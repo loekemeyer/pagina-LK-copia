@@ -137,3 +137,10 @@ revoke all on function public.recalcular_clientes_vinculados() from public, anon
 --   select cron.unschedule('recalcular-clientes-vinculados');
 --   drop function public.recalcular_clientes_vinculados();
 --   drop table public.clientes_vinculados; drop table public.clientes_vinculo_ventas;
+
+-- 23/09 (Luis: "si"): gv_clientes_nuevos_calc suma como arista todo par del mismo grupo de
+-- clientes_vinculados (UNION antes de "alto"), aplicado sobre pg_get_viewdef con
+-- security_invoker = true. Un grupo puede tener N codigos (5 razones sociales x 2 empresas = 10):
+-- el alcance es recursivo, asi que los pedidos de TODOS los codigos del grupo suman.
+-- Efecto medido: clientes nuevos 349 -> 312 (37 eran clientes viejos con otro codigo).
+-- Rollback: recrear la vista sin ese UNION (sale solo con replace inverso).
