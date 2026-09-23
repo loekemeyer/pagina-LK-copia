@@ -2150,11 +2150,13 @@ async function logout() {
 /***********************
  * BOTÓN TRADUCIR AL CHINO (中文)
  * Regla (10/9/2026): el traductor NO va para cualquier cliente logueado.
- * Visitante sin login → se muestra. Cliente logueado → solo si su código
+ * Visitante sin login → NO se muestra (Luis, 23/09). Cliente logueado → solo si su código
  * está en CLIENTES_CHINOS. Cuando llegue el listado de clientes chinos se
  * cargan acá los cod_cliente y el botón vuelve a aparecer para ellos.
  ***********************/
-const CLIENTES_CHINOS = new Set([]); // ej: ["1234", "5678"]
+// v23/09 (Luis): lista de clientes chinos, por cod_cliente de ESTA empresa. Sacada del
+// padrón de WhatsApp por apellido (el Excel no traía otra marca): agregar o sacar acá.
+const CLIENTES_CHINOS = new Set(["503", "2150", "2151", "2259", "2269", "2278", "2289", "2399", "2402", "2475", "3940", "3975", "3988", "4086", "4106", "4120", "4154", "4172", "4187", "4212", "4227", "4235", "4244", "4253", "4255", "4260", "4262", "4279", "10024", "10025"]);
 
 function puedeVerTraductorCn() {
   if (!currentSession) {
@@ -2163,7 +2165,7 @@ function puedeVerTraductorCn() {
     try {
       if (localStorage.getItem("is_logged") === "1") return false;
     } catch (e) {}
-    return true; // visitante: sí
+    return false; // visitante sin login: NO (Luis, 23/09)
   }
   const cod = String(customerProfile?.cod_cliente || "").trim();
   return cod !== "" && CLIENTES_CHINOS.has(cod);
