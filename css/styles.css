@@ -654,11 +654,20 @@ body {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.82);
-  color: #222;
-  font-size: 18px;
+  /* El glifo ‹ › del HTML se oculta con font-size 0 y la flecha se dibuja
+     como SVG de fondo (pedido del usuario, 23/9/2026): el guillemet no
+     queda centrado en el círculo porque flex centra la CAJA de texto, no
+     el trazo, y ese carácter tiene los sidebearings desparejos y se
+     dibuja alto respecto de su línea base. El SVG va en un viewBox
+     simétrico (el path ocupa 9..15 en x y 5..19 en y, o sea centro 12,12),
+     así que background-position: center lo deja centrado por geometría y
+     no por prueba y error. El aria-label del botón conserva el texto. */
+  background-color: rgba(255, 255, 255, 0.82);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 13px 13px;
+  font-size: 0;
   line-height: 1;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -675,12 +684,14 @@ body {
 }
 .pc-arrow.prev {
   left: 4px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23222' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 5 9 12l6 7'/%3E%3C/svg%3E");
 }
 .pc-arrow.next {
   right: 4px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23222' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5l6 7-6 7'/%3E%3C/svg%3E");
 }
 .pc-arrow:hover {
-  background: #fff;
+  background-color: #fff;
 }
 .pc-dots {
   position: absolute;
@@ -15904,25 +15915,31 @@ body { top: 0 !important; }
   height: 40px;
   border: none;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  color: #fff;
-  font-size: 26px;
+  /* Mismo criterio que .pc-arrow: chevron SVG centrado por geometría en
+     vez del glifo ‹ ›, que se dibujaba corrido dentro del círculo. */
+  background-color: rgba(0, 0, 0, 0.45);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20px 20px;
+  font-size: 0;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2;
-  transition: background 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 .pp-arrow:hover {
-  background: rgba(0, 0, 0, 0.68);
+  background-color: rgba(0, 0, 0, 0.68);
 }
 .pp-arrow.prev {
   left: 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 5 9 12l6 7'/%3E%3C/svg%3E");
 }
 .pp-arrow.next {
   right: 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5l6 7-6 7'/%3E%3C/svg%3E");
 }
 
 /* ============================================================
