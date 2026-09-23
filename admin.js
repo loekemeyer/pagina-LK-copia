@@ -7931,11 +7931,25 @@ window.cargarGruposClientes = cargarGruposClientes;
 var _cvCache = [];
 var _cvQuery = "";
 var _cvTimer = null;
-var _cvFuente = { ventas: "Ventas", cuit: "mismo CUIT", grupo_admin: "grupo armado", link_manual: "a mano" };
+var _cvFuente = { ventas: "Ventas", cuit: "mismo CUIT", grupo_admin: "grupo armado", link_manual: "a mano (LK↔Chef)", manual: "a mano (cliente real)" };
+// Cualquier cambio de vinculos del modulo (grupos, LK<->Chef, cliente real) marca la tabla
+// canonica como SUCIA: la proxima carga la recalcula y la empuja a Gestion antes de leerla,
+// asi el cambio impacta en el momento y no a la hora siguiente del cron.
+var _cvSucio = false;
+var _cvSeparados = [];
 
 async function cargarClientesVinculados() {
   var st = document.getElementById("cvStatus");
   try {
+    if (_cvSucio) {
+      _cvSucio = false;
+      if (st) st.innerHTML = '<span style="color:#666">Recalculando clientes vinculados…</span>';
+      var rr = await sb.rpc("refrescar_clientes_vinculados");
+      if (rr.error) throw rr.error;
+      if (rr.data && rr.data.sync_error) console.warn("sync Gestion clientes vinculados:", rr.data.sync_error);
+    }
+    var rs = await sb.rpc("get_clientes_separados");
+    _cvSeparados = (rs && !rs.error && rs.data) || [];
     var r = await sb.rpc("get_clientes_vinculados");
     if (r.error) throw r.error;
     _cvCache = r.data || [];
@@ -7964,13 +7978,16 @@ function _pintarClientesVinculados() {
   });
   var cnt = document.getElementById("cvCount");
   if (cnt) cnt.textContent = String(_cvCache.length);
+  _pintarClientesSeparados();
   var tb = document.querySelector("#cvTable tbody");
   if (!tb) return;
   if (!filas.length) { tb.innerHTML = '<tr><td colspan="5" style="color:#666">Sin resultados</td></tr>'; return; }
   var cods = function (g, emp) {
     return (g.codigos || []).filter(function (c) { return c.empresa === emp; }).map(function (c) {
       return '<div' + (c.principal ? ' style="font-weight:700"' : ' style="color:#555"') + '>' +
-        _escGrupo(c.cod) + ' · ' + _escGrupo(c.razon_social || "(dado de baja)") + '</div>';
+        _escGrupo(c.cod) + ' · ' + _escGrupo(c.razon_social || "(dado de baja)") +
+        ' <button type="button" class="lkch-auto" title="Sacar este código del cliente real" ' +
+        'onclick="separarClienteVinculado(\'' + _escGrupo(c.empresa) + '\',\'' + _escGrupo(c.cod) + '\')">✕ separar</button></div>';
     }).join("") || '<span style="color:#aaa">—</span>';
   };
   tb.innerHTML = filas.map(function (g) {
@@ -7986,6 +8003,74 @@ function _pintarClientesVinculados() {
       "</tr>";
   }).join("");
 }
+
+function _pintarClientesSeparados() {
+  var box = document.getElementById("cvSeparados");
+  if (!box) return;
+  if (!_cvSeparados.length) { box.innerHTML = ""; return; }
+  box.innerHTML = '<div style="margin-top:12px;font-weight:700">Separados a mano (' + _cvSeparados.length + ')</div>' +
+    _cvSeparados.map(function (x) {
+      return '<div style="color:#555;font-size:13px">' + (x.empresa === "chef" ? "CH " : "LK ") + _escGrupo(x.cod) +
+        ' · ' + _escGrupo(x.razon_social || "") + (x.nota ? ' — ' + _escGrupo(x.nota) : "") +
+        ' <button type="button" class="lkch-auto" onclick="reunirClienteVinculado(\'' + _escGrupo(x.empresa) + '\',\'' +
+        _escGrupo(x.cod) + '\')">↺ volver a vincular</button></div>';
+    }).join("");
+}
+
+// "LK 187, CH 2495, lk1884" -> [{empresa:'lk',cod:'187'}, ...]. Sin prefijo no se adivina la empresa.
+function _cvParseCods(txt) {
+  var out = [], malos = [];
+  String(txt || "").split(/[,;\n]+/).forEach(function (t) {
+    t = t.trim(); if (!t) return;
+    var m = t.match(/^(lk|ch|chef)\s*[-:]?\s*0*(\d+)$/i);
+    if (!m) { malos.push(t); return; }
+    out.push({ empresa: /^lk$/i.test(m[1]) ? "lk" : "chef", cod: m[2] });
+  });
+  return { cods: out, malos: malos };
+}
+
+function vincularClientesManual() {
+  var st = document.getElementById("cvVincStatus");
+  var inp = document.getElementById("cvVincCods");
+  var nota = document.getElementById("cvVincNota");
+  var p = _cvParseCods(inp && inp.value);
+  if (p.malos.length) { st.innerHTML = '<span style="color:#c0392b">No entiendo: ' + _escGrupo(p.malos.join(", ")) + ' (escribí LK 123 o CH 456)</span>'; return; }
+  if (p.cods.length < 2) { st.innerHTML = '<span style="color:#c0392b">Hacen falta al menos 2 códigos.</span>'; return; }
+  var btn = document.getElementById("cvVincBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Vinculando…"; }
+  st.innerHTML = "";
+  sb.rpc("vincular_clientes_manual", { p_cods: p.cods, p_nota: (nota && nota.value.trim()) || null })
+    .then(function (resp) {
+      if (resp.error) throw resp.error;
+      if (inp) inp.value = ""; if (nota) nota.value = "";
+      st.innerHTML = '<span style="color:#0f766e">Vinculados ' + p.cods.length + ' códigos.</span>';
+      _cvSucio = true;
+      return cargarClientesVinculados();
+    })
+    .catch(function (err) {
+      console.error("vincularClientesManual error", err);
+      st.innerHTML = '<span style="color:#c0392b">No se pudo vincular: ' + _escGrupo(err.message || err) + '</span>';
+    })
+    .finally(function () { if (btn) { btn.disabled = false; btn.textContent = "Vincular"; } });
+}
+window.vincularClientesManual = vincularClientesManual;
+
+function separarClienteVinculado(emp, cod) {
+  var nota = prompt("Sacar " + (emp === "chef" ? "CH " : "LK ") + cod + " de este cliente real.\n" +
+    "Queda solo aunque Ventas, el CUIT o un grupo lo vinculen. Motivo (opcional):", "");
+  if (nota === null) return;
+  sb.rpc("separar_cliente_vinculado", { p_empresa: emp, p_cod: cod, p_nota: nota.trim() || null })
+    .then(function (resp) { if (resp.error) throw resp.error; _cvSucio = true; return cargarClientesVinculados(); })
+    .catch(function (err) { console.error("separarClienteVinculado error", err); alert("No se pudo separar: " + (err.message || err)); });
+}
+window.separarClienteVinculado = separarClienteVinculado;
+
+function reunirClienteVinculado(emp, cod) {
+  sb.rpc("reunir_cliente_vinculado", { p_empresa: emp, p_cod: cod })
+    .then(function (resp) { if (resp.error) throw resp.error; _cvSucio = true; return cargarClientesVinculados(); })
+    .catch(function (err) { console.error("reunirClienteVinculado error", err); alert("No se pudo: " + (err.message || err)); });
+}
+window.reunirClienteVinculado = reunirClienteVinculado;
 
 // Recarga SOLO las sugerencias. Cambiar de empresa, rechazar una sugerencia o
 // refrescar la lista no tocan ni los grupos armados ni los clientes vinculados,
@@ -8229,6 +8314,7 @@ function guardarGrupoClientes() {
       if (resp.error) throw resp.error;
       _slotPrincipal = null;
       _slotsExtra = [];
+      _cvSucio = true;
       return cargarGruposClientes();
     })
     .catch(function (err) {
@@ -8477,6 +8563,7 @@ function _agruparCluster(cluster, principal, btn) {
     })
     .then(function (resp) {
       if (resp.error) throw resp.error;
+      _cvSucio = true;
       return cargarGruposClientes();
     })
     .catch(function (err) {
@@ -8676,6 +8763,7 @@ function _resetLkCh(codLk) {
   sb.rpc("reset_lk_ch_excluido", { p_cod_lk: codLk, p_meses: 12 })
     .then(function (resp) {
       if (resp.error) throw resp.error;
+      _cvSucio = true;
       return cargarGruposClientes();
     })
     .catch(function (err) {
@@ -8695,6 +8783,7 @@ function _desvincularLkCh(f) {
   sb.rpc("desvincular_lk_ch", { p_cod_lk: f.cod_lk })
     .then(function (resp) {
       if (resp.error) throw resp.error;
+      _cvSucio = true;
       return cargarGruposClientes();
     })
     .catch(function (err) {
@@ -8864,6 +8953,7 @@ function vincularLkCh() {
       ];
       _renderSlotsLkCh();
       if (st) st.innerHTML = '<span style="color:#1f7a3a">Vinculado.</span>';
+      _cvSucio = true;
       return cargarGruposClientes();
     })
     .catch(function (err) {
@@ -9088,6 +9178,7 @@ function _agregarAGrupo(miembros, cliente) {
     })
     .then(function (resp) {
       if (resp.error) throw resp.error;
+      _cvSucio = true;
       return cargarGruposClientes();
     })
     .catch(function (err) {
@@ -9110,6 +9201,7 @@ function _deshacerGrupo(grupoId, miembros) {
   sb.rpc("deshacer_customer_grupo", { p_grupo_id: grupoId })
     .then(function (resp) {
       if (resp.error) throw resp.error;
+      _cvSucio = true;
       return cargarGruposClientes();
     })
     .catch(function (err) {
@@ -9128,6 +9220,7 @@ function _cambiarVigente(cods, codPrincipal, empresa) {
     })
     .then(function (resp) {
       if (resp.error) throw resp.error;
+      _cvSucio = true;
       return cargarGruposClientes();
     })
     .catch(function (err) {
@@ -9145,6 +9238,7 @@ function _sacarDeGrupo(cod, empresa) {
   sb.rpc("quitar_de_customer_grupo", { p_cod: cod, p_empresa: empresa || _empresaGrupo })
     .then(function (resp) {
       if (resp.error) throw resp.error;
+      _cvSucio = true;
       return cargarGruposClientes();
     })
     .catch(function (err) {

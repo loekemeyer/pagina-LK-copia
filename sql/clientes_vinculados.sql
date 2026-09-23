@@ -144,3 +144,18 @@ revoke all on function public.recalcular_clientes_vinculados() from public, anon
 -- el alcance es recursivo, asi que los pedidos de TODOS los codigos del grupo suman.
 -- Efecto medido: clientes nuevos 349 -> 312 (37 eran clientes viejos con otro codigo).
 -- Rollback: recrear la vista sin ese UNION (sale solo con replace inverso).
+
+-- =====================================================================
+-- 23/09 (Luis): el modulo "Cliente real" vincula y separa a mano, e impacta EN EL MOMENTO.
+--   clientes_vinculo_manual    : N codigos (LK y/o Chef) del mismo cliente real, fuente 'manual'.
+--   clientes_vinculo_separados : codigo que queda SOLO aunque Ventas/CUIT/grupo/link lo vinculen.
+--   RPCs (solo admins): vincular_clientes_manual(jsonb,text), separar_cliente_vinculado,
+--   reunir_cliente_vinculado, get_clientes_separados, refrescar_clientes_vinculados()
+--   (= recalcular + sync a Gestion; ~2,5 s). El front la llama despues de CUALQUIER cambio
+--   de vinculos del modulo (_cvSucio), no en cada carga.
+--   recalcular_clientes_vinculados(): suma las aristas 'manual' y borra las que tocan un separado
+--   (parche aplicado sobre pg_get_functiondef, idempotente).
+-- Probado en transaccion abortada como admin: LK 187 + CH 2495 -> mismo grupo; LK 4169 separado
+-- -> fuera de la tabla; sync a Gestion 906 filas sin error.
+-- Rollback: drop de las 5 funciones y las 2 tablas + recrear recalcular sin el bloque 'manual'.
+-- =====================================================================
