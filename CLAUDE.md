@@ -565,8 +565,27 @@ no está en 1 u/caja — con `uxb = 6`, escribir 2.000 mandaría 2.000 cajas = 1
 
 **El m3 va POR UNIDAD, en `GV_Volumen_Articulos` de Gestión Virgilio** (PK `codigo`, la lee
 `vista_volumen_articulo_resuelto` con `origen = 'gestion'`): el del artículo base dividido por su
-UxB real. 55219 = 0,0185 ÷ 6 = **0,00308**; 55289 = 0,0194 ÷ 12 = **0,001617**. Si falta el m3,
-la NP se programa sin volumen y subestima el camión.
+UxB real. Los dos cargados, con el valor que pasó Tomás: **55219 = 0,00308** (0,0185 ÷ 6, del
+21/09) y **55289 = 0,0016166666666667** (0,0194 ÷ 12, del 23/09). Ojo que la tabla tiene un
+`CHECK (m3 > 0)` y la vista filtra `m3 > 0`: **no se puede cargar un 0**, "sin volumen" es no
+tener fila.
+
+⚠ **Si el m3 falta cuando el pedido se programa, la NP queda con `m3 = 0` y NO se arregla al
+cargar el volumen después… pero tampoco queda perdida.** Pasó el 23/09 con el pedido 1533
+(4.000 unidades del 55289): la NP **216** se armó a las 11:05 sin volumen, así que entró a la
+tanda E84A del 07/10 aportando 0 m³ de los 6,47 que ocupa. Dos cosas la salvan:
+
+- Gestión la marca **`m3_parcial = true`** en `PPP_Web_Programacion`, así que el faltante se ve
+  en pantalla en vez de desaparecer;
+- **`ppp_web_resync(p_empresa, p_filas)`** —la función de Gestión que consume el feed de LK—
+  **actualiza `m3`, `m3_parcial`, `lineas` y `cajas`** de toda NP no facturada cuando difieren,
+  conservando tanda, zona y fecha. La dispara la Edge Function `gv-ppp-web-tandas-diarias`, que
+  el cron **73 `gv-ppp-web-tandas-intradia`** llama **cada 5 minutos entre las 09 y las 23**.
+  O sea: cargar el m3 alcanza, se corrige en la corrida siguiente. **Lo único congelado son los
+  bloques ya facturados** (`Facturacion_NP`), que la función excluye a propósito.
+
+Chequeo del arreglo: `select m3, m3_parcial from "PPP_Web_Programacion" where np = <np>;`, contra
+`select m3 from gv_pedidos_web_np_lk(current_date - 7) where order_id = <order_id>;` en LK.
 
 **Al agregar otro código de reenvase o otro cliente por unidad**: la lista de códigos y la de
 clientes están al principio del bloque PSC de `admin.js`, el artículo se da de alta en `products`
@@ -590,7 +609,7 @@ cambio**:
   verificado el 23/09 sobre `gv_pedidos_web_np_lk` y `gv_lk_np_feed`).
 
 Al dar de alta un reenvase: pedir el precio de la lista que corresponde ANTES de que se cargue el
-pedido.
+pedido — igual que el m3, que si llega tarde deja la NP armada sin volumen.
 
 ## Integración Krikos (OC de supermercados por mail)
 
