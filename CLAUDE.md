@@ -528,7 +528,10 @@ Los dos códigos vigentes son **55219** (Prensa Matambre, equivale al **246**) y
 (Colador de Mano, equivale al **441**). Todo vive en el módulo **Pedidos sin cot** (`psc*` en
 `admin.js`), y son dos cosas separadas:
 
-**1. Los códigos de reenvase se ven SOLO en ese módulo** (`PSC_CODS_EXTRA`). Siguen con
+**1. Los códigos de reenvase se ven SOLO en ese módulo** (`PSC_CODS_EXTRA`). ⚠ **Al 23/09 esa
+lista está VACÍA**: Tomás González cargó el pedido (1533 y 1534) y pidió deshabilitar los dos
+códigos, así que hoy no aparecen ni en el módulo. El mecanismo queda: para volver a habilitarlos
+se ponen los códigos en la lista, se bumpea el `?v=` y se replica al espejo. Siguen con
 `products.active = false` **a propósito**, y eso no es un olvido:
 
 - el catálogo del portal (`script.js`) y el catálogo público de `/productos/`
@@ -569,6 +572,15 @@ la NP se programa sin volumen y subestima el camión.
 clientes están al principio del bloque PSC de `admin.js`, el artículo se da de alta en `products`
 con `active = false` y `uxb = 1`, y se le carga el m3 por unidad en Gestión. Y **replicar al
 espejo** `Gestion-Virgilio/admin/` (ahí el `?v=` de `admin.js` se bumpea a mano).
+
+⚠ **El precio del reenvase sale de una lista del ERP que la web no conoce.** Tomás avisó el 23/09
+que el 55219 y el 55289 van por la **lista 34 "Lista Gigot"** ($5.650 y $1.690 la unidad), y en la
+web hay **un solo `list_price` por artículo**: las listas por cliente viven en el ERP. Los dos
+pedidos de ese día salieron con el precio anterior cargado ($5.820 y $1.740). **No llegó al ERP**
+—`sheets_payload` manda sólo `cod_art`, `cajas` y `uxb`, sin precio, así que el súper/cliente se
+factura con la lista del ERP—, pero **`orders.total` sí quedó inflado** ($540.000 entre los dos), y
+de ahí lo leen el dashboard de ventas y el `valor_lista` de la NP en Gestión. Al dar de alta un
+reenvase: pedir el precio de la lista que corresponde ANTES de que se cargue el pedido.
 
 ## Integración Krikos (OC de supermercados por mail)
 

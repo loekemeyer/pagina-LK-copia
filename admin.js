@@ -15805,7 +15805,13 @@ var PSC_LSUFFIX = false;
 // NO se agregan a `cpAllProducts`: esa lista la comparten el Cotizador, el generador
 // de flyers y el match de OC de supermercados, donde un codigo de reenvase no tiene
 // nada que hacer (una OC de Coto que diga "prensa matambre" no debe matchear aca).
-var PSC_CODS_EXTRA = ["55219", "55289"];
+// ⚠ HOY LA LISTA VA VACIA: Tomas Gonzalez cargo el pedido de Matiz el 23/09/2026
+// (pedidos 1533 y 1534) y pidio dejar los dos codigos deshabilitados. Se vacia la
+// lista en vez de borrar el mecanismo, porque el reenvase se repite: para volver a
+// habilitarlos alcanza con poner los codigos aca de nuevo (`["55219", "55289"]`),
+// bumpear el `?v=` y replicar al espejo. Los articulos siguen en `products` con
+// `active = false`, o sea que no se le ofrecen a nadie mientras esten fuera de aca.
+var PSC_CODS_EXTRA = [];
 // ⚠ CLIENTES QUE PIDEN POR UNIDAD, NO POR CAJA CERRADA (Tomas Gonzalez, 23/09/2026).
 // Matiz SA (4263) compra reenvase suelto. Sus articulos llevan `uxb = 1`, asi que
 // "una caja" ES una unidad y el pipeline no cambia en nada: lo que cambia es la
