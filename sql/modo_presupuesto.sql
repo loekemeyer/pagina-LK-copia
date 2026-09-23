@@ -44,12 +44,18 @@ comment on column public.customers.modo_presupuesto is
   'y lo que envía entra con total 0 para que lo coticemos. Caso de uso: '
   'exportación (Classic S.A., Paraguay). Ver sql/modo_presupuesto.sql.';
 
--- ─── 2. Dar de alta a Classic S.A. y prenderle la bandera ──────────────────
+-- ─── 2. Dar de alta a los clientes y prenderles la bandera ─────────────────
 --
---     Razón social : CLASSIC S.A.
---     CUIT/RUC     : 800130570     ← el RUC paraguayo 80013057-0, SIN guiones
---     Dto x volumen: 0             ← no ve descuentos, pero que quede en 0
---     Código       : 4284 en LOEKEMEYER · 1362 en CHEF
+-- Clientes de exportación (Paraguay) con este modo, al 23/09/2026:
+--
+--     Razón social      RUC          cod LK   cod Chef
+--     ----------------  -----------  -------  --------
+--     CLASSIC S.A.      800130570      4284      1362
+--     GIMENEZ CALVO SA  800015924      4285      (sin código: no opera en Chef)
+--
+-- ⚠ El RUC va en `cuit` SIN guiones ni puntos: 80013057-0 → 800130570. Son 9
+-- dígitos (8 + verificador) y el login los acepta desde que se bajó el piso de
+-- `looksLikeCUIT` a 8. `dto_vol` va en 0: no ven descuentos de ningún tipo.
 --
 -- ⚠ Las numeraciones de las dos empresas son INDEPENDIENTES: 4284 en Chef y
 -- 1362 en Loekemeyer son OTROS negocios. No cruzar los números.
@@ -58,18 +64,20 @@ comment on column public.customers.modo_presupuesto is
 -- capricho: el panel además crea el usuario de `auth` con el mail sintético
 -- <dígitos>@cuit.loekemeyer (llama a la Edge Function `crear-cliente-auth`).
 -- Un INSERT a mano en `customers` deja al cliente SIN poder entrar a la página.
+-- El panel NO valida el largo del CUIT, así que el RUC de 9 dígitos entra bien.
 --
--- El 4284 se verificó libre el 23/09/2026: sin ficha en `customers`, sin una
--- sola línea en `sales_lines`, y es el siguiente al 4283 (Cardye S.R.L.), que
--- era el último cargado. El código lo asigna ISIS; acá sólo se deja asentado.
+-- Los dos códigos se verificaron libres antes de asignarlos (23/09/2026): sin
+-- ficha en `customers` y sin una sola línea en `sales_lines`. El 4283 (Cardye
+-- S.R.L.) era el último cargado. El código lo asigna ISIS; acá sólo se asienta.
 
 -- ── 2.a) Prender la bandera, una vez que el cliente ya está cargado ─────────
 
--- CHEF (proyecto nkhzocgdpwtgrmwleihr):
---   update public.customers set modo_presupuesto = true where cod_cliente = 1362;
-
 -- LOEKEMEYER (proyecto kwkclwhmoygunqmlegrg):
---   update public.customers set modo_presupuesto = true where cod_cliente = 4284;
+--   update public.customers set modo_presupuesto = true
+--    where cod_cliente in (4284, 4285);
+
+-- CHEF (proyecto nkhzocgdpwtgrmwleihr) — sólo Classic:
+--   update public.customers set modo_presupuesto = true where cod_cliente = 1362;
 
 -- ─── 3. Verificación (correr SIEMPRE después de prender la bandera) ─────────
 -- select cod_cliente, business_name, cuit, dto_vol, modo_presupuesto
