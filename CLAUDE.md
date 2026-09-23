@@ -520,6 +520,56 @@ select p.proname,
 -- al 21/09: las dos en true
 ```
 
+## ⚠ Artículos de REENVASE y pedidos EN UNIDADES (Pedidos sin cot)
+
+**Tomás González, 23/09/2026.** Matiz SA (LK **4263**) compra **reenvase suelto**: artículos de
+Loekemeyer con otro código, otro precio, y pedidos **por unidad, no por caja cerrada**.
+Los dos códigos vigentes son **55219** (Prensa Matambre, equivale al **246**) y **55289**
+(Colador de Mano, equivale al **441**). Todo vive en el módulo **Pedidos sin cot** (`psc*` en
+`admin.js`), y son dos cosas separadas:
+
+**1. Los códigos de reenvase se ven SOLO en ese módulo** (`PSC_CODS_EXTRA`). Siguen con
+`products.active = false` **a propósito**, y eso no es un olvido:
+
+- el catálogo del portal (`script.js`) y el catálogo público de `/productos/`
+  (`scripts/exportar-catalogo.py`) filtran `active = true`, así que un código de reenvase no se
+  le ofrece a ningún otro cliente ni sale indexado — y hace falta, porque el 55219 sale **$5.820
+  la unidad** contra **$5.485** del 246, el mismo producto;
+- si alguien lo mete al carrito de un cliente por cualquiera de los ~10 caminos que no pasan por
+  `agregarAlCarrito`, lo frena el guard SIN STOCK del backend (`pedido_items_sin_stock` bloquea
+  también `active = false`). Medido el 23/09: devuelve `55219, 55289`;
+- desde el panel entran igual porque **ese guard no aplica al admin** (`submit_order_fast` y
+  `edit_order_fast` lo saltean con `IF NOT v_es_admin`), y porque **ninguna vista que alimenta a
+  Gestión filtra `active`** (verificado sobre `v_pedidos_web`, `gv_pedidos_web_np_lk`,
+  `ppp_valor_linea`, `v_item_precio`): la NP se programa y se valoriza como cualquier otra.
+- Lo lee el admin logueado porque `products` tiene una policy `authenticated` con `qual = true`
+  (probado con `set role`: `authenticated` ve los 2 inactivos, `anon` ve 0).
+- **No se agregan a `cpAllProducts`**: esa lista la comparten el Cotizador, el generador de
+  flyers y el match de OC de supermercados, donde un código de reenvase no tiene nada que hacer
+  (una OC de Coto que diga "prensa matambre" no debe matchear acá).
+
+**2. El pedido se carga en UNIDADES para los clientes de `PSC_CLIENTES_UNIDADES`** (hoy sólo
+`4263`). El encabezado de la columna pasa de "Cajas" a "Unidades" (`pscUnitLabel`), porque es lo
+único que ve quien carga.
+
+⚠ **No se hace con `uxb = 6` dividiendo unidades ÷ uxb: ya se probó y salió mal.** El pedido
+**1450** (15/09) viajó al Sheet con **166,6667 cajas** —un número de cajas que no existe— y como
+`order_items.cajas` es `integer`, la base guardó **166**: 4 unidades de diferencia entre lo que
+se pidió y lo que quedó registrado. Si el cliente compra unidades sueltas, **la unidad de venta
+ES la unidad** (`uxb = 1`), y el "6 u/caja" es embalaje de origen: vive en el **m3 de Gestión**,
+no en `uxb`. Por eso el módulo **frena el envío** si un artículo de un cliente en modo unidades
+no está en 1 u/caja — con `uxb = 6`, escribir 2.000 mandaría 2.000 cajas = 12.000 unidades.
+
+**El m3 va POR UNIDAD, en `GV_Volumen_Articulos` de Gestión Virgilio** (PK `codigo`, la lee
+`vista_volumen_articulo_resuelto` con `origen = 'gestion'`): el del artículo base dividido por su
+UxB real. 55219 = 0,0185 ÷ 6 = **0,00308**; 55289 = 0,0194 ÷ 12 = **0,001617**. Si falta el m3,
+la NP se programa sin volumen y subestima el camión.
+
+**Al agregar otro código de reenvase o otro cliente por unidad**: la lista de códigos y la de
+clientes están al principio del bloque PSC de `admin.js`, el artículo se da de alta en `products`
+con `active = false` y `uxb = 1`, y se le carga el m3 por unidad en Gestión. Y **replicar al
+espejo** `Gestion-Virgilio/admin/` (ahí el `?v=` de `admin.js` se bumpea a mano).
+
 ## Integración Krikos (OC de supermercados por mail)
 
 - **Krikos360 es el portal EDI de Planexware** por el que las cadenas (Coto, Carrefour/INC, Día,
