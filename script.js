@@ -5993,7 +5993,7 @@ async function loadDeliveryOptions(retry = 0) {
 
   const { data, error } = await supabaseClient
     .from("customer_delivery_addresses")
-    .select("slot,label,direccion_entrega,zona_expreso,pending_isis")
+    .select("slot,label,direccion_entrega,zona_expreso,pending_isis,nombre_expreso,direccion_expreso,localidad,provincia")
     .eq("customer_id", customerProfile.id)
     .order("slot", { ascending: true });
 
@@ -6004,6 +6004,20 @@ async function loadDeliveryOptions(retry = 0) {
 
   var rows = data || [];
 
+  // Sucursales cuyo expreso el cliente ya cambio y todavia no se cargo en ISIS.
+  // Es solo el reloj de la UI: el pedido sale igual, con el expreso nuevo.
+  var _expPendientes = new Set();
+  try {
+    const pend = await supabaseClient
+      .from("expreso_pendiente")
+      .select("slot")
+      .eq("customer_id", customerProfile.id)
+      .eq("estado", "pendiente");
+    (pend.data || []).forEach((x) => _expPendientes.add(String(x.slot)));
+  } catch (_e) {
+    /* que falte el reloj no puede romper la carga de sucursales */
+  }
+
   rows.forEach((row) => {
     const opt = document.createElement("option");
     opt.value = String(row.slot);
@@ -6012,6 +6026,13 @@ async function loadDeliveryOptions(retry = 0) {
     opt.dataset.label = row.label || "";
     opt.dataset.direccionEntrega = row.direccion_entrega || "";
     opt.dataset.zonaExpreso = row.zona_expreso || "";
+    // v2026-09-23: el expreso viaja en el dataset para que _expSyncUI() lo
+    // pinte sin volver a consultar al cambiar de sucursal.
+    opt.dataset.nombreExpreso = row.nombre_expreso || "";
+    opt.dataset.direccionExpreso = row.direccion_expreso || "";
+    opt.dataset.localidad = row.localidad || "";
+    opt.dataset.provincia = row.provincia || "";
+    opt.dataset.expresoPendiente = _expPendientes.has(String(row.slot)) ? "1" : "";
     sel.appendChild(opt);
   });
 
@@ -6061,6 +6082,9 @@ async function loadDeliveryOptions(retry = 0) {
   if (typeof _csSyncPopupFromHidden === "function") _csSyncPopupFromHidden(sel);
 
   updateCart();
+
+  // Linea del expreso debajo del selector.
+  if (typeof _expSyncUI === "function") _expSyncUI();
 
   // Refrescar info extra del vendedor 10006 (sucursales recién cargadas).
   if (typeof updateVendor10006Info === "function") updateVendor10006Info();
@@ -6264,6 +6288,334 @@ function autocompletarDireccionExpreso() {
     inpDir.value = direccionSugerida;
   }
 }
+
+/* ============================================================================
+ * EXPRESO DE LA SUCURSAL ELEGIDA  (pedido de Thomas, 2026-09-23)
+ * ============================================================================
+ * El dato SIEMPRE existió — `customer_delivery_addresses.nombre_expreso`, 941 de
+ * 1.615 sucursales, 576 de las 662 del interior — pero el cliente no lo veía:
+ * lo único que lo mostraba era el panel del vendedor 10006, y el único lugar
+ * donde se podía elegir un expreso era el alta de sucursal NUEVA. Si el expreso
+ * de una sucursal ya cargada cambiaba, no había forma de decirlo desde la página.
+ *
+ * ⚠ CAMBIAR EL EXPRESO NO FRENA NI CONDICIONA EL PEDIDO. Si lo que tipea el
+ *   cliente no está en nuestro padrón se acepta igual: se guarda como viene, el
+ *   pedido sale, y queda la alerta en `expreso_pendiente` para cargarlo a mano
+ *   en ISIS. La prioridad es que el cliente termine de mandar el pedido.
+ *
+ * ⚠ El cambio escribe la FICHA, y por eso el pedido sale con el expreso nuevo
+ *   SIN tocar el submit: `v_pedidos_web` lee `customer_delivery_addresses` EN
+ *   VIVO (verificado 23/09), así que el dato viaja solo hasta la PPP de Gestión
+ *   y el camión va al galpón correcto.
+ */
+
+// Lo que el cliente eligió en el popup: la fila del padrón, o null si es texto
+// libre (un expreso que no tenemos). Lo segundo NO es un error: es el caso que
+// dispara la alerta.
+let _expElegido = null;
+let _expSlotEditando = null;
+
+// Sin acentos, sin dobles espacios y en minúscula: "LA SEVILLANITA" tiene que
+// encontrarse escribiendo "la sev" y "Río Negro" escribiendo "rio".
+function _expNorm(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function _expEsRetira(nombre, zona) {
+  return /^retira$/i.test(String(nombre || "").trim()) ||
+         /^retira$/i.test(String(zona || "").trim());
+}
+
+/* ¿Esta sucursal se entrega por expreso? El interior sí; CABA y GBA los
+   repartimos nosotros. Sin esta distinción, a un cliente de Flores le
+   aparecería "sin expreso cargado", que para él no significa nada. */
+function _expAplica(provincia, localidad) {
+  const p = _expNorm(provincia);
+  const l = _expNorm(localidad);
+  if (!p && !l) return false;
+  if (["caba", "capital federal", "capital", "ciudad autonoma de buenos aires"].includes(p)) return false;
+  if (["caba", "capital federal", "capital"].includes(l)) return false;
+  return p !== "buenos aires";
+}
+
+/* Dibuja la línea del expreso debajo del selector de sucursal. Corre en cada
+   cambio de sucursal y después de guardar. */
+function _expSyncUI() {
+  const sel = document.getElementById("shippingSelect");
+  const box = document.getElementById("expresoBox");
+  if (!sel || !box) return;
+
+  const slot = String(sel.value || "").trim();
+  if (!slot || slot === "__add__") {
+    box.hidden = true;
+    return;
+  }
+  const opt = sel.options[sel.selectedIndex];
+  const d = (opt && opt.dataset) || {};
+  const nombre = String(d.nombreExpreso || "").trim();
+  const dir = String(d.direccionExpreso || "").trim();
+  const zona = String(d.zonaExpreso || "").trim();
+
+  if (_expEsRetira(nombre, zona)) {
+    box.hidden = true;
+    return;
+  }
+
+  const aplica = !!nombre || _expAplica(d.provincia, d.localidad);
+  if (!aplica) {
+    box.hidden = true;
+    return;
+  }
+
+  const pend = String(d.expresoPendiente || "") === "1";
+  let html = "";
+  if (nombre) {
+    html =
+      '<span class="exp-ico">🚚</span>' +
+      '<span class="exp-txt"><span class="exp-k">Expreso</span>' +
+      '<span class="exp-v">' + escapeHtml(nombre) + "</span>" +
+      (dir ? '<span class="exp-dir">' + escapeHtml(dir) + "</span>" : "") +
+      (pend ? '<span class="exp-pend">⏳ pendiente de carga administrativa</span>' : "") +
+      "</span>" +
+      '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Cambiar</button>';
+  } else {
+    html =
+      '<span class="exp-ico">🚚</span>' +
+      '<span class="exp-txt"><span class="exp-k">Expreso</span>' +
+      '<span class="exp-v exp-v--falta">Sin expreso cargado</span>' +
+      '<span class="exp-dir">Si nos decís cuál, lo despachamos ahí.</span></span>' +
+      '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Indicar</button>';
+  }
+  box.innerHTML = html;
+  box.hidden = false;
+}
+window._expSyncUI = _expSyncUI;
+
+function abrirModalExpreso() {
+  const sel = document.getElementById("shippingSelect");
+  const slot = String((sel && sel.value) || "").trim();
+  if (!slot || slot === "__add__") {
+    alert("Elegí primero la sucursal de entrega.");
+    return;
+  }
+  _expSlotEditando = slot;
+  _expElegido = null;
+
+  const opt = sel.options[sel.selectedIndex];
+  const d = (opt && opt.dataset) || {};
+  const subt = document.getElementById("expModalSuc");
+  if (subt) subt.textContent = String(d.label || opt.textContent || "").trim();
+
+  const inp = document.getElementById("expBuscar");
+  if (inp) inp.value = "";
+  ["expDireccion", "expLocalidad"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  const res = document.getElementById("expResultados");
+  if (res) res.innerHTML = "";
+  const libre = document.getElementById("expLibre");
+  if (libre) libre.hidden = true;
+  const err = document.getElementById("expError");
+  if (err) { err.style.display = "none"; err.textContent = ""; }
+  _expActualizarBoton();
+
+  cargarExpresosCache();
+  const modal = document.getElementById("modalExpreso");
+  if (modal) modal.classList.add("open");
+  setTimeout(() => { if (inp) inp.focus(); }, 80);
+}
+window.abrirModalExpreso = abrirModalExpreso;
+
+function cerrarModalExpreso() {
+  const modal = document.getElementById("modalExpreso");
+  if (modal) modal.classList.remove("open");
+  _expSlotEditando = null;
+}
+window.cerrarModalExpreso = cerrarModalExpreso;
+
+/* Ordena el padrón contra lo que el cliente tipeó. Función PURA a propósito:
+   así `tests/expreso-buscador.cjs` la corre de verdad contra el padrón real en
+   vez de leerla. El orden importa — "la sev" tiene que traer LA SEVILLANITA
+   antes que cualquier fila que sólo la nombre por dirección. */
+function _expRankear(lista, qRaw) {
+  const q = _expNorm(qRaw);
+  if (q.length < 2) return [];
+  const conPuntaje = [];
+  (lista || []).forEach((e) => {
+    const nom = _expNorm(e.razon_social);
+    const dir = _expNorm(e.domicilio);
+    const loc = _expNorm(e.localidad);
+    let p = -1;
+    if (nom.startsWith(q)) p = 0;          // "la sev" → La Sevillanita primero
+    else if (nom.includes(q)) p = 1;
+    else if (dir.includes(q)) p = 2;       // por dirección del galpón
+    else if (loc.includes(q)) p = 3;       // por localidad (Barracas, Soldati…)
+    if (p >= 0) conPuntaje.push({ e: e, p: p });
+  });
+  conPuntaje.sort((a, b) =>
+    a.p !== b.p ? a.p - b.p
+      : String(a.e.razon_social || "").localeCompare(String(b.e.razon_social || "")),
+  );
+  return conPuntaje.slice(0, 40).map((x) => x.e);
+}
+
+/* Busca por NOMBRE y también por DIRECCIÓN: el cliente muchas veces sabe a qué
+   galpón va la mercadería ("Pinedo 50") y no cómo se llama el expreso. Filtra
+   sobre el cache de las 412 filas del padrón, así que no hay un viaje por tecla. */
+async function onExpBuscarInput() {
+  const inp = document.getElementById("expBuscar");
+  const res = document.getElementById("expResultados");
+  const libre = document.getElementById("expLibre");
+  if (!inp || !res) return;
+
+  const qRaw = String(inp.value || "").trim();
+  const q = _expNorm(qRaw);
+  _expElegido = null;
+  _expActualizarBoton();
+
+  if (q.length < 2) {
+    res.innerHTML = "";
+    if (libre) libre.hidden = true;
+    return;
+  }
+
+  const lista = await cargarExpresosCache();
+  const top = _expRankear(lista, qRaw);
+
+  res.innerHTML = top
+    .map((e, i) => {
+      const dom = [e.domicilio, e.localidad].filter(Boolean).join(", ");
+      return (
+        '<button type="button" class="exp-op" data-i="' + i + '" onclick="expElegir(' + i + ')">' +
+        '<span class="exp-op-n">' + escapeHtml(e.razon_social || "") + "</span>" +
+        (dom ? '<span class="exp-op-d">' + escapeHtml(dom) + "</span>" : "") +
+        "</button>"
+      );
+    })
+    .join("");
+  _expTop = top;
+
+  // Nada encontrado: NO es un freno. Se ofrece mandarlo igual.
+  if (libre) libre.hidden = top.length > 0;
+}
+window.onExpBuscarInput = onExpBuscarInput;
+
+let _expTop = [];
+
+function expElegir(i) {
+  const e = _expTop[i];
+  if (!e) return;
+  _expElegido = e;
+  const inp = document.getElementById("expBuscar");
+  if (inp) inp.value = e.razon_social || "";
+  const res = document.getElementById("expResultados");
+  if (res) {
+    const dom = [e.domicilio, e.localidad, e.provincia].filter(Boolean).join(", ");
+    res.innerHTML =
+      '<div class="exp-sel">' +
+      '<span class="exp-sel-ok">✔</span>' +
+      '<span><b>' + escapeHtml(e.razon_social || "") + "</b>" +
+      (dom ? '<span class="exp-sel-d">Entregamos en: ' + escapeHtml(dom) + "</span>" : "") +
+      "</span></div>";
+  }
+  const libre = document.getElementById("expLibre");
+  if (libre) libre.hidden = true;
+  _expActualizarBoton();
+}
+window.expElegir = expElegir;
+
+function _expActualizarBoton() {
+  const btn = document.getElementById("expGuardarBtn");
+  if (!btn) return;
+  const q = String(document.getElementById("expBuscar")?.value || "").trim();
+  const ok = q.length >= 2;
+  btn.disabled = !ok;
+  btn.style.opacity = ok ? "" : "0.55";
+  btn.style.cursor = ok ? "" : "not-allowed";
+  btn.textContent = _expElegido ? "Usar este expreso" : "Usar igual";
+}
+window._expActualizarBoton = _expActualizarBoton;
+
+async function guardarExpreso() {
+  const err = document.getElementById("expError");
+  const btn = document.getElementById("expGuardarBtn");
+  // Si esto falla, el cliente NO queda trabado: cierra el popup y confirma el
+  // pedido igual (sale con el expreso que ya tenía la ficha). Es la misma regla
+  // que el resto del módulo — ninguna carga administrativa frena un pedido.
+  const setErr = (m) => {
+    if (err) {
+      err.style.display = "";
+      err.textContent = m + " Podés cerrar y confirmar el pedido igual: lo corregimos nosotros.";
+    }
+    if (btn) { btn.disabled = false; btn.textContent = "Reintentar"; }
+  };
+
+  const nombre = String(document.getElementById("expBuscar")?.value || "").trim();
+  if (nombre.length < 2) return setErr("Escribí el nombre del expreso.");
+  if (!_expSlotEditando) return setErr("No se pudo identificar la sucursal.");
+
+  // Del padrón: la dirección la resuelve el backend. Texto libre: lo que el
+  // cliente haya querido completar, que es OPCIONAL a propósito.
+  const dirLibre = String(document.getElementById("expDireccion")?.value || "").trim();
+  const locLibre = String(document.getElementById("expLocalidad")?.value || "").trim();
+
+  if (btn) { btn.disabled = true; btn.textContent = "Guardando…"; }
+  if (err) err.style.display = "none";
+
+  try {
+    const { data, error } = await supabaseClient.rpc("expreso_cambiar", {
+      p_slot: Number(_expSlotEditando),
+      p_nombre: nombre,
+      p_direccion: _expElegido ? null : (dirLibre || null),
+      p_localidad: _expElegido ? null : (locLibre || null),
+      p_provincia: null,
+      p_order_id: null,
+      p_customer_id:
+        (typeof isVendorOwnMode === "function" && !isVendorOwnMode() &&
+         customerProfile && customerProfile.id) ? customerProfile.id : null,
+    });
+    if (error) throw new Error(error.message || "No se pudo guardar el expreso.");
+
+    const delPadron = !!(data && data.del_padron);
+    cerrarModalExpreso();
+
+    // Releer las sucursales para que los datasets queden con el valor nuevo, y
+    // volver a dejar elegida la misma.
+    const slotVuelta = _expSlotEditando;
+    await loadDeliveryOptions();
+    const sel = document.getElementById("shippingSelect");
+    if (sel && slotVuelta) {
+      sel.value = String(slotVuelta);
+      if (typeof _csRefreshDropdownVisual === "function") _csRefreshDropdownVisual(sel);
+      const opt = sel.options[sel.selectedIndex];
+      deliveryChoice.slot = String(slotVuelta);
+      deliveryChoice.label = opt?.dataset?.label || deliveryChoice.label;
+      deliveryChoice.direccionEntrega = opt?.dataset?.direccionEntrega || "";
+      deliveryChoice.zonaExpreso = opt?.dataset?.zonaExpreso || "";
+    }
+    _expSyncUI();
+    refreshSubmitEnabled();
+    if (typeof updateVendor10006Info === "function") updateVendor10006Info();
+
+    alert(
+      delPadron
+        ? "Listo: tu pedido sale por " + nombre + "."
+        : "Listo: tu pedido sale por " + nombre +
+          ".\n\nNo lo teníamos en nuestra base, así que lo vamos a dar de alta " +
+          "nosotros. No te frena nada: podés confirmar el pedido igual.",
+    );
+  } catch (e) {
+    console.error("guardarExpreso error:", e);
+    setErr("Error: " + (e.message || e));
+  }
+}
+window.guardarExpreso = guardarExpreso;
 
 // Si la localidad o provincia es CABA, deshabilita el expreso (no aplica).
 function actualizarExpresoSegunCABA() {
@@ -15165,6 +15517,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       updateCart();
       refreshSubmitEnabled();
+      // Linea del expreso de la sucursal recien elegida.
+      if (typeof _expSyncUI === "function") _expSyncUI();
       // Refrescar localidad/expreso del vendedor 10006 al cambiar sucursal.
       if (typeof updateVendor10006Info === "function") updateVendor10006Info();
     });

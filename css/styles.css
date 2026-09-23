@@ -16319,3 +16319,116 @@ body { top: 0 !important; }
   padding: 6px 14px;
   font-size: 13px;
 }
+
+/* ============================================================================
+   EXPRESO DE LA SUCURSAL  (Thomas, 23/09/2026)
+   La línea que va debajo del selector de sucursal + el popup para cambiarlo.
+   Se muestra sólo cuando la sucursal va por expreso (interior) o ya tiene uno
+   cargado: en CABA/GBA repartimos nosotros y el cartel no significaría nada.
+   ========================================================================== */
+.exp-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 9px;
+  padding: 8px 10px;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  background: #fafafa;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.exp-box[hidden] { display: none; }
+.exp-ico { flex: 0 0 auto; font-size: 14px; line-height: 1.2; }
+.exp-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.exp-k {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a8a8a;
+  font-weight: 700;
+}
+.exp-v { font-weight: 700; color: #1f1f1f; overflow-wrap: anywhere; }
+.exp-v--falta { color: #b45309; font-weight: 600; }
+.exp-dir { font-size: 11.5px; color: #6b6b6b; overflow-wrap: anywhere; }
+.exp-pend { font-size: 11px; color: #b45309; }
+.exp-btn {
+  flex: 0 0 auto;
+  border: 1px solid #d4d4d4;
+  background: #fff;
+  border-radius: 6px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #333;
+}
+.exp-btn:hover { background: #f1f1f1; border-color: #bdbdbd; }
+
+/* ---- popup ---- */
+.exp-suc { margin: 0 0 12px; font-size: 13px; color: #555; }
+.exp-suc span { font-weight: 700; color: #1f1f1f; }
+.exp-help { font-size: 11.5px; color: #777; margin: -6px 0 10px; }
+.exp-opt { color: #999; font-weight: 400; font-size: 11px; }
+
+.exp-res { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; margin-bottom: 10px; }
+.exp-op {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+  width: 100%;
+  border: 1px solid #ececec;
+  background: #fff;
+  border-radius: 7px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.exp-op:hover { background: #f5f5f5; border-color: #d0d0d0; }
+.exp-op-n { font-size: 13.5px; font-weight: 600; color: #1f1f1f; }
+.exp-op-d { font-size: 11.5px; color: #777; }
+
+.exp-sel {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-size: 13px;
+}
+.exp-sel-ok { color: #15803d; font-weight: 700; }
+.exp-sel b { display: block; }
+.exp-sel-d { display: block; font-size: 11.5px; color: #4b6b57; margin-top: 2px; }
+
+/* No encontrado: informa, NO frena. Ámbar, no rojo — no es un error del cliente. */
+.exp-libre {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.exp-libre[hidden] { display: none; }
+.exp-libre-t { margin: 0 0 10px; font-size: 12.5px; color: #78350f; line-height: 1.4; }
+
+.exp-cancel {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  border: none;
+  background: none;
+  color: #777;
+  font-size: 12.5px;
+  cursor: pointer;
+  padding: 6px;
+  font-family: inherit;
+}
+.exp-cancel:hover { color: #333; text-decoration: underline; }
+
+@media (max-width: 460px) {
+  .exp-box { flex-wrap: wrap; }
+  .exp-btn { margin-left: auto; }
+}

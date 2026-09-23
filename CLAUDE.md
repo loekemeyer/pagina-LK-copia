@@ -467,6 +467,51 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
 - `app_settings.web_order_discount` is read at load time as the web-order discount (fallback `0.02`).
 - **Los módulos de estadística valorizan en NETO, no a precio de lista.** `get_ranking_inactivos` y `get_ranking_inactivos_export` hacen `boxes * products.uxb * products.list_price * (1 - customers.dto_vol) * (1 - app_settings.web_order_discount)`. **`list_price` es el precio POR UNIDAD, no por caja**, así que el `uxb` NO es opcional: sin él el monto sale dividido por las unidades por caja (promedio 12,1, rango 1 a 100). Es el mismo cálculo que hace el carrito en `script.js` (`listUnit * (uxb * cajas)`) — la misma cadena multiplicativa que arma un pedido real en `script.js` (`listUnit * (1 - dtoVol) * (1 - webDiscountRate) * (1 - extraRate)`). El descuento por medio de pago queda afuera: depende de cómo se pagó cada pedido y `sales_lines` no lo guarda. Las dos RPC tienen que usar el MISMO factor: una alimenta la tabla en pantalla y la otra el Excel descargable del mismo módulo, así que si divergen muestran números distintos para el mismo cliente.
 
+## ⚠ REGLA (Thomas, 2026-09-23): el EXPRESO lo elige el cliente, y NUNCA le frena el pedido
+
+**Thomas, textual:** *"La prioridad es que el cliente termine de mandar el pedido, sin ninguna
+limitación administrativa. Que la carga de dirección donde entregamos nosotros sea opcional"*.
+
+**El dato del expreso SIEMPRE existió y está bien cargado** (medido el 23/09): `nombre_expreso`
+en **941 de 1.615** sucursales, `direccion_expreso` en 912, contra el padrón `public.expresos`
+(**412** filas, con domicilio y localidad, el de ISIS) — y **308 de los 310** nombres distintos
+de las fichas matchean ese padrón. Donde importa está casi completo: **576 de las 662 sucursales
+del interior (87 %)**.
+
+**Lo que faltaba no era el dato: era mostrarlo.** El cliente no lo veía nunca —sólo lo pintaba el
+panel del vendedor 10006— y el único lugar donde se podía elegir un expreso era el alta de
+sucursal **nueva**. Si el expreso de una sucursal ya cargada cambiaba, no había forma de decirlo.
+
+| lo que hace hoy | dónde |
+|---|---|
+| línea 🚚 con el expreso de la sucursal elegida + botón Cambiar | `_expSyncUI()` |
+| busca por **nombre** y por **dirección del galpón** ("Pinedo 50") | `_expRankear()` |
+| lo guarda y deja la alerta para ISIS | RPC **`expreso_cambiar`** |
+
+> ## **La ficha se escribe en el acto, y por eso el pedido sale con el expreso nuevo SIN tocar el submit.**
+> `v_pedidos_web` lee `customer_delivery_addresses` **en vivo** (verificado 23/09), así que el dato
+> viaja solo hasta la PPP de Gestión y el camión va al galpón correcto. La fila de
+> `expreso_pendiente` guarda el ANTERIOR, que es lo que el módulo de ISIS necesita.
+
+⚠ **Un expreso que no está en el padrón se acepta como viene.** Los dos campos de dirección son
+**opcionales**, el cartel es ámbar (informa, no es un error del cliente) y el botón dice *"Usar
+igual"*. Si hasta la RPC falla, el mensaje le dice que confirme el pedido igual.
+
+⚠ **`expreso_anterior` NUNCA lo manda el front**: lo lee la RPC de la ficha antes de escribir. Si
+lo mandara el cliente podría borrar el rastro de qué había antes, que es justo lo que administración
+necesita para corregir ISIS.
+
+⚠ **La línea no se muestra en CABA ni en GBA**: ahí reparte el camión propio, y un *"sin expreso
+cargado"* no significaría nada para ese cliente. `_expAplica(provincia, localidad)`.
+
+⚠ **Al tocar esto, mirar también `paginach`**: es el mismo módulo. Y el espejo del admin en
+`Gestion-Virgilio/admin/` no lo toca (esto vive en `mayorista.html`, no en el panel).
+
+**Chequeo:** `bash tests/run.sh` — `expreso-buscador` (el orden: "la sev" trae LA SEVILLANITA
+primero) y `expreso-render` (que el bloque se dibuje y que un expreso desconocido **no** deshabilite
+el botón). Los dos verificados mutando el código a propósito.
+`sql/expreso_cambio_cliente.sql`.
+
 ## ⚠ REGLA (Thomas, 2026-09-21): el badge SIN STOCK se valida en el BACKEND
 
 **Thomas, textual:** *"NO DEBERIA DEJARLO PEDIR. YA CON ESA LOGICA ESTA EL 517"*.

@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23458" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23458" />
+    <link rel="stylesheet" href="css/styles.css?v=23459" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23459" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1393,6 +1393,9 @@
           <div class="ship-hint">
             Seleccioná una dirección para poder confirmar el pedido.
           </div>
+          <!-- Expreso de la sucursal elegida. Lo pinta _expSyncUI(); queda
+               oculto en Retira y en CABA/GBA, donde repartimos nosotros. -->
+          <div id="expresoBox" class="exp-box" hidden></div>
           <!-- RETIRA: el cliente elige día (desde +3 días hábiles) y franja horaria.
                Lo muestra/oculta _syncRetiroUI() según la sucursal elegida. -->
           <div id="retiroBlock" class="retiro-block" hidden>
@@ -1771,6 +1774,71 @@
     </div>
 
     <!-- MODAL AGREGAR SUCURSAL -->
+    <!-- =====================================================================
+         CAMBIAR EL EXPRESO DE UNA SUCURSAL  (Thomas, 23/09/2026)
+         Busca por nombre Y por dirección del galpón. Si no está en el padrón
+         NO frena: se manda igual y queda la alerta para cargarlo en ISIS.
+         ===================================================================== -->
+    <div class="modal" id="modalExpreso" aria-hidden="true">
+      <div class="modal-content exp-modal">
+        <div class="modal-header">
+          <h3>¿Con qué expreso te entregamos?</h3>
+          <button class="modal-close" onclick="cerrarModalExpreso()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <p class="exp-suc">Sucursal: <span id="expModalSuc"></span></p>
+
+          <label for="expBuscar">Expreso</label>
+          <input
+            id="expBuscar"
+            type="text"
+            placeholder="Nombre o dirección (ej: La Sev, Pinedo 50, Barracas)"
+            maxlength="80"
+            autocomplete="off"
+            oninput="onExpBuscarInput()"
+          />
+          <div class="exp-help">
+            Escribí 2 letras y te sugerimos. También podés buscar por la
+            dirección del depósito en AMBA.
+          </div>
+
+          <div id="expResultados" class="exp-res"></div>
+
+          <!-- No encontrado: se acepta igual. Los dos campos son OPCIONALES. -->
+          <div id="expLibre" class="exp-libre" hidden>
+            <p class="exp-libre-t">
+              No lo tenemos en nuestra base. <b>No hay problema:</b> podés usarlo
+              igual y confirmar el pedido. Lo damos de alta nosotros.
+            </p>
+            <label for="expDireccion">Dirección del expreso en AMBA <span class="exp-opt">(opcional)</span></label>
+            <input id="expDireccion" type="text" maxlength="200" autocomplete="off"
+                   placeholder="Calle y altura del depósito" />
+            <label for="expLocalidad">Localidad <span class="exp-opt">(opcional)</span></label>
+            <input id="expLocalidad" type="text" maxlength="60" autocomplete="off"
+                   placeholder="Barrio o localidad" />
+            <div class="exp-help">
+              Si no los sabés, dejalos vacíos y confirmá igual.
+            </div>
+          </div>
+
+          <div class="modal-error" id="expError" style="display: none"></div>
+
+          <button
+            class="modal-submit"
+            id="expGuardarBtn"
+            onclick="guardarExpreso()"
+            disabled
+          >
+            Usar este expreso
+          </button>
+          <button type="button" class="exp-cancel" onclick="cerrarModalExpreso()">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal" id="modalNuevaSucursal" aria-hidden="true">
       <div class="modal-content">
         <div class="modal-header">
@@ -2208,14 +2276,14 @@
     <!-- La versión ya se muestra en el footer; se quitó el badge flotante. -->
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23458"></script>
-    <script src="script.js?v=23458"></script>
+    <script src="./version.js?v=23459"></script>
+    <script src="script.js?v=23459"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23458"></script>
+    <script src="analisis-venta-cliente.js?v=23459"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23458"></script>
-    <script src="admin-excel-krikos.js?v=23458"></script>
-    <script src="vendor-import-excel.js?v=23458"></script>
+    <script src="scotapi-shim.js?v=23459"></script>
+    <script src="admin-excel-krikos.js?v=23459"></script>
+    <script src="vendor-import-excel.js?v=23459"></script>
   </body>
 </html>

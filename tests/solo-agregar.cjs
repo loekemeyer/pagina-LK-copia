@@ -56,6 +56,11 @@ const sandbox = {
   triggerAddAnimations: () => {},
   saveCartToLS: () => {},
   updateCartBadge: () => {},
+  // Se le sumo a changeQty despues de escribir este test y nadie puso el stub:
+  // el test quedo en rojo con "checkQtyWarning is not defined" sin que hubiera
+  // ningun bug de la app. Al agregarle una llamada nueva a una de las FNS de
+  // arriba, agregarle aca su stub.
+  checkQtyWarning: () => {},
   console
 };
 vm.createContext(sandbox);

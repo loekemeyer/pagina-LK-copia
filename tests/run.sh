@@ -1,0 +1,39 @@
+#!/bin/bash
+# tests/run.sh — corre TODA la suite de la pagina LK y lista los rojos al final.
+#
+# POR QUE EXISTE (2026-09-23). Los tests de este repo estaban sueltos en tests/ y
+# no los corria nadie: los hooks de git solo bumpean la version, no ejecutan nada.
+# Un test que hay que acordarse de correr a mano es un test que no corre.
+#
+# ⚠ SIN `set -e` A PROPOSITO: con el corta en el primer rojo y nunca se sabe el
+#   tamano del problema. Corre todo y despues dice que fallo.
+#
+# ⚠ AL AGREGAR UN TEST, AGREGARLO ACA. No se descubren solos, y un archivo suelto
+#   en tests/ da la sensacion de estar cubierto sin estarlo.
+#
+# Correr:  bash tests/run.sh
+cd "$(dirname "$0")/.." || exit 1
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}"
+ROJOS=()
+_correr() {
+  echo "== $1 =="
+  if ! node "tests/$1"; then ROJOS+=("tests/$1"); fi
+  echo
+}
+
+_correr payload-scope.cjs
+_correr solo-agregar.cjs
+_correr estado-gestion.cjs
+_correr expreso-buscador.cjs
+_correr expreso-render.cjs
+
+echo "======================================================================"
+if [ ${#ROJOS[@]} -eq 0 ]; then
+  echo "SUITE VERDE — 5 corridas, 0 rojos"
+else
+  echo "SUITE EN ROJO — ${#ROJOS[@]} de 5:"
+  for r in "${ROJOS[@]}"; do echo "  · $r"; done
+  echo "======================================================================"
+  exit 1
+fi
+echo "======================================================================"
