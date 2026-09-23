@@ -577,10 +577,20 @@ espejo** `Gestion-Virgilio/admin/` (ahí el `?v=` de `admin.js` se bumpea a mano
 que el 55219 y el 55289 van por la **lista 34 "Lista Gigot"** ($5.650 y $1.690 la unidad), y en la
 web hay **un solo `list_price` por artículo**: las listas por cliente viven en el ERP. Los dos
 pedidos de ese día salieron con el precio anterior cargado ($5.820 y $1.740). **No llegó al ERP**
-—`sheets_payload` manda sólo `cod_art`, `cajas` y `uxb`, sin precio, así que el súper/cliente se
-factura con la lista del ERP—, pero **`orders.total` sí quedó inflado** ($540.000 entre los dos), y
-de ahí lo leen el dashboard de ventas y el `valor_lista` de la NP en Gestión. Al dar de alta un
-reenvase: pedir el precio de la lista que corresponde ANTES de que se cargue el pedido.
+—`sheets_payload` manda sólo `cod_art`, `cajas` y `uxb`, sin precio, así que el cliente se factura
+con la lista del ERP—, pero quedaron mal dos cosas distintas, y **no se arreglan con el mismo
+cambio**:
+
+- **`orders.total`**, que es un snapshot del momento del pedido: $11.640.000 y $6.960.000, o sea
+  **$540.000 de más** entre los dos. Corregir `products.list_price` NO lo mueve; hay que editar los
+  dos pedidos. De `orders.total` sale el "PEDIDO" del dashboard de ventas y el historial del portal.
+- **`products.list_price`**, que es un valor único de HOY y se usa en vivo: de ahí valorizan la
+  ficha de cliente, el Ranking Inactivos y el `valor_lista` de la NP en Gestión (vía
+  `gv_ppp_np_valor` / `ppp_valor_linea`, **que valorizan por línea y NO leen `orders.total`** —
+  verificado el 23/09 sobre `gv_pedidos_web_np_lk` y `gv_lk_np_feed`).
+
+Al dar de alta un reenvase: pedir el precio de la lista que corresponde ANTES de que se cargue el
+pedido.
 
 ## Integración Krikos (OC de supermercados por mail)
 
