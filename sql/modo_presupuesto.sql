@@ -44,26 +44,38 @@ comment on column public.customers.modo_presupuesto is
   'y lo que envía entra con total 0 para que lo coticemos. Caso de uso: '
   'exportación (Classic S.A., Paraguay). Ver sql/modo_presupuesto.sql.';
 
--- ─── 2. Prenderlo para el cliente ───────────────────────────────────────────
--- El cliente se da de alta como cualquier otro desde el panel (ABM Clientes),
--- porque ahí es donde se crea también el usuario de auth con el mail sintético
--- <dígitos>@cuit.loekemeyer. Este UPDATE sólo prende la bandera.
+-- ─── 2. Dar de alta a Classic S.A. y prenderle la bandera ──────────────────
 --
--- ⚠ El RUC paraguayo va en `cuit` SIN guiones ni puntos, igual que un CUIT:
--- 80013057-0 → 800130570. Son 9 dígitos y el login ya los acepta (se bajó el
--- piso de looksLikeCUIT de 10 a 8 dígitos; ningún username cargado es sólo
--- dígitos, así que no choca con nadie).
+-- ⚠ EL ALTA DEL CLIENTE VA POR EL PANEL (ABM Clientes), NO POR SQL. No es un
+-- capricho: el panel además crea el usuario de `auth` con el mail sintético
+-- <dígitos>@cuit.loekemeyer (llama a la Edge Function `crear-cliente-auth`).
+-- Un INSERT a mano en `customers` deja al cliente SIN poder entrar a la página.
 --
--- ⚠ EN CHEF el código de Classic S.A. es 1362. EN LOEKEMEYER el cliente NO
--- tiene código todavía: si se le da uno, se completa acá. Las numeraciones de
--- las dos empresas son independientes — 1362 en Loekemeyer es OTRO negocio.
+-- Datos para cargarlo:
+--     Razón social : CLASSIC S.A.
+--     CUIT/RUC     : 800130570     ← el RUC paraguayo 80013057-0, SIN guiones
+--     Dto x volumen: 0             ← no ve descuentos, pero que quede en 0
+--     PIN          : el que se le vaya a pasar al cliente
+--
+-- ⚠ EN CHEF el código es 1362. EN LOEKEMEYER todavía NO TIENE, y hace falta:
+-- el pedido viaja a la PPP de Gestión con `sheets_payload.cod_cliente`, así que
+-- sin código la NP llega sin cliente. El número lo asigna ISIS, no se inventa
+-- acá: si se le pone uno que después el ERP le da a otro, el pedido de Classic
+-- termina en la ficha de otro negocio. (Al 23/09 el mayor código real de LK es
+-- 5001; las numeraciones de LK y Chef son INDEPENDIENTES: 1362 en Loekemeyer es
+-- otro negocio.)
 
--- Chef (proyecto nkhzocgdpwtgrmwleihr):
---   update public.customers set modo_presupuesto = true where cod_cliente = 1362;
+-- ── 2.a) Prender la bandera, una vez que el cliente ya está cargado ─────────
 
--- Loekemeyer (proyecto kwkclwhmoygunqmlegrg): por RUC, que es lo único seguro
--- mientras no tenga código propio.
---   update public.customers set modo_presupuesto = true
+-- CHEF (proyecto nkhzocgdpwtgrmwleihr):
+--   update public.customers
+--      set modo_presupuesto = true
+--    where cod_cliente = 1362;
+
+-- LOEKEMEYER (proyecto kwkclwhmoygunqmlegrg): por RUC, que es lo único seguro
+-- mientras el código lo sigue definiendo ISIS.
+--   update public.customers
+--      set modo_presupuesto = true
 --    where regexp_replace(coalesce(cuit, ''), '\D', '', 'g') = '800130570';
 
 -- ─── 3. Verificación (correr SIEMPRE después de prender la bandera) ─────────
