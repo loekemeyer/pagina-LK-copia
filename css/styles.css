@@ -16447,3 +16447,76 @@ body { top: 0 !important; }
   .exp-box { flex-wrap: wrap; }
   .exp-btn { margin-left: auto; }
 }
+
+/* =========================================================================
+   MODO PRESUPUESTO — cliente de exportación (customers.modo_presupuesto)
+   =========================================================================
+   La clase la pone `_presupuestoSyncUI()` en <body>. Este bloque NO es lo que
+   esconde los precios: en este modo `loadProductsFromDB` directamente no pide
+   `list_price`, así que el precio ni siquiera baja al navegador. Lo que hace
+   este CSS es sacar de la pantalla los renglones que, sin precio, quedarían
+   mostrando "$0" — y los controles de descuento, que acá no existen.
+   ------------------------------------------------------------------------- */
+
+/* Precios en la ficha del producto, en la línea Loke y en la vista ampliada */
+.is-presupuesto .card-prices,
+.is-presupuesto #ppPrices,
+.is-presupuesto .vs-price-block,
+.is-presupuesto .nc-price-block {
+  display: none !important;
+}
+
+/* Subtotal de la barra de cantidad, dentro de la ficha */
+.is-presupuesto .cartbar-top {
+  display: none !important;
+}
+
+/* Totales del carrito + método de pago + nota del 2% web */
+.is-presupuesto .cart-total,
+.is-presupuesto #paymentRow,
+.is-presupuesto #webNoteBox {
+  display: none !important;
+}
+
+/* Las dos últimas columnas de la tabla del carrito son "Tu Precio" y "Total $" */
+.is-presupuesto .cart-table th:nth-child(5),
+.is-presupuesto .cart-table th:nth-child(6),
+.is-presupuesto .cart-table td:nth-child(5),
+.is-presupuesto .cart-table td:nth-child(6) {
+  display: none !important;
+}
+/* Las celdas ocultas igual consumen su <col>, así que sin esto la tabla queda
+   con 160px de blanco a la derecha. La descripción (col.desc, width:auto) se
+   queda con lo que se libera. */
+.is-presupuesto .cart-table col.tp,
+.is-presupuesto .cart-table col.total {
+  width: 0 !important;
+}
+
+/* "+ IVA" cuelga siempre de un monto: sin monto no significa nada */
+.is-presupuesto .iva-tag,
+.is-presupuesto .card-iva,
+.is-presupuesto .cart-iva,
+.is-presupuesto .nc-iva {
+  display: none !important;
+}
+
+/* Surtido habitual no incluido: la tarjeta queda, el precio no */
+.is-presupuesto .missing-price-label,
+.is-presupuesto .missing-price,
+.is-presupuesto .missing-price-note {
+  display: none !important;
+}
+
+/* Ordenar por precio no se puede: sin `list_price` no hay con qué ordenar
+   (loadProductsFromDB además cae a "category" si llegara seleccionado) */
+.is-presupuesto .sort-dd-option[data-value="price_desc"],
+.is-presupuesto .sort-dd-option[data-value="price_asc"],
+.is-presupuesto .mf-btn[data-sort="price_desc"],
+.is-presupuesto .mf-btn[data-sort="price_asc"],
+.is-presupuesto .ds-btn[data-loke-sort="price_desc"],
+.is-presupuesto .ds-btn[data-loke-sort="price_asc"],
+.is-presupuesto #sortSelect option[value="price_desc"],
+.is-presupuesto #sortSelect option[value="price_asc"] {
+  display: none !important;
+}

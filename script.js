@@ -1446,6 +1446,71 @@ function isListPriceOnlyClient() {
   return isAdmin || String(customerProfile?.cod_cliente) === "5000";
 }
 
+/***********************
+ * MODO PRESUPUESTO (cliente de exportación)
+ ***********************
+ * Un cliente marcado `customers.modo_presupuesto` NO arma un pedido: arma un
+ * PRESUPUESTO. No ve precios ni descuentos de ningún tipo (ni lista, ni dto x
+ * volumen, ni dto web, ni método de pago), y al confirmarlo el pedido entra
+ * igual a `orders` con total 0 y viaja a la PPP de Gestión por el camino de
+ * siempre (`v_pedidos_web` → `v_pedidos_web_np`), que nunca llevó precios.
+ *
+ * ⚠ La bandera es del CLIENTE, no de quien está logueado: si un vendedor o el
+ * admin carga el pedido POR él, sigue siendo un presupuesto. Lo que se cotiza
+ * es la operación del cliente, no la pantalla del que tipea.
+ *
+ * ⚠ Que no vea precios NO es CSS: `loadProductsFromDB` directamente no pide
+ * `list_price`, así que el precio no baja al navegador. Ocultarlo por estilos
+ * lo dejaría a un clic de distancia en las herramientas del navegador.
+ */
+function isPresupuestoMode() {
+  return !!customerProfile?.modo_presupuesto;
+}
+// Con qué modo se cargaron los productos que hay en memoria. Si un vendedor
+// cambia de cliente y el modo se da vuelta, hay que volver a pedirlos: los que
+// están cargados o tienen precio de más o les falta.
+let _productsSinPrecio = false;
+
+/**
+ * Pone la pantalla en modo presupuesto: la clase en <body> (de la que cuelga
+ * todo el CSS que esconde los montos) y los textos que dicen "pedido".
+ */
+function _presupuestoSyncUI() {
+  var on = isPresupuestoMode();
+  document.body.classList.toggle("is-presupuesto", on);
+
+  var btn = document.getElementById("submitOrderBtn");
+  if (btn) {
+    var txt = on ? "Solicitar presupuesto" : "Confirmar pedido";
+    // `originalText` es de donde lo recuperan setSubmitOrderLoading() y los dos
+    // re-habilitados de submitOrder(); si no se pisa acá vuelve a decir
+    // "Confirmar pedido" apenas el botón pasa por "Enviando…".
+    btn.dataset.originalText = txt;
+    if (!btn.classList.contains("is-loading")) btn.textContent = txt;
+  }
+
+  var h2 = document.querySelector("#carrito .section-title");
+  if (h2) {
+    if (on) {
+      h2.innerHTML = "Presupuesto";
+    } else if (!h2.querySelector("#pedidoTotalHeader")) {
+      h2.innerHTML =
+        'Pedido · Total: $<span id="pedidoTotalHeader">0</span>' +
+        '<span class="iva-tag">+ IVA</span>';
+    }
+  }
+
+  var sTitle = document.querySelector("#pedidoConfirmado .success-title");
+  if (sTitle) sTitle.textContent = on ? "¡Presupuesto enviado!" : "¡Pedido confirmado!";
+  var sSub = document.querySelector("#pedidoConfirmado .success-subtitle");
+  if (sSub) {
+    sSub.textContent = on
+      ? "Lo recibimos y te vamos a pasar la cotización."
+      : "Tu pedido fue enviado correctamente.";
+  }
+}
+window.isPresupuestoMode = isPresupuestoMode;
+
 // Clientes con "Formato" propio (gestión de stock en consignación): pueden elegir
 // entre el formato regular de la página y su formato especial. Se gatea por
 // cod_cliente o CUIT (lo que matchee). Para sumar un cliente, agregar acá su
@@ -1893,7 +1958,11 @@ function maybeShowOsaFormatChooser(opts) {
 function looksLikeCUIT(val) {
   const cleaned = val.replace(/[-\s]/g, "");
   if (/[^0-9]/.test(cleaned)) return false;
-  return cleaned.length >= 10 && cleaned.length <= 11;
+  // 8 dígitos como piso, no 10: el RUC paraguayo de un cliente de exportación
+  // tiene 9 (8 + verificador) y sin esto caía por la rama de "usuario", que no
+  // lo encuentra y contesta "Usuario no encontrado". No choca con nadie: de los
+  // 27 usernames cargados, NINGUNO es sólo dígitos (medido 23/09/2026).
+  return cleaned.length >= 8 && cleaned.length <= 11;
 }
 
 /***********************
@@ -2235,12 +2304,16 @@ async function refreshAuthState(sessionOverride) {
   const { data: custRow } = await supabaseClient
     .from("customers")
     .select(
-      "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit,escala_activa",
+      "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit,escala_activa,modo_presupuesto",
     )
     .eq("auth_user_id", currentSession.user.id)
     .maybeSingle();
 
   customerProfile = custRow || null;
+  // Modo presupuesto: se sincroniza APENAS se sabe qué cliente es, no
+  // recién en updateCart(): renderProducts() corre antes y sin la clase en
+  // <body> se vería un parpadeo de "$0" en cada ficha.
+  _presupuestoSyncUI();
   // Snapshot del perfil propio del vendedor para poder volver desde "Pedir para"
   _vendorOwnProfile = customerProfile ? Object.assign({}, customerProfile) : null;
 
@@ -2325,6 +2398,7 @@ async function refreshAuthState(sessionOverride) {
 }
 
 function getDtoVol() {
+  if (isPresupuestoMode()) return 0;
   if (isListPriceOnlyClient()) return 0;
   return Number(customerProfile?.dto_vol || 0);
 }
@@ -2338,6 +2412,8 @@ function unitYourPrice(listPrice) {
  * MÉTODO DE PAGO
  ***********************/
 function getPaymentDiscount() {
+  // Presupuesto: no hay método de pago, así que no hay descuento por pago.
+  if (isPresupuestoMode()) return 0;
   // Cliente nuevo de expo o con escala activa: 1ª compra = contado (-25%) OBLIGATORIO.
   if (_expoClientMode || _escalaActiva) return 0.25;
   if (isListPriceOnlyClient()) return 0;
@@ -2350,6 +2426,9 @@ function getPaymentDiscount() {
 }
 
 function getPaymentMethodText() {
+  // Va al Sheet, al ERP y a la columna "condición de pago" de la PPP: tiene que
+  // leerse como lo que es, para que nadie lo despache como un pedido cerrado.
+  if (isPresupuestoMode()) return "PRESUPUESTO A COTIZAR";
   if (_expoClientMode || _escalaActiva) return "Contado";
   if (isListPriceOnlyClient()) return "Contado";
 
@@ -2361,6 +2440,7 @@ function getPaymentMethodText() {
 }
 
 function getPaymentMethodCode() {
+  if (isPresupuestoMode()) return 0; // sin condición de pago: se define al cotizar
   if (_expoClientMode || _escalaActiva) return 8; // Contado -25%
   if (isListPriceOnlyClient()) return 8;
 
@@ -2408,7 +2488,9 @@ function syncAdminCheckoutUI() {
   const totalNoDiscountLine = $("totalNoDiscountLine");
   const totalDiscountsLine = $("totalDiscountsLine");
 
-  const hideDiscounts = isListPriceOnlyClient();
+  _presupuestoSyncUI();
+
+  const hideDiscounts = isListPriceOnlyClient() || isPresupuestoMode();
   if (paymentRow) paymentRow.style.display = hideDiscounts ? "none" : "";
   if (webNoteBox) webNoteBox.style.display = hideDiscounts ? "none" : "";
   if (webDiscountLine)
@@ -2501,10 +2583,19 @@ async function loadProductsFromDB() {
   }
 
   // ✅ LOGUEADO: orden también según sortMode
+  // ⚠ PRESUPUESTO: no se pide `list_price`. El precio no viaja, así que no hay
+  // nada que esconder después — esconderlo por CSS lo dejaría en el DOM.
+  _productsSinPrecio = isPresupuestoMode();
+  if (_productsSinPrecio && (sortMode === "price_desc" || sortMode === "price_asc")) {
+    // Sin precio no se puede ordenar por precio; cae al orden de catálogo.
+    sortMode = "category";
+  }
   let q = supabaseClient
     .from("products")
     .select(
-      "id,cod,category,subcategory,ranking,orden_catalogo,description,list_price,uxb,images,badge_status,active",
+      _productsSinPrecio
+        ? "id,cod,category,subcategory,ranking,orden_catalogo,description,uxb,images,badge_status,active"
+        : "id,cod,category,subcategory,ranking,orden_catalogo,description,list_price,uxb,images,badge_status,active",
     )
     .eq("active", true);
 
@@ -7904,7 +7995,9 @@ function toggleControls(productId, show) {
 function calcTotals() {
   const logged = !!currentSession;
   const paymentDiscount = getPaymentDiscount();
-  const webDiscountRate = (isAdmin && !_expoActiveCustomer) ? 0 : WEB_ORDER_DISCOUNT;
+  const webDiscountRate = (isPresupuestoMode() || (isAdmin && !_expoActiveCustomer))
+    ? 0
+    : WEB_ORDER_DISCOUNT;
 
   let subtotal = 0;
 
@@ -8103,6 +8196,7 @@ function updateCart() {
             <th>${headerTwoLine("Total Uni")}</th>
             <th>${headerTwoLine(isListPriceOnlyClient() ? "Precio Lista" : "Tu Precio")}</th>
             <th>${headerTwoLine("Total $")}</th>
+            ${/* en presupuesto las dos últimas columnas se ocultan por CSS */ ""}
           </tr>
         </thead>
 
@@ -8739,6 +8833,9 @@ function missingStep(pid, delta) {
 
 function getUpsellProducts() {
   if (!UPSELL_ENABLED) return [];
+  // El upsell es una oferta con precio viejo tachado: sin precios no tiene qué
+  // mostrar, y un presupuesto no se cierra con un descuento de lanzamiento.
+  if (isPresupuestoMode()) return [];
   var cartIds = new Set(
     cart.map(function (i) {
       return String(i.productId);
@@ -8989,7 +9086,9 @@ async function _submitSingleOrder(
   editOrderId,
 ) {
   var paymentDiscount = getPaymentDiscount();
-  var webDiscountRate = (isAdmin && !_expoActiveCustomer) ? 0 : WEB_ORDER_DISCOUNT;
+  var webDiscountRate = (isPresupuestoMode() || (isAdmin && !_expoActiveCustomer))
+    ? 0
+    : WEB_ORDER_DISCOUNT;
   var dtoVol = getDtoVol();
   var extraRate = Number(extraDiscountRate || 0);
   var isPromo = extraRate > 0;
@@ -9073,6 +9172,7 @@ async function _submitSingleOrder(
   // pedidos reales invisibles para Gestión, que filtra por sheets_payload.
   // `order_number` no va acá: el número lo pone la RPC, que es la única que lo
   // conoce antes de que exista.
+  var esPresupuesto = isPresupuestoMode();
   var debt = Number(customerProfile.debt || 0);
   var creditLimit = customerProfile.credit_limit == null ? null : Number(customerProfile.credit_limit);
 
@@ -9104,6 +9204,11 @@ async function _submitSingleOrder(
     retiro_fecha: retiroSel.fecha || null,
     retiro_franja: retiroSel.franja || null,
     is_promo: isPromo,
+    // Presupuesto: la ficha lo dice explícito para quien la lea desde Gestión o
+    // desde el Sheet. Los montos van en 0 porque no hay precio que informar.
+    // Se lee de `esPresupuesto`, declarada arriba en ESTA función: el payload no
+    // toma nada prestado de submitOrder() (ver tests/payload-scope.cjs).
+    tipo_documento: esPresupuesto ? "presupuesto" : "pedido",
     extra_discount: extraRate,
     deuda: debt,
     credit_limit: creditLimit,
@@ -9359,6 +9464,7 @@ async function submitOrder() {
     ? `RETIRA ${fmtDdMm(retiroSel.fecha)} ${retiroSel.franja}`.trim()
     : "";
   const observacionesValue = [
+    isPresupuestoMode() ? "PRESUPUESTO — NO DESPACHAR, COTIZAR" : "",
     retiroTexto,
     String($("obsPedidoInput")?.value || "").trim(),
   ]
@@ -9409,8 +9515,9 @@ async function submitOrder() {
       return;
     }
 
+    // El presupuesto no tiene método de pago: se define cuando se cotiza.
     const paySel = document.getElementById("paymentSelect");
-    if (!isAdmin && (!paySel || !String(paySel.value || "").trim())) {
+    if (!isAdmin && !isPresupuestoMode() && (!paySel || !String(paySel.value || "").trim())) {
       setOrderStatus("Debes seleccionar un metodo de pago.", "err");
       return;
     }
@@ -9723,8 +9830,10 @@ function refreshSubmitEnabled() {
   // EXPO: con un cliente elegido, el operador (admin) toma el pedido COMO el
   // cliente, así que se exige método de pago igual que en la página normal
   // (para clientes nuevos ya viene forzado a contado, así que no molesta).
+  // ⚠ En presupuesto el bloque de método de pago no se dibuja: si se exigiera,
+  // el botón "Solicitar presupuesto" quedaría deshabilitado para siempre.
   const hasPayment =
-    isAdmin && !(EXPO_MODE && _expoActiveCustomer)
+    isPresupuestoMode() || (isAdmin && !(EXPO_MODE && _expoActiveCustomer))
       ? true
       : !!(paySel && String(paySel.value || "").trim());
   const custSelVal = custSel ? String(custSel.value || "").trim() : "";
@@ -9806,7 +9915,7 @@ function parsePaymentDiscountFromText(text) {
 }
 
 // Dibuja el encabezado de la tabla de ítems
-function _drawItemsHeader(doc, y, cols) {
+function _drawItemsHeader(doc, y, cols, sinPrecios) {
   doc.setFillColor(240, 240, 240);
   doc.rect(14, y - 5, 182, 8, "F");
   doc.setFont("helvetica", "bold");
@@ -9816,8 +9925,10 @@ function _drawItemsHeader(doc, y, cols) {
   doc.text("Descripción", cols.desc, y);
   doc.text("Cajas", cols.cajas, y, { align: "right" });
   doc.text("Uni", cols.uni, y, { align: "right" });
-  doc.text("Precio", cols.precio, y, { align: "right" });
-  doc.text("Subtotal", cols.subtotal, y, { align: "right" });
+  if (!sinPrecios) {
+    doc.text("Precio", cols.precio, y, { align: "right" });
+    doc.text("Subtotal", cols.subtotal, y, { align: "right" });
+  }
   return y + 8;
 }
 
@@ -9882,10 +9993,14 @@ async function descargarPedidoPDF(soloSubir = false) {
   // =========================================================
   // TÍTULO
   // =========================================================
+  // PRESUPUESTO: el PDF no lleva ni un monto (ver isPresupuestoMode). Es el
+  // comprobante de que el cliente pidió una cotización, no de un pedido cerrado.
+  const esPresupuesto = isPresupuestoMode();
+
   doc.setTextColor(0, 0, 0);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text("Pedido Web", margin, 40);
+  doc.text(esPresupuesto ? "Solicitud de Presupuesto" : "Pedido Web", margin, 40);
 
   // =========================================================
   // DATOS GENERALES
@@ -9901,21 +10016,30 @@ async function descargarPedidoPDF(soloSubir = false) {
     doc.text(`Sucursal de entrega: ${sucursalEntrega}`, margin, y);
     y += 6;
   }
-  doc.text(`Método de pago: ${metodoPago || "—"}`, margin, y);
+  if (!esPresupuesto) {
+    doc.text(`Método de pago: ${metodoPago || "—"}`, margin, y);
+  }
   y += 4;
 
   // Nota a la derecha arriba de la tabla
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(90, 90, 90);
-  doc.text("Subtotal no contempla Descuentos", rightX, y, { align: "right" });
+  doc.text(
+    esPresupuesto
+      ? "Sin valorizar — te enviamos la cotización"
+      : "Subtotal no contempla Descuentos",
+    rightX,
+    y,
+    { align: "right" },
+  );
   doc.setTextColor(0, 0, 0);
   y += 8;
 
   // =========================================================
   // TABLA DE ÍTEMS
   // =========================================================
-  y = _drawItemsHeader(doc, y, cols);
+  y = _drawItemsHeader(doc, y, cols, esPresupuesto);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -9924,7 +10048,7 @@ async function descargarPedidoPDF(soloSubir = false) {
       doc.addPage();
       doc.addImage(headerBanner, "PNG", 0, 0, 210, 24);
       y = 36;
-      y = _drawItemsHeader(doc, y, cols);
+      y = _drawItemsHeader(doc, y, cols, esPresupuesto);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
     }
@@ -9939,14 +10063,31 @@ async function descargarPedidoPDF(soloSubir = false) {
     doc.text(desc, cols.desc, y);
     doc.text(String(it.cajas || 0), cols.cajas, y, { align: "right" });
     doc.text(String(it.unidades || 0), cols.uni, y, { align: "right" });
-    doc.text(`$${formatMoney(precio)}`, cols.precio, y, { align: "right" });
-    doc.text(`$${formatMoney(sub)}`, cols.subtotal, y, { align: "right" });
+    if (!esPresupuesto) {
+      doc.text(`$${formatMoney(precio)}`, cols.precio, y, { align: "right" });
+      doc.text(`$${formatMoney(sub)}`, cols.subtotal, y, { align: "right" });
+    }
     y += 7;
   });
 
   // =========================================================
-  // TOTALES a la derecha
+  // TOTALES a la derecha — el presupuesto no lleva ninguno
   // =========================================================
+  if (esPresupuesto) {
+    y += 10;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(90, 90, 90);
+    doc.text(
+      "Esta solicitud no está valorizada. Te enviamos la cotización por los",
+      margin,
+      y,
+    );
+    y += 5;
+    doc.text("artículos y las cantidades de arriba.", margin, y);
+    doc.setTextColor(0, 0, 0);
+    y += 10;
+  } else {
   y += 6;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
@@ -10090,6 +10231,7 @@ async function descargarPedidoPDF(soloSubir = false) {
     doc.text(`$${formatMoney(total)} + IVA`, rightX, y, { align: "right" });
     y += 10;
   }
+  } // fin del bloque de totales (no aplica al presupuesto)
 
   // =========================================================
   // SECCIÓN PEDIDO PROMO (X+1) — sólo si hubo items de upsell
@@ -14208,6 +14350,7 @@ async function onLinkedCustomerSelected(opts) {
 
     if (_vendorOwnProfile) {
       customerProfile = Object.assign({}, _vendorOwnProfile);
+      _presupuestoSyncUI();
     }
     // Solo limpiar carrito si realmente cambió el cliente Y no es restore
     if (!fromRestore && isRealChangeSelf) {
@@ -14329,7 +14472,7 @@ async function onLinkedCustomerSelected(opts) {
   var result = await supabaseClient
     .from("customers")
     .select(
-      "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit",
+      "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit,modo_presupuesto",
     )
     .eq("id", customerId)
     .maybeSingle();
@@ -14340,6 +14483,7 @@ async function onLinkedCustomerSelected(opts) {
   }
 
   customerProfile = result.data;
+  _presupuestoSyncUI();
 
   // Limpiar carrito SOLO si el cliente realmente CAMBIÓ Y no es restore.
   if (!fromRestore && isRealChange) {
@@ -14399,6 +14543,13 @@ async function onLinkedCustomerSelected(opts) {
   syncPaymentButtons();
 
   await loadDeliveryOptions();
+  // Si el cliente elegido cambia el modo (presupuesto ↔ pedido), los productos
+  // que hay en memoria no sirven: o traen precio de más o les falta. Se piden
+  // de nuevo, que es lo único que cambia la lista de columnas del select.
+  if (_productsSinPrecio !== isPresupuestoMode()) {
+    await loadProductsFromDB();
+    normalizeCartAgainstProducts();
+  }
   myAssortmentIds = await loadMyAssortmentIds();
   if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
   maybeShowFotosPopup();
@@ -14588,9 +14739,14 @@ function renderLokeSidebar() {
 }
 
 async function loadLokeProducts() {
+  // Presupuesto: la línea Loke tampoco baja con precio (ver loadProductsFromDB).
   var result = await supabaseClient
     .from("loke_products")
-    .select("id,cod,description,category,list_price,uxb,equiv_product_id")
+    .select(
+      isPresupuestoMode()
+        ? "id,cod,description,category,uxb,equiv_product_id"
+        : "id,cod,description,category,list_price,uxb,equiv_product_id",
+    )
     .eq("active", true)
     .order("category")
     .order("cod");

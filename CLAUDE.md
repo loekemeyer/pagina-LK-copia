@@ -518,6 +518,47 @@ primero) y `expreso-render` (que el bloque se dibuje y que un expreso desconocid
 el botón). Los dos verificados mutando el código a propósito.
 `sql/expreso_cambio_cliente.sql`.
 
+## ⚠ REGLA (Thomas, 23/09/2026): MODO PRESUPUESTO — cliente de exportación
+
+`customers.modo_presupuesto = true` cambia lo que el cliente arma: no un pedido, un
+**presupuesto**. Caso que lo originó: **Classic S.A.** (Paraguay, RUC 80013057-0). No ve
+precios ni descuentos de ningún tipo, y lo que envía entra a `orders` con total 0 y viaja a la
+PPP de Gestión por el camino de siempre para que lo coticemos.
+
+⚠ **Que no vea precios NO es CSS.** En este modo `loadProductsFromDB` directamente **no pide la
+columna `list_price`** (ni `loadLokeProducts`), así que el precio **no baja al navegador**.
+Esconderlo por estilos lo habría dejado a un F12 de distancia. El CSS (`.is-presupuesto` en
+`css/styles.css`) sólo tapa los renglones que, sin precio, quedarían mostrando **"$0"**.
+
+⚠ **La bandera es del CLIENTE, no de quien está logueado.** Si un vendedor o el admin carga el
+pedido POR él, sigue siendo un presupuesto: lo que se cotiza es la operación del cliente, no la
+pantalla del que tipea. Por eso `isPresupuestoMode()` mira sólo `customerProfile`.
+
+⚠ **Cómo se entera la PPP de que no se despacha.** No hay columna nueva en el feed — eso
+obligaría a tocar también `Gestion-Virgilio`. El aviso viaja por **`observaciones`**, que ya
+llega entero a `v_pedidos_web_np.observaciones`: todo pedido de un cliente en este modo arranca
+con `PRESUPUESTO — NO DESPACHAR, COTIZAR`, y la condición de pago dice `PRESUPUESTO A COTIZAR`.
+Además la ficha lleva `sheets_payload->>'tipo_documento' = 'presupuesto'`, que es de donde
+Gestión puede sacar un badge propio en "A Programar" el día que se quiera.
+
+⚠ **El RUC paraguayo tiene 9 dígitos** (8 + verificador) y el login exigía 10: se bajó el piso de
+`looksLikeCUIT` a 8. No choca con nadie — de los 27 `username` cargados, **ninguno es sólo
+dígitos** (medido 23/09). El RUC va en `customers.cuit` sin guiones: `80013057-0` → `800130570`.
+
+⚠ **El guard anti-reintento de `submit_order_fast` compara `total`, y acá el total SIEMPRE es 0.**
+O sea que dos presupuestos del mismo cliente dentro de 2 minutos **con la misma cantidad de
+líneas** se colapsan en uno solo y la RPC devuelve el id del primero, sin avisar. Si cambia la
+cantidad de líneas, pasa. **No se tocó la RPC a propósito** (la tocan varias sesiones y el riesgo
+de pisarla es mayor que el del choque). Si llega a molestar, el arreglo es sumarle al guard el
+hash de los ítems, no el total.
+
+**Dónde está**: `isPresupuestoMode()` / `_presupuestoSyncUI()` en `script.js`, el bloque
+`.is-presupuesto` al final de `css/styles.css`, y `sql/modo_presupuesto.sql` (hay que correrlo a
+mano: agrega la columna). **Chequeo**: `bash tests/run.sh` → `presupuesto.cjs`, verificado mutando
+el código (si se vuelve a pedir `list_price`, o si se cae la clase del `<body>`, se pone en rojo).
+
+⚠ **Al tocar esto, mirar también `paginach`**: es el mismo módulo.
+
 ## ⚠ REGLA (Thomas, 2026-09-21): el badge SIN STOCK se valida en el BACKEND
 
 **Thomas, textual:** *"NO DEBERIA DEJARLO PEDIR. YA CON ESA LOGICA ESTA EL 517"*.
