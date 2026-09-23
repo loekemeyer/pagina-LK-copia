@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23458" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23458" />
+    <link rel="stylesheet" href="css/styles.css?v=23459" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23459" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -17,6 +17,49 @@
 
   <body class="avc-customer-mode">
     <!-- Google Translate -->
+    <!--
+      IDIOMA: la pagina NUNCA arranca en chino (regla del dueno, 23/9/2026, despues
+      de un cliente al que "se le puso sola" en chino). Google guarda el idioma en
+      la cookie googtrans, que sobrevive recargas y -con "continuar donde lo dejaste"
+      del navegador- el cierre del navegador: un solo click en el boton 中文 dejaba al
+      cliente en chino para siempre. Este script corre ANTES de element.js y borra esa
+      cookie, salvo que ESTA carga venga del boton (bandera de un solo uso en
+      sessionStorage, que se consume aca mismo). O sea: el chino dura esa carga; al
+      volver a entrar sale en espanol y hay que pedirlo de nuevo.
+      Si sessionStorage no esta disponible, la bandera no se puede leer y queda en
+      espanol: el fallo siempre cae del lado seguro.
+    -->
+    <script>
+      (function () {
+        function _borrarGoogtrans() {
+          var host = location.hostname;
+          var doms = ["", host, "." + host];
+          var p = host.split(".");
+          if (p.length > 2) doms.push("." + p.slice(-2).join("."));
+          var paths = ["/", location.pathname];
+          var exp = "expires=Thu, 01 Jan 1970 00:00:00 UTC";
+          for (var i = 0; i < doms.length; i++) {
+            for (var j = 0; j < paths.length; j++) {
+              document.cookie =
+                "googtrans=; " + exp + "; path=" + paths[j] +
+                (doms[i] ? "; domain=" + doms[i] : "");
+            }
+          }
+        }
+        var pedido = false;
+        try {
+          pedido = sessionStorage.getItem("lk_zh_once") === "1";
+          sessionStorage.removeItem("lk_zh_once"); // de un solo uso
+        } catch (e) {}
+        if (pedido) return; // el boton pidio chino para ESTA carga
+        _borrarGoogtrans();
+        // Google tambien lee #googtrans(es|zh-CN) de la URL: si alguien llega con
+        // ese hash, se lo saca antes de que el widget lo pueda leer.
+        if (/googtrans/i.test(location.hash)) {
+          location.replace(location.pathname + location.search);
+        }
+      })();
+    </script>
     <div id="google_translate_element" style="display:none"></div>
     <script>
     function googleTranslateElementInit(){
@@ -2208,14 +2251,14 @@
     <!-- La versión ya se muestra en el footer; se quitó el badge flotante. -->
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23458"></script>
-    <script src="script.js?v=23458"></script>
+    <script src="./version.js?v=23459"></script>
+    <script src="script.js?v=23459"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23458"></script>
+    <script src="analisis-venta-cliente.js?v=23459"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23458"></script>
-    <script src="admin-excel-krikos.js?v=23458"></script>
-    <script src="vendor-import-excel.js?v=23458"></script>
+    <script src="scotapi-shim.js?v=23459"></script>
+    <script src="admin-excel-krikos.js?v=23459"></script>
+    <script src="vendor-import-excel.js?v=23459"></script>
   </body>
 </html>

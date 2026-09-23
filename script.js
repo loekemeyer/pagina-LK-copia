@@ -16110,12 +16110,29 @@ function _googtransVal() {
 // combo fallaba y cada click re-traducía a chino sin poder volver. Google lee
 // la cookie googtrans al iniciar (aunque autoDisplay sea false), por eso
 // seteándola/borrándola y recargando se va y se vuelve, siempre.
+//
+// ⚠ Y el chino dura UNA SOLA CARGA (23/9/2026): esa cookie es PERSISTENTE
+// —sobrevive recargas y, con "continuar donde lo dejaste", el cierre del
+// navegador—, así que un cliente que tocó el botón una vez quedaba en chino
+// para siempre y creía que la página "se le puso sola". Por eso acá se deja una
+// bandera de un solo uso en sessionStorage ("lk_zh_once") que el guard del
+// <head> de mayorista.html consume ANTES de que cargue el widget: sin bandera
+// borra la cookie y la página sale en español. Quien quiera chino lo pide de
+// nuevo cada vez que entra. Si se le cambia el nombre a la bandera, hay que
+// cambiarlo en los DOS lugares (y en el repo gemelo paginach).
 function toggleChineseTranslate() {
   if (/zh-CN/.test(_googtransVal())) {
     // Está en chino -> volver a español: borrar la cookie (todas las variantes).
     _clearGoogTransCookie();
+    try {
+      sessionStorage.removeItem("lk_zh_once");
+    } catch (e) {}
   } else {
-    // Está en español -> traducir a chino: setear la cookie.
+    // Está en español -> traducir a chino SOLO para la carga que viene: la
+    // bandera la consume el guard del <head>, que sin ella borra la cookie.
+    try {
+      sessionStorage.setItem("lk_zh_once", "1");
+    } catch (e) {}
     document.cookie = "googtrans=/es/zh-CN; path=/";
     document.cookie = "googtrans=/es/zh-CN; path=/; domain=" + location.hostname;
   }
