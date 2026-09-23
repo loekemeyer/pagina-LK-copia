@@ -6508,6 +6508,15 @@ function _expSyncUI() {
   const box = document.getElementById("expresoBox");
   if (!sel || !box) return;
 
+  // PRESUPUESTO: todavía no hay nada que despachar — se está pidiendo una
+  // cotización. Y son clientes de EXPORTACIÓN: `_expAplica` sólo esconde la
+  // línea en CABA y Buenos Aires, así que con una dirección de Paraguay la
+  // dibujaría y le pediría al cliente que elija un expreso argentino.
+  if (isPresupuestoMode()) {
+    box.hidden = true;
+    return;
+  }
+
   const slot = String(sel.value || "").trim();
   if (!slot || slot === "__add__") {
     box.hidden = true;

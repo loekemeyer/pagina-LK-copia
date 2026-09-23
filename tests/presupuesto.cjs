@@ -87,6 +87,17 @@ if (!/!isPresupuestoMode\(\) &&[\s\S]{0,120}Debes seleccionar un metodo de pago/
   ok("submitOrder no exige método de pago en presupuesto");
 }
 
+// A4b. La línea del expreso. `_expAplica` sólo la esconde en CABA y Buenos
+//      Aires, así que con una dirección de Paraguay —que es de lo que se trata
+//      este modo— la dibujaría y le pediría al cliente de exportación que
+//      elija un expreso ARGENTINO para un pedido que ni siquiera está cotizado.
+const iExp = src.indexOf("function _expSyncUI(");
+if (iExp < 0 || !/isPresupuestoMode\(\)/.test(src.slice(iExp, iExp + 900))) {
+  mal("_expSyncUI dejó de esconder la línea del expreso en presupuesto");
+} else {
+  ok("_expSyncUI no dibuja el expreso en presupuesto");
+}
+
 // A5. El aviso para la PPP de Gestión. Es lo ÚNICO que separa un presupuesto de
 //     un pedido cualquiera en "A Programar": sin esto lo pickean y lo despachan.
 if (!src.includes("PRESUPUESTO — NO DESPACHAR, COTIZAR")) {
