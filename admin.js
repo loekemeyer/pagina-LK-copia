@@ -7909,6 +7909,9 @@ async function cargarGruposClientes() {
     _renderGruposArmados(res[0].data || []);
     _renderGruposSugeridos(res[1].data || []);
     _renderClientesLkCh(res[2].data || []);
+    // 23/09: la tabla canonica va en su PROPIA llamada con su propio catch: si falla,
+    // no se lleva puestas las otras tres tablas del modulo.
+    cargarClientesVinculados();
 
     if (statusEl) statusEl.innerHTML = "";
   } catch (err) {
@@ -7920,6 +7923,69 @@ async function cargarGruposClientes() {
   }
 }
 window.cargarGruposClientes = cargarGruposClientes;
+
+/* ---------- 5. Cliente real (tabla canonica clientes_vinculados) ---------- */
+// Una fila por cliente real con TODOS sus codigos (N razones sociales x 2 empresas).
+// Sale de get_clientes_vinculados(), que lee la tabla canonica; la misma que usa
+// Gestion Virgilio para decidir quien es cliente nuevo.
+var _cvCache = [];
+var _cvQuery = "";
+var _cvTimer = null;
+var _cvFuente = { ventas: "Ventas", cuit: "mismo CUIT", grupo_admin: "grupo armado", link_manual: "a mano" };
+
+async function cargarClientesVinculados() {
+  var st = document.getElementById("cvStatus");
+  try {
+    var r = await sb.rpc("get_clientes_vinculados");
+    if (r.error) throw r.error;
+    _cvCache = r.data || [];
+    _pintarClientesVinculados();
+    if (st) st.innerHTML = "";
+  } catch (err) {
+    console.error("cargarClientesVinculados error", err);
+    if (st) st.innerHTML = '<span style="color:#c0392b">Error: ' + _escGrupo(err.message || err) + "</span>";
+  }
+}
+window.cargarClientesVinculados = cargarClientesVinculados;
+
+function onInputBuscarCv(el) {
+  clearTimeout(_cvTimer);
+  var v = el.value;
+  _cvTimer = setTimeout(function () { _cvQuery = String(v).trim(); _pintarClientesVinculados(); }, 200);
+}
+window.onInputBuscarCv = onInputBuscarCv;
+
+function _pintarClientesVinculados() {
+  var t = _normLkCh(_cvQuery);
+  var filas = !t ? _cvCache : _cvCache.filter(function (g) {
+    return (g.codigos || []).some(function (c) {
+      return [c.razon_social, c.cuit, c.cod].some(function (x) { return _normLkCh(x).indexOf(t) !== -1; });
+    });
+  });
+  var cnt = document.getElementById("cvCount");
+  if (cnt) cnt.textContent = String(_cvCache.length);
+  var tb = document.querySelector("#cvTable tbody");
+  if (!tb) return;
+  if (!filas.length) { tb.innerHTML = '<tr><td colspan="5" style="color:#666">Sin resultados</td></tr>'; return; }
+  var cods = function (g, emp) {
+    return (g.codigos || []).filter(function (c) { return c.empresa === emp; }).map(function (c) {
+      return '<div' + (c.principal ? ' style="font-weight:700"' : ' style="color:#555"') + '>' +
+        _escGrupo(c.cod) + ' · ' + _escGrupo(c.razon_social || "(dado de baja)") + '</div>';
+    }).join("") || '<span style="color:#aaa">—</span>';
+  };
+  tb.innerHTML = filas.map(function (g) {
+    var prin = (g.codigos || []).filter(function (c) { return c.principal; })[0] || {};
+    return "<tr>" +
+      "<td><strong>" + _escGrupo(g.razon_social || prin.razon_social || "") + "</strong>" +
+        '<div style="color:#666;font-size:12px">' + _escGrupo((prin.empresa === "chef" ? "CH " : "LK ") + (prin.cod || "")) +
+        (g.cuit ? " · CUIT " + _escGrupo(g.cuit) : "") + " · " + g.n_codigos + " códigos</div></td>" +
+      "<td>" + cods(g, "lk") + "</td>" +
+      "<td>" + cods(g, "chef") + "</td>" +
+      "<td>" + (g.fuentes || []).map(function (f) { return _escGrupo(_cvFuente[f] || f); }).join(", ") + "</td>" +
+      "<td>" + _escGrupo(g.ultima_compra || "—") + "</td>" +
+      "</tr>";
+  }).join("");
+}
 
 // Recarga SOLO las sugerencias. Cambiar de empresa, rechazar una sugerencia o
 // refrescar la lista no tocan ni los grupos armados ni los clientes vinculados,
