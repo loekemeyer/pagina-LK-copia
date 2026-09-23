@@ -186,7 +186,12 @@ begin
   );
 end $$;
 
+-- ⚠ El revoke a `public` NO alcanza: `anon` quedaba con EXECUTE igual (medido).
+--   El guard la frena (sin JWT no hay auth.uid() y no hay cliente), pero una
+--   funcion que escribe la ficha no tiene por que estar abierta a la clave
+--   publica. Va el revoke explicito a anon.
 revoke execute on function public.expreso_cambiar(smallint,text,text,text,text,bigint,uuid) from public;
+revoke execute on function public.expreso_cambiar(smallint,text,text,text,text,bigint,uuid) from anon;
 grant  execute on function public.expreso_cambiar(smallint,text,text,text,text,bigint,uuid) to authenticated;
 
 -- ============================================================================
