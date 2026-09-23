@@ -31,6 +31,26 @@
             "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/claude-permisos.sh\""
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/claude-quien-habla.sh\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/claude-quien-habla-prompt.sh\""
+          }
+        ]
       }
     ]
   }

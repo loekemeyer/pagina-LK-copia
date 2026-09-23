@@ -24,6 +24,12 @@ hacer sin figurar en la agenda de alguien.
 
 1. **Al empezar la sesión, preguntar quién está hablando** (antes de hacer nada):
    *"¿Quién sos? (Thomas, Marianela, Luis, Gastón, …)"*. Si el mensaje ya lo dice, no repreguntar.
+
+   **Lo sostienen dos hooks** (copiados de `Gestion-Virgilio`, 23/09): `scripts/claude-quien-habla.sh`
+   (`SessionStart`) y `scripts/claude-quien-habla-prompt.sh` (`UserPromptSubmit`). El segundo detecta
+   el nombre en la **primera línea** del mensaje (`luis`, `Luis:`) o `soy X`, deja una marca por sesión
+   en `~/.claude/quien-habla/` y **se calla**: se dice **una vez por sesión**, no en cada mensaje, y la
+   charla no se relee. **El mail de la cuenta no cuenta** como respuesta.
 2. **Cada pedido de trabajo se registra como tarea en el Planify de esa persona**, apenas se
    empieza, con nombre MUY resumido (≤ 60 caracteres). Queda `done=false` hasta que se cierre
    (punto 4). Si la sesión termina sin cerrar, la tarea queda en la agenda: ése es el objetivo.
