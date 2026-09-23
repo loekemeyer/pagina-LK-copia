@@ -46,37 +46,30 @@ comment on column public.customers.modo_presupuesto is
 
 -- ─── 2. Dar de alta a Classic S.A. y prenderle la bandera ──────────────────
 --
+--     Razón social : CLASSIC S.A.
+--     CUIT/RUC     : 800130570     ← el RUC paraguayo 80013057-0, SIN guiones
+--     Dto x volumen: 0             ← no ve descuentos, pero que quede en 0
+--     Código       : 4284 en LOEKEMEYER · 1362 en CHEF
+--
+-- ⚠ Las numeraciones de las dos empresas son INDEPENDIENTES: 4284 en Chef y
+-- 1362 en Loekemeyer son OTROS negocios. No cruzar los números.
+--
 -- ⚠ EL ALTA DEL CLIENTE VA POR EL PANEL (ABM Clientes), NO POR SQL. No es un
 -- capricho: el panel además crea el usuario de `auth` con el mail sintético
 -- <dígitos>@cuit.loekemeyer (llama a la Edge Function `crear-cliente-auth`).
 -- Un INSERT a mano en `customers` deja al cliente SIN poder entrar a la página.
 --
--- Datos para cargarlo:
---     Razón social : CLASSIC S.A.
---     CUIT/RUC     : 800130570     ← el RUC paraguayo 80013057-0, SIN guiones
---     Dto x volumen: 0             ← no ve descuentos, pero que quede en 0
---     PIN          : el que se le vaya a pasar al cliente
---
--- ⚠ EN CHEF el código es 1362. EN LOEKEMEYER todavía NO TIENE, y hace falta:
--- el pedido viaja a la PPP de Gestión con `sheets_payload.cod_cliente`, así que
--- sin código la NP llega sin cliente. El número lo asigna ISIS, no se inventa
--- acá: si se le pone uno que después el ERP le da a otro, el pedido de Classic
--- termina en la ficha de otro negocio. (Al 23/09 el mayor código real de LK es
--- 5001; las numeraciones de LK y Chef son INDEPENDIENTES: 1362 en Loekemeyer es
--- otro negocio.)
+-- El 4284 se verificó libre el 23/09/2026: sin ficha en `customers`, sin una
+-- sola línea en `sales_lines`, y es el siguiente al 4283 (Cardye S.R.L.), que
+-- era el último cargado. El código lo asigna ISIS; acá sólo se deja asentado.
 
 -- ── 2.a) Prender la bandera, una vez que el cliente ya está cargado ─────────
 
 -- CHEF (proyecto nkhzocgdpwtgrmwleihr):
---   update public.customers
---      set modo_presupuesto = true
---    where cod_cliente = 1362;
+--   update public.customers set modo_presupuesto = true where cod_cliente = 1362;
 
--- LOEKEMEYER (proyecto kwkclwhmoygunqmlegrg): por RUC, que es lo único seguro
--- mientras el código lo sigue definiendo ISIS.
---   update public.customers
---      set modo_presupuesto = true
---    where regexp_replace(coalesce(cuit, ''), '\D', '', 'g') = '800130570';
+-- LOEKEMEYER (proyecto kwkclwhmoygunqmlegrg):
+--   update public.customers set modo_presupuesto = true where cod_cliente = 4284;
 
 -- ─── 3. Verificación (correr SIEMPRE después de prender la bandera) ─────────
 -- select cod_cliente, business_name, cuit, dto_vol, modo_presupuesto

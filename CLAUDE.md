@@ -521,7 +521,8 @@ el botón). Los dos verificados mutando el código a propósito.
 ## ⚠ REGLA (Thomas, 23/09/2026): MODO PRESUPUESTO — cliente de exportación
 
 `customers.modo_presupuesto = true` cambia lo que el cliente arma: no un pedido, un
-**presupuesto**. Caso que lo originó: **Classic S.A.** (Paraguay, RUC 80013057-0). No ve
+**presupuesto**. Caso que lo originó: **Classic S.A.** (Paraguay, RUC 80013057-0, **cod 4284 en Loekemeyer y 1362 en Chef** — las
+numeraciones son independientes, no cruzar los números). No ve
 precios ni descuentos de ningún tipo, y lo que envía entra a `orders` con total 0 y viaja a la
 PPP de Gestión por el camino de siempre para que lo coticemos.
 
