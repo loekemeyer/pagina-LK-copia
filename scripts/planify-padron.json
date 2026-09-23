@@ -1,0 +1,19 @@
+{
+  "_nota": "Padron de planify.employees (activo) para el hook quien-habla. Se regenera con la consulta de abajo. 'preferido': a quien apunta un nombre de pila repetido cuando no se dice apellido (el de la lista corta del CLAUDE.md). 'thomas' va al 20 con prefijo 'Th ' (regla del dueño).",
+  "_regenerar": "select id, nombre from planify.employees where activo order by nombre;",
+  "actualizado": "2026-09-23",
+  "preferido": { "luis": 52 },
+  "empleados": [
+    [60,"Adrian Villalba"],[22,"Angely Asuaje"],[17,"Ayala David"],[10,"Bachur Omar"],
+    [32,"Barrionuevo Eduardo"],[38,"Becker Marianela"],[34,"Cornejo Martin"],[13,"Damian Loekemeyer"],
+    [44,"Diego Mollo"],[1,"Elias Irace"],[31,"Farias Juan Hilario"],[18,"Franco Ortiz"],
+    [61,"Gaston Dalponte"],[4,"Gauna Viviana"],[11,"Gervasoni Juan"],[63,"Giuliana De La Vega"],
+    [5,"Gonzalez Alan"],[16,"Gonzalez Tomas"],[57,"Graciela Santillan"],[33,"Heredia Nora"],
+    [58,"Ivan Joel Meta"],[24,"Jennifer Muñoz"],[46,"Jhonny Cartaya"],[51,"Juan Cruz Karaygan"],
+    [19,"Lautaro Vargas"],[53,"Lucas Rossi"],[52,"Luis Ignacio Rial Otero"],[6,"Martos Pablo"],
+    [56,"Melany Pierola"],[37,"Moncayo Jhonny"],[27,"Nazareno Rodriguez"],[59,"Oscar Bordon"],
+    [9,"Pages Luis"],[35,"Paredes Jose Luis"],[8,"Practico Alberto"],[15,"Pregelj Martin"],
+    [55,"Romina Maturano"],[36,"Tevez Isidro"],[20,"Tomas Beviglia"],[62,"Yanina Delbono"]
+  ],
+  "alias": { "vivi": 4, "mariane": 38, "juancruz": 51 }
+}
