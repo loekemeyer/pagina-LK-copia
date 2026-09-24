@@ -33,6 +33,7 @@ _correr expreso-buscador.cjs
 _correr expreso-render.cjs
 _correr expreso-padron-caido.cjs
 _correr expreso-galpon.cjs
+_correr checkout-layout.cjs
 _correr presupuesto.cjs
 _correr carrito-animacion.cjs
 
