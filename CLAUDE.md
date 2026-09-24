@@ -524,11 +524,49 @@ sigue diciendo "Usar igual".
 que la página de Chef lo lee del proyecto de LK con el cliente que ya tenía. Si algún día se toca
 `public.expresos` de LK —o su policy `expresos_read_all`—, **se rompen las dos páginas, no una**.
 
+### ⚠⚠ «Sin expreso cargado» con el galpón en la ficha (24/09, v2.3.463)
+
+> ## **`direccion_entrega` NO siempre es la dirección del cliente: en una sucursal del interior es el GALPÓN del expreso.**
+
+Medido el 24/09, y salió de una prueba de Tomás en Chef donde **toda** sucursal decía «Sin
+expreso cargado». En LK se ve porque `direccion_expreso` repite esa misma calle con el barrio
+pegado: `dir_entrega=[Av De La Cruz 2576]` · `dir_exp=[AV DE LA CRUZ 2576, Soldati]`.
+
+| | LK | Chef |
+|---|---:|---:|
+| sucursales del interior sin `nombre_expreso` | **85** | **328** (todas) |
+| …con el galpón igual cargado (altura + `zona_expreso`) | **79** | **327** |
+| …que el padrón resuelve a UN expreso | — | **123** |
+
+O sea que la página decía *"no sé a dónde va"* teniendo el dato. Hoy muestra el nombre si el
+padrón resuelve esa dirección a uno solo, y si no **el galpón** (`Entregamos en Manuel Pedraza
+2847, Lanús`).
+
+⚠ **Un galpón compartido NO se resuelve eligiendo uno.** En Pergamino 3751 operan 4 expresos y
+se lleva 82 de las 328 sucursales de Chef: adivinar manda la mercadería al lugar equivocado. Se
+muestra el galpón y el popup **se abre filtrado por esa dirección**.
+
+⚠ **Sin altura NO es un galpón**: 6 de las 85 de LK guardan la ciudad de destino (`Rio Cuarto,
+Córdoba`) y decirle a alguien de Rio Cuarto «entregamos en Rio Cuarto» no informa nada. El
+criterio es **altura + `zona_expreso`** (`_expEsGalpon`), o 2+ candidatos en el padrón.
+
+⚠ **Mostrar no es guardar**: el nombre deducido va con la dirección debajo y la nota «según la
+dirección de entrega de tu ficha», y **no se escribe en la ficha**. El dato autoritativo es la
+dirección; un nombre equivocado se ve y el cliente lo corrige con «Cambiar».
+
+⚠⚠ **Descartado, medido, para no rehacerlo:** deducir el expreso por **(galpón, destino)** de la
+historia de LK —505 pares únicos— resuelve **143 de 328 (44 %)** en Chef con 87 ambiguos. No
+alcanza, y lo que falla manda el camión al galpón que no es.
+
 **Chequeo:** `bash tests/run.sh` — `expreso-buscador` (el orden: "la sev" trae LA SEVILLANITA
 primero), `expreso-render` (que el bloque se dibuje y que un expreso desconocido **no** deshabilite
-el botón) y `expreso-padron-caido` (que un padrón caído avise en vez de quedarse mudo, y no cachee
-el vacío). Los tres verificados mutando el código a propósito.
+el botón), `expreso-padron-caido` (que un padrón caído avise en vez de quedarse mudo, y no cachee
+el vacío) y `expreso-galpon` (los cuatro casos de arriba; corre contra los dos repos con
+`node tests/expreso-galpon.cjs ../paginach`). Los cuatro verificados mutando el código a propósito.
 `sql/expreso_cambio_cliente.sql`.
+
+⚠ **El total de la suite se CUENTA, no se escribe**: `tests/run.sh` estuvo clavado en «9 corridas»
+con 10 tests en la lista. Un número a mano se desfasa en el commit que agrega el test.
 
 ## ⚠ REGLA (Thomas, 23/09/2026): MODO PRESUPUESTO — cliente de exportación
 

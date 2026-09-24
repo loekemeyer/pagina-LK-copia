@@ -16368,6 +16368,10 @@ body { top: 0 !important; }
 .exp-v--falta { color: #b45309; font-weight: 600; }
 .exp-dir { font-size: 11.5px; color: #6b6b6b; overflow-wrap: anywhere; }
 .exp-pend { font-size: 11px; color: #b45309; }
+/* El nombre deducido del galpón, no traído de la ficha. Ver
+   _expDesdeGalpon() en script.js: se muestra chico y en gris porque
+   el dato autoritativo es la dirección que va arriba. */
+.exp-nota { font-size: 10.5px; color: #8a8a8a; font-style: italic; }
 .exp-btn {
   flex: 0 0 auto;
   border: 1px solid #d4d4d4;

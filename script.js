@@ -6558,6 +6558,54 @@ function _expEsRetira(nombre, zona) {
          /^retira$/i.test(String(zona || "").trim());
 }
 
+/* ¿La dirección de entrega de esta sucursal es el GALPÓN de un expreso?
+ *
+ * ⚠ Medido el 24/09, y vale para las dos páginas: `direccion_entrega` NO es
+ *   siempre la dirección del cliente. En una sucursal del interior guarda el
+ *   GALPÓN en CABA —"Av De La Cruz 2576"— y `zona_expreso` su barrio
+ *   ("Soldati"); la del cliente va en el `label`. En LK eso se ve porque
+ *   `direccion_expreso` repite esa misma calle con el barrio pegado.
+ *
+ * Esto NO adivina: busca esa dirección en el padrón y sólo afirma cuando la
+ * respuesta es una sola. Varios expresos en el mismo galpón (Pergamino 3751
+ * son 4) → no se elige ninguno. Ninguno → no se afirma que sea un galpón, así
+ * que una `direccion_entrega` que en realidad es la ciudad de destino
+ * ("Rio Cuarto, Córdoba") no se confunde con un galpón.
+ */
+function _expClaveDir(s) {
+  return _expNorm(s).replace(/[^a-z0-9]+/g, " ").trim();
+}
+function _expClaveCalleNum(s) {
+  const m = _expClaveDir(s).match(/^[^0-9]*[0-9]+/);
+  return m ? m[0].trim() : "";
+}
+/* Y cuando el padrón no lo resuelve, ¿esa dirección es igual un galpón?
+ * Medido el 24/09: lo es cuando tiene ALTURA y la sucursal trae su barrio en
+ * `zona_expreso` — 79 de las 85 sucursales del interior de LK sin nombre están
+ * así (Pergamino 3751/Soldati, Manuel Pedraza 2847/Lanús), con la ciudad del
+ * cliente en `localidad`. Las 6 que no, guardan la ciudad de destino en
+ * `direccion_entrega` ("Rio Cuarto, Córdoba") y por eso quedan afuera: decirle
+ * "entregamos en Rio Cuarto" a alguien de Rio Cuarto no informa nada. */
+function _expEsGalpon(dir, zona, cands) {
+  if (cands && cands.length > 1) return true;          // varios expresos ahí: probado
+  return /[0-9]/.test(String(dir || "")) && !!String(zona || "").trim();
+}
+
+function _expDesdeGalpon(dirEntrega) {
+  const out = { cands: [], dir: String(dirEntrega || "").trim() };
+  if (!out.dir || !_expresosCache || !_expresosCache.length) return out;
+  const k = _expClaveDir(out.dir);
+  if (!k) return out;
+  let cands = _expresosCache.filter((e) => _expClaveDir(e.domicilio) === k);
+  if (!cands.length) {
+    // "Pergamino 3751 Nave 3 Box 89" es el mismo galpón que "Pergamino 3751".
+    const kn = _expClaveCalleNum(out.dir);
+    if (kn) cands = _expresosCache.filter((e) => _expClaveCalleNum(e.domicilio) === kn);
+  }
+  out.cands = cands;
+  return out;
+}
+
 /* ¿Esta sucursal se entrega por expreso? El interior sí; CABA y GBA los
    repartimos nosotros. Sin esta distinción, a un cliente de Flores le
    aparecería "sin expreso cargado", que para él no significa nada. */
@@ -6620,12 +6668,49 @@ function _expSyncUI() {
       "</span>" +
       '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Cambiar</button>';
   } else {
-    html =
-      '<span class="exp-ico">🚚</span>' +
-      '<span class="exp-txt"><span class="exp-k">Expreso</span>' +
-      '<span class="exp-v exp-v--falta">Sin expreso cargado</span>' +
-      '<span class="exp-dir">Si nos decís cuál, lo despachamos ahí.</span></span>' +
-      '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Indicar</button>';
+    // El padrón llega async. Si todavía no está, se lo pide y se vuelve a
+    // dibujar una vez; con `_expresosFallo` puesto no reintenta.
+    if (!_expresosCache && !_expresosFallo) {
+      cargarExpresosCache().then(() => {
+        try { _expSyncUI(); } catch (_) {}
+      });
+    }
+
+    // Que la ficha no traiga el nombre NO significa que no sepamos a dónde va.
+    const gal = _expDesdeGalpon(d.direccionEntrega);
+    const galTxt = [gal.dir, zona].filter(Boolean).join(", ");
+
+    if (gal.cands.length === 1) {
+      // Un solo expreso en ese galpón: el nombre es una deducción de dos datos
+      // nuestros, no una suposición. La dirección va debajo, que es el dato
+      // autoritativo, para que un nombre equivocado se vea y se corrija.
+      html =
+        '<span class="exp-ico">🚚</span>' +
+        '<span class="exp-txt"><span class="exp-k">Expreso</span>' +
+        '<span class="exp-v">' + escapeHtml(gal.cands[0].razon_social || "") + "</span>" +
+        (galTxt ? '<span class="exp-dir">' + escapeHtml(galTxt) + "</span>" : "") +
+        '<span class="exp-nota">según la dirección de entrega de tu ficha</span>' +
+        "</span>" +
+        '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Cambiar</button>';
+    } else if (_expEsGalpon(gal.dir, zona, gal.cands)) {
+      html =
+        '<span class="exp-ico">🚚</span>' +
+        '<span class="exp-txt"><span class="exp-k">Entregamos en</span>' +
+        '<span class="exp-v">' + escapeHtml(galTxt) + "</span>" +
+        '<span class="exp-dir">' +
+        (gal.cands.length > 1
+          ? "En ese galpón operan varios expresos: decinos cuál es el tuyo."
+          : "Nos falta el nombre del expreso.") +
+        "</span></span>" +
+        '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Indicar</button>';
+    } else {
+      html =
+        '<span class="exp-ico">🚚</span>' +
+        '<span class="exp-txt"><span class="exp-k">Expreso</span>' +
+        '<span class="exp-v exp-v--falta">Sin expreso cargado</span>' +
+        '<span class="exp-dir">Si nos decís cuál, lo despachamos ahí.</span></span>' +
+        '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Indicar</button>';
+    }
   }
   box.innerHTML = html;
   box.hidden = false;
@@ -6661,7 +6746,17 @@ function abrirModalExpreso() {
   if (err) { err.style.display = "none"; err.textContent = ""; }
   _expActualizarBoton();
 
-  cargarExpresosCache();
+  cargarExpresosCache().then(() => {
+    // Si la ficha no trae el nombre pero sí el galpón, se abre YA filtrado por
+    // esa dirección: en un galpón compartido el cliente elige entre los que
+    // operan ahí en un click, en vez de tener que adivinar cómo se llama.
+    if (String(d.nombreExpreso || "").trim()) return;
+    if (_expSlotEditando !== slot) return;
+    const gal = _expDesdeGalpon(d.direccionEntrega);
+    if (!gal.cands.length || !inp || String(inp.value || "").trim()) return;
+    inp.value = _expClaveCalleNum(gal.dir) || gal.dir;
+    try { onExpBuscarInput(); } catch (_) {}
+  });
   const modal = document.getElementById("modalExpreso");
   if (modal) modal.classList.add("open");
   setTimeout(() => { if (inp) inp.focus(); }, 80);

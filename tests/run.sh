@@ -15,8 +15,12 @@
 cd "$(dirname "$0")/.." || exit 1
 export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}"
 ROJOS=()
+# ⚠ El total se CUENTA, no se escribe: estuvo clavado en 9 con 10 tests en la
+#   lista. Un numero a mano se desfasa en el commit que agrega el test.
+TOTAL=0
 _correr() {
   echo "== $1 =="
+  TOTAL=$((TOTAL + 1))
   if ! node "tests/$1"; then ROJOS+=("tests/$1"); fi
   echo
 }
@@ -28,14 +32,15 @@ _correr estado-gestion.cjs
 _correr expreso-buscador.cjs
 _correr expreso-render.cjs
 _correr expreso-padron-caido.cjs
+_correr expreso-galpon.cjs
 _correr presupuesto.cjs
 _correr carrito-animacion.cjs
 
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then
-  echo "SUITE VERDE — 9 corridas, 0 rojos"
+  echo "SUITE VERDE — $TOTAL corridas, 0 rojos"
 else
-  echo "SUITE EN ROJO — ${#ROJOS[@]} de 9:"
+  echo "SUITE EN ROJO — ${#ROJOS[@]} de $TOTAL:"
   for r in "${ROJOS[@]}"; do echo "  · $r"; done
   echo "======================================================================"
   exit 1
