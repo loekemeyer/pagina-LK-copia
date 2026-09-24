@@ -629,6 +629,67 @@ select p.proname,
 -- al 21/09: las dos en true
 ```
 
+## ⚠ REGLA (24/09/2026): una CAJA que la define el contenido cargado tiembla, y lo que ya cargó NO vuelve a lazy
+
+**Vale para TODAS las páginas** de todos los repos (LK, Chef/`paginach`, el espejo del admin,
+Virgilio y cualquiera nuevo: copiar este bloque al `CLAUDE.md` del repo nuevo). Salió de un bug
+que rompió dos cosas a la vez en el catálogo mayorista y que **nadie relacionó entre sí**:
+"la animación de agregar al carrito desapareció" y "cada vez que agrego un producto la página
+tiembla". Era **un solo defecto**.
+
+**Qué pasó.** Desde la **v2.3.452** (22/09, commit `4401f88`) las cards con 2ª foto nacen con
+`data-src` en vez de `src` — carga diferida propia, que arregló un problema real de Chrome 109.
+Pero `renderProducts()` rehace la grilla **entera** (`container.innerHTML = ""`) en cada cambio
+del carrito, así que **cada "agregar al pedido" devolvía TODAS esas fotos al estado sin `src`**
+hasta que el IntersectionObserver las resolvía un frame después.
+
+| Síntoma | Por qué |
+|---|---|
+| La página **tiembla** | En desktop el alto de la foto lo da la imagen (`#productsContainer .product-card img { width:auto!important; height:auto!important }`). Sin `src` no hay tamaño intrínseco: **medido en Chromium, 198px → 0 y vuelve**. La card se desploma, el grid recalcula las filas y salta la página. |
+| La **animación** no aparece | `flyProductImageToCart` arranca midiendo la foto y corta si el rect da 0. No fallaba: **no empezaba**. |
+
+### Las tres reglas que quedan
+
+1. **Una caja cuyo tamaño lo da el contenido cargado va reservada por CSS.** Si el alto de un
+   elemento sale de la imagen (o del texto que llega por fetch), mientras no esté cargado mide 0
+   y todo lo de abajo salta. Se reserva con `aspect-ratio` + un ancho/alto **definido**, no con
+   `width:auto`. En LK está al final de `css/styles.css`. ⚠ **Ancho en px, no en %**: `.pc-media`
+   es `width: fit-content`, así que un porcentaje en la foto de atrás sería circular.
+2. **Un contenedor que se re-renderiza entero no puede devolver a lazy lo que ya cargó.** La
+   carga diferida es para el PRIMER pintado. Lo ya resuelto se vuelve a emitir con `src` directo
+   (sale del cache). En LK lo lleva `_pcFotosResueltas` en `script.js`.
+3. **El orden importa y no es intuitivo.** Los avisos del IntersectionObserver se entregan
+   **después** de los `requestAnimationFrame`. O sea que una animación lanzada en el rAF
+   siguiente a un re-render ve las imágenes TODAVÍA sin `src`. Cualquier medición que se haga
+   "un tick después" no ve el bug y da falso verde.
+
+⚠ **Al reemplazar un `src` por carga diferida, mirar primero si ese contenedor se re-renderiza
+entero por otra razón.** Acá el cambio se probó scrolleando (donde anda perfecto) y nunca
+agregando al carrito.
+
+⚠ **`cloneNode(true)` de un elemento con `id` mete un id duplicado en el DOM.** El clon que vuela
+al carrito arrastraba `id="img-<pid>"`, así que durante los 650 ms del vuelo un segundo click
+medía el clon en movimiento en vez de la card. Va `document.createElement("img")`.
+
+⚠ **En las cards con 2ª foto el primer `<img>` del DOM es `.pc-back`, que está TAPADO** por
+`.pc-front` (`position:absolute`, `z-index 1`). Un `card.querySelector("img")` para animar la
+foto le pega a la invisible.
+
+**Chequeo:** `bash tests/run.sh` → `carrito-animacion.cjs`. Levanta `mayorista.html` en Chromium,
+agrega al carrito y mide **dentro del mismo frame**. Verificado en rojo mutando el código: sacando
+el arreglo de `script.js` **o** el de `css/styles.css` —cualquiera de los dos por separado— vuelve
+el salto de 198px→0 y la animación deja de arrancar. Hacen falta los dos.
+
+**PENDIENTE (de fondo, no resuelto).** `renderProducts()` reconstruye el catálogo **completo** en
+cada `addFirstBox` / `changeQty`: son cientos de cards por un `+1`. Eso es lo que abre la puerta a
+esta clase de bug y además es un pico de CPU por click. Lo correcto sería actualizar **sólo la
+card tocada**; no se hizo ahora porque en modo expo el descuento por escala cambia los precios de
+TODAS las cards con el carrito, así que la actualización parcial necesita su propio criterio.
+
+⚠ **`paginach` hoy tiene una sola foto por producto** (confirmado por Tomás Beviglia, 24/09/2026),
+así que no arrastra el bug. Si alguna vez suma la 2ª foto y con ella la carga diferida, hereda
+las tres reglas de arriba.
+
 ## Integración Krikos (OC de supermercados por mail)
 
 - **Krikos360 es el portal EDI de Planexware** por el que las cadenas (Coto, Carrefour/INC, Día,
