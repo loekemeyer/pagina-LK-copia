@@ -21,18 +21,21 @@ _correr() {
   echo
 }
 
+_correr css-balance.cjs
 _correr payload-scope.cjs
 _correr solo-agregar.cjs
 _correr estado-gestion.cjs
 _correr expreso-buscador.cjs
 _correr expreso-render.cjs
 _correr expreso-padron-caido.cjs
+_correr presupuesto.cjs
+_correr carrito-animacion.cjs
 
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then
-  echo "SUITE VERDE — 6 corridas, 0 rojos"
+  echo "SUITE VERDE — 9 corridas, 0 rojos"
 else
-  echo "SUITE EN ROJO — ${#ROJOS[@]} de 6:"
+  echo "SUITE EN ROJO — ${#ROJOS[@]} de 9:"
   for r in "${ROJOS[@]}"; do echo "  · $r"; done
   echo "======================================================================"
   exit 1

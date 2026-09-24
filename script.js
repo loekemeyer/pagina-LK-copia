@@ -358,10 +358,43 @@ window._zoomDoc = _zoomDoc;
    todas las de foto única se veían. Acá se observa la CARD (que el
    navegador sí ve bien) y recién ahí se pasa data-src → src. */
 let _pcLazyIO = null;
+
+/* Fotos que YA se resolvieron en esta sesión (data-src → src). La grilla se
+   re-renderiza ENTERA en cada cambio del carrito (renderProducts() hace
+   container.innerHTML = ""), así que sin esto cada "agregar al pedido" volvía
+   a crear todas las <img> de las cards con 2ª foto SIN src, y recién el
+   IntersectionObserver se los devolvía un frame después. Eso rompía dos cosas:
+
+   1) El TEMBLOR. En desktop manda
+      `#productsContainer .product-card img { width:auto!important; height:auto!important }`
+      (~línea 2881 de css/styles.css), o sea que el alto de la foto lo da la
+      imagen. Una <img> sin src no tiene tamaño intrínseco → mide 0 → la card
+      se desploma, el grid recalcula las filas y salta la página entera; al
+      llegar el src vuelve a su lugar. Eso es el "algo carga y desaparece".
+   2) La ANIMACIÓN. `flyProductImageToCart` arranca midiendo la foto y corta
+      en seco si el rect da 0 (`if (!r1.width || !r1.height) return`), así que
+      con la imagen vacía no volaba nada: la animación no fallaba, ni siquiera
+      empezaba.
+
+   Una foto ya resuelta se vuelve a emitir con `src` directo: sale del cache
+   del navegador, no parpadea y no toca el layout. El diferido del primer
+   pintado —que es lo que arregló Chrome 109— queda igual. */
+const _pcFotosResueltas = new Set();
+
+// Atributo de la <img> de persiana: `src` si esa foto ya se cargó alguna vez
+// en esta sesión, `data-src` (diferida) si es la primera vez que se ve.
+function _pcAttrFoto(url) {
+  return _pcFotosResueltas.has(url)
+    ? `src="${url}"`
+    : `data-src="${url}"`;
+}
+
 function _pcLazyCargar(card) {
   card.querySelectorAll("img[data-src]").forEach((img) => {
+    const url = img.getAttribute("data-src");
     // Si el hover/flechas ya le pusieron otra foto, no pisarla.
-    if (!img.getAttribute("src")) img.setAttribute("src", img.getAttribute("data-src"));
+    if (!img.getAttribute("src")) img.setAttribute("src", url);
+    if (url) _pcFotosResueltas.add(url);
     img.removeAttribute("data-src");
   });
 }
@@ -1430,6 +1463,71 @@ function estadoStock(cod) {
   return { tipo: "reingreso", fecha: fmtDdMm(_reingresoMap.get(c)) };
 }
 
+// Luis (23/09): "Tu pedido estará listo antes del dd/mm/aa" = 14 días corridos desde
+// el envío y, si ese día no es hábil, el próximo hábil. El día hábil lo dice Gestión
+// (RPC get_fecha_listo del proyecto LK, espejo de gv_es_dia_habil). Si la RPC no
+// contesta en 3 s, se calcula acá salteando sólo el fin de semana.
+function fmtDdMmAa(iso) {
+  const m = String(iso || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1].slice(2)}` : "";
+}
+function _fechaListoLocal() {
+  const hoy = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }));
+  const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + 14);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+async function _fechaListo() {
+  try {
+    const r = await Promise.race([
+      supabaseClient.rpc("get_fecha_listo"),
+      new Promise((res) => setTimeout(() => res({ error: "timeout" }), 3000)),
+    ]);
+    if (r && !r.error && /^\d{4}-\d{2}-\d{2}/.test(String(r.data || ""))) return String(r.data).slice(0, 10);
+  } catch (e) {}
+  return _fechaListoLocal();
+}
+// Pinta el renglón de la pantalla de confirmación. `modo`:
+//   "listo"     → pedido normal: "Tu pedido estará listo antes del dd/mm/aa"
+//   "reingreso" → TODO el pedido espera reingreso: desde cuándo sale
+function _pintarFechaListo(el, modo, fechaReingreso) {
+  if (!el) return;
+  if (modo === "reingreso") {
+    const f = fmtDdMm(fechaReingreso);
+    el.innerHTML = "Tu pedido sale " + (f ? "a partir del <strong>" + f + "</strong>" : "cuando reingresen los artículos");
+    el.hidden = false;
+    return;
+  }
+  el.hidden = true;
+  _fechaListo().then(function (iso) {
+    const f = fmtDdMmAa(iso);
+    if (!f) return;
+    el.innerHTML = "Tu pedido estará listo antes del <strong>" + f + "</strong>";
+    el.hidden = false;
+  });
+}
+
+// Luis (23/09): un pedido que mezcla artículos EN STOCK con artículos que dicen
+// "Sin stock hasta dd/mm" entra como DOS pedidos, cada uno con su número: el de
+// lo que hay sale como siempre y el de lo que falta, a partir del reingreso. Se
+// decide con lo mismo que ve el cliente (el cartel). Si TODO el carrito espera
+// reingreso, es un solo pedido. `fecha` = el reingreso más tardío (ISO).
+function _splitPorReingreso(items) {
+  var ahora = [], reingreso = [], fecha = "";
+  (items || []).forEach(function (it) {
+    var p = findAnyProduct(it.productId);
+    var cod = p ? p.cod : "";
+    if (cod && estadoStock(cod).tipo === "reingreso") {
+      reingreso.push(it);
+      var iso = String(_reingresoMap.get(_canonCod(cod)) || "");
+      if (iso && iso > fecha) fecha = iso;
+    } else {
+      ahora.push(it);
+    }
+  });
+  return { ahora: ahora, reingreso: reingreso, fecha: fecha };
+}
+
 /***********************
  * STATE
  ***********************/
@@ -1445,6 +1543,103 @@ function isListPriceOnlyClient() {
   if (_expoActiveCustomer) return false;
   return isAdmin || String(customerProfile?.cod_cliente) === "5000";
 }
+
+/***********************
+ * MODO PRESUPUESTO (cliente de exportación)
+ ***********************
+ * Un cliente marcado `customers.modo_presupuesto` NO arma un pedido: arma un
+ * PRESUPUESTO. No ve precios ni descuentos de ningún tipo (ni lista, ni dto x
+ * volumen, ni dto web, ni método de pago), y al confirmarlo el pedido entra
+ * igual a `orders` con total 0 y viaja a la PPP de Gestión por el camino de
+ * siempre (`v_pedidos_web` → `v_pedidos_web_np`), que nunca llevó precios.
+ *
+ * ⚠ La bandera es del CLIENTE, no de quien está logueado: si un vendedor o el
+ * admin carga el pedido POR él, sigue siendo un presupuesto. Lo que se cotiza
+ * es la operación del cliente, no la pantalla del que tipea.
+ *
+ * ⚠ Que no vea precios NO es CSS: `loadProductsFromDB` directamente no pide
+ * `list_price`, así que el precio no baja al navegador. Ocultarlo por estilos
+ * lo dejaría a un clic de distancia en las herramientas del navegador.
+ */
+function isPresupuestoMode() {
+  return !!customerProfile?.modo_presupuesto;
+}
+
+/**
+ * Trae UNA fila de `customers` pidiendo también `modo_presupuesto`, y si la base
+ * todavía no tiene esa columna, la vuelve a pedir SIN ella.
+ *
+ * ⚠ POR QUÉ EXISTE (23/09/2026). El front se publica por un lado y el SQL de
+ * este repo se corre A MANO por otro, así que hay una ventana en la que el
+ * navegador pide una columna que la base todavía no tiene. Y PostgREST no
+ * devuelve la fila sin esa columna: rechaza la consulta ENTERA con un 400. O
+ * sea que el cliente no "pierde el modo presupuesto" — se queda SIN PERFIL y no
+ * puede hacer nada, sin ningún mensaje en pantalla.
+ *
+ * Pasó de verdad: apenas se pushó el modo presupuesto aparecieron 13 errores
+ * 400 en /rest/v1/customers en una hora, contra 0 en las 13 horas anteriores.
+ *
+ * Es el mismo patrón que ya se usaba para el expreso de Chef: si la columna no
+ * está, el front cae solo en vez de romperse.
+ */
+async function _customerSelect(colsBase, aplicarFiltro) {
+  const pedir = (cols) =>
+    aplicarFiltro(supabaseClient.from("customers").select(cols)).maybeSingle();
+
+  let r = await pedir(colsBase + ",modo_presupuesto");
+  if (r && r.error && /modo_presupuesto/i.test(r.error.message || "")) {
+    console.warn(
+      "customers.modo_presupuesto no existe en esta base todavía: hay que correr " +
+        "sql/modo_presupuesto.sql. Mientras tanto se sigue sin el modo presupuesto.",
+    );
+    r = await pedir(colsBase);
+  }
+  return r;
+}
+// Con qué modo se cargaron los productos que hay en memoria. Si un vendedor
+// cambia de cliente y el modo se da vuelta, hay que volver a pedirlos: los que
+// están cargados o tienen precio de más o les falta.
+let _productsSinPrecio = false;
+
+/**
+ * Pone la pantalla en modo presupuesto: la clase en <body> (de la que cuelga
+ * todo el CSS que esconde los montos) y los textos que dicen "pedido".
+ */
+function _presupuestoSyncUI() {
+  var on = isPresupuestoMode();
+  document.body.classList.toggle("is-presupuesto", on);
+
+  var btn = document.getElementById("submitOrderBtn");
+  if (btn) {
+    var txt = on ? "Solicitar presupuesto" : "Confirmar pedido";
+    // `originalText` es de donde lo recuperan setSubmitOrderLoading() y los dos
+    // re-habilitados de submitOrder(); si no se pisa acá vuelve a decir
+    // "Confirmar pedido" apenas el botón pasa por "Enviando…".
+    btn.dataset.originalText = txt;
+    if (!btn.classList.contains("is-loading")) btn.textContent = txt;
+  }
+
+  var h2 = document.querySelector("#carrito .section-title");
+  if (h2) {
+    if (on) {
+      h2.innerHTML = "Presupuesto";
+    } else if (!h2.querySelector("#pedidoTotalHeader")) {
+      h2.innerHTML =
+        'Pedido · Total: $<span id="pedidoTotalHeader">0</span>' +
+        '<span class="iva-tag">+ IVA</span>';
+    }
+  }
+
+  var sTitle = document.querySelector("#pedidoConfirmado .success-title");
+  if (sTitle) sTitle.textContent = on ? "¡Presupuesto enviado!" : "¡Pedido confirmado!";
+  var sSub = document.querySelector("#pedidoConfirmado .success-subtitle");
+  if (sSub) {
+    sSub.textContent = on
+      ? "Lo recibimos y te vamos a pasar la cotización."
+      : "Tu pedido fue enviado correctamente.";
+  }
+}
+window.isPresupuestoMode = isPresupuestoMode;
 
 // Clientes con "Formato" propio (gestión de stock en consignación): pueden elegir
 // entre el formato regular de la página y su formato especial. Se gatea por
@@ -1893,7 +2088,11 @@ function maybeShowOsaFormatChooser(opts) {
 function looksLikeCUIT(val) {
   const cleaned = val.replace(/[-\s]/g, "");
   if (/[^0-9]/.test(cleaned)) return false;
-  return cleaned.length >= 10 && cleaned.length <= 11;
+  // 8 dígitos como piso, no 10: el RUC paraguayo de un cliente de exportación
+  // tiene 9 (8 + verificador) y sin esto caía por la rama de "usuario", que no
+  // lo encuentra y contesta "Usuario no encontrado". No choca con nadie: de los
+  // 27 usernames cargados, NINGUNO es sólo dígitos (medido 23/09/2026).
+  return cleaned.length >= 8 && cleaned.length <= 11;
 }
 
 /***********************
@@ -2150,11 +2349,13 @@ async function logout() {
 /***********************
  * BOTÓN TRADUCIR AL CHINO (中文)
  * Regla (10/9/2026): el traductor NO va para cualquier cliente logueado.
- * Visitante sin login → se muestra. Cliente logueado → solo si su código
+ * Visitante sin login → NO se muestra (Luis, 23/09). Cliente logueado → solo si su código
  * está en CLIENTES_CHINOS. Cuando llegue el listado de clientes chinos se
  * cargan acá los cod_cliente y el botón vuelve a aparecer para ellos.
  ***********************/
-const CLIENTES_CHINOS = new Set([]); // ej: ["1234", "5678"]
+// v23/09 (Luis): lista de clientes chinos, por cod_cliente de ESTA empresa. Sacada del
+// padrón de WhatsApp + padrón vivo, por apellido (el Excel no traía otra marca): agregar o sacar acá.
+const CLIENTES_CHINOS = new Set(["503", "1413", "2127", "2150", "2151", "2185", "2259", "2269", "2278", "2289", "2399", "2402", "2475", "3843", "3913", "3940", "3966", "3975", "3988", "4003", "4012", "4013", "4022", "4029", "4038", "4086", "4106", "4120", "4128", "4131", "4154", "4164", "4172", "4187", "4212", "4227", "4228", "4232", "4235", "4244", "4253", "4255", "4260", "4262", "4274", "4275", "4279", "10024", "10025"]);
 
 function puedeVerTraductorCn() {
   if (!currentSession) {
@@ -2163,7 +2364,7 @@ function puedeVerTraductorCn() {
     try {
       if (localStorage.getItem("is_logged") === "1") return false;
     } catch (e) {}
-    return true; // visitante: sí
+    return false; // visitante sin login: NO (Luis, 23/09)
   }
   const cod = String(customerProfile?.cod_cliente || "").trim();
   return cod !== "" && CLIENTES_CHINOS.has(cod);
@@ -2232,15 +2433,16 @@ async function refreshAuthState(sessionOverride) {
   }
   syncAdminCheckoutUI();
 
-  const { data: custRow } = await supabaseClient
-    .from("customers")
-    .select(
-      "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit,escala_activa",
-    )
-    .eq("auth_user_id", currentSession.user.id)
-    .maybeSingle();
+  const { data: custRow } = await _customerSelect(
+    "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit,escala_activa",
+    (q) => q.eq("auth_user_id", currentSession.user.id),
+  );
 
   customerProfile = custRow || null;
+  // Modo presupuesto: se sincroniza APENAS se sabe qué cliente es, no
+  // recién en updateCart(): renderProducts() corre antes y sin la clase en
+  // <body> se vería un parpadeo de "$0" en cada ficha.
+  _presupuestoSyncUI();
   // Snapshot del perfil propio del vendedor para poder volver desde "Pedir para"
   _vendorOwnProfile = customerProfile ? Object.assign({}, customerProfile) : null;
 
@@ -2325,6 +2527,7 @@ async function refreshAuthState(sessionOverride) {
 }
 
 function getDtoVol() {
+  if (isPresupuestoMode()) return 0;
   if (isListPriceOnlyClient()) return 0;
   return Number(customerProfile?.dto_vol || 0);
 }
@@ -2338,6 +2541,8 @@ function unitYourPrice(listPrice) {
  * MÉTODO DE PAGO
  ***********************/
 function getPaymentDiscount() {
+  // Presupuesto: no hay método de pago, así que no hay descuento por pago.
+  if (isPresupuestoMode()) return 0;
   // Cliente nuevo de expo o con escala activa: 1ª compra = contado (-25%) OBLIGATORIO.
   if (_expoClientMode || _escalaActiva) return 0.25;
   if (isListPriceOnlyClient()) return 0;
@@ -2350,6 +2555,9 @@ function getPaymentDiscount() {
 }
 
 function getPaymentMethodText() {
+  // Va al Sheet, al ERP y a la columna "condición de pago" de la PPP: tiene que
+  // leerse como lo que es, para que nadie lo despache como un pedido cerrado.
+  if (isPresupuestoMode()) return "PRESUPUESTO A COTIZAR";
   if (_expoClientMode || _escalaActiva) return "Contado";
   if (isListPriceOnlyClient()) return "Contado";
 
@@ -2361,6 +2569,7 @@ function getPaymentMethodText() {
 }
 
 function getPaymentMethodCode() {
+  if (isPresupuestoMode()) return 0; // sin condición de pago: se define al cotizar
   if (_expoClientMode || _escalaActiva) return 8; // Contado -25%
   if (isListPriceOnlyClient()) return 8;
 
@@ -2408,7 +2617,9 @@ function syncAdminCheckoutUI() {
   const totalNoDiscountLine = $("totalNoDiscountLine");
   const totalDiscountsLine = $("totalDiscountsLine");
 
-  const hideDiscounts = isListPriceOnlyClient();
+  _presupuestoSyncUI();
+
+  const hideDiscounts = isListPriceOnlyClient() || isPresupuestoMode();
   if (paymentRow) paymentRow.style.display = hideDiscounts ? "none" : "";
   if (webNoteBox) webNoteBox.style.display = hideDiscounts ? "none" : "";
   if (webDiscountLine)
@@ -2501,10 +2712,19 @@ async function loadProductsFromDB() {
   }
 
   // ✅ LOGUEADO: orden también según sortMode
+  // ⚠ PRESUPUESTO: no se pide `list_price`. El precio no viaja, así que no hay
+  // nada que esconder después — esconderlo por CSS lo dejaría en el DOM.
+  _productsSinPrecio = isPresupuestoMode();
+  if (_productsSinPrecio && (sortMode === "price_desc" || sortMode === "price_asc")) {
+    // Sin precio no se puede ordenar por precio; cae al orden de catálogo.
+    sortMode = "category";
+  }
   let q = supabaseClient
     .from("products")
     .select(
-      "id,cod,category,subcategory,ranking,orden_catalogo,description,list_price,uxb,images,badge_status,active",
+      _productsSinPrecio
+        ? "id,cod,category,subcategory,ranking,orden_catalogo,description,uxb,images,badge_status,active"
+        : "id,cod,category,subcategory,ranking,orden_catalogo,description,list_price,uxb,images,badge_status,active",
     )
     .eq("active", true);
 
@@ -5001,13 +5221,13 @@ function renderProducts() {
         ${pcArrowsHtml}
         ${
           pcBack
-            ? `<img class="pc-back" data-src="${pcBack}" alt="" width="400" height="400" onerror="this.onerror=null;this.src='${imgFallback}'">`
+            ? `<img class="pc-back" ${_pcAttrFoto(pcBack)} alt="" width="400" height="400" onerror="this.onerror=null;this.src='${imgFallback}'">`
             : ""
         }
         <img
           id="img-${pid}"
           class="pc-front"
-          ${pcBack ? `data-src="${pcFront}"` : `src="${pcFront}" loading="lazy"`}
+          ${pcBack ? _pcAttrFoto(pcFront) : `src="${pcFront}" loading="lazy"`}
           alt="${altAttr}"
           width="400"
           height="400"
@@ -6357,6 +6577,15 @@ function _expSyncUI() {
   const box = document.getElementById("expresoBox");
   if (!sel || !box) return;
 
+  // PRESUPUESTO: todavía no hay nada que despachar — se está pidiendo una
+  // cotización. Y son clientes de EXPORTACIÓN: `_expAplica` sólo esconde la
+  // línea en CABA y Buenos Aires, así que con una dirección de Paraguay la
+  // dibujaría y le pediría al cliente que elija un expreso argentino.
+  if (isPresupuestoMode()) {
+    box.hidden = true;
+    return;
+  }
+
   const slot = String(sel.value || "").trim();
   if (!slot || slot === "__add__") {
     box.hidden = true;
@@ -6872,17 +7101,34 @@ function flyProductImageToCart(productId) {
     const card =
       document.getElementById(`card-${productId}`) ||
       document.getElementById(`loke-card-${productId}`);
-    if (card) img = card.querySelector("img");
+    if (card) img = card.querySelector("img.pc-front") || card.querySelector("img");
   }
   const target = getVisibleCartIconEl();
   if (!img || !target) return;
 
+  // La foto puede estar todavía diferida (data-src, sin src): el clon saldría
+  // vacío. Se toma la URL de donde esté.
+  const src = img.getAttribute("src") || img.getAttribute("data-src") || "";
+  if (!src) return;
+
   const _z = _zoomDoc();
-  const r1 = img.getBoundingClientRect();
+  let r1 = img.getBoundingClientRect();
+  // Una <img> sin src mide 0 en desktop (width/height auto !important), y con
+  // rect 0 esta función se cortaba y NO volaba nada. Se cae a la caja del
+  // contenedor de la foto, que sí tiene tamaño.
+  if (!r1.width || !r1.height) {
+    const box = img.closest(".pc-media") || img.parentElement;
+    if (box) r1 = box.getBoundingClientRect();
+  }
   const r2 = target.getBoundingClientRect();
   if (!r1.width || !r1.height || !r2.width || !r2.height) return;
 
-  const clone = img.cloneNode(true);
+  // <img> nueva, NO cloneNode: el clon arrastraba el id="img-<pid>", así que
+  // durante el vuelo había dos elementos con el mismo id y un segundo click
+  // rápido medía el clon (position:fixed, a mitad de camino) en vez de la card.
+  const clone = document.createElement("img");
+  clone.src = src;
+  clone.alt = "";
   clone.className = "fly-to-cart";
   // El clon se cuelga de <body>, que está DENTRO del zoom: las medidas de
   // rect vienen en px de pantalla y hay que devolverlas a px CSS.
@@ -6890,6 +7136,7 @@ function flyProductImageToCart(productId) {
   clone.style.top = `${r1.top / _z}px`;
   clone.style.width = `${r1.width / _z}px`;
   clone.style.height = `${r1.height / _z}px`;
+  clone.style.objectFit = "contain";
   clone.style.opacity = "1";
   clone.style.transform = "translate3d(0,0,0) scale(1)";
 
@@ -6898,13 +7145,20 @@ function flyProductImageToCart(productId) {
   const dx = (r2.left + r2.width / 2 - (r1.left + r1.width / 2)) / _z;
   const dy = (r2.top + r2.height / 2 - (r1.top + r1.height / 2)) / _z;
 
-  // start anim next frame
+  // Reflow forzado: fija el estado inicial antes de pisar el transform, así la
+  // transición arranca sí o sí aunque el hilo principal venga cargado por el
+  // re-render de la grilla.
+  void clone.offsetWidth;
+
   requestAnimationFrame(() => {
     clone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(0.15)`;
     clone.style.opacity = "0";
   });
 
   clone.addEventListener("transitionend", () => clone.remove(), { once: true });
+  // Red de seguridad: si por lo que sea no se dispara el transitionend, que no
+  // quede un clon colgado de <body> para siempre.
+  setTimeout(() => clone.remove(), 1500);
 }
 
 // Helper: dispara las 3 animaciones add-to-cart juntas.
@@ -6934,8 +7188,11 @@ function triggerAddAnimations(productId) {
         qtyInput.classList.add("lk-pop");
       }
 
-      // 3b) celebración en la imagen: bounce + wobble + pulse combinados
-      const img = card.querySelector("img");
+      // 3b) celebración en la imagen: bounce + wobble + pulse combinados.
+      // OJO: en las cards con 2ª foto el primer <img> del DOM es .pc-back, que
+      // queda TAPADO por .pc-front (position:absolute, z-index 1) — ahí el
+      // wobble no se veía. Va sobre la foto visible.
+      const img = card.querySelector("img.pc-front") || card.querySelector("img");
       if (img) {
         img.classList.remove("lk-celebrate");
         void img.offsetWidth;
@@ -7918,7 +8175,9 @@ function toggleControls(productId, show) {
 function calcTotals() {
   const logged = !!currentSession;
   const paymentDiscount = getPaymentDiscount();
-  const webDiscountRate = (isAdmin && !_expoActiveCustomer) ? 0 : WEB_ORDER_DISCOUNT;
+  const webDiscountRate = (isPresupuestoMode() || (isAdmin && !_expoActiveCustomer))
+    ? 0
+    : WEB_ORDER_DISCOUNT;
 
   let subtotal = 0;
 
@@ -8117,6 +8376,7 @@ function updateCart() {
             <th>${headerTwoLine("Total Uni")}</th>
             <th>${headerTwoLine(isListPriceOnlyClient() ? "Precio Lista" : "Tu Precio")}</th>
             <th>${headerTwoLine("Total $")}</th>
+            ${/* en presupuesto las dos últimas columnas se ocultan por CSS */ ""}
           </tr>
         </thead>
 
@@ -8753,6 +9013,9 @@ function missingStep(pid, delta) {
 
 function getUpsellProducts() {
   if (!UPSELL_ENABLED) return [];
+  // El upsell es una oferta con precio viejo tachado: sin precios no tiene qué
+  // mostrar, y un presupuesto no se cierra con un descuento de lanzamiento.
+  if (isPresupuestoMode()) return [];
   var cartIds = new Set(
     cart.map(function (i) {
       return String(i.productId);
@@ -9001,9 +9264,12 @@ async function _submitSingleOrder(
   clienteNuevoValue,
   deliveryChoiceSnapshot,
   editOrderId,
+  opts,
 ) {
   var paymentDiscount = getPaymentDiscount();
-  var webDiscountRate = (isAdmin && !_expoActiveCustomer) ? 0 : WEB_ORDER_DISCOUNT;
+  var webDiscountRate = (isPresupuestoMode() || (isAdmin && !_expoActiveCustomer))
+    ? 0
+    : WEB_ORDER_DISCOUNT;
   var dtoVol = getDtoVol();
   var extraRate = Number(extraDiscountRate || 0);
   var isPromo = extraRate > 0;
@@ -9087,6 +9353,7 @@ async function _submitSingleOrder(
   // pedidos reales invisibles para Gestión, que filtra por sheets_payload.
   // `order_number` no va acá: el número lo pone la RPC, que es la única que lo
   // conoce antes de que exista.
+  var esPresupuesto = isPresupuestoMode();
   var debt = Number(customerProfile.debt || 0);
   var creditLimit = customerProfile.credit_limit == null ? null : Number(customerProfile.credit_limit);
 
@@ -9118,6 +9385,11 @@ async function _submitSingleOrder(
     retiro_fecha: retiroSel.fecha || null,
     retiro_franja: retiroSel.franja || null,
     is_promo: isPromo,
+    // Presupuesto: la ficha lo dice explícito para quien la lea desde Gestión o
+    // desde el Sheet. Los montos van en 0 porque no hay precio que informar.
+    // Se lee de `esPresupuesto`, declarada arriba en ESTA función: el payload no
+    // toma nada prestado de submitOrder() (ver tests/payload-scope.cjs).
+    tipo_documento: esPresupuesto ? "presupuesto" : "pedido",
     extra_discount: extraRate,
     deuda: debt,
     credit_limit: creditLimit,
@@ -9137,6 +9409,13 @@ async function _submitSingleOrder(
       };
     }),
   };
+
+  // Pedido de los artículos que esperan reingreso: se deja escrito de qué pedido
+  // salió y desde cuándo puede salir (Gestión lo programa con eso).
+  if (opts && opts.reingreso) {
+    sheetsPayload.reingreso_desde = opts.fecha || null;
+    sheetsPayload.pedido_origen = opts.origen || null;
+  }
 
   // RPC call — el 30% extra ya viene BAKED-IN en p_total.
   // `source` (módulo desde el que se agregó cada producto) tiene que viajar acá:
@@ -9373,6 +9652,7 @@ async function submitOrder() {
     ? `RETIRA ${fmtDdMm(retiroSel.fecha)} ${retiroSel.franja}`.trim()
     : "";
   const observacionesValue = [
+    isPresupuestoMode() ? "PRESUPUESTO — NO DESPACHAR, COTIZAR" : "",
     retiroTexto,
     String($("obsPedidoInput")?.value || "").trim(),
   ]
@@ -9423,14 +9703,15 @@ async function submitOrder() {
       return;
     }
 
+    // El presupuesto no tiene método de pago: se define cuando se cotiza.
     const paySel = document.getElementById("paymentSelect");
-    if (!isAdmin && (!paySel || !String(paySel.value || "").trim())) {
+    if (!isAdmin && !isPresupuestoMode() && (!paySel || !String(paySel.value || "").trim())) {
       setOrderStatus("Debes seleccionar un metodo de pago.", "err");
       return;
     }
 
     // ---- Split cart: regular (pedido X) vs promo (pedido X+1) ----
-    const regularItems = cart.filter(function (i) {
+    let regularItems = cart.filter(function (i) {
       return !i.isUpsellPromo;
     });
     const promoItems = cart.filter(function (i) {
@@ -9441,6 +9722,25 @@ async function submitOrder() {
       setOrderStatus("Carrito vacio.", "err");
       return;
     }
+
+    // ---- Split por reingreso: lo que hay (X) vs lo que espera reingreso (Y) ----
+    // Luis (23/09): son DOS pedidos distintos, con dos números. Editando no se parte.
+    var reingresoItems = [];
+    var reingresoFecha = "";
+    if (!editOrderIdSnapshot) {
+      var _spR = _splitPorReingreso(regularItems);
+      if (_spR.reingreso.length && _spR.ahora.length) {
+        regularItems = _spR.ahora;
+        reingresoItems = _spR.reingreso;
+        reingresoFecha = _spR.fecha;
+      }
+    }
+
+    // Si TODO lo que queda espera reingreso, la pantalla dice desde cuándo sale y no
+    // "listo antes del".
+    var _spTodo = (!editOrderIdSnapshot && !reingresoItems.length) ? _splitPorReingreso(regularItems) : null;
+    var todoReingreso = !!(_spTodo && regularItems.length && !_spTodo.ahora.length);
+    var todoReingresoFecha = _spTodo ? _spTodo.fecha : "";
 
     // ---- Snapshot deliveryChoice antes de resetear ----
     var deliveryChoiceSnapshot = {
@@ -9504,6 +9804,32 @@ async function submitOrder() {
       }
     }
 
+    // ---- Submit pedido de los artículos sin stock (Y) ----
+    // Si falla, el pedido X ya está grabado: no se tumba la confirmación, los
+    // artículos vuelven al carrito y se le avisa al cliente que lo reenvíe.
+    var reingresoResult = null;
+    var reingresoFallo = "";
+    if (reingresoItems.length > 0) {
+      debugStep("Confirmando el pedido de los artículos sin stock...");
+      try {
+        reingresoResult = await _submitSingleOrder(
+          reingresoItems,
+          0,
+          clienteNuevoValue,
+          deliveryChoiceSnapshot,
+          null,
+          {
+            reingreso: true,
+            fecha: reingresoFecha,
+            origen: regularResult ? regularResult.orderId : null,
+          },
+        );
+      } catch (e) {
+        console.error("Reingreso order error:", e);
+        reingresoFallo = e.message || String(e);
+      }
+    }
+
     // ---- Datos para PDF ----
     var primaryResult = regularResult || promoResult;
     if (primaryResult) {
@@ -9525,6 +9851,17 @@ async function submitOrder() {
         paymentDiscount: Number(primaryResult.paymentDiscount || 0),
         webDiscount: Number(primaryResult.webDiscount || 0),
         dtoVol: Number(primaryResult.dtoVol || 0),
+        // Pedido de los artículos sin stock, aparte (va al PDF y a la pantalla).
+        reingresoOrder: reingresoResult
+          ? {
+              orderId: reingresoResult.orderId,
+              fecha: reingresoFecha,
+              subtotal: Number(reingresoResult.subtotal || 0),
+              descuentos: Number(reingresoResult.totalDiscounts || 0),
+              total: Number(reingresoResult.finalTotal || 0),
+              items: reingresoResult.pdfItems,
+            }
+          : null,
         // Si hubo regular + promo, guardamos el promo aparte para renderizarlo en el PDF
         promoOrder:
           regularResult && promoResult
@@ -9569,11 +9906,10 @@ async function submitOrder() {
             "Retirás el <strong>" + _seRet + "</strong> de " +
             (lastConfirmedOrder.retiroFranja || "");
           _seEl.hidden = false;
-        } else if (_seDdMm) {
-          _seEl.innerHTML = "Fecha estimada de entrega: <strong>" + _seDdMm + "</strong>";
-          _seEl.hidden = false;
+        } else if (editOrderIdSnapshot) {
+          _seEl.hidden = true;   // editando: la fecha es la del pedido original
         } else {
-          _seEl.hidden = true;
+          _pintarFechaListo(_seEl, todoReingreso ? "reingreso" : "listo", todoReingresoFecha);
         }
       }
       // Escala activa: fijar el dto_vol permanente tras el primer pedido.
@@ -9586,10 +9922,23 @@ async function submitOrder() {
         if (_onEl) {
           var _oid = primaryResult.orderId || "";
           var _oid2 = (promoResult && regularResult) ? promoResult.orderId : "";
-          _onEl.textContent = _oid2
-            ? "Pedido N° " + _oid + " y N° " + _oid2
-            : "Pedido N° " + _oid;
+          var _nums = ["Pedido N° " + _oid];
+          if (_oid2) _nums.push("Pedido N° " + _oid2);
+          if (reingresoResult) {
+            var _rf = fmtDdMm(reingresoFecha);
+            _nums.push("Pedido N° " + reingresoResult.orderId +
+              " (artículos sin stock: sale " + (_rf ? "a partir del " + _rf : "cuando reingresen") + ")");
+          }
+          _onEl.textContent = _nums.length > 1
+            ? _nums.slice(0, -1).join(", ") + " y " + _nums[_nums.length - 1]
+            : _nums[0];
+          if (reingresoFallo) {
+            _onEl.textContent += " — ⚠ El pedido de los artículos sin stock NO se pudo cargar: " +
+              "quedaron en el carrito, volvé a confirmarlo.";
+          }
           _onEl.style.display = _oid ? "" : "none";
+          var _stEl = document.querySelector("#pedidoConfirmado .success-title");
+          if (_stEl) _stEl.textContent = _nums.length > 1 ? "¡Pedidos confirmados!" : "¡Pedido confirmado!";
         }
       } catch (e) {}
       _expoShowConfirmPanel();
@@ -9604,6 +9953,10 @@ async function submitOrder() {
     setEditingOrderId(null);
     setEditBanner(null);
     cart.length = 0;
+    // El pedido de los artículos sin stock no entró: vuelven al carrito.
+    if (reingresoFallo && reingresoItems.length) {
+      reingresoItems.forEach(function (it) { cart.push(it); });
+    }
     saveCartToLS();
 
     // Borrar draft asociado si este pedido venía de "Pedidos sin Confirmar"
@@ -9737,8 +10090,10 @@ function refreshSubmitEnabled() {
   // EXPO: con un cliente elegido, el operador (admin) toma el pedido COMO el
   // cliente, así que se exige método de pago igual que en la página normal
   // (para clientes nuevos ya viene forzado a contado, así que no molesta).
+  // ⚠ En presupuesto el bloque de método de pago no se dibuja: si se exigiera,
+  // el botón "Solicitar presupuesto" quedaría deshabilitado para siempre.
   const hasPayment =
-    isAdmin && !(EXPO_MODE && _expoActiveCustomer)
+    isPresupuestoMode() || (isAdmin && !(EXPO_MODE && _expoActiveCustomer))
       ? true
       : !!(paySel && String(paySel.value || "").trim());
   const custSelVal = custSel ? String(custSel.value || "").trim() : "";
@@ -9820,7 +10175,7 @@ function parsePaymentDiscountFromText(text) {
 }
 
 // Dibuja el encabezado de la tabla de ítems
-function _drawItemsHeader(doc, y, cols) {
+function _drawItemsHeader(doc, y, cols, sinPrecios) {
   doc.setFillColor(240, 240, 240);
   doc.rect(14, y - 5, 182, 8, "F");
   doc.setFont("helvetica", "bold");
@@ -9830,8 +10185,10 @@ function _drawItemsHeader(doc, y, cols) {
   doc.text("Descripción", cols.desc, y);
   doc.text("Cajas", cols.cajas, y, { align: "right" });
   doc.text("Uni", cols.uni, y, { align: "right" });
-  doc.text("Precio", cols.precio, y, { align: "right" });
-  doc.text("Subtotal", cols.subtotal, y, { align: "right" });
+  if (!sinPrecios) {
+    doc.text("Precio", cols.precio, y, { align: "right" });
+    doc.text("Subtotal", cols.subtotal, y, { align: "right" });
+  }
   return y + 8;
 }
 
@@ -9896,10 +10253,14 @@ async function descargarPedidoPDF(soloSubir = false) {
   // =========================================================
   // TÍTULO
   // =========================================================
+  // PRESUPUESTO: el PDF no lleva ni un monto (ver isPresupuestoMode). Es el
+  // comprobante de que el cliente pidió una cotización, no de un pedido cerrado.
+  const esPresupuesto = isPresupuestoMode();
+
   doc.setTextColor(0, 0, 0);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text("Pedido Web", margin, 40);
+  doc.text(esPresupuesto ? "Solicitud de Presupuesto" : "Pedido Web", margin, 40);
 
   // =========================================================
   // DATOS GENERALES
@@ -9915,21 +10276,30 @@ async function descargarPedidoPDF(soloSubir = false) {
     doc.text(`Sucursal de entrega: ${sucursalEntrega}`, margin, y);
     y += 6;
   }
-  doc.text(`Método de pago: ${metodoPago || "—"}`, margin, y);
+  if (!esPresupuesto) {
+    doc.text(`Método de pago: ${metodoPago || "—"}`, margin, y);
+  }
   y += 4;
 
   // Nota a la derecha arriba de la tabla
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(90, 90, 90);
-  doc.text("Subtotal no contempla Descuentos", rightX, y, { align: "right" });
+  doc.text(
+    esPresupuesto
+      ? "Sin valorizar — te enviamos la cotización"
+      : "Subtotal no contempla Descuentos",
+    rightX,
+    y,
+    { align: "right" },
+  );
   doc.setTextColor(0, 0, 0);
   y += 8;
 
   // =========================================================
   // TABLA DE ÍTEMS
   // =========================================================
-  y = _drawItemsHeader(doc, y, cols);
+  y = _drawItemsHeader(doc, y, cols, esPresupuesto);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -9938,7 +10308,7 @@ async function descargarPedidoPDF(soloSubir = false) {
       doc.addPage();
       doc.addImage(headerBanner, "PNG", 0, 0, 210, 24);
       y = 36;
-      y = _drawItemsHeader(doc, y, cols);
+      y = _drawItemsHeader(doc, y, cols, esPresupuesto);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
     }
@@ -9953,14 +10323,31 @@ async function descargarPedidoPDF(soloSubir = false) {
     doc.text(desc, cols.desc, y);
     doc.text(String(it.cajas || 0), cols.cajas, y, { align: "right" });
     doc.text(String(it.unidades || 0), cols.uni, y, { align: "right" });
-    doc.text(`$${formatMoney(precio)}`, cols.precio, y, { align: "right" });
-    doc.text(`$${formatMoney(sub)}`, cols.subtotal, y, { align: "right" });
+    if (!esPresupuesto) {
+      doc.text(`$${formatMoney(precio)}`, cols.precio, y, { align: "right" });
+      doc.text(`$${formatMoney(sub)}`, cols.subtotal, y, { align: "right" });
+    }
     y += 7;
   });
 
   // =========================================================
-  // TOTALES a la derecha
+  // TOTALES a la derecha — el presupuesto no lleva ninguno
   // =========================================================
+  if (esPresupuesto) {
+    y += 10;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(90, 90, 90);
+    doc.text(
+      "Esta solicitud no está valorizada. Te enviamos la cotización por los",
+      margin,
+      y,
+    );
+    y += 5;
+    doc.text("artículos y las cantidades de arriba.", margin, y);
+    doc.setTextColor(0, 0, 0);
+    y += 10;
+  } else {
   y += 6;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
@@ -10104,12 +10491,30 @@ async function descargarPedidoPDF(soloSubir = false) {
     doc.text(`$${formatMoney(total)} + IVA`, rightX, y, { align: "right" });
     y += 10;
   }
+  } // fin del bloque de totales (no aplica al presupuesto)
 
   // =========================================================
   // SECCIÓN PEDIDO PROMO (X+1) — sólo si hubo items de upsell
   // =========================================================
+  // Pedidos aparte del principal: el promo (X+1) y el de artículos sin stock.
+  const _extrasPdf = [];
   if (lastConfirmedOrder.promoOrder) {
-    const promo = lastConfirmedOrder.promoOrder;
+    _extrasPdf.push(Object.assign({}, lastConfirmedOrder.promoOrder, {
+      _banner: `PROMO · Pedido Nº ${lastConfirmedOrder.promoOrder.orderId} — 30% OFF lanzamiento`,
+      _fill: [255, 235, 180],
+      _color: [150, 80, 0],
+    }));
+  }
+  if (lastConfirmedOrder.reingresoOrder) {
+    const _ro = lastConfirmedOrder.reingresoOrder;
+    const _rf = fmtDdMm(_ro.fecha);
+    _extrasPdf.push(Object.assign({}, _ro, {
+      _banner: `Pedido Nº ${_ro.orderId} — sin stock: sale ${_rf ? "a partir del " + _rf : "cuando reingrese"}`,
+      _fill: [224, 242, 254],
+      _color: [3, 105, 161],
+    }));
+  }
+  for (const promo of _extrasPdf) {
 
     y += 10;
     if (y > 245) {
@@ -10118,16 +10523,12 @@ async function descargarPedidoPDF(soloSubir = false) {
     }
 
     // Banner promo
-    doc.setFillColor(255, 235, 180);
+    doc.setFillColor(promo._fill[0], promo._fill[1], promo._fill[2]);
     doc.rect(14, y - 5, 182, 10, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.setTextColor(150, 80, 0);
-    doc.text(
-      `PROMO · Pedido Nº ${promo.orderId} — 30% OFF lanzamiento`,
-      16,
-      y + 2,
-    );
+    doc.setTextColor(promo._color[0], promo._color[1], promo._color[2]);
+    doc.text(promo._banner, 16, y + 2);
     doc.setTextColor(0, 0, 0);
     y += 14;
 
@@ -14222,6 +14623,7 @@ async function onLinkedCustomerSelected(opts) {
 
     if (_vendorOwnProfile) {
       customerProfile = Object.assign({}, _vendorOwnProfile);
+      _presupuestoSyncUI();
     }
     // Solo limpiar carrito si realmente cambió el cliente Y no es restore
     if (!fromRestore && isRealChangeSelf) {
@@ -14340,13 +14742,10 @@ async function onLinkedCustomerSelected(opts) {
     }
   }
 
-  var result = await supabaseClient
-    .from("customers")
-    .select(
-      "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit",
-    )
-    .eq("id", customerId)
-    .maybeSingle();
+  var result = await _customerSelect(
+    "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit",
+    (q) => q.eq("id", customerId),
+  );
 
   if (result.error || !result.data) {
     console.error("onLinkedCustomerSelected error:", result.error);
@@ -14354,6 +14753,7 @@ async function onLinkedCustomerSelected(opts) {
   }
 
   customerProfile = result.data;
+  _presupuestoSyncUI();
 
   // Limpiar carrito SOLO si el cliente realmente CAMBIÓ Y no es restore.
   if (!fromRestore && isRealChange) {
@@ -14413,6 +14813,13 @@ async function onLinkedCustomerSelected(opts) {
   syncPaymentButtons();
 
   await loadDeliveryOptions();
+  // Si el cliente elegido cambia el modo (presupuesto ↔ pedido), los productos
+  // que hay en memoria no sirven: o traen precio de más o les falta. Se piden
+  // de nuevo, que es lo único que cambia la lista de columnas del select.
+  if (_productsSinPrecio !== isPresupuestoMode()) {
+    await loadProductsFromDB();
+    normalizeCartAgainstProducts();
+  }
   myAssortmentIds = await loadMyAssortmentIds();
   if (typeof window.syncMyAssortmentBtn === "function") window.syncMyAssortmentBtn();
   maybeShowFotosPopup();
@@ -14602,9 +15009,14 @@ function renderLokeSidebar() {
 }
 
 async function loadLokeProducts() {
+  // Presupuesto: la línea Loke tampoco baja con precio (ver loadProductsFromDB).
   var result = await supabaseClient
     .from("loke_products")
-    .select("id,cod,description,category,list_price,uxb,equiv_product_id")
+    .select(
+      isPresupuestoMode()
+        ? "id,cod,description,category,uxb,equiv_product_id"
+        : "id,cod,description,category,list_price,uxb,equiv_product_id",
+    )
     .eq("active", true)
     .order("category")
     .order("cod");

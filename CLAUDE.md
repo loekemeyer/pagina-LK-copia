@@ -530,6 +530,64 @@ el botón) y `expreso-padron-caido` (que un padrón caído avise en vez de queda
 el vacío). Los tres verificados mutando el código a propósito.
 `sql/expreso_cambio_cliente.sql`.
 
+## ⚠ REGLA (Thomas, 23/09/2026): MODO PRESUPUESTO — cliente de exportación
+
+`customers.modo_presupuesto = true` cambia lo que el cliente arma: no un pedido, un
+**presupuesto**. Lo usan los clientes de **exportación a Paraguay** (23/09/2026): **Classic S.A.** (RUC 80013057-0, cod
+**4284** en Loekemeyer y **1362** en Chef) y **Gimenez Calvo SA** (RUC 80001592-4, cod **4285**
+en Loekemeyer, no opera en Chef). ⚠ Las numeraciones de las dos empresas son independientes:
+4284 en Chef y 1362 en Loekemeyer son OTROS negocios. Ninguno ve
+precios ni descuentos de ningún tipo, y lo que envía entra a `orders` con total 0 y viaja a la
+PPP de Gestión por el camino de siempre para que lo coticemos.
+
+⚠ **Que no vea precios NO es CSS.** En este modo `loadProductsFromDB` directamente **no pide la
+columna `list_price`** (ni `loadLokeProducts`), así que el precio **no baja al navegador**.
+Esconderlo por estilos lo habría dejado a un F12 de distancia. El CSS (`.is-presupuesto` en
+`css/styles.css`) sólo tapa los renglones que, sin precio, quedarían mostrando **"$0"**.
+
+⚠⚠ **EL FRONT SE PUBLICA APARTE DEL SQL, Y ESO YA ROMPIÓ LA PÁGINA (23/09/2026).** El `select`
+del perfil pasó a pedir `modo_presupuesto` **antes** de que nadie corriera el `alter`, y PostgREST
+**no devuelve la fila sin esa columna: rechaza la consulta ENTERA con un 400**. O sea que el
+cliente no perdía el modo presupuesto — se quedaba **SIN PERFIL**, sin poder hacer nada y sin
+ningún mensaje en pantalla. Medido: **13 errores 400 en `/rest/v1/customers` en una hora, contra
+0 en las 13 anteriores**, justo desde el push a `main` (que publica solo en GitHub Pages;
+`loekemeyer.com` no se había tocado, así que los clientes reales nunca lo vieron).
+
+Por eso toda lectura de `customers` va por **`_customerSelect(colsBase, filtro)`**, que pide la
+columna y, si la base no la tiene, **reintenta sin ella**. Es el mismo patrón del expreso de Chef:
+si la columna no está, el front cae solo en vez de romperse. **Regla general: una columna nueva
+que el front pide antes de que el SQL esté corrido tiene que tener fallback, o se publica el SQL
+primero.** `tests/presupuesto.cjs` falla si alguien vuelve a nombrarla dentro de un `.select()`.
+
+⚠ **La bandera es del CLIENTE, no de quien está logueado.** Si un vendedor o el admin carga el
+pedido POR él, sigue siendo un presupuesto: lo que se cotiza es la operación del cliente, no la
+pantalla del que tipea. Por eso `isPresupuestoMode()` mira sólo `customerProfile`.
+
+⚠ **Cómo se entera la PPP de que no se despacha.** No hay columna nueva en el feed — eso
+obligaría a tocar también `Gestion-Virgilio`. El aviso viaja por **`observaciones`**, que ya
+llega entero a `v_pedidos_web_np.observaciones`: todo pedido de un cliente en este modo arranca
+con `PRESUPUESTO — NO DESPACHAR, COTIZAR`, y la condición de pago dice `PRESUPUESTO A COTIZAR`.
+Además la ficha lleva `sheets_payload->>'tipo_documento' = 'presupuesto'`, que es de donde
+Gestión puede sacar un badge propio en "A Programar" el día que se quiera.
+
+⚠ **El RUC paraguayo tiene 9 dígitos** (8 + verificador) y el login exigía 10: se bajó el piso de
+`looksLikeCUIT` a 8. No choca con nadie — de los 27 `username` cargados, **ninguno es sólo
+dígitos** (medido 23/09). El RUC va en `customers.cuit` sin guiones: `80013057-0` → `800130570`.
+
+⚠ **El guard anti-reintento de `submit_order_fast` compara `total`, y acá el total SIEMPRE es 0.**
+O sea que dos presupuestos del mismo cliente dentro de 2 minutos **con la misma cantidad de
+líneas** se colapsan en uno solo y la RPC devuelve el id del primero, sin avisar. Si cambia la
+cantidad de líneas, pasa. **No se tocó la RPC a propósito** (la tocan varias sesiones y el riesgo
+de pisarla es mayor que el del choque). Si llega a molestar, el arreglo es sumarle al guard el
+hash de los ítems, no el total.
+
+**Dónde está**: `isPresupuestoMode()` / `_presupuestoSyncUI()` en `script.js`, el bloque
+`.is-presupuesto` al final de `css/styles.css`, y `sql/modo_presupuesto.sql` (hay que correrlo a
+mano: agrega la columna). **Chequeo**: `bash tests/run.sh` → `presupuesto.cjs`, verificado mutando
+el código (si se vuelve a pedir `list_price`, o si se cae la clase del `<body>`, se pone en rojo).
+
+⚠ **Al tocar esto, mirar también `paginach`**: es el mismo módulo.
+
 ## ⚠ REGLA (Thomas, 2026-09-21): el badge SIN STOCK se valida en el BACKEND
 
 **Thomas, textual:** *"NO DEBERIA DEJARLO PEDIR. YA CON ESA LOGICA ESTA EL 517"*.
@@ -582,6 +640,67 @@ select p.proname,
  where n.nspname = 'public' and p.proname in ('submit_order_fast','edit_order_fast');
 -- al 21/09: las dos en true
 ```
+
+## ⚠ REGLA (24/09/2026): una CAJA que la define el contenido cargado tiembla, y lo que ya cargó NO vuelve a lazy
+
+**Vale para TODAS las páginas** de todos los repos (LK, Chef/`paginach`, el espejo del admin,
+Virgilio y cualquiera nuevo: copiar este bloque al `CLAUDE.md` del repo nuevo). Salió de un bug
+que rompió dos cosas a la vez en el catálogo mayorista y que **nadie relacionó entre sí**:
+"la animación de agregar al carrito desapareció" y "cada vez que agrego un producto la página
+tiembla". Era **un solo defecto**.
+
+**Qué pasó.** Desde la **v2.3.452** (22/09, commit `4401f88`) las cards con 2ª foto nacen con
+`data-src` en vez de `src` — carga diferida propia, que arregló un problema real de Chrome 109.
+Pero `renderProducts()` rehace la grilla **entera** (`container.innerHTML = ""`) en cada cambio
+del carrito, así que **cada "agregar al pedido" devolvía TODAS esas fotos al estado sin `src`**
+hasta que el IntersectionObserver las resolvía un frame después.
+
+| Síntoma | Por qué |
+|---|---|
+| La página **tiembla** | En desktop el alto de la foto lo da la imagen (`#productsContainer .product-card img { width:auto!important; height:auto!important }`). Sin `src` no hay tamaño intrínseco: **medido en Chromium, 198px → 0 y vuelve**. La card se desploma, el grid recalcula las filas y salta la página. |
+| La **animación** no aparece | `flyProductImageToCart` arranca midiendo la foto y corta si el rect da 0. No fallaba: **no empezaba**. |
+
+### Las tres reglas que quedan
+
+1. **Una caja cuyo tamaño lo da el contenido cargado va reservada por CSS.** Si el alto de un
+   elemento sale de la imagen (o del texto que llega por fetch), mientras no esté cargado mide 0
+   y todo lo de abajo salta. Se reserva con `aspect-ratio` + un ancho/alto **definido**, no con
+   `width:auto`. En LK está al final de `css/styles.css`. ⚠ **Ancho en px, no en %**: `.pc-media`
+   es `width: fit-content`, así que un porcentaje en la foto de atrás sería circular.
+2. **Un contenedor que se re-renderiza entero no puede devolver a lazy lo que ya cargó.** La
+   carga diferida es para el PRIMER pintado. Lo ya resuelto se vuelve a emitir con `src` directo
+   (sale del cache). En LK lo lleva `_pcFotosResueltas` en `script.js`.
+3. **El orden importa y no es intuitivo.** Los avisos del IntersectionObserver se entregan
+   **después** de los `requestAnimationFrame`. O sea que una animación lanzada en el rAF
+   siguiente a un re-render ve las imágenes TODAVÍA sin `src`. Cualquier medición que se haga
+   "un tick después" no ve el bug y da falso verde.
+
+⚠ **Al reemplazar un `src` por carga diferida, mirar primero si ese contenedor se re-renderiza
+entero por otra razón.** Acá el cambio se probó scrolleando (donde anda perfecto) y nunca
+agregando al carrito.
+
+⚠ **`cloneNode(true)` de un elemento con `id` mete un id duplicado en el DOM.** El clon que vuela
+al carrito arrastraba `id="img-<pid>"`, así que durante los 650 ms del vuelo un segundo click
+medía el clon en movimiento en vez de la card. Va `document.createElement("img")`.
+
+⚠ **En las cards con 2ª foto el primer `<img>` del DOM es `.pc-back`, que está TAPADO** por
+`.pc-front` (`position:absolute`, `z-index 1`). Un `card.querySelector("img")` para animar la
+foto le pega a la invisible.
+
+**Chequeo:** `bash tests/run.sh` → `carrito-animacion.cjs`. Levanta `mayorista.html` en Chromium,
+agrega al carrito y mide **dentro del mismo frame**. Verificado en rojo mutando el código: sacando
+el arreglo de `script.js` **o** el de `css/styles.css` —cualquiera de los dos por separado— vuelve
+el salto de 198px→0 y la animación deja de arrancar. Hacen falta los dos.
+
+**PENDIENTE (de fondo, no resuelto).** `renderProducts()` reconstruye el catálogo **completo** en
+cada `addFirstBox` / `changeQty`: son cientos de cards por un `+1`. Eso es lo que abre la puerta a
+esta clase de bug y además es un pico de CPU por click. Lo correcto sería actualizar **sólo la
+card tocada**; no se hizo ahora porque en modo expo el descuento por escala cambia los precios de
+TODAS las cards con el carrito, así que la actualización parcial necesita su propio criterio.
+
+⚠ **`paginach` hoy tiene una sola foto por producto** (confirmado por Tomás Beviglia, 24/09/2026),
+así que no arrastra el bug. Si alguna vez suma la 2ª foto y con ella la carga diferida, hereda
+las tres reglas de arriba.
 
 ## Integración Krikos (OC de supermercados por mail)
 

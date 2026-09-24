@@ -654,31 +654,44 @@ body {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.82);
-  color: #222;
-  font-size: 18px;
+  /* El glifo ‹ › del HTML se oculta con font-size 0 y la flecha se dibuja
+     como SVG de fondo (pedido del usuario, 23/9/2026): el guillemet no
+     queda centrado en el círculo porque flex centra la CAJA de texto, no
+     el trazo, y ese carácter tiene los sidebearings desparejos y se
+     dibuja alto respecto de su línea base. El SVG va en un viewBox
+     simétrico (el path ocupa 9..15 en x y 5..19 en y, o sea centro 12,12),
+     así que background-position: center lo deja centrado por geometría y
+     no por prueba y error. El aria-label del botón conserva el texto. */
+  background-color: rgba(255, 255, 255, 0.82);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 13px 13px;
+  font-size: 0;
   line-height: 1;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-  opacity: 0;
-  transition: opacity 0.18s ease, background 0.18s ease;
+  /* Siempre visibles (pedido del usuario, 23/9/2026): antes nacían en
+     opacity 0 y sólo aparecían con :hover sobre .pc-media, así que en el
+     catálogo no se veía que el producto tuviera más de una foto hasta
+     pasar el mouse por encima. Se deja la transición de fondo para que
+     el hover siga marcando cuál está apuntada. */
+  opacity: 1;
+  transition: background 0.18s ease;
   z-index: 3;
 }
 .pc-arrow.prev {
   left: 4px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23222' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 5 9 12l6 7'/%3E%3C/svg%3E");
 }
 .pc-arrow.next {
   right: 4px;
-}
-.pc-media:hover .pc-arrow {
-  opacity: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23222' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5l6 7-6 7'/%3E%3C/svg%3E");
 }
 .pc-arrow:hover {
-  background: #fff;
+  background-color: #fff;
 }
 .pc-dots {
   position: absolute;
@@ -699,13 +712,9 @@ body {
 .pc-dot.on {
   background: rgba(0, 0, 0, 0.7);
 }
-/* En touch no hay hover: las flechas quedan visibles siempre. */
-@media (hover: none) {
-  .pc-arrow {
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.7);
-  }
-}
+/* (Se sacó la excepción de touch: antes acá se forzaba opacity 1 porque en
+   touch no hay :hover. Ahora las flechas nacen visibles en todos lados, así
+   que la regla quedaba duplicando lo de arriba.) */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .product-card:hover {
     transform: translateY(-4px);
@@ -1238,6 +1247,7 @@ body {
 .success-entrega strong {
   font-size: 16px;
 }
+.success-entrega[hidden] { display: none; }
 .ship-label {
   font-size: 12px;
   color: #444;
@@ -15906,25 +15916,31 @@ body { top: 0 !important; }
   height: 40px;
   border: none;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  color: #fff;
-  font-size: 26px;
+  /* Mismo criterio que .pc-arrow: chevron SVG centrado por geometría en
+     vez del glifo ‹ ›, que se dibujaba corrido dentro del círculo. */
+  background-color: rgba(0, 0, 0, 0.45);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20px 20px;
+  font-size: 0;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2;
-  transition: background 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 .pp-arrow:hover {
-  background: rgba(0, 0, 0, 0.68);
+  background-color: rgba(0, 0, 0, 0.68);
 }
 .pp-arrow.prev {
   left: 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 5 9 12l6 7'/%3E%3C/svg%3E");
 }
 .pp-arrow.next {
   right: 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 5l6 7-6 7'/%3E%3C/svg%3E");
 }
 
 /* ============================================================
@@ -16442,4 +16458,115 @@ body { top: 0 !important; }
 @media (max-width: 460px) {
   .exp-box { flex-wrap: wrap; }
   .exp-btn { margin-left: auto; }
+}
+
+/* =========================================================================
+   MODO PRESUPUESTO — cliente de exportación (customers.modo_presupuesto)
+   =========================================================================
+   La clase la pone `_presupuestoSyncUI()` en <body>. Este bloque NO es lo que
+   esconde los precios: en este modo `loadProductsFromDB` directamente no pide
+   `list_price`, así que el precio ni siquiera baja al navegador. Lo que hace
+   este CSS es sacar de la pantalla los renglones que, sin precio, quedarían
+   mostrando "$0" — y los controles de descuento, que acá no existen.
+   ------------------------------------------------------------------------- */
+
+/* Precios en la ficha del producto, en la línea Loke y en la vista ampliada */
+.is-presupuesto .card-prices,
+.is-presupuesto #ppPrices,
+.is-presupuesto .vs-price-block,
+.is-presupuesto .nc-price-block {
+  display: none !important;
+}
+
+/* Subtotal de la barra de cantidad, dentro de la ficha */
+.is-presupuesto .cartbar-top {
+  display: none !important;
+}
+
+/* Totales del carrito + método de pago + nota del 2% web */
+.is-presupuesto .cart-total,
+.is-presupuesto #paymentRow,
+.is-presupuesto #webNoteBox {
+  display: none !important;
+}
+
+/* Las dos últimas columnas de la tabla del carrito son "Tu Precio" y "Total $" */
+.is-presupuesto .cart-table th:nth-child(5),
+.is-presupuesto .cart-table th:nth-child(6),
+.is-presupuesto .cart-table td:nth-child(5),
+.is-presupuesto .cart-table td:nth-child(6) {
+  display: none !important;
+}
+/* Las celdas ocultas igual consumen su <col>, así que sin esto la tabla queda
+   con 160px de blanco a la derecha. La descripción (col.desc, width:auto) se
+   queda con lo que se libera. */
+.is-presupuesto .cart-table col.tp,
+.is-presupuesto .cart-table col.total {
+  width: 0 !important;
+}
+
+/* "+ IVA" cuelga siempre de un monto: sin monto no significa nada */
+.is-presupuesto .iva-tag,
+.is-presupuesto .card-iva,
+.is-presupuesto .cart-iva,
+.is-presupuesto .nc-iva {
+  display: none !important;
+}
+
+/* Surtido habitual no incluido: la tarjeta queda, el precio no */
+.is-presupuesto .missing-price-label,
+.is-presupuesto .missing-price,
+.is-presupuesto .missing-price-note {
+  display: none !important;
+}
+
+/* Ordenar por precio no se puede: sin `list_price` no hay con qué ordenar
+   (loadProductsFromDB además cae a "category" si llegara seleccionado) */
+.is-presupuesto .sort-dd-option[data-value="price_desc"],
+.is-presupuesto .sort-dd-option[data-value="price_asc"],
+.is-presupuesto .mf-btn[data-sort="price_desc"],
+.is-presupuesto .mf-btn[data-sort="price_asc"],
+.is-presupuesto .ds-btn[data-loke-sort="price_desc"],
+.is-presupuesto .ds-btn[data-loke-sort="price_asc"],
+.is-presupuesto #sortSelect option[value="price_desc"],
+.is-presupuesto #sortSelect option[value="price_asc"] {
+  display: none !important;
+}
+
+/* ============================================================
+   LA CAJA DE LA FOTO DEL CATÁLOGO NO PUEDE DEPENDER DE QUE LA IMAGEN
+   ESTÉ CARGADA  (24/09/2026)
+   ============================================================
+   Arriba, en `@media (min-width: 1025px) #productsContainer .product-card img`,
+   va `width: auto !important; height: auto !important`: el tamaño de la foto lo
+   da la IMAGEN. Mientras no esté cargada, una <img> no tiene tamaño intrínseco
+   y la caja colapsa — medido en Chromium: 198px → 54px de un frame al otro. La
+   card se desploma, el grid recalcula las filas y salta la página entera.
+
+   Pasaba en cada "agregar al pedido", porque renderProducts() rehace la grilla
+   ENTERA y las <img> nacen de nuevo. El arreglo de script.js (`_pcFotosResueltas`)
+   evita que la foto vuelva a la carga diferida, pero no alcanza: la <img> es un
+   elemento nuevo y el navegador puede tardar un frame en re-adjuntarla aunque
+   la tenga en cache. Acá la caja queda definida por CSS y ya no depende de eso.
+
+   `aspect-ratio` + `width` en px (no en %) a propósito: .pc-media es
+   `width: fit-content`, así que un ancho porcentual en la foto de atrás sería
+   circular. El resultado en pantalla es el mismo que hoy para las fotos
+   cuadradas del bucket (400x400): min(ancho disponible, tope) al cuadrado.
+   ============================================================ */
+@media (min-width: 901px) and (max-width: 1024px) {
+  #productsContainer .product-card img {
+    width: 220px !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+}
+@media (min-width: 1025px) {
+  #productsContainer .product-card img {
+    width: 250px !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+  }
 }
