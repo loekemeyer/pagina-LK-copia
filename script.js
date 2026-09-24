@@ -6702,21 +6702,20 @@ function _expSyncUI() {
         "</span>" +
         '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Cambiar</button>';
     } else if (_expEsGalpon(gal.dir, zona, gal.cands)) {
+      // ⚠ SIN BAJADA Y SIN BOTÓN (Tomás, 24/09). El galpón ES el dato: al
+      //   cliente se le informa a dónde va su mercadería, no se le pide que
+      //   complete lo que nos falta a nosotros. "En ese galpón operan varios
+      //   expresos", "Nos falta el nombre" e "Indicar" salieron por eso.
       html =
         '<span class="exp-ico">🚚</span>' +
-        // Sin bajada: Tomás la sacó el 24/09. El galpón ES el dato — decirle
-        // además que ahí operan varios, o que nos falta el nombre, es contarle
-        // un problema nuestro. El botón "Indicar" ya es toda la invitación.
         '<span class="exp-txt"><span class="exp-k">Entregamos en</span>' +
-        '<span class="exp-v">' + escapeHtml(galTxt) + "</span></span>" +
-        '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Indicar</button>';
+        '<span class="exp-v">' + escapeHtml(galTxt) + "</span></span>";
     } else {
-      html =
-        '<span class="exp-ico">🚚</span>' +
-        '<span class="exp-txt"><span class="exp-k">Expreso</span>' +
-        '<span class="exp-v exp-v--falta">Sin expreso cargado</span>' +
-        '<span class="exp-dir">Si nos decís cuál, lo despachamos ahí.</span></span>' +
-        '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Indicar</button>';
+      // Ni nombre ni galpón: no hay nada que informar, y preguntárselo al
+      // cliente es justo lo que se sacó. Antes decía "Sin expreso cargado" con
+      // un botón Indicar; sin el botón ese cartel es un callejón sin salida.
+      box.hidden = true;
+      return;
     }
   }
   box.innerHTML = html;

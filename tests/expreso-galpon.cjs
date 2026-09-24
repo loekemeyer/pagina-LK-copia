@@ -97,7 +97,11 @@ const PADRON = [
     await page.waitForTimeout(250);
     return page.evaluate(() => {
       const b = document.getElementById("expresoBox");
-      return { visible: !!(b && !b.hidden), txt: b ? b.textContent.replace(/\s+/g, " ").trim() : "" };
+      return {
+        visible: !!(b && !b.hidden),
+        botones: b ? b.querySelectorAll("button").length : 0,
+        txt: b ? b.textContent.replace(/\s+/g, " ").trim() : "",
+      };
     });
   };
 
@@ -120,16 +124,21 @@ const PADRON = [
   // al cliente un problema nuestro. El candado es por el re-copiado entre repos.
   ok(!/operan varios expresos|Nos falta el nombre del expreso/i.test(b.txt),
     "B: volvió la bajada que Tomás sacó. box=" + JSON.stringify(b.txt));
+  // Sin botón: al cliente se le informa a dónde va, no se le pide que complete
+  // lo que nos falta. El candado es por el re-copiado entre repos.
+  ok(!/Indicar/i.test(b.txt) && !b.botones,
+    "B: volvió el botón Indicar, que Tomás sacó. box=" + JSON.stringify(b.txt));
 
-  // C. la ciudad de destino NO es un galpón
+  // C. la ciudad de destino NO es un galpón → la línea no se dibuja
   const c = await pintar("Rio Cuarto, Córdoba", "");
-  ok(/Sin expreso cargado/i.test(c.txt),
+  ok(!c.visible,
     "C: trató la ciudad de destino como si fuera el galpón del expreso. box=" + JSON.stringify(c.txt));
 
-  // D. sin dirección, el cartel de siempre
+  // D. sin dirección tampoco hay nada que informar (Tomás, 24/09: sin el botón
+  //    Indicar, "Sin expreso cargado" era un callejón sin salida)
   const d = await pintar("", "");
-  ok(/Sin expreso cargado/i.test(d.txt),
-    "D: sin dirección tiene que quedar el cartel de siempre. box=" + JSON.stringify(d.txt));
+  ok(!d.visible,
+    "D: sin dirección la línea tiene que quedar oculta. box=" + JSON.stringify(d.txt));
 
   // E. galpón con provincia CABA: la dirección manda sobre la provincia.
   // Caso real (Altuna, cod 4 de LK): direccion_entrega = "Pergamino 3751",
@@ -152,5 +161,5 @@ const PADRON = [
     fallas.forEach((f) => console.error("  · " + f));
     process.exit(1);
   }
-  console.log("expreso-galpon: OK (" + path.basename(raiz) + ") — 10 chequeos");
+  console.log("expreso-galpon: OK (" + path.basename(raiz) + ") — 11 chequeos");
 })().catch((e) => { console.error("expreso-galpon: ERROR", e); process.exit(1); });
