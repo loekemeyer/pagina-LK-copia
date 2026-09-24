@@ -230,6 +230,9 @@
   var SUPER_EMPRESA = {};
   // super_key -> bool: matchea productos contra el catalogo de Chef.
   var SUPER_USA_PRODUCTOS_CHEF = {};
+  // Luis 24/09/2026: { superKey: { "COD_OC": "COD_REAL" } } — sale de precios_super.cadena.cod_remap.
+  // Traduce la Ref.Prov que trae la OC del super a nuestro codigo (Dorinka manda "838" y es 838E).
+  var SUPER_COD_REMAP = {};
 
   // Mapeo hoja Excel -> super_key + posiciones de columnas. Se arma desde
   // precios_super.cadena (columnas hoja_*); una cadena sin hoja_nombre no
@@ -291,6 +294,11 @@
         // `SUPER_PDF_RATIO[key] || 1` y `SUPER_ITEM_DISCOUNT[key] || 0`.
         if (Number(c.pdf_ratio) && Number(c.pdf_ratio) !== 1) SUPER_PDF_RATIO[k] = Number(c.pdf_ratio);
         if (Number(c.item_discount) > 0) SUPER_ITEM_DISCOUNT[k] = Number(c.item_discount);
+        if (c.cod_remap && typeof c.cod_remap === "object") {
+          var rm = {};
+          Object.keys(c.cod_remap).forEach(function (o) { rm[String(o).trim().toUpperCase()] = String(c.cod_remap[o]).trim().toUpperCase(); });
+          SUPER_COD_REMAP[k] = rm;
+        }
         if (c.hoja_nombre) {
           SHEET_CONFIG[c.hoja_nombre] = {
             key: k,
@@ -2551,6 +2559,16 @@
     s.innerHTML = msg;
   }
 
+  // Luis 24/09/2026 — traduce el codigo de la OC al real, por cadena (SUPER_COD_REMAP).
+  // Compara sin ceros a la izquierda ("0838" = "838"). Sin traduccion, devuelve el mismo.
+  function remapCodSuper(superKey, cod) {
+    var m = SUPER_COD_REMAP[superKey];
+    if (!m) return cod;
+    var c = String(cod == null ? "" : cod).trim().toUpperCase();
+    var c0 = c.replace(/^0+(?=\d)/, "");
+    return m[c] || m[c0] || cod;
+  }
+
   async function handleFile(file) {
     if (!file) return;
     if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
@@ -2640,6 +2658,14 @@
         state.deliveryDateSrc = state.fechaTurno ? "PDF" : "";
       }
       state.pdfTotal = extractPdfTotal(text, key);
+
+      // Luis 24/09/2026: la Ref.Prov de la OC puede estar mal cargada en el sistema del super
+      // (Dorinka: "838" es el 838E). Se traduce ANTES de matchear, asi el pedido sale con el
+      // codigo real. `codOc` guarda lo que decia el PDF.
+      parsed.items.forEach(function (it) {
+        var real = remapCodSuper(key, it.codLk);
+        if (real !== it.codLk) { it.codOc = it.codLk; it.codLk = real; }
+      });
 
       if (!parsed.items.length) {
         console.warn("Texto extraído:", text);
