@@ -61,11 +61,16 @@ if (!mSel) {
 //      que reintenta sin ella. (23/09/2026: 13 errores 400 en una hora.)
 if (!/async function _customerSelect\(/.test(src)) {
   mal("se perdió _customerSelect: el front vuelve a romperse si falta la columna");
-} else if (!/r\.error && \/modo_presupuesto\/i/.test(src)) {
-  mal("_customerSelect dejó de reintentar sin la columna");
+} else if (!/_customerColQueFalta\(/.test(src)) {
+  mal("_customerSelect dejó de reintentar sin la columna que falta");
+} else if (!/_CUSTOMER_COLS_OPCIONALES/.test(src)) {
+  mal("modo_presupuesto ya no se suma sola: algún select la va a nombrar a mano");
 } else {
-  ok("_customerSelect reintenta sin modo_presupuesto si la base no la tiene");
+  ok("_customerSelect reintenta sin la columna que la base no tenga");
 }
+// El comportamiento en sí se prueba corriéndolo, no leyéndolo: eso está en
+// tests/perfil-sin-columna.cjs (Chromium + un PostgREST falso que rechaza la
+// consulta entera). Acá sólo se cuida que el mecanismo no desaparezca.
 const selDirecto = src.match(/[a-z_],modo_presupuesto"/g);
 if (selDirecto) {
   mal("hay " + selDirecto.length + " select() de customers que pide modo_presupuesto " +

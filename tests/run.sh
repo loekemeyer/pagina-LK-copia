@@ -35,6 +35,7 @@ _correr expreso-padron-caido.cjs
 _correr expreso-galpon.cjs
 _correr checkout-layout.cjs
 _correr presupuesto.cjs
+_correr perfil-sin-columna.cjs
 _correr carrito-animacion.cjs
 
 echo "======================================================================"

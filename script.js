@@ -1566,35 +1566,139 @@ function isPresupuestoMode() {
 }
 
 /**
- * Trae UNA fila de `customers` pidiendo también `modo_presupuesto`, y si la base
- * todavía no tiene esa columna, la vuelve a pedir SIN ella.
+ * Trae UNA fila de `customers` SIN depender de que la base tenga todas las
+ * columnas que el front sabe pedir: si PostgREST rechaza la consulta porque
+ * alguna no existe, la saca de la lista y la vuelve a pedir sin ella.
  *
- * ⚠ POR QUÉ EXISTE (23/09/2026). El front se publica por un lado y el SQL de
- * este repo se corre A MANO por otro, así que hay una ventana en la que el
- * navegador pide una columna que la base todavía no tiene. Y PostgREST no
- * devuelve la fila sin esa columna: rechaza la consulta ENTERA con un 400. O
- * sea que el cliente no "pierde el modo presupuesto" — se queda SIN PERFIL y no
- * puede hacer nada, sin ningún mensaje en pantalla.
+ * ⚠ POR QUÉ EXISTE, Y POR QUÉ NO MIRA UNA COLUMNA EN PARTICULAR. El front se
+ * publica por un lado y el SQL de este repo se corre A MANO por otro, así que
+ * hay una ventana —de horas o de días— en la que el navegador pide una columna
+ * que la base todavía no tiene. Y PostgREST NO devuelve la fila sin esa
+ * columna: rechaza la consulta ENTERA con un 400.
  *
- * Pasó de verdad: apenas se pushó el modo presupuesto aparecieron 13 errores
- * 400 en /rest/v1/customers en una hora, contra 0 en las 13 horas anteriores.
+ * O sea que el cliente no "pierde la función nueva": se queda SIN PERFIL y no
+ * puede hacer nada. La pantalla es "Hola!" sin nombre, cod/cuit/correo/dto en
+ * "—" y "Iniciá sesión para ver tus pedidos" estando logueado.
  *
- * Es el mismo patrón que ya se usaba para el expreso de Chef: si la columna no
- * está, el front cae solo en vez de romperse.
+ * Pasó DOS veces en dos días, con la misma columna y distinta base:
+ *   · ACÁ, en LK, el 23/09/2026 — 13 errores 400 en /rest/v1/customers en una
+ *     hora, contra 0 en las 13 horas anteriores.
+ *   · En CHEF el 24/09/2026 — con clientes reales, y encima DOS veces: la
+ *     primera al publicar el front sin el `alter`, y la segunda porque el
+ *     arreglo había quedado en una rama y la siguiente publicación desde `main`
+ *     lo pisó. Lo reportaron los clientes.
+ *
+ * La primera versión de este reintento miraba si el error decía
+ * "modo_presupuesto". No alcanza: el desfasaje de mañana va a ser con OTRA
+ * columna y el síntoma va a ser idéntico. Así que saca la que el error nombre,
+ * sea cual sea, y sigue hasta que la fila vuelva.
+ *
+ * Lo que NO hace, a propósito:
+ *   · No se traga un error que no sea de columna (RLS, credencial, red): ésos
+ *     se devuelven tal cual, en UN solo viaje. Reintentar no los arregla.
+ *   · No saca nunca `id`: sin id la fila no sirve para nada.
+ *
+ * Chequeo: `node tests/perfil-sin-columna.cjs`.
+ * ⚠ Al tocar esto, mirar `paginach`: es el mismo código.
  */
+
+// Columnas que el front pide de más y la base puede no tener todavía. Se suman
+// solas a cada `_customerSelect`, así ningún `.select()` las nombra a mano.
+const _CUSTOMER_COLS_OPCIONALES = ["modo_presupuesto"];
+
+// Lo único que no se negocia: el resto de la página cuelga del id.
+const _CUSTOMER_COLS_FIJAS = ["id"];
+
+// Qué columnas resultaron no existir en esta base, para poder decirlo una vez.
+const _customerColsFaltantes = [];
+
+/**
+ * Si el error es "esta columna no existe", devuelve CUÁL de las pedidas es.
+ * Para cualquier otro error (permisos, red, timeout) devuelve "".
+ */
+function _customerColQueFalta(error, cols) {
+  if (!error) return "";
+  const msg = [error.message, error.details, error.hint]
+    .map((x) => String(x || ""))
+    .join(" ");
+  const codigo = String(error.code || "");
+  const esColumnaFaltante =
+    codigo === "42703" ||        // Postgres: undefined_column
+    codigo === "PGRST204" ||     // PostgREST: no está en el schema cache
+    /does not exist|no existe|schema cache/i.test(msg);
+  if (!esColumnaFaltante) return "";
+  // Las más largas primero: si el mensaje dice "modo_presupuesto" y también se
+  // pidió "modo", no hay que sacar la corta.
+  const candidatas = cols
+    .filter((c) => _CUSTOMER_COLS_FIJAS.indexOf(c) === -1)
+    .slice()
+    .sort((a, b) => b.length - a.length);
+  for (const c of candidatas) {
+    if (new RegExp("(^|[^a-z0-9_])" + c + "([^a-z0-9_]|$)", "i").test(msg)) return c;
+  }
+  return "";
+}
+
 async function _customerSelect(colsBase, aplicarFiltro) {
   const pedir = (cols) =>
-    aplicarFiltro(supabaseClient.from("customers").select(cols)).maybeSingle();
+    aplicarFiltro(supabaseClient.from("customers").select(cols.join(","))).maybeSingle();
 
-  let r = await pedir(colsBase + ",modo_presupuesto");
-  if (r && r.error && /modo_presupuesto/i.test(r.error.message || "")) {
-    console.warn(
-      "customers.modo_presupuesto no existe en esta base todavía: hay que correr " +
-        "sql/modo_presupuesto.sql. Mientras tanto se sigue sin el modo presupuesto.",
-    );
-    r = await pedir(colsBase);
+  let cols = String(colsBase)
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
+  _CUSTOMER_COLS_OPCIONALES.forEach((c) => {
+    if (cols.indexOf(c) === -1) cols.push(c);
+  });
+
+  // Una vuelta por columna que se pueda sacar, y ni una más. Si el error no es
+  // de columna se corta en la primera y se devuelve tal cual.
+  let r = null;
+  for (let intento = 0; intento <= cols.length; intento++) {
+    r = await pedir(cols);
+    if (!r || !r.error) return r;
+    const falta = _customerColQueFalta(r.error, cols);
+    if (!falta) return r;
+    if (_customerColsFaltantes.indexOf(falta) === -1) {
+      _customerColsFaltantes.push(falta);
+      console.warn(
+        "customers." + falta + " no existe en esta base: se vuelve a pedir el " +
+          "perfil sin esa columna. Hay que correr el .sql que la agrega en el " +
+          "SQL editor del proyecto (para modo_presupuesto: sql/modo_presupuesto.sql).",
+      );
+    }
+    cols = cols.filter((c) => c !== falta);
+    if (!cols.length) return r;
   }
   return r;
+}
+
+/**
+ * Perfil que no llegó = página muda. Antes de esto, una consulta rechazada a
+ * `customers` dejaba al cliente logueado mirando "—" en todos lados sin ningún
+ * mensaje, y sin nada que pudiera contarnos por teléfono. (Chef, 24/09/2026:
+ * nos enteramos por los clientes.)
+ *
+ * No reemplaza al reintento de `_customerSelect`: esto es para lo que el
+ * reintento NO puede arreglar (permisos, red, la base caída).
+ */
+function _avisarPerfilCaido(error) {
+  console.error("Perfil del cliente NO cargado:", error);
+  const txt =
+    "No pudimos cargar tu perfil. Recargá la página (Ctrl+F5); si te sigue " +
+    "apareciendo, avisanos y lo miramos.";
+
+  const note = document.getElementById("customerNote");
+  if (note) note.innerText = txt;
+
+  const cont = document.querySelector(".profile-summary");
+  if (cont && !document.getElementById("perfilCaidoAviso")) {
+    const div = document.createElement("div");
+    div.id = "perfilCaidoAviso";
+    div.className = "perfil-caido-aviso";
+    div.textContent = txt;
+    cont.insertBefore(div, cont.firstChild);
+  }
 }
 // Con qué modo se cargaron los productos que hay en memoria. Si un vendedor
 // cambia de cliente y el modo se da vuelta, hay que volver a pedirlos: los que
@@ -2433,12 +2537,17 @@ async function refreshAuthState(sessionOverride) {
   }
   syncAdminCheckoutUI();
 
-  const { data: custRow } = await _customerSelect(
+  const { data: custRow, error: custErr } = await _customerSelect(
     "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit,escala_activa",
     (q) => q.eq("auth_user_id", currentSession.user.id),
   );
 
   customerProfile = custRow || null;
+  // ⚠ Si la consulta del perfil falló, el cliente entra a una página VACÍA sin
+  // un solo error: todo en "—" y "Iniciá sesión para ver tus pedidos" estando
+  // logueado. Le pasó a Chef el 24/09/2026 y nos enteramos porque llamaron los
+  // clientes. Mudo nunca más.
+  if (custErr) _avisarPerfilCaido(custErr);
   // Modo presupuesto: se sincroniza APENAS se sabe qué cliente es, no
   // recién en updateCart(): renderProducts() corre antes y sin la clase en
   // <body> se vería un parpadeo de "$0" en cada ficha.
@@ -6211,11 +6320,40 @@ async function loadDeliveryOptions(retry = 0) {
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from("customer_delivery_addresses")
-    .select("slot,label,direccion_entrega,zona_expreso,pending_isis,nombre_expreso,direccion_expreso,localidad,provincia")
-    .eq("customer_id", customerProfile.id)
-    .order("slot", { ascending: true });
+  // ⚠ ESCALERA DE COLUMNAS, y no es paranoia (24/09/2026). Si UNA de estas
+  // columnas no existe todavía en la base, PostgREST no devuelve la fila sin
+  // ella: rechaza la consulta ENTERA con un 400. Acá eso no deja al cliente
+  // "sin el expreso" — lo deja SIN NINGUNA SUCURSAL, o sea sin poder confirmar
+  // el pedido, porque el botón sólo se habilita con una sucursal elegida.
+  //
+  // Los escalones van de más a menos, y el del medio existe para no perder
+  // `direccion_entrega`: un pedido sin dirección de entrega sale igual y se
+  // despacha mal, que es peor que no salir.
+  //   1. todo             → expreso + dirección + el reloj de ISIS
+  //   2. sin lo del expreso → el checkout entero funciona, la línea del expreso
+  //                           no se dibuja (el degradado correcto)
+  //   3. sólo slot+label  → último recurso: se puede elegir sucursal y pedir
+  //
+  // El mismo pozo que dejó a los clientes de Chef sin perfil dos veces en dos
+  // días. Chequeo: `node tests/perfil-sin-columna.cjs`.
+  const _COLS_SUCURSALES = [
+    "slot,label,direccion_entrega,zona_expreso,pending_isis,nombre_expreso,direccion_expreso,localidad,provincia",
+    "slot,label,direccion_entrega,zona_expreso,pending_isis",
+    "slot,label",
+  ];
+  let data = null, error = null;
+  for (const cols of _COLS_SUCURSALES) {
+    ({ data, error } = await supabaseClient
+      .from("customer_delivery_addresses")
+      .select(cols)
+      .eq("customer_id", customerProfile.id)
+      .order("slot", { ascending: true }));
+    if (!error) break;
+    console.warn(
+      "sucursales: el select con [" + cols + "] fue rechazado, se prueba el " +
+        "escalón siguiente:", error.message,
+    );
+  }
 
   if (error) {
     console.error("delivery options error:", error);

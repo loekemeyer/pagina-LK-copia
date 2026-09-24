@@ -626,6 +626,54 @@ el código (si se vuelve a pedir `list_price`, o si se cae la clase del `<body>`
 
 ⚠ **Al tocar esto, mirar también `paginach`**: es el mismo módulo.
 
+## ⚠⚠⚠ 24/09/2026: pedir una columna que la base no tiene TIRA LA PANTALLA ENTERA
+
+Acá pasó el 23/09 (13 errores 400 en /rest/v1/customers en una hora, contra 0 en las 13
+anteriores). En **Chef** pasó el 24/09 **con clientes reales, y dos veces**: la primera al
+publicar el front sin correr el `alter`, y la segunda porque el arreglo había quedado en una
+rama y la siguiente publicación desde `main` lo pisó. Se portó acá en la **v2.3.478**.
+
+**El mecanismo, que es lo único que hay que recordar**: si un `.select()` nombra una columna
+que la base todavía no tiene, **PostgREST no devuelve la fila sin ella: rechaza la consulta
+ENTERA con un 400**. El front y el SQL de estos repos se publican por caminos distintos — los
+`.sql` se corren A MANO —, así que esa ventana existe siempre.
+
+- ⚠ **`_customerSelect` ya no mira UNA columna.** Saca del `.select()` **la que el error
+  nombre, sea cual sea**, y reintenta hasta que la fila vuelva. No se traga errores que NO
+  sean de columna (RLS, red: ésos van tal cual, en un solo viaje) y **nunca saca `id`**.
+- ⚠ **El fracaso dejó de ser mudo**: `_avisarPerfilCaido()` pinta *"No pudimos cargar tu
+  perfil…"* en la ficha y en `#customerNote`, y lo tira por consola. Antes el cliente veía
+  "—" en todos lados y "Iniciá sesión para ver tus pedidos" estando logueado, sin un error.
+
+> ### ⚠⚠ Y LO PEOR NO ERA EL PERFIL: ERAN LAS SUCURSALES
+>
+> `loadDeliveryOptions` de LK pedía 9 columnas de `customer_delivery_addresses`
+> (incluidas `nombre_expreso`, `direccion_expreso`, `localidad`, `provincia`) **sin ningún
+> fallback**: con el `error` hacía `console.error` y volvía. O sea que una sola columna
+> faltante dejaba el selector de sucursales **VACÍO**, y sin sucursal elegida el botón de
+> confirmar **nunca se habilita**: el cliente no puede pedir. Chef tenía un fallback corto
+> acá desde antes; LK no tenía nada. Lo encontró el test al portarlo, no una persona.
+
+Hoy las dos páginas usan la misma **escalera de columnas**, de más a menos:
+
+1. todo (expreso + dirección + el reloj de ISIS),
+2. **sin lo del expreso** — el checkout entero funciona y la línea del expreso no se dibuja,
+3. sólo `slot,label` — último recurso.
+
+⚠ **El escalón del medio es el que importa**: el salto directo a `slot,label` perdía
+`direccion_entrega`, y un pedido sin dirección de entrega **sale igual y se despacha mal**,
+que es peor que no salir.
+
+⚠ **`tests/perfil-sin-columna.cjs`** lo prueba CORRIÉNDOLO, no leyendo el archivo: abre
+`mayorista.html` en Chromium contra un PostgREST falso que rechaza la consulta entera, y exige
+que el cliente llegue hasta el botón de confirmar **habilitado**, falte la columna que falte.
+Es el mismo archivo en los dos repos.
+
+⚠ **La lección, que ya costó tres caídas en dos días**: **toda columna nueva se pide de
+forma que la base pueda no tenerla todavía.** Nunca nombrarla suelta dentro de un `.select()`.
+Y el arreglo va a **`main`**: lo que queda en una rama se lo lleva puesto la próxima
+publicación.
+
 ## ⚠ REGLA (Thomas, 2026-09-21): el badge SIN STOCK se valida en el BACKEND
 
 **Thomas, textual:** *"NO DEBERIA DEJARLO PEDIR. YA CON ESA LOGICA ESTA EL 517"*.

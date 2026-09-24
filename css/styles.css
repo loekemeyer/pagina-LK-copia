@@ -16574,3 +16574,22 @@ body { top: 0 !important; }
     aspect-ratio: 1 / 1 !important;
   }
 }
+
+/* ===========================================================================
+   AVISO "no pudimos cargar tu perfil"
+   ===========================================================================
+   Aparece SOLO cuando la consulta a `customers` falló. Antes ese caso era mudo:
+   el cliente entraba logueado, veía "—" en todos lados y "Iniciá sesión para ver
+   tus pedidos", y no tenía forma de saber que algo se había roto (Chef,
+   24/09/2026). Lo pinta `_avisarPerfilCaido()` de script.js. */
+.perfil-caido-aviso {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #e0b4b4;
+  border-left: 4px solid #c62828;
+  border-radius: 6px;
+  background: #fdf3f3;
+  color: #8a1c1c;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
