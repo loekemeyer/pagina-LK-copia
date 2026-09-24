@@ -417,7 +417,7 @@ async function generateSyntheticVendorCuit() {
 
 // Crea usuario en Supabase Auth y devuelve el auth_user_id.
 // Usa un cliente separado para no perder la sesion del admin.
-async function createAuthUser(cuit, pin) {
+async function createAuthUser(cuit, pin, sincronizar) {
   if (!cuit) return null;
   var digits = cuit.replace(/[^0-9]/g, "");
   if (!digits) return null;
@@ -441,11 +441,15 @@ async function createAuthUser(cuit, pin) {
         apikey: SUPABASE_ANON_KEY,
         Authorization: "Bearer " + token,
       },
-      body: JSON.stringify({ cuit: digits, pin: pin }),
+      body: JSON.stringify({ cuit: digits, pin: pin, sincronizar: sincronizar === true }),
     });
     var data = await res.json().catch(function () {
       return {};
     });
+    // 24/09: el CUIT ya tiene login -> NO se crea el cliente (antes se le reseteaba el PIN).
+    if (res.status === 409 || data.error === "cuit_ya_registrado") {
+      throw new Error("Ese CUIT ya tiene usuario en la página: no se creó el cliente");
+    }
     if (!res.ok || !data.id) {
       var em = data.error || "http_" + res.status;
       console.warn("createAuthUser crear-cliente-auth:", em);
@@ -458,6 +462,8 @@ async function createAuthUser(cuit, pin) {
     }
     return data.id;
   } catch (e) {
+    // 24/09: estos dos NO son "error de red": el que llama los tiene que ver.
+    if (e && (e.message === "RATE_LIMIT" || /ya tiene usuario/.test(e.message || ""))) throw e;
     console.warn("createAuthUser error:", e);
     toast("Aviso: cliente se creará sin acceso login (red)", "warning");
     return null;
@@ -1608,10 +1614,10 @@ function _repairDelay(ms) {
 var REPAIR_DELAY_MS = 1500; // pausa entre clientes
 var REPAIR_MAX_RETRIES = 3; // reintentos por rate limit
 
-async function _createAuthWithRetry(cuit, pin) {
+async function _createAuthWithRetry(cuit, pin, sincronizar) {
   for (var attempt = 0; attempt <= REPAIR_MAX_RETRIES; attempt++) {
     try {
-      var authId = await createAuthUser(cuit, pin);
+      var authId = await createAuthUser(cuit, pin, sincronizar);
       return authId; // null = error no-retriable, string = éxito
     } catch (e) {
       if (e.message === "RATE_LIMIT" && attempt < REPAIR_MAX_RETRIES) {
@@ -1697,7 +1703,7 @@ document
         var esSinAuth = !c.auth_user_id;
         btn.textContent = "Reparando " + (i + 1) + "/" + total + "...";
         try {
-          var authId = await _createAuthWithRetry(c.cuit, String(c.pin));
+          var authId = await _createAuthWithRetry(c.cuit, String(c.pin), true);   // «Reparar» (admin): sincroniza el PIN
           if (authId) {
             if (esSinAuth) {
               await sbUpdate(TABLE_CUSTOMERS, c.id, "id", {

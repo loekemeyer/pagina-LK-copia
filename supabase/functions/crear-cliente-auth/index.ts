@@ -111,19 +111,24 @@ Deno.serve(async (req: Request) => {
     return json({ id: created.user.id, created: true });
   }
 
+  // 24/09 (Luis/Thomas): si el CUIT YA tiene login NO se le cambia el PIN. Antes esta rama
+  // buscaba el usuario y le pisaba el password: cualquier vendedor (user_customer_links) podía
+  // resetear el PIN de otro CUIT y entrar a su cuenta. Ahora devuelve 409 y el front corta el alta.
+  // Única excepción: el botón «Reparar» del ADMIN, que pide explícitamente sincronizar el PIN
+  // con el de la ficha (sincronizar: true). Un vendedor nunca puede.
   const msg = (cErr?.message ?? "").toLowerCase();
   const yaExiste =
     msg.includes("already") || msg.includes("registered") ||
     msg.includes("exists") || msg.includes("duplicate");
   if (yaExiste) {
-    const id = await findUserIdByEmail(admin, email);
-    if (id) {
-      await admin.auth.admin.updateUserById(id, {
-        password: pin,
-        email_confirm: true,
-      });
-      return json({ id, created: false });
+    if (body?.sincronizar === true && !!adminRow) {
+      const id = await findUserIdByEmail(admin, email);
+      if (id) {
+        await admin.auth.admin.updateUserById(id, { password: pin, email_confirm: true });
+        return json({ id, created: false, sincronizado: true });
+      }
     }
+    return json({ error: "cuit_ya_registrado" }, 409);
   }
 
   return json({ error: cErr?.message ?? "create_failed" }, 400);

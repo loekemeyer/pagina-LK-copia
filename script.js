@@ -13546,6 +13546,10 @@ async function _expoCreateAuthUser(cuit, pin) {
     var data = await res.json().catch(function () {
       return {};
     });
+    // 24/09: el CUIT ya tiene login -> se corta el alta (antes se le reseteaba el PIN).
+    if (res.status === 409 || data.error === "cuit_ya_registrado") {
+      throw new Error("Ese CUIT ya tiene usuario en la página: no se creó el cliente");
+    }
     if (!res.ok || !data.id) {
       console.warn(
         "expo auth crear-cliente-auth:",
@@ -13555,6 +13559,7 @@ async function _expoCreateAuthUser(cuit, pin) {
     }
     return data.id;
   } catch (e) {
+    if (e && /ya tiene usuario/.test(e.message || "")) throw e;
     console.warn("expo auth error:", e);
     return null;
   }
