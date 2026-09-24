@@ -6195,6 +6195,9 @@ function validarFormSucursal() {
 // Se carga lazy la primera vez que el cliente escribe en el input.
 let _expresosCache = null;
 let _expresosLoading = null;
+// true = el padron NO se pudo leer. Lista vacia y padron caido son cosas
+// distintas: callando la segunda, el cliente concluye que su expreso no existe.
+let _expresosFallo = false;
 
 async function cargarExpresosCache() {
   if (_expresosCache) return _expresosCache;
@@ -6207,11 +6210,15 @@ async function cargarExpresosCache() {
         .order("razon_social", { ascending: true });
       if (error) throw error;
       _expresosCache = data || [];
+      _expresosFallo = _expresosCache.length === 0;
       return _expresosCache;
     } catch (e) {
       console.warn("cargarExpresosCache error:", e);
-      _expresosCache = [];
-      return _expresosCache;
+      // NO se cachea el vacio: "no pude leer" no es "no hay", y el proximo
+      // intento tiene que volver a pedirlo. Ver el aviso en onExpBuscarInput.
+      _expresosFallo = true;
+      _expresosLoading = null;
+      return [];
     } finally {
       _expresosLoading = null;
     }
@@ -6503,6 +6510,13 @@ async function onExpBuscarInput() {
 
   // Nada encontrado: NO es un freno. Se ofrece mandarlo igual.
   if (libre) libre.hidden = top.length > 0;
+
+  // Y si el padron NO se pudo leer, se dice.
+  if (_expresosFallo && top.length === 0) {
+    res.innerHTML =
+      '<div class="exp-op-vacio">No pudimos cargar el listado de expresos en ' +
+      "este momento. Escribí el nombre igual y lo tomamos así.</div>";
+  }
 }
 window.onExpBuscarInput = onExpBuscarInput;
 

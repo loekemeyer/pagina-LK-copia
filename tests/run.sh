@@ -26,12 +26,13 @@ _correr solo-agregar.cjs
 _correr estado-gestion.cjs
 _correr expreso-buscador.cjs
 _correr expreso-render.cjs
+_correr expreso-padron-caido.cjs
 
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then
-  echo "SUITE VERDE — 5 corridas, 0 rojos"
+  echo "SUITE VERDE — 6 corridas, 0 rojos"
 else
-  echo "SUITE EN ROJO — ${#ROJOS[@]} de 5:"
+  echo "SUITE EN ROJO — ${#ROJOS[@]} de 6:"
   for r in "${ROJOS[@]}"; do echo "  · $r"; done
   echo "======================================================================"
   exit 1

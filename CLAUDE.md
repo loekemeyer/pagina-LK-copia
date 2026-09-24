@@ -513,9 +513,21 @@ cargado"* no significaría nada para ese cliente. `_expAplica(provincia, localid
 ⚠ **Al tocar esto, mirar también `paginach`**: es el mismo módulo. Y el espejo del admin en
 `Gestion-Virgilio/admin/` no lo toca (esto vive en `mayorista.html`, no en el panel).
 
+⚠⚠ **Y una lista vacía NO es lo mismo que un padrón caído** (Tomás, 24/09). El `catch` de
+`cargarExpresosCache()` dejaba `_expresosCache = []` y seguía: para el cliente eso se lee como
+*"tu expreso no está en nuestro sistema"*, y el vacío quedaba **cacheado toda la sesión**. Es el
+pozo de §"una lectura ROTA no es un CERO" adentro del checkout. Hoy el vacío no se cachea y el
+buscador lo dice (`.exp-op-vacio`), **sin frenar el pedido**: se escribe el nombre y el botón
+sigue diciendo "Usar igual".
+
+⚠ **En CHEF el padrón no está en su base**: `public.expresos` no existe ahí (medido el 24/09), así
+que la página de Chef lo lee del proyecto de LK con el cliente que ya tenía. Si algún día se toca
+`public.expresos` de LK —o su policy `expresos_read_all`—, **se rompen las dos páginas, no una**.
+
 **Chequeo:** `bash tests/run.sh` — `expreso-buscador` (el orden: "la sev" trae LA SEVILLANITA
-primero) y `expreso-render` (que el bloque se dibuje y que un expreso desconocido **no** deshabilite
-el botón). Los dos verificados mutando el código a propósito.
+primero), `expreso-render` (que el bloque se dibuje y que un expreso desconocido **no** deshabilite
+el botón) y `expreso-padron-caido` (que un padrón caído avise en vez de quedarse mudo, y no cachee
+el vacío). Los tres verificados mutando el código a propósito.
 `sql/expreso_cambio_cliente.sql`.
 
 ## ⚠ REGLA (Thomas, 2026-09-21): el badge SIN STOCK se valida en el BACKEND
