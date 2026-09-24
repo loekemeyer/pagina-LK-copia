@@ -116,6 +116,10 @@ const PADRON = [
     "B: dice 'Sin expreso cargado' sabiendo que va a Pergamino 3751");
   ok(!/SANTA ROSA|PEDRITO/i.test(b.txt),
     "B: ELIGIÓ un expreso de un galpón compartido — eso es adivinar el ruteo. box=" + JSON.stringify(b.txt));
+  // Tomás sacó la bajada el 24/09: el galpón es el dato, el resto era contarle
+  // al cliente un problema nuestro. El candado es por el re-copiado entre repos.
+  ok(!/operan varios expresos|Nos falta el nombre del expreso/i.test(b.txt),
+    "B: volvió la bajada que Tomás sacó. box=" + JSON.stringify(b.txt));
 
   // C. la ciudad de destino NO es un galpón
   const c = await pintar("Rio Cuarto, Córdoba", "");
@@ -148,5 +152,5 @@ const PADRON = [
     fallas.forEach((f) => console.error("  · " + f));
     process.exit(1);
   }
-  console.log("expreso-galpon: OK (" + path.basename(raiz) + ") — 9 chequeos");
+  console.log("expreso-galpon: OK (" + path.basename(raiz) + ") — 10 chequeos");
 })().catch((e) => { console.error("expreso-galpon: ERROR", e); process.exit(1); });

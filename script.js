@@ -6704,13 +6704,11 @@ function _expSyncUI() {
     } else if (_expEsGalpon(gal.dir, zona, gal.cands)) {
       html =
         '<span class="exp-ico">🚚</span>' +
+        // Sin bajada: Tomás la sacó el 24/09. El galpón ES el dato — decirle
+        // además que ahí operan varios, o que nos falta el nombre, es contarle
+        // un problema nuestro. El botón "Indicar" ya es toda la invitación.
         '<span class="exp-txt"><span class="exp-k">Entregamos en</span>' +
-        '<span class="exp-v">' + escapeHtml(galTxt) + "</span>" +
-        '<span class="exp-dir">' +
-        (gal.cands.length > 1
-          ? "En ese galpón operan varios expresos: decinos cuál es el tuyo."
-          : "Nos falta el nombre del expreso.") +
-        "</span></span>" +
+        '<span class="exp-v">' + escapeHtml(galTxt) + "</span></span>" +
         '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Indicar</button>';
     } else {
       html =
