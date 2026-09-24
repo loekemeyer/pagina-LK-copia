@@ -358,10 +358,43 @@ window._zoomDoc = _zoomDoc;
    todas las de foto única se veían. Acá se observa la CARD (que el
    navegador sí ve bien) y recién ahí se pasa data-src → src. */
 let _pcLazyIO = null;
+
+/* Fotos que YA se resolvieron en esta sesión (data-src → src). La grilla se
+   re-renderiza ENTERA en cada cambio del carrito (renderProducts() hace
+   container.innerHTML = ""), así que sin esto cada "agregar al pedido" volvía
+   a crear todas las <img> de las cards con 2ª foto SIN src, y recién el
+   IntersectionObserver se los devolvía un frame después. Eso rompía dos cosas:
+
+   1) El TEMBLOR. En desktop manda
+      `#productsContainer .product-card img { width:auto!important; height:auto!important }`
+      (~línea 2881 de css/styles.css), o sea que el alto de la foto lo da la
+      imagen. Una <img> sin src no tiene tamaño intrínseco → mide 0 → la card
+      se desploma, el grid recalcula las filas y salta la página entera; al
+      llegar el src vuelve a su lugar. Eso es el "algo carga y desaparece".
+   2) La ANIMACIÓN. `flyProductImageToCart` arranca midiendo la foto y corta
+      en seco si el rect da 0 (`if (!r1.width || !r1.height) return`), así que
+      con la imagen vacía no volaba nada: la animación no fallaba, ni siquiera
+      empezaba.
+
+   Una foto ya resuelta se vuelve a emitir con `src` directo: sale del cache
+   del navegador, no parpadea y no toca el layout. El diferido del primer
+   pintado —que es lo que arregló Chrome 109— queda igual. */
+const _pcFotosResueltas = new Set();
+
+// Atributo de la <img> de persiana: `src` si esa foto ya se cargó alguna vez
+// en esta sesión, `data-src` (diferida) si es la primera vez que se ve.
+function _pcAttrFoto(url) {
+  return _pcFotosResueltas.has(url)
+    ? `src="${url}"`
+    : `data-src="${url}"`;
+}
+
 function _pcLazyCargar(card) {
   card.querySelectorAll("img[data-src]").forEach((img) => {
+    const url = img.getAttribute("data-src");
     // Si el hover/flechas ya le pusieron otra foto, no pisarla.
-    if (!img.getAttribute("src")) img.setAttribute("src", img.getAttribute("data-src"));
+    if (!img.getAttribute("src")) img.setAttribute("src", url);
+    if (url) _pcFotosResueltas.add(url);
     img.removeAttribute("data-src");
   });
 }
@@ -5188,13 +5221,13 @@ function renderProducts() {
         ${pcArrowsHtml}
         ${
           pcBack
-            ? `<img class="pc-back" data-src="${pcBack}" alt="" width="400" height="400" onerror="this.onerror=null;this.src='${imgFallback}'">`
+            ? `<img class="pc-back" ${_pcAttrFoto(pcBack)} alt="" width="400" height="400" onerror="this.onerror=null;this.src='${imgFallback}'">`
             : ""
         }
         <img
           id="img-${pid}"
           class="pc-front"
-          ${pcBack ? `data-src="${pcFront}"` : `src="${pcFront}" loading="lazy"`}
+          ${pcBack ? _pcAttrFoto(pcFront) : `src="${pcFront}" loading="lazy"`}
           alt="${altAttr}"
           width="400"
           height="400"
@@ -7054,17 +7087,34 @@ function flyProductImageToCart(productId) {
     const card =
       document.getElementById(`card-${productId}`) ||
       document.getElementById(`loke-card-${productId}`);
-    if (card) img = card.querySelector("img");
+    if (card) img = card.querySelector("img.pc-front") || card.querySelector("img");
   }
   const target = getVisibleCartIconEl();
   if (!img || !target) return;
 
+  // La foto puede estar todavía diferida (data-src, sin src): el clon saldría
+  // vacío. Se toma la URL de donde esté.
+  const src = img.getAttribute("src") || img.getAttribute("data-src") || "";
+  if (!src) return;
+
   const _z = _zoomDoc();
-  const r1 = img.getBoundingClientRect();
+  let r1 = img.getBoundingClientRect();
+  // Una <img> sin src mide 0 en desktop (width/height auto !important), y con
+  // rect 0 esta función se cortaba y NO volaba nada. Se cae a la caja del
+  // contenedor de la foto, que sí tiene tamaño.
+  if (!r1.width || !r1.height) {
+    const box = img.closest(".pc-media") || img.parentElement;
+    if (box) r1 = box.getBoundingClientRect();
+  }
   const r2 = target.getBoundingClientRect();
   if (!r1.width || !r1.height || !r2.width || !r2.height) return;
 
-  const clone = img.cloneNode(true);
+  // <img> nueva, NO cloneNode: el clon arrastraba el id="img-<pid>", así que
+  // durante el vuelo había dos elementos con el mismo id y un segundo click
+  // rápido medía el clon (position:fixed, a mitad de camino) en vez de la card.
+  const clone = document.createElement("img");
+  clone.src = src;
+  clone.alt = "";
   clone.className = "fly-to-cart";
   // El clon se cuelga de <body>, que está DENTRO del zoom: las medidas de
   // rect vienen en px de pantalla y hay que devolverlas a px CSS.
@@ -7072,6 +7122,7 @@ function flyProductImageToCart(productId) {
   clone.style.top = `${r1.top / _z}px`;
   clone.style.width = `${r1.width / _z}px`;
   clone.style.height = `${r1.height / _z}px`;
+  clone.style.objectFit = "contain";
   clone.style.opacity = "1";
   clone.style.transform = "translate3d(0,0,0) scale(1)";
 
@@ -7080,13 +7131,20 @@ function flyProductImageToCart(productId) {
   const dx = (r2.left + r2.width / 2 - (r1.left + r1.width / 2)) / _z;
   const dy = (r2.top + r2.height / 2 - (r1.top + r1.height / 2)) / _z;
 
-  // start anim next frame
+  // Reflow forzado: fija el estado inicial antes de pisar el transform, así la
+  // transición arranca sí o sí aunque el hilo principal venga cargado por el
+  // re-render de la grilla.
+  void clone.offsetWidth;
+
   requestAnimationFrame(() => {
     clone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(0.15)`;
     clone.style.opacity = "0";
   });
 
   clone.addEventListener("transitionend", () => clone.remove(), { once: true });
+  // Red de seguridad: si por lo que sea no se dispara el transitionend, que no
+  // quede un clon colgado de <body> para siempre.
+  setTimeout(() => clone.remove(), 1500);
 }
 
 // Helper: dispara las 3 animaciones add-to-cart juntas.
@@ -7116,8 +7174,11 @@ function triggerAddAnimations(productId) {
         qtyInput.classList.add("lk-pop");
       }
 
-      // 3b) celebración en la imagen: bounce + wobble + pulse combinados
-      const img = card.querySelector("img");
+      // 3b) celebración en la imagen: bounce + wobble + pulse combinados.
+      // OJO: en las cards con 2ª foto el primer <img> del DOM es .pc-back, que
+      // queda TAPADO por .pc-front (position:absolute, z-index 1) — ahí el
+      // wobble no se veía. Va sobre la foto visible.
+      const img = card.querySelector("img.pc-front") || card.querySelector("img");
       if (img) {
         img.classList.remove("lk-celebrate");
         void img.offsetWidth;

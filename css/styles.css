@@ -16521,3 +16521,41 @@ body { top: 0 !important; }
 .is-presupuesto #sortSelect option[value="price_asc"] {
   display: none !important;
 }
+
+/* ============================================================
+   LA CAJA DE LA FOTO DEL CATÁLOGO NO PUEDE DEPENDER DE QUE LA IMAGEN
+   ESTÉ CARGADA  (24/09/2026)
+   ============================================================
+   Arriba, en `@media (min-width: 1025px) #productsContainer .product-card img`,
+   va `width: auto !important; height: auto !important`: el tamaño de la foto lo
+   da la IMAGEN. Mientras no esté cargada, una <img> no tiene tamaño intrínseco
+   y la caja colapsa — medido en Chromium: 198px → 54px de un frame al otro. La
+   card se desploma, el grid recalcula las filas y salta la página entera.
+
+   Pasaba en cada "agregar al pedido", porque renderProducts() rehace la grilla
+   ENTERA y las <img> nacen de nuevo. El arreglo de script.js (`_pcFotosResueltas`)
+   evita que la foto vuelva a la carga diferida, pero no alcanza: la <img> es un
+   elemento nuevo y el navegador puede tardar un frame en re-adjuntarla aunque
+   la tenga en cache. Acá la caja queda definida por CSS y ya no depende de eso.
+
+   `aspect-ratio` + `width` en px (no en %) a propósito: .pc-media es
+   `width: fit-content`, así que un ancho porcentual en la foto de atrás sería
+   circular. El resultado en pantalla es el mismo que hoy para las fotos
+   cuadradas del bucket (400x400): min(ancho disponible, tope) al cuadrado.
+   ============================================================ */
+@media (min-width: 901px) and (max-width: 1024px) {
+  #productsContainer .product-card img {
+    width: 220px !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+}
+@media (min-width: 1025px) {
+  #productsContainer .product-card img {
+    width: 250px !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+  }
+}

@@ -28,12 +28,13 @@ _correr estado-gestion.cjs
 _correr expreso-buscador.cjs
 _correr expreso-render.cjs
 _correr presupuesto.cjs
+_correr carrito-animacion.cjs
 
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then
-  echo "SUITE VERDE — 7 corridas, 0 rojos"
+  echo "SUITE VERDE — 8 corridas, 0 rojos"
 else
-  echo "SUITE EN ROJO — ${#ROJOS[@]} de 7:"
+  echo "SUITE EN ROJO — ${#ROJOS[@]} de 8:"
   for r in "${ROJOS[@]}"; do echo "  · $r"; done
   echo "======================================================================"
   exit 1
