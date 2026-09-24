@@ -75,7 +75,7 @@ const PADRON = [
   await page.waitForFunction(() => typeof window._expSyncUI === "function", null, { timeout: 15000 });
 
   // Una sucursal del interior SIN nombre de expreso, como las 713 de Chef.
-  const pintar = async (dirEntrega, zona) => {
+  const pintar = async (dirEntrega, zona, prov) => {
     await page.evaluate((d) => {
       const sel = document.getElementById("shippingSelect");
       sel.innerHTML = "";
@@ -88,11 +88,11 @@ const PADRON = [
       o.dataset.nombreExpreso = "";      // <- lo que nunca llegó del ISIS
       o.dataset.direccionExpreso = "";
       o.dataset.localidad = "Rosario";
-      o.dataset.provincia = "Santa Fe";
+      o.dataset.provincia = d.prov === undefined ? "Santa Fe" : d.prov;
       sel.appendChild(o);
       sel.value = "1";
       window._expSyncUI();
-    }, { dir: dirEntrega, zona: zona });
+    }, { dir: dirEntrega, zona: zona, prov: prov });
     // el padrón llega async y la línea se redibuja sola
     await page.waitForTimeout(250);
     return page.evaluate(() => {
@@ -127,6 +127,20 @@ const PADRON = [
   ok(/Sin expreso cargado/i.test(d.txt),
     "D: sin dirección tiene que quedar el cartel de siempre. box=" + JSON.stringify(d.txt));
 
+  // E. galpón con provincia CABA: la dirección manda sobre la provincia.
+  // Caso real (Altuna, cod 4 de LK): direccion_entrega = "Pergamino 3751",
+  // provincia = "CABA". Ahí operan 44 expresos — de CABA no tiene nada, es el
+  // galpón. Preguntando por la provincia primero, la línea no se dibujaba.
+  const e = await pintar("Pergamino 3751", "Soldati", "CABA");
+  ok(e.visible, "E: con provincia CABA no se dibujó la línea, y la dirección es un galpón del padrón");
+  ok(/Pergamino 3751/i.test(e.txt),
+    "E: no se mostró el galpón. box=" + JSON.stringify(e.txt));
+
+  // F. y una dirección de CABA que NO es galpón sigue sin línea: al cliente de
+  //    Flores le repartimos nosotros y "sin expreso" no significa nada para él.
+  const f = await pintar("Av. Rivadavia 5000", "Caballito", "CABA");
+  ok(!f.visible, "F: le dibujó la línea del expreso a un cliente de CABA. box=" + JSON.stringify(f.txt));
+
   await browser.close();
 
   if (fallas.length) {
@@ -134,5 +148,5 @@ const PADRON = [
     fallas.forEach((f) => console.error("  · " + f));
     process.exit(1);
   }
-  console.log("expreso-galpon: OK (" + path.basename(raiz) + ") — 6 chequeos");
+  console.log("expreso-galpon: OK (" + path.basename(raiz) + ") — 9 chequeos");
 })().catch((e) => { console.error("expreso-galpon: ERROR", e); process.exit(1); });

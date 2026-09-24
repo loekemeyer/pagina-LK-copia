@@ -6650,7 +6650,26 @@ function _expSyncUI() {
     return;
   }
 
-  const aplica = !!nombre || _expAplica(d.provincia, d.localidad);
+  // El padrón llega async. Si todavía no está, se lo pide y se vuelve a dibujar
+  // una vez; con `_expresosFallo` puesto no reintenta.
+  if (!nombre && !_expresosCache && !_expresosFallo) {
+    cargarExpresosCache().then(() => {
+      try { _expSyncUI(); } catch (_) {}
+    });
+  }
+
+  // Que la ficha no traiga el nombre NO significa que no sepamos a dónde va: el
+  // galpón está en `direccion_entrega` y su barrio en `zona_expreso`.
+  const gal = _expDesdeGalpon(d.direccionEntrega);
+
+  /* ⚠ Si la dirección de entrega ES un galpón del padrón, ese pedido va por
+     expreso — sin importar lo que diga la provincia. Medido el 24/09: 34
+     sucursales de LK tienen el galpón cargado y la línea escondida porque
+     `provincia` está vacía o dice "Buenos Aires" (Orán, Junín, Tucumán, Villa
+     María, Esquel). Caso testigo: Altuna (cod 4), `Pergamino 3751` con
+     provincia CABA — ahí operan 44 expresos, o sea que de CABA no tiene nada.
+     Preguntar por la provincia antes que por la dirección escondía el dato. */
+  const aplica = !!nombre || gal.cands.length > 0 || _expAplica(d.provincia, d.localidad);
   if (!aplica) {
     box.hidden = true;
     return;
@@ -6668,16 +6687,6 @@ function _expSyncUI() {
       "</span>" +
       '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Cambiar</button>';
   } else {
-    // El padrón llega async. Si todavía no está, se lo pide y se vuelve a
-    // dibujar una vez; con `_expresosFallo` puesto no reintenta.
-    if (!_expresosCache && !_expresosFallo) {
-      cargarExpresosCache().then(() => {
-        try { _expSyncUI(); } catch (_) {}
-      });
-    }
-
-    // Que la ficha no traiga el nombre NO significa que no sepamos a dónde va.
-    const gal = _expDesdeGalpon(d.direccionEntrega);
     const galTxt = [gal.dir, zona].filter(Boolean).join(", ");
 
     if (gal.cands.length === 1) {
