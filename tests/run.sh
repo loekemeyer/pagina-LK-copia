@@ -30,6 +30,12 @@ _correr expreso-render.cjs
 _correr presupuesto.cjs
 _correr carrito-animacion.cjs
 
+# ⚠ stress-pedidos.mjs NO va en la suite, y NO es un olvido.
+#   (a) necesita credenciales de un cliente de prueba (LK_CUIT / LK_PIN);
+#   (b) su modo `carga` ESCRIBE pedidos reales en produccion, que salen al
+#       deposito por la PPP de Gestion. Un test que escribe no puede correr solo.
+#   Se corre a mano:  node tests/stress-pedidos.mjs --help
+
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then
   echo "SUITE VERDE — 8 corridas, 0 rojos"
