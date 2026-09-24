@@ -669,6 +669,10 @@ que es peor que no salir.
 que el cliente llegue hasta el botón de confirmar **habilitado**, falte la columna que falte.
 Es el mismo archivo en los dos repos.
 
+✅ **Publicado el 24/09/2026 en loekemeyer.com (v2.3.478)**, confirmado por Tomás. El mismo
+día quedaron publicadas las dos páginas y corrido el `alter` de Chef, con Classic S.A.
+(cod 1362 en Chef) en `modo_presupuesto = true`.
+
 ⚠ **La lección, que ya costó tres caídas en dos días**: **toda columna nueva se pide de
 forma que la base pueda no tenerla todavía.** Nunca nombrarla suelta dentro de un `.select()`.
 Y el arreglo va a **`main`**: lo que queda en una rama se lo lleva puesto la próxima
