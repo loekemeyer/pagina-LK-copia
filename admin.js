@@ -15793,13 +15793,108 @@ function _cliPendWireOnce() {
 // =====================================================
 var PSC_DEFAULT_ROWS = 10;
 var PSC_LSUFFIX = false;
+// ⚠ ARTICULOS DE REENVASE — SOLO SE VEN EN ESTE MODULO (Tomas Gonzalez, 23/09/2026).
+// Son codigos de Loekemeyer reenvasados para UN cliente puntual (Matiz SA, LK 4263):
+// mismo producto que el articulo base, otro codigo y otro precio.
+// Viven en `products` con `active = false` A PROPOSITO, y eso no es un olvido:
+//   - el catalogo del portal (`script.js`) y el catalogo publico de `/productos/`
+//     (`scripts/exportar-catalogo.py`) filtran `active = true`, asi que un codigo de
+//     reenvase no se le ofrece a ningun otro cliente ni sale indexado en Google;
+//   - si alguien lo mete al carrito de un cliente por cualquiera de los ~10 caminos
+//     que no pasan por `agregarAlCarrito`, el guard SIN STOCK del backend lo frena
+//     (`pedido_items_sin_stock`, que bloquea tambien `active = false`);
+//   - aca entran igual porque ese guard NO aplica al admin (`submit_order_fast` y
+//     `edit_order_fast` lo saltean con `IF NOT v_es_admin`), y porque ninguna vista
+//     que alimenta a Gestion Virgilio filtra `active` (verificado el 23/09 sobre
+//     `v_pedidos_web`, `gv_pedidos_web_np_lk`, `ppp_valor_linea`, `v_item_precio`):
+//     el pedido se programa y se valoriza igual que cualquier otro.
+// NO se agregan a `cpAllProducts`: esa lista la comparten el Cotizador, el generador
+// de flyers y el match de OC de supermercados, donde un codigo de reenvase no tiene
+// nada que hacer (una OC de Coto que diga "prensa matambre" no debe matchear aca).
+// ⚠ HOY LA LISTA VA VACIA: Tomas Gonzalez cargo el pedido de Matiz el 23/09/2026
+// (pedidos 1533 y 1534) y pidio dejar los dos codigos deshabilitados. Se vacia la
+// lista en vez de borrar el mecanismo, porque el reenvase se repite: para volver a
+// habilitarlos alcanza con poner los codigos aca de nuevo (`["55219", "55289"]`),
+// bumpear el `?v=` y replicar al espejo. Los articulos siguen en `products` con
+// `active = false`, o sea que no se le ofrecen a nadie mientras esten fuera de aca.
+var PSC_CODS_EXTRA = [];
+// ⚠ CLIENTES QUE PIDEN POR UNIDAD, NO POR CAJA CERRADA (Tomas Gonzalez, 23/09/2026).
+// Matiz SA (4263) compra reenvase suelto. Sus articulos llevan `uxb = 1`, asi que
+// "una caja" ES una unidad y el pipeline no cambia en nada: lo que cambia es la
+// ETIQUETA de la columna, para que nadie escriba cajas donde van unidades.
+// Por que NO se hace con `uxb = 6` dividiendo unidades/uxb: ya se probo y salio mal.
+// El pedido 1450 (15/09) viajo al Sheet con **166,6667 cajas** — un numero de cajas
+// que no existe — y `order_items.cajas` es `integer`, asi que la base guardo 166 y
+// el ERP recibio 166,6667: 4 unidades de diferencia entre lo pedido y lo registrado.
+// Si el cliente compra unidades sueltas, la unidad de venta ES la unidad; el "6 u/caja"
+// es embalaje de origen y vive en el m3 de Gestion, no en `uxb`.
+var PSC_CLIENTES_UNIDADES = ["4263"];
 var pscState = {
   customer: null,
   deliveryAddresses: [],
   rows: [], // { product: <obj|null>, cajas: <number|null>, codText: <string> }
+  extraProducts: [], // PSC_CODS_EXTRA resueltos contra `products` (incluye inactivos)
   submitting: false,
   wired: false,
 };
+
+// El cliente elegido carga en UNIDADES en vez de cajas.
+function pscEsUnidades() {
+  if (!pscState.customer) return false;
+  return (
+    PSC_CLIENTES_UNIDADES.indexOf(String(pscState.customer.cod_cliente)) >= 0
+  );
+}
+
+function pscUnitLabel(plural) {
+  if (pscEsUnidades()) return plural ? "Unidades" : "Unidad";
+  return plural ? "Cajas" : "Caja";
+}
+
+// Catalogo del modulo: el del panel MAS los codigos de reenvase (que estan inactivos
+// y por eso no vienen en `cpAllProducts`).
+function pscCatalogo() {
+  var base = cpAllProducts || [];
+  if (!pscState.extraProducts.length) return base;
+  // Si alguno de los extra llegara a estar activo tambien viene en `cpAllProducts`:
+  // se saca de ahi para no mostrarlo dos veces en el buscador.
+  var extraCods = pscState.extraProducts.map(function (p) {
+    return String(p.cod || "").trim().toUpperCase();
+  });
+  return pscState.extraProducts.concat(
+    base.filter(function (p) {
+      return extraCods.indexOf(String(p.cod || "").trim().toUpperCase()) < 0;
+    }),
+  );
+}
+
+function pscFindProduct(cod) {
+  var c = String(cod || "").trim().toUpperCase();
+  var extra = pscState.extraProducts.find(function (p) {
+    return String(p.cod || "").trim().toUpperCase() === c;
+  });
+  return extra || cpFindProduct(cod);
+}
+
+async function pscLoadExtraProducts() {
+  if (!PSC_CODS_EXTRA.length) {
+    pscState.extraProducts = [];
+    return;
+  }
+  try {
+    var r = await sb
+      .from("products")
+      .select("id,cod,description,category,list_price,uxb,active,ranking")
+      .in("cod", PSC_CODS_EXTRA);
+    if (r.error) throw new Error(r.error.message);
+    // Si alguno ya esta activo viene tambien en `cpAllProducts`; se deja solo aca
+    // para no duplicarlo en el buscador.
+    pscState.extraProducts = r.data || [];
+  } catch (e) {
+    console.error("psc extra products:", e);
+    pscState.extraProducts = [];
+  }
+}
 
 async function cargarPedidosSinCot() {
   if (!cpAllProducts || !cpAllProducts.length) {
@@ -15810,6 +15905,7 @@ async function cargarPedidosSinCot() {
       toast("No se pudieron cargar los artículos", "error");
     }
   }
+  if (!pscState.extraProducts.length) await pscLoadExtraProducts();
   if (!pscState.wired) {
     pscWire();
     pscState.wired = true;
@@ -16177,7 +16273,9 @@ function pscRenderRows() {
         cajas +
         '" ' +
         (p ? "" : "disabled") +
-        ' placeholder="Cajas" /></td>' +
+        ' placeholder="' +
+        pscUnitLabel(true) +
+        '" /></td>' +
         '<td class="psc-td-x"><button type="button" class="psc-row-x" data-i="' +
         i +
         '" title="Quitar fila">×</button></td>' +
@@ -16185,6 +16283,11 @@ function pscRenderRows() {
       );
     })
     .join("");
+  // El encabezado dice CAJAS o UNIDADES segun el cliente: es lo unico que ve el
+  // que carga, y escribir unidades en una columna que dice "Cajas" es el error
+  // que produjo el pedido 1450 (166,6667 cajas).
+  var th = document.getElementById("pscThCant");
+  if (th) th.textContent = pscUnitLabel(true);
   pscWireRows();
 }
 
@@ -16254,8 +16357,9 @@ function pscSuggestProducts(i, q) {
     return;
   }
   var matches = [];
-  for (var k = 0; k < cpAllProducts.length; k++) {
-    var p = cpAllProducts[k];
+  var catalogo = pscCatalogo();
+  for (var k = 0; k < catalogo.length; k++) {
+    var p = catalogo[k];
     var cod = String(p.cod || "").toUpperCase();
     var desc = String(p.description || "").toUpperCase();
     if (cod.indexOf(q) > -1 || desc.indexOf(q) > -1) matches.push(p);
@@ -16315,7 +16419,7 @@ function pscHideProdSuggest(i) {
 }
 
 function pscChooseProduct(i, cod, isL) {
-  var base = cpFindProduct(cod);
+  var base = pscFindProduct(cod);
   if (!base) return;
   var effCod = isL ? String(base.cod) + "L" : String(base.cod);
   var chosen = isL
@@ -16339,7 +16443,7 @@ function pscFinalizeCod(i, value) {
   value = String(value || "").trim();
   if (!value) return;
   if (pscState.rows[i] && pscState.rows[i].product) return;
-  var p = cpFindProduct(value);
+  var p = pscFindProduct(value);
   if (p) {
     pscChooseProduct(i, p.cod, false);
     return;
@@ -16347,7 +16451,7 @@ function pscFinalizeCod(i, value) {
   // PSC_LSUFFIX: si tipearon "438EL" y "438E" es válido, tomarlo como variante L.
   if (PSC_LSUFFIX && /L$/i.test(value)) {
     var base = value.slice(0, -1);
-    if (cpFindProduct(base)) {
+    if (pscFindProduct(base)) {
       pscChooseProduct(i, base, true);
       return;
     }
@@ -16357,13 +16461,15 @@ function pscFinalizeCod(i, value) {
 
 function pscUpdateTotal() {
   var total = 0,
-    n = 0;
+    n = 0,
+    unidades = 0;
   pscState.rows.forEach(function (r) {
     if (r.product && r.cajas > 0) {
       total +=
         Number(r.product.list_price || 0) *
         Number(r.product.uxb || 0) *
         Number(r.cajas);
+      unidades += Number(r.product.uxb || 0) * Number(r.cajas);
       n++;
     }
   });
@@ -16373,7 +16479,9 @@ function pscUpdateTotal() {
       ? n +
         " artículo" +
         (n !== 1 ? "s" : "") +
-        " · Total lista: $" +
+        " · " +
+        formatMoney(unidades) +
+        " unidades · Total lista: $" +
         formatMoney(total)
       : "";
 }
@@ -16402,8 +16510,50 @@ async function pscSubmit() {
     return r.product && r.cajas > 0;
   });
   if (!lines.length) {
-    toast("Agregá al menos un artículo con cajas", "warning");
+    toast(
+      "Agregá al menos un artículo con " + pscUnitLabel(true).toLowerCase(),
+      "warning",
+    );
     return;
+  }
+  // ⚠ GUARD DEL MODO UNIDADES. Lo que se escribe en la columna viaja como `cajas`,
+  // asi que en un cliente que carga por unidad el articulo TIENE que estar en
+  // 1 u/caja: con uxb = 6, escribir 2.000 mandaria 2.000 cajas = 12.000 unidades.
+  // Es el mismo pozo del pedido 1450, visto desde el otro lado.
+  if (pscEsUnidades()) {
+    var malUxb = lines
+      .filter(function (r) {
+        return Number(r.product.uxb || 0) !== 1;
+      })
+      .map(function (r) {
+        return r.product.cod + " (" + r.product.uxb + " u/caja)";
+      });
+    if (malUxb.length) {
+      showErr(
+        "Este cliente carga el pedido en UNIDADES, y estos artículos están en caja cerrada: " +
+          malUxb.join(", ") +
+          ". Ponelos en 1 unidad por bulto en ABM Artículos, o cargalos por cajas en otro cliente.",
+      );
+      return;
+    }
+  }
+  // Los codigos de reenvase son de un cliente puntual: si aparecen en otro, se avisa.
+  var extraEnOtroCliente = lines
+    .filter(function (r) {
+      return PSC_CODS_EXTRA.indexOf(String(r.product.cod)) >= 0;
+    })
+    .map(function (r) {
+      return r.product.cod;
+    });
+  if (extraEnOtroCliente.length && !pscEsUnidades()) {
+    if (
+      !confirm(
+        "Ojo: " +
+          extraEnOtroCliente.join(", ") +
+          " son códigos de reenvase de un cliente puntual y este no es ese cliente.\n¿Seguís igual?",
+      )
+    )
+      return;
   }
   var addr = pscSelectedAddr();
   if (!addr) {
@@ -16423,6 +16573,14 @@ async function pscSubmit() {
     lines.length +
     " artículo(s) → " +
     finalDelivery +
+    "\nCantidades en " +
+    pscUnitLabel(true).toUpperCase() +
+    ": " +
+    lines
+      .map(function (r) {
+        return r.product.cod + " x " + r.cajas;
+      })
+      .join(", ") +
     "\nCondición de pago: Sin Cotizador";
   if (!confirm(confirmMsg)) return;
 

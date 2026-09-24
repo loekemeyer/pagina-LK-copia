@@ -792,6 +792,97 @@ TODAS las cards con el carrito, así que la actualización parcial necesita su p
 así que no arrastra el bug. Si alguna vez suma la 2ª foto y con ella la carga diferida, hereda
 las tres reglas de arriba.
 
+## ⚠ Artículos de REENVASE y pedidos EN UNIDADES (Pedidos sin cot)
+
+**Tomás González, 23/09/2026.** Matiz SA (LK **4263**) compra **reenvase suelto**: artículos de
+Loekemeyer con otro código, otro precio, y pedidos **por unidad, no por caja cerrada**.
+Los dos códigos vigentes son **55219** (Prensa Matambre, equivale al **246**) y **55289**
+(Colador de Mano, equivale al **441**). Todo vive en el módulo **Pedidos sin cot** (`psc*` en
+`admin.js`), y son dos cosas separadas:
+
+**1. Los códigos de reenvase se ven SOLO en ese módulo** (`PSC_CODS_EXTRA`). ⚠ **Al 23/09 esa
+lista está VACÍA**: Tomás González cargó el pedido (1533 y 1534) y pidió deshabilitar los dos
+códigos, así que hoy no aparecen ni en el módulo. El mecanismo queda: para volver a habilitarlos
+se ponen los códigos en la lista, se bumpea el `?v=` y se replica al espejo. Siguen con
+`products.active = false` **a propósito**, y eso no es un olvido:
+
+- el catálogo del portal (`script.js`) y el catálogo público de `/productos/`
+  (`scripts/exportar-catalogo.py`) filtran `active = true`, así que un código de reenvase no se
+  le ofrece a ningún otro cliente ni sale indexado — y hace falta, porque el 55219 sale **$5.820
+  la unidad** contra **$5.485** del 246, el mismo producto;
+- si alguien lo mete al carrito de un cliente por cualquiera de los ~10 caminos que no pasan por
+  `agregarAlCarrito`, lo frena el guard SIN STOCK del backend (`pedido_items_sin_stock` bloquea
+  también `active = false`). Medido el 23/09: devuelve `55219, 55289`;
+- desde el panel entran igual porque **ese guard no aplica al admin** (`submit_order_fast` y
+  `edit_order_fast` lo saltean con `IF NOT v_es_admin`), y porque **ninguna vista que alimenta a
+  Gestión filtra `active`** (verificado sobre `v_pedidos_web`, `gv_pedidos_web_np_lk`,
+  `ppp_valor_linea`, `v_item_precio`): la NP se programa y se valoriza como cualquier otra.
+- Lo lee el admin logueado porque `products` tiene una policy `authenticated` con `qual = true`
+  (probado con `set role`: `authenticated` ve los 2 inactivos, `anon` ve 0).
+- **No se agregan a `cpAllProducts`**: esa lista la comparten el Cotizador, el generador de
+  flyers y el match de OC de supermercados, donde un código de reenvase no tiene nada que hacer
+  (una OC de Coto que diga "prensa matambre" no debe matchear acá).
+
+**2. El pedido se carga en UNIDADES para los clientes de `PSC_CLIENTES_UNIDADES`** (hoy sólo
+`4263`). El encabezado de la columna pasa de "Cajas" a "Unidades" (`pscUnitLabel`), porque es lo
+único que ve quien carga.
+
+⚠ **No se hace con `uxb = 6` dividiendo unidades ÷ uxb: ya se probó y salió mal.** El pedido
+**1450** (15/09) viajó al Sheet con **166,6667 cajas** —un número de cajas que no existe— y como
+`order_items.cajas` es `integer`, la base guardó **166**: 4 unidades de diferencia entre lo que
+se pidió y lo que quedó registrado. Si el cliente compra unidades sueltas, **la unidad de venta
+ES la unidad** (`uxb = 1`), y el "6 u/caja" es embalaje de origen: vive en el **m3 de Gestión**,
+no en `uxb`. Por eso el módulo **frena el envío** si un artículo de un cliente en modo unidades
+no está en 1 u/caja — con `uxb = 6`, escribir 2.000 mandaría 2.000 cajas = 12.000 unidades.
+
+**El m3 va POR UNIDAD, en `GV_Volumen_Articulos` de Gestión Virgilio** (PK `codigo`, la lee
+`vista_volumen_articulo_resuelto` con `origen = 'gestion'`): el del artículo base dividido por su
+UxB real. Los dos cargados, con el valor que pasó Tomás: **55219 = 0,00308** (0,0185 ÷ 6, del
+21/09) y **55289 = 0,0016166666666667** (0,0194 ÷ 12, del 23/09). Ojo que la tabla tiene un
+`CHECK (m3 > 0)` y la vista filtra `m3 > 0`: **no se puede cargar un 0**, "sin volumen" es no
+tener fila.
+
+⚠ **Si el m3 falta cuando el pedido se programa, la NP queda con `m3 = 0` y NO se arregla al
+cargar el volumen después… pero tampoco queda perdida.** Pasó el 23/09 con el pedido 1533
+(4.000 unidades del 55289): la NP **216** se armó a las 11:05 sin volumen, así que entró a la
+tanda E84A del 07/10 aportando 0 m³ de los 6,47 que ocupa. Dos cosas la salvan:
+
+- Gestión la marca **`m3_parcial = true`** en `PPP_Web_Programacion`, así que el faltante se ve
+  en pantalla en vez de desaparecer;
+- **`ppp_web_resync(p_empresa, p_filas)`** —la función de Gestión que consume el feed de LK—
+  **actualiza `m3`, `m3_parcial`, `lineas` y `cajas`** de toda NP no facturada cuando difieren,
+  conservando tanda, zona y fecha. La dispara la Edge Function `gv-ppp-web-tandas-diarias`, que
+  el cron **73 `gv-ppp-web-tandas-intradia`** llama **cada 5 minutos entre las 09 y las 23**.
+  O sea: cargar el m3 alcanza, se corrige en la corrida siguiente. **Lo único congelado son los
+  bloques ya facturados** (`Facturacion_NP`), que la función excluye a propósito.
+
+Chequeo del arreglo: `select m3, m3_parcial from "PPP_Web_Programacion" where np = <np>;`, contra
+`select m3 from gv_pedidos_web_np_lk(current_date - 7) where order_id = <order_id>;` en LK.
+
+**Al agregar otro código de reenvase o otro cliente por unidad**: la lista de códigos y la de
+clientes están al principio del bloque PSC de `admin.js`, el artículo se da de alta en `products`
+con `active = false` y `uxb = 1`, y se le carga el m3 por unidad en Gestión. Y **replicar al
+espejo** `Gestion-Virgilio/admin/` (ahí el `?v=` de `admin.js` se bumpea a mano).
+
+⚠ **El precio del reenvase sale de una lista del ERP que la web no conoce.** Tomás avisó el 23/09
+que el 55219 y el 55289 van por la **lista 34 "Lista Gigot"** ($5.650 y $1.690 la unidad), y en la
+web hay **un solo `list_price` por artículo**: las listas por cliente viven en el ERP. Los dos
+pedidos de ese día salieron con el precio anterior cargado ($5.820 y $1.740). **No llegó al ERP**
+—`sheets_payload` manda sólo `cod_art`, `cajas` y `uxb`, sin precio, así que el cliente se factura
+con la lista del ERP—, pero quedaron mal dos cosas distintas, y **no se arreglan con el mismo
+cambio**:
+
+- **`orders.total`**, que es un snapshot del momento del pedido: $11.640.000 y $6.960.000, o sea
+  **$540.000 de más** entre los dos. Corregir `products.list_price` NO lo mueve; hay que editar los
+  dos pedidos. De `orders.total` sale el "PEDIDO" del dashboard de ventas y el historial del portal.
+- **`products.list_price`**, que es un valor único de HOY y se usa en vivo: de ahí valorizan la
+  ficha de cliente, el Ranking Inactivos y el `valor_lista` de la NP en Gestión (vía
+  `gv_ppp_np_valor` / `ppp_valor_linea`, **que valorizan por línea y NO leen `orders.total`** —
+  verificado el 23/09 sobre `gv_pedidos_web_np_lk` y `gv_lk_np_feed`).
+
+Al dar de alta un reenvase: pedir el precio de la lista que corresponde ANTES de que se cargue el
+pedido — igual que el m3, que si llega tarde deja la NP armada sin volumen.
+
 ## Integración Krikos (OC de supermercados por mail)
 
 - **Krikos360 es el portal EDI de Planexware** por el que las cadenas (Coto, Carrefour/INC, Día,
