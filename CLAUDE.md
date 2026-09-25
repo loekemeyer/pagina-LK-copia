@@ -554,6 +554,42 @@ criterio es **altura + `zona_expreso`** (`_expEsGalpon`), o 2+ candidatos en el 
 dirección de entrega de tu ficha», y **no se escribe en la ficha**. El dato autoritativo es la
 dirección; un nombre equivocado se ve y el cliente lo corrige con «Cambiar».
 
+### ✅ INTEGRADO: el expreso que LK sabe ahora aparece en las DOS páginas (24/09, RPC `expreso_sugerido`)
+
+**Tomás:** *"solo resta que integres esa información para que aparezca en ambas webs"*.
+
+Chef tiene **0 de 713** sucursales con `nombre_expreso` pero sí la dirección del galpón; LK lo
+tiene cargado en **804 fichas**. La RPC **`public.expreso_sugerido(p_cuit, p_dirs[])`** —en el
+proyecto de LK, que es donde está el dato— traslada ese conocimiento a las dos páginas.
+
+| vía | qué es | resuelve en Chef |
+|---|---|---:|
+| **`cliente`** | mismo CUIT y mismo galpón en LK → **es el expreso de ESE cliente**, no una deducción | **83** |
+| `fichas` | ese galpón tiene un solo expreso en las fichas de LK | +52 |
+| `padron` | ese domicilio es de un solo expreso en `expresos` | +26 |
+| | **total** | **161 de 328 (49 %)** — antes 123 |
+
+⚠ **La vía `cliente` es la única que desambigua un galpón compartido.** Con el CUIT, Pergamino
+3751 (44 expresos) resuelve a **Brinati**; sin el CUIT no devuelve nada, que es lo correcto.
+
+⚠ **Control de honestidad:** de 91 galpones comparables por dos vías, **sólo 2 se contradicen**
+(Luna 358: las fichas dicen Snaider, el padrón CIRO). 98 % de acuerdo.
+
+⚠ **La RPC NO vuelca nada**: hay que decirle qué direcciones se preguntan (tope 50) y devuelve
+sólo lo que resuelve. No devuelve datos del cliente. Es `SECURITY DEFINER` a propósito, porque la
+llaman las dos páginas con la anon key de LK (Chef por `supabaseLoekemeyer`).
+
+⚠⚠ **La clave del caché del front lleva el CUIT, no sólo el galpón.** La respuesta DEPENDE del
+cliente, así que cachear por galpón deja pegado el *"no sé"* de antes de que cargue el perfil y
+el cliente **nunca** ve su expreso. Lo cazó el chequeo G del test, no la lectura.
+
+⚠ **Un error de la RPC no se cachea** (§"una lectura ROTA no es un CERO"): se reintenta en el
+render siguiente.
+
+**Dónde:** `sql/expreso_sugerido.sql` en `pagina-LK-copia` (ya aplicado), y en las dos páginas
+`_expSugKey` / `_expSugerido` / `_expSugPedir` en `script.js`. **Chequeo:** `expreso-galpon.cjs`
+(15), casos G y H.
+
 ⚠⚠ **Descartado, medido, para no rehacerlo:** deducir el expreso por **(galpón, destino)** de la
 historia de LK —505 pares únicos— resuelve **143 de 328 (44 %)** en Chef con 87 ambiguos. No
 alcanza, y lo que falla manda el camión al galpón que no es.

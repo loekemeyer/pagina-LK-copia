@@ -64,7 +64,21 @@ const PADRON = [
       from: (t) => (t === "expresos"
         ? { select: () => ({ order: () => Promise.resolve({ data: padron, error: null }) }) }
         : q),
-      rpc: () => Promise.resolve({ data: { ok: true }, error: null }),
+      rpc: (fn, args) => {
+        // La RPC de LK: para Pergamino 3751 contesta SOLO si va el CUIT del
+        // cliente — ese galpón tiene 44 expresos y sin el CUIT no se decide.
+        if (fn === "expreso_sugerido") {
+          const dir = String((args && args.p_dirs && args.p_dirs[0]) || "");
+          if (window.__sugOn && /villarino/i.test(dir)) {
+            return Promise.resolve({
+              data: [{ dir: dir, expreso: "BRINATI", fuente: "cliente", apoyo: 1 }],
+              error: null,
+            });
+          }
+          return Promise.resolve({ data: [], error: null });
+        }
+        return Promise.resolve({ data: { ok: true }, error: null });
+      },
       auth: { getSession: () => Promise.resolve({ data: { session: null } }), onAuthStateChange: () => {} },
     };
     window.supabase = { createClient: () => cli };
@@ -154,6 +168,30 @@ const PADRON = [
   const f = await pintar("Av. Rivadavia 5000", "Caballito", "CABA");
   ok(!f.visible, "F: le dibujó la línea del expreso a un cliente de CABA. box=" + JSON.stringify(f.txt));
 
+  // G. lo que contesta la RPC de LK le gana al padrón local, y la nota dice de
+  //    dónde sale. `fuente: "cliente"` es el caso fuerte: no es una deducción
+  //    del galpón sino el expreso que ESE cliente ya usa ahí — la única vía que
+  //    desambigua un galpón compartido (con el CUIT, Pergamino 3751 resuelve a
+  //    Brinati; sin él, nada). Galpón nuevo a propósito: con uno ya pintado, la
+  //    respuesta estaría cacheada.
+  await page.evaluate(() => { window.__sugOn = true; });
+  const g = await pintar("Villarino 2375", "Barracas");
+  ok(/BRINATI/i.test(g.txt),
+    "G: la respuesta de la RPC no le ganó al galpón. box=" + JSON.stringify(g.txt));
+  ok(/tus entregas a ese galpón/i.test(g.txt),
+    "G: no dice de dónde sale el nombre (es del cliente, no de la ficha). box=" +
+      JSON.stringify(g.txt));
+
+  // H. y el CUIT viaja en la llamada: la respuesta DEPENDE del cliente, así que
+  //    sin mandarlo la vía fuerte no existe y el caché tiene que distinguirlo.
+  const fs = require("fs");
+  const js = fs.readFileSync(path.join(raiz, "script.js"), "utf8");
+  ok(/p_cuit:\s*cuit\s*\|\|\s*null/.test(js),
+    "H: la llamada a expreso_sugerido no manda el CUIT del cliente");
+  ok(/function _expSugKey[\s\S]{0,400}customerProfile\?\.cuit/.test(js),
+    "H: la clave del caché no lleva el CUIT — un 'no sé' de antes de que cargue " +
+      "el perfil queda pegado y el cliente nunca ve su expreso");
+
   await browser.close();
 
   if (fallas.length) {
@@ -161,5 +199,5 @@ const PADRON = [
     fallas.forEach((f) => console.error("  · " + f));
     process.exit(1);
   }
-  console.log("expreso-galpon: OK (" + path.basename(raiz) + ") — 11 chequeos");
+  console.log("expreso-galpon: OK (" + path.basename(raiz) + ") — 15 chequeos");
 })().catch((e) => { console.error("expreso-galpon: ERROR", e); process.exit(1); });

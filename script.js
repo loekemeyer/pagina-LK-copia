@@ -6756,6 +6756,73 @@ function _expAplica(provincia, localidad) {
   return p !== "buenos aires";
 }
 
+/* ¿De qué expreso es este galpón? Lo contesta LK, que es donde está cargado.
+ *
+ * ⚠ Chef tiene 0 de 713 sucursales con `nombre_expreso` pero SÍ la dirección
+ *   del galpón; LK lo tiene cargado en 804 fichas. La RPC `expreso_sugerido`
+ *   (en el proyecto de LK) traslada ese conocimiento, en tres vías y en este
+ *   orden de confianza:
+ *     cliente → mismo CUIT y mismo galpón en LK: es SU expreso, no una
+ *               deducción. Es la única que desambigua un galpón compartido
+ *               (con el CUIT, Pergamino 3751 da Brinati; sin él, nada).
+ *     fichas  → ese galpón tiene un solo expreso en las fichas de LK
+ *     padron  → ese domicilio es de un solo expreso en `expresos`
+ *   Medido el 24/09 sobre las 328 sucursales del interior de Chef: 83 + 52 +
+ *   26 = 161 (49 %); antes el padrón solo resolvía 123. De 91 galpones
+ *   comparables por dos vías, 2 se contradicen.
+ *
+ * ⚠ NO vuelca nada: se le pasan las direcciones que se quieren saber.
+ * ⚠ Un error NO se cachea (§"una lectura ROTA no es un CERO"): sin esa
+ *   distinción, un fallo de red dejaría la sucursal muda toda la sesión.
+ */
+let _expSugCache = {};
+const _expSugPidiendo = {};
+
+/* ⚠ La clave lleva el CUIT, no sólo el galpón. La respuesta DEPENDE del
+   cliente —con su CUIT, Pergamino 3751 resuelve; sin él, no—, así que
+   cachear por galpón deja pegado el "no sé" de antes de que cargue el perfil,
+   y el cliente nunca ve su expreso. Lo cazó el chequeo G del test. */
+function _expSugKey(dirEntrega) {
+  const g = _expClaveDir(dirEntrega);
+  if (!g) return "";
+  return String(customerProfile?.cuit || "").replace(/\D/g, "") + "|" + g;
+}
+
+function _expSugerido(dirEntrega) {
+  const k = _expSugKey(dirEntrega);
+  return k && Object.prototype.hasOwnProperty.call(_expSugCache, k) ? _expSugCache[k] : undefined;
+}
+
+function _expSugPedir(dirEntrega, cuando) {
+  const k = _expSugKey(dirEntrega);
+  if (!k || _expSugPidiendo[k]) return;
+  if (Object.prototype.hasOwnProperty.call(_expSugCache, k)) return;
+  _expSugPidiendo[k] = true;
+  // La RPC vive en LOEKEMEYER: es ahí donde está cargado el expreso.
+  const cli =
+    typeof supabaseLoekemeyer !== "undefined" && supabaseLoekemeyer
+      ? supabaseLoekemeyer
+      : supabaseClient;
+  const cuit = String(customerProfile?.cuit || "").replace(/\D/g, "");
+  cli
+    .rpc("expreso_sugerido", { p_cuit: cuit || null, p_dirs: [String(dirEntrega || "")] })
+    .then(({ data, error }) => {
+      if (error) throw error;
+      const row = (data || [])[0];
+      _expSugCache[k] = row && row.expreso
+        ? { expreso: row.expreso, fuente: row.fuente }
+        : null;
+    })
+    .catch((e) => {
+      console.warn("expreso_sugerido:", e);
+      // sin cachear: se reintenta en el próximo render
+    })
+    .finally(() => {
+      delete _expSugPidiendo[k];
+      if (typeof cuando === "function") cuando();
+    });
+}
+
 /* Dibuja la línea del expreso debajo del selector de sucursal. Corre en cada
    cambio de sucursal y después de guardar. */
 function _expSyncUI() {
@@ -6800,6 +6867,14 @@ function _expSyncUI() {
   // galpón está en `direccion_entrega` y su barrio en `zona_expreso`.
   const gal = _expDesdeGalpon(d.direccionEntrega);
 
+  // Lo que LK sabe de ese galpón. `undefined` = todavía no se preguntó.
+  const sug = nombre ? null : _expSugerido(d.direccionEntrega);
+  if (sug === undefined) {
+    _expSugPedir(d.direccionEntrega, () => {
+      try { _expSyncUI(); } catch (_) {}
+    });
+  }
+
   /* ⚠ Si la dirección de entrega ES un galpón del padrón, ese pedido va por
      expreso — sin importar lo que diga la provincia. Medido el 24/09: 34
      sucursales de LK tienen el galpón cargado y la línea escondida porque
@@ -6807,7 +6882,8 @@ function _expSyncUI() {
      María, Esquel). Caso testigo: Altuna (cod 4), `Pergamino 3751` con
      provincia CABA — ahí operan 44 expresos, o sea que de CABA no tiene nada.
      Preguntar por la provincia antes que por la dirección escondía el dato. */
-  const aplica = !!nombre || gal.cands.length > 0 || _expAplica(d.provincia, d.localidad);
+  const aplica =
+    !!nombre || !!sug || gal.cands.length > 0 || _expAplica(d.provincia, d.localidad);
   if (!aplica) {
     box.hidden = true;
     return;
@@ -6827,17 +6903,28 @@ function _expSyncUI() {
   } else {
     const galTxt = [gal.dir, zona].filter(Boolean).join(", ");
 
-    if (gal.cands.length === 1) {
-      // Un solo expreso en ese galpón: el nombre es una deducción de dos datos
-      // nuestros, no una suposición. La dirección va debajo, que es el dato
+    // Primero lo que LK sabe (incluye la vía del CUIT, la única que desambigua
+    // un galpón compartido); si no contestó, el padrón que ya está en memoria.
+    const deduc = sug
+      ? { nombre: sug.expreso, fuente: sug.fuente }
+      : gal.cands.length === 1
+        ? { nombre: gal.cands[0].razon_social || "", fuente: "padron" }
+        : null;
+
+    if (deduc && deduc.nombre) {
+      // No es una suposición: o es el expreso de ESTE cliente para ese galpón,
+      // o ese galpón tiene uno solo. La dirección va debajo, que es el dato
       // autoritativo, para que un nombre equivocado se vea y se corrija.
       html =
         '<span class="exp-ico">🚚</span>' +
         '<span class="exp-txt"><span class="exp-k">Expreso</span>' +
-        '<span class="exp-v">' + escapeHtml(gal.cands[0].razon_social || "") + "</span>" +
+        '<span class="exp-v">' + escapeHtml(deduc.nombre) + "</span>" +
         (galTxt ? '<span class="exp-dir">' + escapeHtml(galTxt) + "</span>" : "") +
-        '<span class="exp-nota">según la dirección de entrega de tu ficha</span>' +
-        "</span>" +
+        '<span class="exp-nota">' +
+        (deduc.fuente === "cliente"
+          ? "según tus entregas a ese galpón"
+          : "según la dirección de entrega de tu ficha") +
+        "</span></span>" +
         '<button type="button" class="exp-btn" onclick="abrirModalExpreso()">Cambiar</button>';
     } else if (_expEsGalpon(gal.dir, zona, gal.cands)) {
       // ⚠ SIN BAJADA Y SIN BOTÓN (Tomás, 24/09). El galpón ES el dato: al
