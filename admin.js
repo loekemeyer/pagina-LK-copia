@@ -2856,6 +2856,8 @@ document.addEventListener("click", function (e) {
 document
   .getElementById("trackingUploadBtn")
   .addEventListener("click", async function () {
+    // 25/09 (Luis): desactivada. order_tracking la alimenta Gestión (y la RLS ya no deja escribir).
+    toast("La carga manual de la PPP está desactivada: el tracking de pedidos lo alimenta Gestión Virgilio automáticamente (GestOpClientes sql/069 y 071)."); return;
     if (!trackingData.length) return;
     this.disabled = true;
     showLoader("Subiendo tracking a Supabase...");
@@ -3031,6 +3033,8 @@ document
 document
   .getElementById("trackingDeleteAllBtn")
   .addEventListener("click", async function () {
+    // 25/09 (Luis): desactivada, mismo motivo que la carga.
+    toast("La carga manual de la PPP está desactivada: el tracking de pedidos lo alimenta Gestión Virgilio automáticamente (GestOpClientes sql/069 y 071)."); return;
     if (
       !confirm(
         "¿Eliminar TODAS las filas de order_tracking? Los clientes dejarán de ver el estado de sus pedidos hasta que subas una PPP nueva.",
