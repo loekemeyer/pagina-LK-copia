@@ -49,3 +49,47 @@ on conflict do nothing;
 --    group by 1,2,3,4 order by 4;
 --
 -- Rollback: recrear las 6 funciones desde zz_backups."LK_Backup_funcdef_proy_interco_20260925".def
+
+-- ============================================================================
+-- 25/09/2026 (Luis) — segunda etapa: REGLA L + parámetros configurables.
+-- ============================================================================
+-- cliente_isis_cache: copia local de gv_cliente_isis_calc (1,25 s por lectura); la llena
+-- sync_cliente_isis_virgilio() antes de empujar a Virgilio.
+--   (empresa, cod, isis_empresa, cod_isis, razon_social, cuit, motivo, actualizado_at)
+--
+-- ventas_proy_lineas: la ÚNICA fuente de ventas de proyección. Saca intercompañía
+-- (ventas_clientes_internos), pela ceros y la L final (nitem) y reasigna a LK la venta de Chef con
+-- código terminado en L a Cencosud (precios_super.cadena con usa_productos_chef=false) o a un
+-- cliente de Tierra del Fuego (cliente_isis_cache isis_empresa='chef'). El resto de Chef queda en
+-- Chef con el código base (437EL de Dorinka -> 437E de Chef).
+create or replace view public.ventas_proy_lineas as
+with cli_art_lk as (
+  select c.cod_cliente_chef::text as cod from precios_super.cadena c
+   where c.empresa='chef' and not coalesce(c.usa_productos_chef,false) and c.cod_cliente_chef is not null
+  union select i.cod_isis::text from public.cliente_isis_cache i where i.isis_empresa='chef' and i.cod_isis is not null)
+select sl.invoice_date, sl.customer_code, sl.item_code, sl.empresa as empresa_venta,
+  case when sl.empresa='chef' and upper(btrim(sl.item_code)) ~ '[0-9E]L$' and sl.customer_code::text in (select cod from cli_art_lk)
+       then 'lk' else sl.empresa end as empresa,
+  regexp_replace(regexp_replace(upper(btrim(sl.item_code)),'^0+(?=.)',''),'([0-9E])L$','\1') as nitem, sl.boxes
+from public.sales_lines sl where sl.empresa in ('lk','chef') and sl.customer_code is not null
+  and not exists (select 1 from public.ventas_clientes_internos vi where vi.empresa=sl.empresa and vi.cod_cliente=sl.customer_code::text);
+
+-- proy_cfg: parámetro de la proyección, leído de Gestión (Stock_Config por v_lk_config). Fail-open al default.
+CREATE OR REPLACE FUNCTION public.proy_cfg(p_clave text, p_default numeric)
+ RETURNS numeric LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+declare v numeric;
+begin
+  begin
+    select nullif(btrim(c.valor), '')::numeric into v from virgilio.v_lk_config c where c.clave = p_clave;
+  exception when others then v := null;
+  end;
+  return coalesce(v, p_default);
+end $function$;
+revoke execute on function public.proy_cfg(text,numeric) from public, anon, authenticated;
+
+-- Motor: _fn_proy_window, _fn_proy_window_split, fn_ventas_6m_avg y fn_ventas_mensuales_virgilio
+-- leen ventas_proy_lineas (sl.nitem). El piso (4.º mejor mes) y la ventana (6) salen de
+-- proy_cfg('proy_piso_mejor_mes') / proy_cfg('proy_meses_ventana'); fn_proyeccion_oc_virgilio usa
+-- además proy_meses_fallback (12). Efecto medido: 10.359 cajas (mar-sep) de Chef pasan a LK.
+-- Backups: zz_backups."LK_Backup_funcdef_proy_interco_20260925", zz_backups."LK_Proy_Antes_Regla_L_20260925".
