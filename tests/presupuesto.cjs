@@ -169,11 +169,24 @@ if (saludos.length !== 3) {
 //     en una operación que todavía no está cotizada no significa nada, y además
 //     es justo el único "$" que este modo no había tapado. No se pide y no se
 //     pinta; las dos cosas, porque el perfil puede llegar después del cache.
-const iDeuda = src.indexOf("async function cargarDeudaCliente(");
-if (iDeuda < 0 || !/isPresupuestoMode\(\)/.test(src.slice(iDeuda, iDeuda + 700))) {
-  mal("cargarDeudaCliente volvió a pedir get_mi_deuda en presupuesto");
+//     Desde el 25/09/2026 además está apagado para TODOS los clientes: la
+//     constante manda y las dos funciones la miran.
+if (!/const AVISO_DEUDA_ACTIVO = false;/.test(src)) {
+  mal("AVISO_DEUDA_ACTIVO ya no está en false: el aviso de deuda volvió");
 } else {
-  ok("cargarDeudaCliente no pide la deuda en presupuesto");
+  ok("AVISO_DEUDA_ACTIVO = false");
+}
+const iDeuda = src.indexOf("async function cargarDeudaCliente(");
+if (iDeuda < 0 || !/AVISO_DEUDA_ACTIVO/.test(src.slice(iDeuda, iDeuda + 700))) {
+  mal("cargarDeudaCliente volvió a pedir get_mi_deuda igual");
+} else {
+  ok("cargarDeudaCliente no pide la deuda");
+}
+const iRen = src.indexOf("function renderDeudaAviso(");
+if (iRen < 0 || !/AVISO_DEUDA_ACTIVO/.test(src.slice(iRen, iRen + 600))) {
+  mal("renderDeudaAviso dejó de mirar AVISO_DEUDA_ACTIVO");
+} else {
+  ok("renderDeudaAviso mira la constante");
 }
 
 // ── B. DE PANTALLA ─────────────────────────────────────────────────────────
@@ -289,6 +302,18 @@ catch (_e) {
         botonDeshabilitado: !!(document.getElementById("submitOrderBtn") || {}).disabled,
         saludo: nombreParaSaludo("Classic S.A (Ruc: 80013057-0)"),
         deudaVisible: visible(document.getElementById("deudaAviso")),
+        // Y lo mismo para un cliente COMÚN: se apaga la bandera de presupuesto,
+        // se vuelve a cargar una deuda y se repinta. No es lo mismo que el caso
+        // de arriba — ahí lo tapaba el modo presupuesto, acá no hay nada que lo
+        // tape salvo el apagado global.
+        deudaVisibleNormal: (() => {
+          customerProfile.modo_presupuesto = false;
+          _deudaCliente = { deuda: 999999, cargado_at: "2026-09-25" };
+          renderDeudaAviso();
+          const v = visible(document.getElementById("deudaAviso"));
+          customerProfile.modo_presupuesto = true;
+          return v;
+        })(),
       };
     });
     await browser.close();
@@ -336,7 +361,10 @@ catch (_e) {
     else ok("el saludo no muestra el RUC ('" + res.saludo + "')");
 
     if (res.deudaVisible) mal("el aviso de deuda se dibuja igual teniendo el dato cargado");
-    else ok("el aviso de deuda no se muestra");
+    else ok("el aviso de deuda no se muestra en presupuesto");
+
+    if (res.deudaVisibleNormal) mal("a un cliente COMÚN el aviso de deuda le sigue apareciendo");
+    else ok("el aviso de deuda tampoco se muestra a un cliente común");
   }
 
   console.log("");
