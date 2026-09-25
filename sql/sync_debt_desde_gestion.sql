@@ -10,7 +10,10 @@
 -- Deuda negativa (plata a favor) queda en 0, igual que el upload viejo.
 -- Si el feed viene vacio NO toca nada: un feed caido no es "nadie debe".
 -- Solo escribe las filas que cambian.
--- PENDIENTE DEL SI DE LUIS: no se corrio.
+-- APLICADO 25/09/2026 con el si de Luis: 236 clientes, 0 diferencias.
+-- Backup previo: zz_backups.lk_customers_debt_20260925 (id, cod_cliente, debt).
+-- Rollback: select cron.unschedule('sync-debt-desde-gestion');
+--   update customers c set debt = b.debt from zz_backups.lk_customers_debt_20260925 b where b.id = c.id;
 -- =============================================================================
 create or replace function public.sync_debt_desde_gestion()
 returns integer
