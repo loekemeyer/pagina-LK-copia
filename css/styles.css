@@ -16593,3 +16593,17 @@ body { top: 0 !important; }
   font-size: 0.92rem;
   line-height: 1.35;
 }
+
+/* Entrega: el cliente de exportación no elige sucursal. Lo que manda es un
+   presupuesto a cotizar; el despacho lo define administración después. Se
+   esconde la tarjeta ENTERA porque el selector, el hint, la línea del expreso
+   y el bloque de Retira cuelgan todos de ella.
+   ⚠ Y Observaciones tiene que poder crecer: `.ship-row-split > .ship-card`
+   lleva `max-width: 382px`, así que sin esto queda sola a media fila con el
+   resto en blanco. */
+.is-presupuesto #shipCardEntrega {
+  display: none !important;
+}
+.is-presupuesto .ship-row-split > .ship-card {
+  max-width: none;
+}
