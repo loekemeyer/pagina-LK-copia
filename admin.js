@@ -16759,6 +16759,8 @@ async function pscSubmit() {
 var _fcWired = false;
 var _fcData = null; // ultima ficha cargada (JSON de get_ficha_cliente)
 var _fcAcuerdo = null; // JSON de get_acuerdo_cliente (acuerdo y dto maximo)
+var _fcIsis = null; // JSON de get_ficha_isis (FC ISIS, mayor compra, deuda del ERP)
+var _fcIsisError = null;
 var _fcMesesExpandido = false; // false = 6 meses, true = 12
 var _fcBuscarTimer = null;
 var FC_MESES_DEFAULT = 6;
@@ -16890,12 +16892,18 @@ async function cargarFichaCliente(cod) {
     var par = await Promise.all([
       sb.rpc("get_ficha_cliente", { p_cod: String(cod) }),
       sb.rpc("get_acuerdo_cliente", { p_cod: String(cod) }),
+      // FC real de ISIS (facturas - NC, con IVA) y la deuda del MISMO Excel que
+      // Cuarentena. Va aparte porque cruza a Gestion Virgilio por FDW.
+      sb.rpc("get_ficha_isis", { p_cod: String(cod) }),
     ]);
     var r = par[0];
     if (r.error) throw r.error;
     _fcData = r.data;
     // Si falla el acuerdo la ficha se muestra igual: es un dato de apoyo.
     _fcAcuerdo = par[1] && !par[1].error ? par[1].data : null;
+    // Una lectura rota NO es un cero: sin ISIS, la hoja lo dice en vez de "$ 0".
+    _fcIsis = par[2] && !par[2].error ? par[2].data : null;
+    _fcIsisError = par[2] && par[2].error ? par[2].error.message || "error" : null;
     _fcMesesExpandido = false;
     if (status) status.textContent = "";
     fcRender();
@@ -16937,40 +16945,153 @@ function fcRender() {
     "Descargar Excel</button>" +
     "</div>";
 
-  // ---- Grilla de datos ----
-  // El tercer argumento marca el valor como copiable con un clic. Hoy lo usa
-  // solo el CUIT: ver el modulo del final del archivo.
-  function dato(lbl, val, copiable, ancho) {
-    var vacio = val === "" || val == null;
+  // ---- HOJA DEL CLIENTE (formato planilla) ----
+  // Luis, 25/09/2026: la ficha tiene que tener la data y la visual de la planilla
+  // de cliente (bloques con recuadro, rotulo arriba o a la izquierda, dato al
+  // lado). De donde sale cada dato:
+  //   FC / Mayor compra / Cant. facturas / 1a compra -> get_ficha_isis (facturas
+  //     - NC con IVA de ISIS: es la cifra de la planilla, verificado con Messina).
+  //   Deuda -> el Excel del ERP que usa Cuarentena (gv_deuda_feed), con su fecha.
+  //   Acuerdo cliente / tomado / +-Rent -> get_acuerdo_cliente.
+  // Lo que la base no tiene (tipo de cliente, ultimos pagos, dto x plazo, dias al
+  // cheque) se muestra con "—" y el rotulo en gris: el hueco se ve, no se inventa.
+  var isis = _fcIsis || {};
+  var isisAnios = Array.isArray(isis.anios) ? isis.anios : [];
+  var porAnio = {};
+  isisAnios.forEach(function (y) {
+    porAnio[String(y.anio)] = y;
+  });
+  var anioHoy = new Date().getFullYear();
+  var sinIsis = !_fcIsis;
+  function fcPlata(v) {
+    if (sinIsis) return '<span class="fc-h-sd" title="No se pudo leer ISIS">s/d</span>';
+    return v == null || Number(v) === 0 ? "—" : "$ " + formatMoney(v);
+  }
+  function fcFaltaDato(txt) {
+    return '<span class="fc-h-sd" title="' + escapeHtml(txt) + '">—</span>';
+  }
+  function yv(anio, campo) {
+    var y = porAnio[String(anio)];
+    return y ? y[campo] : null;
+  }
+  var dirsH = Array.isArray(f.direcciones) ? f.direcciones : [];
+  var locEntrega = [];
+  dirsH.forEach(function (a) {
+    var l = String(a.localidad || "").trim();
+    if (l && locEntrega.indexOf(l) < 0) locEntrega.push(l);
+  });
+  // customers.localidad viene vacia en casi todo el padron: cae a la 1a sucursal.
+  var locPtoVenta = d.localidad || locEntrega[0] || "";
+  var dtoVolPct = d.dto_vol != null ? Math.round(Number(d.dto_vol) * 100) + "%" : "—";
+  var chefCodsH = Array.isArray(d.chef_cods) ? d.chef_cods : [];
+  var deudaTxt;
+  if (sinIsis) deudaTxt = '<span class="fc-h-sd" title="No se pudo leer el Excel de deuda">s/d</span>';
+  else if (isis.deuda == null) deudaTxt = "$ 0";
+  else deudaTxt = "$ " + formatMoney(isis.deuda);
+  var deudaLbl = "Deuda";
+  if (isis.deuda_at) {
+    var dd = new Date(isis.deuda_at);
+    deudaLbl +=
+      '<span class="fc-h-sub">Excel ERP ' +
+      String(dd.getDate()).padStart(2, "0") + "/" +
+      String(dd.getMonth() + 1).padStart(2, "0") + "</span>";
+  }
+  var prim = isis.primera_compra ? String(isis.primera_compra).slice(0, 4) : "";
+
+  function fila(l1, v1, l2, v2, cls1, cls2) {
     return (
-      '<div class="fc-dato' +
-      (ancho ? " fc-dato--ancho" : "") +
-      '"><span class="fc-dato-lbl">' +
-      escapeHtml(lbl) +
-      '</span><span class="fc-dato-val"' +
-      (copiable && !vacio ? ' data-copiable="' + escapeHtml(val) + '"' : "") +
-      ">" +
-      (vacio ? "—" : escapeHtml(val)) +
-      "</span></div>"
+      "<tr><th>" + l1 + '</th><td class="' + (cls1 || "fc-h-num") + '">' + v1 +
+      "</td><th>" + l2 + '</th><td class="' + (cls2 || "fc-h-txt") + '">' + v2 +
+      "</td></tr>"
     );
   }
-  var dtoPct =
-    d.dto_vol != null ? (Number(d.dto_vol) * 100).toFixed(1) + "%" : "—";
+
+  html += '<div class="fc-hoja-wrap"><div class="fc-hoja">';
+  html += '<table class="fc-h-tabla">';
+  // Bloque 1: identidad
   html +=
-    '<div class="fc-card"><div class="fc-card-tit">Datos</div>' +
-    '<div class="fc-datos-grid">' +
-    dato("CUIT", d.cuit, true) +
-    dato("Localidad", d.localidad) +
-    dato("Vendedor", d.vendedor || d.vend) +
-    dato("Dto. volumen", dtoPct) +
-    dato("Cond. pago", d.payment_term) +
-    dato("Deuda", d.debt != null ? "$ " + formatMoney(d.debt) : "—") +
-    dato(
-      "Límite crédito",
+    '<tbody class="fc-h-bloque">' +
+    '<tr class="fc-h-cab"><th>Cod<br>Cliente</th><th>Empresa</th><th colspan="2">Razón Social</th></tr>' +
+    '<tr class="fc-h-id"><td class="fc-h-cod">' +
+    escapeHtml(d.cod_cliente != null ? d.cod_cliente : f.cod) +
+    '</td><td class="fc-h-emp">LK' +
+    (chefCodsH.length ? '<span class="fc-h-sub">CH ' + escapeHtml(chefCodsH.join(", ")) + "</span>" : "") +
+    '</td><td colspan="2" class="fc-h-rs">' +
+    escapeHtml(d.business_name || "(sin razón social)") +
+    "</td></tr></tbody>";
+  // Bloque 2: facturacion de los ultimos 3 anios + condiciones
+  html +=
+    '<tbody class="fc-h-bloque">' +
+    fila("FC " + (anioHoy - 2), fcPlata(yv(anioHoy - 2, "fc")), "Plazo de Pago",
+      d.payment_term != null ? escapeHtml(d.payment_term) : "—", null, "fc-h-cen") +
+    fila("FC " + (anioHoy - 1), fcPlata(yv(anioHoy - 1, "fc")), "Dto x Volumen", dtoVolPct, null, "fc-h-cen") +
+    fila("FC " + anioHoy, fcPlata(yv(anioHoy, "fc")), "Dto x Plazo",
+      fcFaltaDato("Dato de la planilla: no está en la base"), null, "fc-h-cen") +
+    "</tbody>";
+  // Bloque 3: mayor compra, limite, deuda
+  html +=
+    '<tbody class="fc-h-bloque">' +
+    fila("Mayor Compra " + (anioHoy - 1), fcPlata(yv(anioHoy - 1, "mayor")),
+      "Cant. Facturas " + (anioHoy - 1),
+      sinIsis ? "s/d" : Number(yv(anioHoy - 1, "n_fact") || 0), null, "fc-h-cen") +
+    fila("Mayor Compra " + anioHoy, fcPlata(yv(anioHoy, "mayor")),
+      "Cant. Facturas " + anioHoy,
+      sinIsis ? "s/d" : Number(yv(anioHoy, "n_fact") || 0), null, "fc-h-cen") +
+    fila("Límite de Crédito",
       d.credit_limit != null ? "$ " + formatMoney(d.credit_limit) : "—",
-    ) +
-    dato("Mail", d.mail, false, true) +
-    dato("WhatsApp", d.whatsapp) +
+      "Localidad pto Venta", locPtoVenta ? escapeHtml(locPtoVenta) : "—") +
+    fila(deudaLbl, deudaTxt, "CUIT",
+      d.cuit ? '<span data-copiable="' + escapeHtml(d.cuit) + '">' + escapeHtml(d.cuit) + "</span>" : "—") +
+    "</tbody>";
+  // Bloque 4: vendedor / entrega
+  html +=
+    '<tbody class="fc-h-bloque">' +
+    fila("Vendedor", escapeHtml(d.vendedor || d.vend || "—"),
+      "Localidad Entrega<span class=\"fc-h-sub\">(nosotros)</span>",
+      locEntrega.length ? escapeHtml(locEntrega.join(" · ")) : "—", "fc-h-cen") +
+    "</tbody>";
+  // Bloque 5: historial de pago / antiguedad / contacto
+  html +=
+    '<tbody class="fc-h-bloque">' +
+    fila("Tipo de Cliente", fcFaltaDato("Dato de la planilla: no está en la base"),
+      "Anteúltimo Pago", fcFaltaDato("Dato de la planilla: no está en la base"), "fc-h-cen", "fc-h-cen") +
+    fila("Último Pago", fcFaltaDato("Dato de la planilla: no está en la base"),
+      "Antepenúltimo Pago", fcFaltaDato("Dato de la planilla: no está en la base"), "fc-h-cen", "fc-h-cen") +
+    fila("Año 1° Compra",
+      prim ? escapeHtml(prim) + (prim === "2019" ? '<span class="fc-h-sub">ISIS desde 08/19</span>' : "") : "—",
+      "Mail", d.mail ? escapeHtml(d.mail) : "—", "fc-h-cen") +
+    fila("WhatsApp", d.whatsapp ? escapeHtml(d.whatsapp) : "—", "", "", "fc-h-cen") +
+    "</tbody></table>";
+
+  // Panel derecho: acuerdo
+  var acH = _fcAcuerdo;
+  var indiceTom = acH && acH.parametros ? Number(acH.parametros.indice_lista) / 100 : null;
+  var factorCli = acH ? Number(acH.factor) : null;
+  var rent = indiceTom && factorCli ? (indiceTom / factorCli - 1) * 100 : null;
+  html +=
+    '<table class="fc-h-tabla fc-h-acu">' +
+    '<tbody class="fc-h-bloque">' +
+    '<tr><th>Acuerdo<br>Cliente</th><td class="fc-h-big">' +
+    (factorCli ? factorCli.toFixed(2).replace(".", ",") : "—") + "</td></tr>" +
+    '<tr><th>Acuerdo<br>Tomado</th><td class="fc-h-big">' +
+    (indiceTom ? indiceTom.toFixed(2).replace(".", ",") : "—") + "</td></tr>" +
+    '<tr><th>+-Rent</th><td class="fc-h-big ' +
+    (rent == null ? "" : rent < 0 ? "fc-acu-rojo" : "fc-acu-verde") + '">' +
+    (rent == null ? "—" : (rent > 0 ? "+" : "") + Math.round(rent) + "%") + "</td></tr>" +
+    "</tbody>" +
+    '<tbody class="fc-h-bloque">' +
+    "<tr><th>Dto pago<br>a ofrecer</th><td class=\"fc-h-cen\">" +
+    (acH ? Number(acH.dto_pago_hoy).toFixed(0) + "%" : "—") + "</td></tr>" +
+    "<tr><th>Plazo<br>Pago</th><td class=\"fc-h-cen\">" +
+    fcFaltaDato("Dato de la planilla: no está en la base") + "</td></tr>" +
+    "<tr><th>Días al<br>Cheque</th><td class=\"fc-h-cen\">" +
+    fcFaltaDato("Dato de la planilla: no está en la base") + "</td></tr>" +
+    "</tbody></table>";
+  html += "</div>";
+  html +=
+    '<div class="fc-h-pie">FC = facturas − notas de crédito, con IVA (ISIS). ' +
+    "Acuerdo cliente = índice de lista ÷ lo que queda después de dto, pago, cotizador, flete y comisión." +
+    (_fcIsisError ? ' <span class="fc-acu-rojo">No se pudo leer ISIS: ' + escapeHtml(_fcIsisError) + "</span>" : "") +
     "</div></div>";
 
   // ---- Acuerdo (que margen deja este cliente y cuanto dto admite) ----
@@ -16983,19 +17104,7 @@ function fcRender() {
     var enRojo = Number(ac.acuerdo) < 0;
     var margen = Number(ac.margen_dto);
     html +=
-      '<div class="fc-card"><div class="fc-card-tit">Acuerdo</div>' +
-      '<div class="fc-acu-fila">' +
-      '<div class="fc-acu-box"><span class="fc-acu-lbl">Recibo</span>' +
-      '<span class="fc-acu-val ' + (enRojo ? "fc-acu-rojo" : "fc-acu-verde") + '">' +
-      Number(ac.recibo).toFixed(2) + "</span></div>" +
-      '<div class="fc-acu-box"><span class="fc-acu-lbl">Acuerdo</span>' +
-      '<span class="fc-acu-val ' + (enRojo ? "fc-acu-rojo" : "fc-acu-verde") + '">' +
-      (Number(ac.acuerdo) > 0 ? "+" : "") + Number(ac.acuerdo).toFixed(2) + "</span></div>" +
-      '<div class="fc-acu-box"><span class="fc-acu-lbl">Factor</span>' +
-      '<span class="fc-acu-val">' + Number(ac.factor).toFixed(3) + "</span></div>" +
-      '<div class="fc-acu-box"><span class="fc-acu-lbl">Dto. máximo</span>' +
-      '<span class="fc-acu-val">' + Number(ac.dto_max).toFixed(0) + "%</span></div>" +
-      "</div>" +
+      '<div class="fc-card"><div class="fc-card-tit">Acuerdo — detalle</div>' +
       '<div class="fc-acu-nota">' +
       "Hoy tiene <strong>" + Number(ac.dto_vol).toFixed(2) + "%</strong> de dto. y paga <strong>" +
       Number(ac.comision).toFixed(2) + "%</strong> de comisión" +
@@ -17058,33 +17167,37 @@ function fcRender() {
   }
 
   // ---- Facturación por año ----
+  // La plata es la de ISIS (facturas - NC, con IVA): la misma de la planilla.
+  // Las cajas siguen saliendo de sales_lines, que es donde estan por articulo.
+  // Antes esta tabla valorizaba las cajas a lista de HOY y daba otro numero que
+  // la hoja de arriba (Messina 2025: 36,2 M contra 30,0 M facturados).
   var fact = Array.isArray(f.facturacion_anio) ? f.facturacion_anio : [];
-  if (fact.length) {
+  var cajasAnio = {};
+  fact.forEach(function (y) { cajasAnio[String(y.anio)] = Number(y.cajas) || 0; });
+  var aniosF = {};
+  fact.forEach(function (y) { aniosF[String(y.anio)] = 1; });
+  isisAnios.forEach(function (y) { aniosF[String(y.anio)] = 1; });
+  var listaAnios = Object.keys(aniosF).sort().reverse().filter(function (a) {
+    var y = porAnio[a];
+    return (y && (Number(y.fc) || Number(y.n_fact))) || cajasAnio[a];
+  });
+  if (listaAnios.length) {
     html +=
-      '<div class="fc-card"><div class="fc-card-tit">Facturación por año (neto)</div>' +
-      '<div class="fc-tabla-wrap"><table class="fc-tabla fc-tabla--ajustada"><thead><tr>' +
-      "<th>Año</th>" +
-      '<th class="fc-num">LK</th><th class="fc-num">Chef</th>' +
-      '<th class="fc-num">Total</th><th class="fc-num">Compras</th>' +
-      '<th class="fc-num">Cajas</th>' +
+      '<div class="fc-card"><div class="fc-card-tit">Facturación por año</div>' +
+      '<div class="fc-tabla-wrap"><table class="fc-tabla"><thead><tr>' +
+      "<th>Año</th><th>FC LK</th><th>FC Chef</th><th>FC Total</th>" +
+      "<th>Facturas</th><th>Mayor<br>compra</th><th>Cajas</th>" +
       "</tr></thead><tbody>";
-    fact.forEach(function (y) {
-      var vacio = Number(y.total) === 0 && Number(y.cajas) === 0;
+    listaAnios.forEach(function (a) {
+      var y = porAnio[a] || {};
       html +=
-        '<tr class="' +
-        (vacio ? "fc-row-vacia" : "") +
-        '"><td>' +
-        escapeHtml(y.anio) +
-        '</td><td class="fc-num">' +
-        (Number(y.lk) ? "$ " + formatMoney(y.lk) : "—") +
-        '</td><td class="fc-num">' +
-        (Number(y.chef) ? "$ " + formatMoney(y.chef) : "—") +
-        '</td><td class="fc-num"><strong>' +
-        (Number(y.total) ? "$ " + formatMoney(y.total) : "—") +
-        '</strong></td><td class="fc-num">' +
-        (Number(y.compras) || 0) +
-        '</td><td class="fc-num">' +
-        (Number(y.cajas) || 0) +
+        '<tr><td class="fc-cen">' + escapeHtml(a) +
+        '</td><td class="fc-num">' + fcPlata(y.fc_lk) +
+        '</td><td class="fc-num">' + fcPlata(y.fc_ch) +
+        '</td><td class="fc-num"><strong>' + fcPlata(y.fc) +
+        '</strong></td><td class="fc-num">' + (sinIsis ? "s/d" : Number(y.n_fact || 0)) +
+        '</td><td class="fc-num">' + fcPlata(y.mayor) +
+        '</td><td class="fc-num">' + (cajasAnio[a] || 0).toLocaleString("es-AR") +
         "</td></tr>";
     });
     html += "</tbody></table></div></div>";
@@ -17418,7 +17531,8 @@ async function fcDescargarExcel() {
       ["Dto. volumen", dtoVol],
       ["Dto. pedido web", wd],
       ["Cond. pago", d.payment_term != null ? d.payment_term : ""],
-      ["Deuda", d.debt != null ? Number(d.debt) : ""],
+      // Misma deuda que la hoja en pantalla y que Cuarentena (Excel del ERP).
+      ["Deuda (Excel ERP)", _fcIsis && _fcIsis.deuda != null ? Number(_fcIsis.deuda) : _fcIsis ? 0 : ""],
       ["Límite crédito", d.credit_limit != null ? Number(d.credit_limit) : ""],
       ["Mail", d.mail || ""],
       ["WhatsApp", d.whatsapp || ""],
