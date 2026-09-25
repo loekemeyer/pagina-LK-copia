@@ -1535,11 +1535,6 @@ let products = []; // productos cargados
 let currentSession = null; // sesión supabase
 let isAdmin = false; // admin flag
 let customerProfile = null; // {id, business_name, dto_vol, ...}
-// Aviso de deuda: APAGADO para TODOS los clientes (pedido de Gastón,
-// 25/09/2026). No se borró el código —la RPC, el render y los estilos siguen
-// ahí— porque volver a prenderlo es cambiar esta sola constante a true.
-// ⚠ Al tocarlo, mirar también el otro repo: es el mismo módulo.
-const AVISO_DEUDA_ACTIVO = false;
 let _deudaCliente = null; // {deuda, cargado_at} de get_mi_deuda() — cache 1x por sesión (idea 6064)
 // Luis, 25/09/2026: la página NO muestra deuda al cliente. El aviso queda apagado
 // (y no se pide get_mi_deuda); para volverlo a prender, poner true.
@@ -8862,8 +8857,6 @@ async function cargarDeudaCliente() {
   // ignora en silencio (el pedido no se traba nunca por esto).
   try {
     if (!currentSession) { _deudaCliente = null; return; }
-    // Apagado global: ni se pide, así que el monto no baja al navegador.
-    if (!AVISO_DEUDA_ACTIVO) { _deudaCliente = null; return; }
     // Modo presupuesto: el cliente de exportación no ve un solo monto en pesos,
     // y una deuda argentina no significa nada en una operación que todavía no
     // está cotizada. Ni se pide: así el dato no baja al navegador.
@@ -8894,7 +8887,6 @@ function renderDeudaAviso() {
   // tarde, el cache pudo cargarse antes de saber que era un cliente de
   // exportación, y este render es el que garantiza que igual no se vea.
   if (
-    !AVISO_DEUDA_ACTIVO ||
     isPresupuestoMode() ||
     isAdmin ||
     isVendorProfile() ||
