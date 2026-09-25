@@ -2,6 +2,18 @@
 
 **Estado central:** `config-claude.json` — toggles y comandos que afectan CUALQUIER chat.
 
+## 🟥 PRINCIPIO RECTOR (Luis, 2026-09-25): mensajes a clientes — VASECTOMÍA, un solo corte en la salida
+
+*"Todo el sistema funciona, pero con el corte en el lugar indicado para que no contacte a nadie
+hasta que arranquemos a usarlo. No quiero apagar 20 cosas diferentes, prefiero cortes quirúrgicos."*
+
+Vale para cualquier cosa de esta página (o de su proyecto Supabase) que mande WhatsApp/avisos a
+clientes: **no se apagan crons, triggers ni funciones para evitar contactos**. El corte es la
+llave **`app_settings.wa_envio_automatico`** del proyecto LK (`0` nada · `prueba` sólo
+`wa_envio_contactos` = Thomy · `1` producción; sin fila = `0`). Todo aviso nuevo **encola en
+`wa_outbox`**; nunca un `fetch` directo a `graph.facebook.com`. Detalle y deuda: `CLAUDE.md` y
+`docs/DECISIONES.md` (D006/D007) de `loekemeyer/GestOpClientes`.
+
 ## Modos
 
 - **caveman (SIEMPRE activo)**: Cada conversación abre con caveman activo por defecto. Responder en modo caveman — frases cortas, directas, mínimas palabras, sin artículos, sin fluff. Solo aplica al **chat** (no al código, comentarios ni mensajes de commit). **"desactiva caveman"** = responder solo el **próximo mensaje** normal/completo, y después **volver solo** a caveman. **"caveman desactivacion total"** = apagar caveman por completo (queda desactivado hasta que se reactive).
