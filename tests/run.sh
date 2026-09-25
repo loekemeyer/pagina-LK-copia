@@ -37,6 +37,7 @@ _correr checkout-layout.cjs
 _correr presupuesto.cjs
 _correr perfil-sin-columna.cjs
 _correr carrito-animacion.cjs
+_correr ficha-hoja.cjs
 
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then

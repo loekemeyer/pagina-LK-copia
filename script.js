@@ -1541,6 +1541,9 @@ let customerProfile = null; // {id, business_name, dto_vol, ...}
 // ⚠ Al tocarlo, mirar también el otro repo: es el mismo módulo.
 const AVISO_DEUDA_ACTIVO = false;
 let _deudaCliente = null; // {deuda, cargado_at} de get_mi_deuda() — cache 1x por sesión (idea 6064)
+// Luis, 25/09/2026: la página NO muestra deuda al cliente. El aviso queda apagado
+// (y no se pide get_mi_deuda); para volverlo a prender, poner true.
+const MOSTRAR_DEUDA_CLIENTE = false;
 let _vendorOwnProfile = null; // snapshot del perfil del vendedor logueado (para volver desde "Pedir para")
 function isListPriceOnlyClient() {
   // Si el operador (admin) tiene un cliente REAL seleccionado, cotiza para ese
@@ -8854,6 +8857,7 @@ function updateCart() {
  * SÓLO un aviso antes de confirmar: no bloquea el pedido. Umbral $1.000.
  ***********************/
 async function cargarDeudaCliente() {
+  if (!MOSTRAR_DEUDA_CLIENTE) { _deudaCliente = null; return; }
   // Best-effort: si la RPC no existe, no hay sesión, o el FDW está caído, se
   // ignora en silencio (el pedido no se traba nunca por esto).
   try {
@@ -8881,6 +8885,7 @@ async function cargarDeudaCliente() {
 function renderDeudaAviso() {
   const el = $("deudaAviso");
   if (!el) return;
+  if (!MOSTRAR_DEUDA_CLIENTE) { el.hidden = true; el.innerHTML = ""; return; }
   const UMBRAL = 1000; // igual que Cuarentena en Gestión
   const d = _deudaCliente;
   // Los admins/vendedores cotizan para otros clientes: el dato de auth.uid() no
