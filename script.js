@@ -8853,6 +8853,10 @@ async function cargarDeudaCliente() {
   // ignora en silencio (el pedido no se traba nunca por esto).
   try {
     if (!currentSession) { _deudaCliente = null; return; }
+    // Modo presupuesto: el cliente de exportación no ve un solo monto en pesos,
+    // y una deuda argentina no significa nada en una operación que todavía no
+    // está cotizada. Ni se pide: así el dato no baja al navegador.
+    if (isPresupuestoMode()) { _deudaCliente = null; return; }
     const { data, error } = await supabaseClient.rpc("get_mi_deuda");
     if (error) { _deudaCliente = null; }
     else {
@@ -8874,7 +8878,16 @@ function renderDeudaAviso() {
   const d = _deudaCliente;
   // Los admins/vendedores cotizan para otros clientes: el dato de auth.uid() no
   // aplica, así que no se muestra en ese modo.
-  if (isAdmin || isVendorProfile() || !d || !(Number(d.deuda) > UMBRAL)) {
+  // isPresupuestoMode va PRIMERO y además de no pedirla: si el perfil llegó
+  // tarde, el cache pudo cargarse antes de saber que era un cliente de
+  // exportación, y este render es el que garantiza que igual no se vea.
+  if (
+    isPresupuestoMode() ||
+    isAdmin ||
+    isVendorProfile() ||
+    !d ||
+    !(Number(d.deuda) > UMBRAL)
+  ) {
     el.hidden = true;
     el.innerHTML = "";
     return;

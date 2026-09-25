@@ -165,6 +165,17 @@ if (saludos.length !== 3) {
   ok("los 3 saludos pasan por nombreParaSaludo");
 }
 
+// A9. El aviso de deuda. Es un monto EN PESOS de una cuenta corriente argentina:
+//     en una operación que todavía no está cotizada no significa nada, y además
+//     es justo el único "$" que este modo no había tapado. No se pide y no se
+//     pinta; las dos cosas, porque el perfil puede llegar después del cache.
+const iDeuda = src.indexOf("async function cargarDeudaCliente(");
+if (iDeuda < 0 || !/isPresupuestoMode\(\)/.test(src.slice(iDeuda, iDeuda + 700))) {
+  mal("cargarDeudaCliente volvió a pedir get_mi_deuda en presupuesto");
+} else {
+  ok("cargarDeudaCliente no pide la deuda en presupuesto");
+}
+
 // ── B. DE PANTALLA ─────────────────────────────────────────────────────────
 let chromium;
 try { ({ chromium } = require("/opt/node22/lib/node_modules/playwright")); }
@@ -233,6 +244,10 @@ catch (_e) {
       cart.length = 0;
       cart.push({ productId: "p1", qtyCajas: 1, source: "test" });
       deliveryChoice = { slot: "", label: "" };
+      // Deuda cargada A PROPÓSITO: lo que se mide no es que no haya dato, sino
+      // que teniéndolo igual no se dibuje.
+      _deudaCliente = { deuda: 1059854, cargado_at: "2026-09-25" };
+      renderDeudaAviso();
       updateCart();
 
       // El carrito arranca sin .active: sin esto NADA de adentro se renderiza y
@@ -273,6 +288,7 @@ catch (_e) {
         entregaVisible: visible(document.getElementById("shipCardEntrega")),
         botonDeshabilitado: !!(document.getElementById("submitOrderBtn") || {}).disabled,
         saludo: nombreParaSaludo("Classic S.A (Ruc: 80013057-0)"),
+        deudaVisible: visible(document.getElementById("deudaAviso")),
       };
     });
     await browser.close();
@@ -318,6 +334,9 @@ catch (_e) {
 
     if (/ruc/i.test(res.saludo) || /8001/.test(res.saludo)) mal("el saludo muestra el RUC: '" + res.saludo + "'");
     else ok("el saludo no muestra el RUC ('" + res.saludo + "')");
+
+    if (res.deudaVisible) mal("el aviso de deuda se dibuja igual teniendo el dato cargado");
+    else ok("el aviso de deuda no se muestra");
   }
 
   console.log("");
