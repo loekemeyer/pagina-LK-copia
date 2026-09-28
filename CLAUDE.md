@@ -2165,3 +2165,13 @@ y no necesita trust. Por eso el lugar donde el script tiene que correr es el set
 **Chequeo de que quedó bien**, en el repo: la 1ª corrida de arriba muestra el `Ignoring`, la 2ª
 ya no lo muestra (si el trust aguantó) y, con o sin trust, lee y edita **sin preguntar**.
 
+
+
+## ⚠ REGLA (Luis, 28/09/2026): las reglas de la base de Gestión Virgilio frenan a la sesión que las toca
+
+Hook `scripts/claude-reglas-guard.cjs` (PreToolUse de `execute_sql` / `apply_migration`): si el SQL va contra
+el proyecto de Gestión Virgilio (`hrxfctzncixxqmpfhskv`) y hace `CREATE OR REPLACE` / `DROP` / `ALTER` sobre un
+objeto con regla en `GV_Reglas_Centinela` (o toca el centinela), la llamada se FRENA con la regla y quién la pidió.
+Se le explica al usuario y se espera su "sí"; recién ahí se reintenta con `-- REGLA_CONFIRMADA_POR_USUARIO`.
+SQL contra LK o Chef no se mira. **Fuente canónica: `loekemeyer/gestion-virgilio`** — el hook y
+`scripts/reglas-protegidas.json` se copian de ahí; no editarlos acá.

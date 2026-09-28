@@ -9,6 +9,15 @@
             "command": "echo '🪨 CAVEMAN ACTIVO. Tu próxima respuesta al usuario: MÁXIMO 3 líneas. Sin resúmenes, sin listas, sin recaps. Decí lo esencial y cortá. Si terminaste una tarea: \"Listo.\" o \"Hecho, pusheado.\" BASTA. Cada palabra de más es una falla.'"
           }
         ]
+      },
+      {
+        "matcher": "mcp__Supabase__execute_sql|mcp__Supabase__apply_migration",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/claude-reglas-guard.cjs\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
