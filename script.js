@@ -1585,6 +1585,21 @@ function isPresupuestoMode() {
   return !!customerProfile?.modo_presupuesto;
 }
 
+/* La razón social de un cliente de exportación trae el RUC entre paréntesis
+   —"Classic S.A (Ruc: 80013057-0)"— porque así está cargada en el ERP y así
+   viaja a la PPP de Gestión. En el saludo no corresponde: es un saludo, no una
+   ficha. Se limpia SÓLO en modo presupuesto, y sólo para mostrar:
+   `customerProfile.business_name` queda intacto, así que lo que viaja en el
+   pedido no cambia. */
+function nombreParaSaludo(raw) {
+  const s = String(raw || "").trim();
+  if (!isPresupuestoMode()) return s;
+  return s
+    .replace(/\s*\(\s*ruc\b[^)]*\)/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 /**
  * Trae UNA fila de `customers` SIN depender de que la base tenga todas las
  * columnas que el front sabe pedir: si PostgREST rechaza la consulta porque
@@ -2598,7 +2613,7 @@ async function refreshAuthState(sessionOverride) {
   if ($("ctaCliente")) $("ctaCliente").style.display = "none";
   syncTraductorCn();
 
-  const name = (customerProfile?.business_name || "").trim();
+  const name = nombreParaSaludo(customerProfile?.business_name);
   if ($("helloNavText"))
     $("helloNavText").innerText = name ? `¡Hola, ${name}!` : "¡Hola!";
 
@@ -8595,11 +8610,21 @@ function updateCart() {
     deliveryChoice.zonaExpreso = opt?.dataset?.zonaExpreso || "";
   }
 
+  // Modo presupuesto: el cliente de exportación NO elige sucursal. Lo que manda
+  // es un presupuesto a cotizar y el despacho lo define administración, así que
+  // la entrega no puede frenarle el envío.
   const hasShipping =
-    !!deliveryChoice?.slot || !!String(shippingSelectEl?.value || "").trim();
-  const hasPayment = isAdmin
-    ? true
-    : !!document.getElementById("paymentSelect")?.value;
+    isPresupuestoMode() ||
+    !!deliveryChoice?.slot ||
+    !!String(shippingSelectEl?.value || "").trim();
+  // ⚠ En presupuesto el bloque de método de pago NO se dibuja, así que exigirlo
+  // deja el botón deshabilitado. refreshSubmitEnabled ya lo contemplaba y acá
+  // faltaba: updateCart lo apagaba y sólo lo volvía a prender el refresh
+  // siguiente, o sea que el botón dependía de cuál de los dos corriera último.
+  const hasPayment =
+    isPresupuestoMode() ||
+    isAdmin ||
+    !!document.getElementById("paymentSelect")?.value;
   const hasItems = cart.length > 0;
 
   if (submitBtn) {
@@ -8770,13 +8795,20 @@ function updateCart() {
     const shipBtn = document.getElementById("shipConfirmBtn");
     const deliveryConfirmedByUser =
       !shipBtn || shipBtn.classList.contains("confirmed");
-    const mustChooseDelivery = !deliveryChoice.slot || !deliveryConfirmedByUser;
+    // Ver hasShipping: en modo presupuesto la entrega no es requisito.
+    const mustChooseDelivery =
+      !isPresupuestoMode() &&
+      (!deliveryChoice.slot || !deliveryConfirmedByUser);
     // Retira: exige día válido (≥ +3 hábiles, lun-vie) y franja horaria.
     const _rs = _esRetira() ? _retiroSeleccion() : null;
     const mustChooseRetiro =
       !!_rs && (!_retiroFechaValida(_rs.fecha) || !_rs.franja);
+    // Mismo motivo que en updateCart y refreshSubmitEnabled: en presupuesto el
+    // bloque de método de pago no se dibuja, así que exigirlo no deja pedir.
     const mustChoosePayment =
-      !isAdmin && !document.getElementById("paymentSelect")?.value;
+      !isPresupuestoMode() &&
+      !isAdmin &&
+      !document.getElementById("paymentSelect")?.value;
     var _csv2 = document.getElementById("customerSelect")?.value || "";
     var _custConfirmBtn = document.getElementById("customerConfirmBtn");
     var _customerConfirmedByUser =
@@ -8842,6 +8874,10 @@ async function cargarDeudaCliente() {
   // ignora en silencio (el pedido no se traba nunca por esto).
   try {
     if (!currentSession) { _deudaCliente = null; return; }
+    // Modo presupuesto: el cliente de exportación no ve un solo monto en pesos,
+    // y una deuda argentina no significa nada en una operación que todavía no
+    // está cotizada. Ni se pide: así el dato no baja al navegador.
+    if (isPresupuestoMode()) { _deudaCliente = null; return; }
     const { data, error } = await supabaseClient.rpc("get_mi_deuda");
     if (error) { _deudaCliente = null; }
     else {
@@ -8864,7 +8900,16 @@ function renderDeudaAviso() {
   const d = _deudaCliente;
   // Los admins/vendedores cotizan para otros clientes: el dato de auth.uid() no
   // aplica, así que no se muestra en ese modo.
-  if (isAdmin || isVendorProfile() || !d || !(Number(d.deuda) > UMBRAL)) {
+  // isPresupuestoMode va PRIMERO y además de no pedirla: si el perfil llegó
+  // tarde, el cache pudo cargarse antes de saber que era un cliente de
+  // exportación, y este render es el que garantiza que igual no se vea.
+  if (
+    isPresupuestoMode() ||
+    isAdmin ||
+    isVendorProfile() ||
+    !d ||
+    !(Number(d.deuda) > UMBRAL)
+  ) {
     el.hidden = true;
     el.innerHTML = "";
     return;
@@ -10434,8 +10479,13 @@ function refreshSubmitEnabled() {
   const shipBtn = document.getElementById("shipConfirmBtn");
   const deliveryConfirmedByUser =
     !shipBtn || shipBtn.classList.contains("confirmed");
+  // ⚠ Y acá lo espejado: en presupuesto no hay sucursal que elegir —el despacho
+  // lo define administración al cotizar—, así que la entrega no puede trabar el
+  // envío. Son TRES las puertas que apagan este botón (updateCart, el bloque del
+  // contador del carrito y esta): las tres tienen que mirar el modo.
   const hasShipping =
-    !!(shipSel && String(shipSel.value || "").trim()) && deliveryConfirmedByUser;
+    isPresupuestoMode() ||
+    (!!(shipSel && String(shipSel.value || "").trim()) && deliveryConfirmedByUser);
   // EXPO: con un cliente elegido, el operador (admin) toma el pedido COMO el
   // cliente, así que se exige método de pago igual que en la página normal
   // (para clientes nuevos ya viene forzado a contado, así que no molesta).
@@ -14994,7 +15044,9 @@ async function onLinkedCustomerSelected(opts) {
       localStorage.removeItem("lk_vendor_selected_dto_vol");
     } catch (e) {}
 
-    var nameSelf = (customerProfile && customerProfile.business_name || "").trim();
+    var nameSelf = nombreParaSaludo(
+      customerProfile && customerProfile.business_name,
+    );
     var helloElSelf = $("helloNavText");
     if (helloElSelf)
       helloElSelf.innerText = nameSelf ? "¡Hola, " + nameSelf + "!" : "¡Hola!";
@@ -15131,7 +15183,7 @@ async function onLinkedCustomerSelected(opts) {
     );
   } catch (e) {}
 
-  var name = (customerProfile.business_name || "").trim();
+  var name = nombreParaSaludo(customerProfile.business_name);
   var helloEl = $("helloNavText");
   if (helloEl) helloEl.innerText = name ? "¡Hola, " + name + "!" : "¡Hola!";
 

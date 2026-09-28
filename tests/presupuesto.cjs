@@ -150,6 +150,47 @@ for (const sel of [".is-presupuesto .card-prices", ".is-presupuesto .cart-total"
   else ok("css: " + sel);
 }
 
+// A8. El saludo. La razón social de estos clientes trae el RUC entre paréntesis
+//     porque así viaja al ERP; en el "¡Hola, …!" no va. Son TRES lugares que lo
+//     escriben (login, vendedor volviendo a lo suyo, vendedor eligiendo cliente)
+//     y los tres tienen que pasar por el mismo helper: si uno se revierte, el
+//     cliente ve su RUC en pantalla sólo en ese camino.
+const saludos = src.match(/¡Hola, /g) || [];
+const viaHelper = (src.match(/nombreParaSaludo\(/g) || []).length;
+if (saludos.length !== 3) {
+  mal("cambió la cantidad de lugares que escriben el saludo (" + saludos.length + ", esperaba 3)");
+} else if (viaHelper < 4) {
+  mal("alguno de los 3 saludos dejó de pasar por nombreParaSaludo (" + viaHelper + " usos)");
+} else {
+  ok("los 3 saludos pasan por nombreParaSaludo");
+}
+
+// A9. El aviso de deuda. Es un monto EN PESOS de una cuenta corriente argentina:
+//     en una operación que todavía no está cotizada no significa nada, y además
+//     es justo el único "$" que este modo no había tapado. No se pide y no se
+//     pinta; las dos cosas, porque el perfil puede llegar después del cache.
+//     Desde el 25/09/2026 además está apagado para TODOS los clientes: la
+//     constante manda y las dos funciones la miran.
+// ⚠ El interruptor es el de Luis (main, 25/09). Hubo un momento con DOS
+//   constantes haciendo lo mismo; se dejó una sola a propósito.
+if (!/const MOSTRAR_DEUDA_CLIENTE = false;/.test(src)) {
+  mal("MOSTRAR_DEUDA_CLIENTE ya no está en false: el aviso de deuda volvió");
+} else {
+  ok("MOSTRAR_DEUDA_CLIENTE = false");
+}
+const iDeuda = src.indexOf("async function cargarDeudaCliente(");
+if (iDeuda < 0 || !/MOSTRAR_DEUDA_CLIENTE/.test(src.slice(iDeuda, iDeuda + 700))) {
+  mal("cargarDeudaCliente volvió a pedir get_mi_deuda igual");
+} else {
+  ok("cargarDeudaCliente no pide la deuda");
+}
+const iRen = src.indexOf("function renderDeudaAviso(");
+if (iRen < 0 || !/MOSTRAR_DEUDA_CLIENTE/.test(src.slice(iRen, iRen + 900))) {
+  mal("renderDeudaAviso dejó de mirar MOSTRAR_DEUDA_CLIENTE");
+} else {
+  ok("renderDeudaAviso mira la constante");
+}
+
 // ── B. DE PANTALLA ─────────────────────────────────────────────────────────
 let chromium;
 try { ({ chromium } = require("/opt/node22/lib/node_modules/playwright")); }
@@ -212,6 +253,16 @@ catch (_e) {
       }];
       _presupuestoSyncUI();
       renderProducts();
+      // Una línea en el carrito y NINGUNA sucursal elegida: sin ítems el botón
+      // estaría deshabilitado por otro motivo y no se vería si lo traba la
+      // entrega, que es justo lo que este modo no debe exigir.
+      cart.length = 0;
+      cart.push({ productId: "p1", qtyCajas: 1, source: "test" });
+      deliveryChoice = { slot: "", label: "" };
+      // Deuda cargada A PROPÓSITO: lo que se mide no es que no haya dato, sino
+      // que teniéndolo igual no se dibuje.
+      _deudaCliente = { deuda: 1059854, cargado_at: "2026-09-25" };
+      renderDeudaAviso();
       updateCart();
 
       // El carrito arranca sin .active: sin esto NADA de adentro se renderiza y
@@ -249,6 +300,22 @@ catch (_e) {
         dtoVol: getDtoVol(),
         dtoPago: getPaymentDiscount(),
         condPago: getPaymentMethodText(),
+        entregaVisible: visible(document.getElementById("shipCardEntrega")),
+        botonDeshabilitado: !!(document.getElementById("submitOrderBtn") || {}).disabled,
+        saludo: nombreParaSaludo("Classic S.A (Ruc: 80013057-0)"),
+        deudaVisible: visible(document.getElementById("deudaAviso")),
+        // Y lo mismo para un cliente COMÚN: se apaga la bandera de presupuesto,
+        // se vuelve a cargar una deuda y se repinta. No es lo mismo que el caso
+        // de arriba — ahí lo tapaba el modo presupuesto, acá no hay nada que lo
+        // tape salvo el apagado global.
+        deudaVisibleNormal: (() => {
+          customerProfile.modo_presupuesto = false;
+          _deudaCliente = { deuda: 999999, cargado_at: "2026-09-25" };
+          renderDeudaAviso();
+          const v = visible(document.getElementById("deudaAviso"));
+          customerProfile.modo_presupuesto = true;
+          return v;
+        })(),
       };
     });
     await browser.close();
@@ -281,6 +348,25 @@ catch (_e) {
     else ok("getPaymentDiscount en 0");
     if (!/PRESUPUESTO/i.test(res.condPago)) mal("la condición de pago dice '" + res.condPago + "'");
     else ok("la condición de pago avisa que es un presupuesto");
+
+    // El cliente de exportación no elige sucursal: administración define el
+    // despacho al cotizar. Si la tarjeta vuelve, le pide una dirección argentina.
+    if (res.entregaVisible) mal("la tarjeta de Dirección de Entrega sigue visible");
+    else ok("la Dirección de Entrega está oculta");
+
+    // Lo que importa no es que esté oculta, sino que NO TRABE: con una línea en
+    // el carrito y cero sucursales, el botón tiene que poder mandarse.
+    if (res.botonDeshabilitado) mal("sin elegir sucursal el botón quedó deshabilitado: no puede pedir");
+    else ok("sin sucursal, el presupuesto se puede enviar igual");
+
+    if (/ruc/i.test(res.saludo) || /8001/.test(res.saludo)) mal("el saludo muestra el RUC: '" + res.saludo + "'");
+    else ok("el saludo no muestra el RUC ('" + res.saludo + "')");
+
+    if (res.deudaVisible) mal("el aviso de deuda se dibuja igual teniendo el dato cargado");
+    else ok("el aviso de deuda no se muestra en presupuesto");
+
+    if (res.deudaVisibleNormal) mal("a un cliente COMÚN el aviso de deuda le sigue apareciendo");
+    else ok("el aviso de deuda tampoco se muestra a un cliente común");
   }
 
   console.log("");
