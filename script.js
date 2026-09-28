@@ -1528,6 +1528,23 @@ function _splitPorReingreso(items) {
   return { ahora: ahora, reingreso: reingreso, fecha: fecha };
 }
 
+// Luis (28/09): un CLIENTE NUEVO (uno de sus 3 primeros pedidos) no parte el pedido
+// por reingreso: se le pide pago adelantado y no se le puede cobrar algo que llega en
+// meses. Va todo en UN pedido y lo que no hay sale como faltante. El backend tiene el
+// mismo freno (marcar_pedido_diferido). Si la consulta falla, se parte como siempre.
+async function _esClienteNuevo(empresa, cod) {
+  if (!cod) return false;
+  try {
+    const r = await Promise.race([
+      supabaseClient.rpc("es_cliente_nuevo", { p_empresa: empresa, p_cod: String(cod) }),
+      new Promise(function (res) { setTimeout(function () { res({ data: false }); }, 4000); }),
+    ]);
+    return !!(r && r.data === true);
+  } catch (e) {
+    return false;
+  }
+}
+
 /***********************
  * STATE
  ***********************/
@@ -10058,7 +10075,8 @@ async function submitOrder() {
     // Luis (23/09): son DOS pedidos distintos, con dos números. Editando no se parte.
     var reingresoItems = [];
     var reingresoFecha = "";
-    if (!editOrderIdSnapshot) {
+    var _cliNuevo = !editOrderIdSnapshot && (await _esClienteNuevo("lk", customerProfile?.cod_cliente));
+    if (!editOrderIdSnapshot && !_cliNuevo) {
       var _spR = _splitPorReingreso(regularItems);
       if (_spR.reingreso.length && _spR.ahora.length) {
         regularItems = _spR.ahora;
@@ -10069,7 +10087,7 @@ async function submitOrder() {
 
     // Si TODO lo que queda espera reingreso, la pantalla dice desde cuándo sale y no
     // "listo antes del".
-    var _spTodo = (!editOrderIdSnapshot && !reingresoItems.length) ? _splitPorReingreso(regularItems) : null;
+    var _spTodo = (!editOrderIdSnapshot && !_cliNuevo && !reingresoItems.length) ? _splitPorReingreso(regularItems) : null;
     var todoReingreso = !!(_spTodo && regularItems.length && !_spTodo.ahora.length);
     var todoReingresoFecha = _spTodo ? _spTodo.fecha : "";
 
