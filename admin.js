@@ -17112,7 +17112,7 @@ function fcRender() {
     '<tbody class="fc-h-bloque">' +
     "<tr><th>Dto pago<br>a ofrecer</th><td class=\"fc-h-cen\">" +
     (acH ? Number(acH.dto_pago_hoy).toFixed(0) + "%" : "—") + "</td></tr>" +
-    "<tr><th>Plazo<br>Pago</th><td class=\"fc-h-cen\">" +
+    "<tr><th>Plazo<br>a ofrecer</th><td class=\"fc-h-cen\">" +
     fcFaltaDato("Dato de la planilla: no está en la base") + "</td></tr>" +
     "<tr><th>Días al<br>Cheque</th><td class=\"fc-h-cen\">" +
     fcFaltaDato("Dato de la planilla: no está en la base") + "</td></tr>" +
