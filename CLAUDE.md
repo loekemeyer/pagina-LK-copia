@@ -147,6 +147,30 @@ commits (77%)**.
 
 **Estado central:** `config-claude.json` — toggles y comandos que afectan CUALQUIER chat.
 
+## 🟥 REGLA RECTORA (Luis, 28/09/2026): OPTIMIZACIÓN DE ESPACIO EN TABLAS Y VISUALES
+
+**Vale para TODOS los repos y TODA pantalla, tabla, ficha o reporte** (copiar este bloque al
+`CLAUDE.md` del repo nuevo). **Mostrar la mayor cantidad de información en el menor espacio
+posible, apuntando siempre a la claridad.** Lo primero que se achica es el espacio HORIZONTAL.
+
+1. **El espacio en blanco o vacío se evita como la plaga.** Ninguna celda de relleno: si un dato
+   no existe, la fila/columna se reacomoda (el vecino ocupa el lugar con `colspan`), no queda un
+   hueco. Un dato que falta se marca con "—"; una celda que no tiene nada que decir no existe.
+2. **Todo el contenido centrado**, no algunas cosas sí y otras no.
+3. **Rótulos abreviados** (`Localidad pto Venta` → `Loc PDV`, `Límite de crédito` → `Lím. crédito`).
+   **Doble o triple fila en el rótulo no molesta**: se parte antes que ensanchar la columna.
+4. **Lo que va junto, va junto**: datos de la misma familia en el mismo bloque, con un rótulo
+   común y sub-rótulos (Pagos → Último · Anteúlt. · Antepenúlt.; FC por año como matriz).
+5. **Si el dato se explica solo, no lleva rótulo** (una dirección de mail no necesita "Mail").
+6. **No repetir**: una unidad (`$`) va una vez en el rótulo, no en cada celda; dos datos iguales
+   (Loc PDV = Loc entrega) se muestran en una sola celda.
+7. **Rótulo arriba del dato** cuando eso ahorra ancho; el ancho de cada columna lo da el dato.
+
+Caso que la originó: la Ficha de Cliente del admin (hoja de 4 columnas rótulo/valor, ~705 px,
+con celdas vacías, pagos separados y rótulo "Mail") pasó a una grilla de 6 columnas con el
+rótulo arriba: **~530 px**, sin una celda vacía. Lo sostiene `tests/ficha-hoja.cjs` (bloque E) en
+`pagina-LK-copia`.
+
 ## 🟥 PRINCIPIO RECTOR (Luis, 2026-09-25): mensajes a clientes — VASECTOMÍA, un solo corte en la salida
 
 *"Todo el sistema funciona, pero con el corte en el lugar indicado para que no contacte a nadie

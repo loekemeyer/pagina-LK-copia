@@ -85,6 +85,13 @@ const ACU = { factor: 1.562, dto_pago_hoy: 25, dto_pago_antes: 8, mejora_pago: 1
       });
       out.thNoCentrado = [...c.querySelectorAll("table thead th, .fc-h-tabla th")]
         .filter((th) => getComputedStyle(th).textAlign !== "center").map((th) => th.innerText);
+      // E. OPTIMIZACION DE ESPACIO (Luis, 28/09): ni una celda vacia de relleno,
+      //    todo el contenido centrado, pagos juntos, sin rotulo "Mail".
+      out.vacias = [...c.querySelectorAll(".fc-h-tabla th, .fc-h-tabla td")]
+        .filter((x) => !x.innerText.trim()).length;
+      out.noCentrados = [...c.querySelectorAll(".fc-h-tabla td")]
+        .filter((x) => getComputedStyle(x).textAlign !== "center").map((x) => x.innerText);
+      out.rotulos = [...c.querySelectorAll(".fc-h-tabla th")].map((x) => x.innerText.replace(/\s+/g, " ").trim());
       out.txtSinIsis = correr(null, "timeout").innerText;
       return out;
     }, [FICHA, ISIS, ACU]);
@@ -102,6 +109,10 @@ const ACU = { factor: 1.562, dto_pago_hoy: 25, dto_pago_antes: 8, mejora_pago: 1
     const s = r.txtSinIsis.replace(/\s+/g, " ");
     ok(s.includes("s/d") && !/FC \d{4} \$ 0/.test(s), `[${ancho}] C: sin ISIS tiene que decir s/d`);
     ok(r.thNoCentrado.length === 0, `[${ancho}] D: encabezados no centrados: ${r.thNoCentrado.slice(0, 5).join(" | ")}`);
+    ok(r.vacias === 0, `[${ancho}] E: ${r.vacias} celda(s) vacia(s) en la hoja`);
+    ok(r.noCentrados.length === 0, `[${ancho}] E: contenido no centrado: ${r.noCentrados.slice(0, 5).join(" | ")}`);
+    ok(!r.rotulos.some((x) => /^mail$/i.test(x)), `[${ancho}] E: el mail no lleva rotulo`);
+    ok(r.rotulos.includes("Pagos"), `[${ancho}] E: los pagos no estan juntos bajo "Pagos"`);
     const anchoCont = r.cont.r - r.cont.l;
     r.tablas.forEach((tb) => {
       ok(tb.w < anchoCont * 0.95, `[${ancho}] D: tabla "${tb.cls}" estirada (${Math.round(tb.w)} de ${Math.round(anchoCont)})`);

@@ -5750,9 +5750,10 @@ button.op-drill.op-open { color: #1e3a8a; }
 .fc-h-tabla th,
 .fc-h-tabla td {
   border: 1px solid #222;
-  padding: 0.35em 0.65em;
+  padding: 0.25em 0.5em;
   white-space: nowrap;
   vertical-align: middle;
+  text-align: center;
 }
 .fc-h-tabla th {
   text-align: center;
@@ -5784,6 +5785,14 @@ button.op-drill.op-open { color: #1e3a8a; }
 .fc-h-acu td { background: #e8f3e0; text-align: center; min-width: 4.5em; }
 .fc-h-big { font-size: 1.5em; font-weight: 500; }
 .fc-h-acu .fc-acu-rojo { color: #b00020; }
+/* Luis, 28/09/2026 — OPTIMIZACION DE ESPACIO: rotulo arriba, chico y abreviado;
+   todo centrado; el dato manda el ancho. */
+.fc-h-grid th { font-size: 0.82em; line-height: 1.1; }
+.fc-h-grid td.fc-h-num { text-align: center; }
+.fc-h-grid td.fc-h-wrap { white-space: normal; max-width: 16em; }
+.fc-h-grid .fc-h-codch { color: #7a4b00; }
+.fc-h-grid .fc-h-contacto td { font-size: 0.95em; }
+.fc-h-acu th { font-size: 0.82em; }
 .fc-h-pie {
   text-align: center;
   font-size: 0.8em;

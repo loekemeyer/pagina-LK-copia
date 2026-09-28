@@ -17001,70 +17001,97 @@ function fcRender() {
   }
   var prim = isis.primera_compra ? String(isis.primera_compra).slice(0, 4) : "";
 
-  function fila(l1, v1, l2, v2, cls1, cls2) {
-    return (
-      "<tr><th>" + l1 + '</th><td class="' + (cls1 || "fc-h-num") + '">' + v1 +
-      "</td><th>" + l2 + '</th><td class="' + (cls2 || "fc-h-txt") + '">' + v2 +
-      "</td></tr>"
-    );
+  // Luis, 28/09/2026 — OPTIMIZACION DE ESPACIO EN TABLAS: grilla unica de 6
+  // columnas, rotulo ARRIBA del dato (doble/triple fila no molesta), todo
+  // centrado, rotulos abreviados, ninguna celda vacia de relleno. Los pagos van
+  // juntos; mail y WhatsApp sin rotulo (el dato se explica solo). LK y CH: el
+  // codigo de Chef tiene su columna solo si existe, y la FC abre LK/CH solo si
+  // el cliente le compro a las dos.
+  var SD_PLANILLA = "Dato de la planilla: no está en la base";
+  function rot(txt, extra) { return "<th" + (extra || "") + ">" + txt + "</th>"; }
+  function dat(v, extra) { return "<td" + (extra || "") + ">" + v + "</td>"; }
+  var hayCh = chefCodsH.length > 0;
+  var chEnFc = !sinIsis && isisAnios.some(function (y) { return Number(y.fc_ch) > 0; });
+  function fcCel(anio) {
+    var y = porAnio[String(anio)];
+    var tot = sinPeso(fcPlata(y ? y.fc : null));
+    // Apertura LK/CH apilada (angosta) y solo en el anio que tuvo las dos.
+    if (!chEnFc || !y || !Number(y.fc_ch) || !Number(y.fc_lk)) return tot;
+    return tot + '<span class="fc-h-sub">LK ' + formatMoney(y.fc_lk) + "</span>" +
+      '<span class="fc-h-sub">CH ' + formatMoney(y.fc_ch) + "</span>";
   }
+  var anios = [anioHoy - 2, anioHoy - 1, anioHoy];
+  // En la matriz el "$" va una vez en el rotulo, no en cada celda.
+  function sinPeso(h) { return String(h).replace(/^\$ /, ""); }
+  var cuit = d.cuit ? '<span data-copiable="' + escapeHtml(d.cuit) + '">' + escapeHtml(d.cuit) + "</span>" : "—";
 
   html += '<div class="fc-hoja-wrap"><div class="fc-hoja">';
-  html += '<table class="fc-h-tabla">';
-  // Bloque 1: identidad
+  html += '<table class="fc-h-tabla fc-h-grid">';
+  // Bloque 1: identidad (LK siempre; CH solo si esta vinculado)
   html +=
     '<tbody class="fc-h-bloque">' +
-    '<tr class="fc-h-cab"><th>Cod<br>Cliente</th><th>Empresa</th><th colspan="2">Razón Social</th></tr>' +
-    '<tr class="fc-h-id"><td class="fc-h-cod">' +
-    escapeHtml(d.cod_cliente != null ? d.cod_cliente : f.cod) +
-    '</td><td class="fc-h-emp">LK' +
-    (chefCodsH.length ? '<span class="fc-h-sub">CH ' + escapeHtml(chefCodsH.join(", ")) + "</span>" : "") +
-    '</td><td colspan="2" class="fc-h-rs">' +
-    escapeHtml(d.business_name || "(sin razón social)") +
-    "</td></tr></tbody>";
-  // Bloque 2: facturacion de los ultimos 3 anios + condiciones
+    "<tr>" + rot("Cod LK") + (hayCh ? rot("Cod CH") : "") +
+    rot("Razón Social", ' colspan="' + (hayCh ? 4 : 5) + '"') + "</tr>" +
+    '<tr class="fc-h-id">' +
+    dat(escapeHtml(d.cod_cliente != null ? d.cod_cliente : f.cod), ' class="fc-h-cod"') +
+    (hayCh ? dat(escapeHtml(chefCodsH.join(" · ")), ' class="fc-h-cod fc-h-codch"') : "") +
+    dat(escapeHtml(d.business_name || "(sin razón social)"), ' class="fc-h-rs" colspan="' + (hayCh ? 4 : 5) + '"') +
+    "</tr></tbody>";
+  // Bloque 2: facturacion por anio (ISIS) + cuenta
   html +=
     '<tbody class="fc-h-bloque">' +
-    fila("FC " + (anioHoy - 2), fcPlata(yv(anioHoy - 2, "fc")), "Plazo de Pago",
-      d.payment_term != null ? escapeHtml(d.payment_term) : "—", null, "fc-h-cen") +
-    fila("FC " + (anioHoy - 1), fcPlata(yv(anioHoy - 1, "fc")), "Dto x Volumen", dtoVolPct, null, "fc-h-cen") +
-    fila("FC " + anioHoy, fcPlata(yv(anioHoy, "fc")), "Dto x Plazo",
-      fcFaltaDato("Dato de la planilla: no está en la base"), null, "fc-h-cen") +
-    "</tbody>";
-  // Bloque 3: mayor compra, limite, deuda
+    "<tr>" + rot("ISIS<br>($)") + anios.map(function (a) { return rot(a); }).join("") +
+    rot("Cuenta", ' colspan="2"') + "</tr>" +
+    "<tr>" + rot("FC") + anios.map(function (a) { return dat(fcCel(a), ' class="fc-h-num"'); }).join("") +
+    rot("Lím.<br>crédito") + dat(d.credit_limit != null ? "$ " + formatMoney(d.credit_limit) : "—", ' class="fc-h-num"') + "</tr>" +
+    "<tr>" + rot("Mayor<br>compra") + anios.map(function (a) { return dat(sinPeso(fcPlata(yv(a, "mayor"))), ' class="fc-h-num"'); }).join("") +
+    rot(deudaLbl) + dat(deudaTxt, ' class="fc-h-num"') + "</tr>" +
+    "<tr>" + rot("Cant.<br>FC") + anios.map(function (a) {
+      return dat(sinIsis ? "s/d" : Number(yv(a, "n_fact") || 0));
+    }).join("") +
+    rot("CUIT") + dat(cuit) + "</tr></tbody>";
+  // Bloque 3: condiciones comerciales
   html +=
     '<tbody class="fc-h-bloque">' +
-    fila("Mayor Compra " + (anioHoy - 1), fcPlata(yv(anioHoy - 1, "mayor")),
-      "Cant. Facturas " + (anioHoy - 1),
-      sinIsis ? "s/d" : Number(yv(anioHoy - 1, "n_fact") || 0), null, "fc-h-cen") +
-    fila("Mayor Compra " + anioHoy, fcPlata(yv(anioHoy, "mayor")),
-      "Cant. Facturas " + anioHoy,
-      sinIsis ? "s/d" : Number(yv(anioHoy, "n_fact") || 0), null, "fc-h-cen") +
-    fila("Límite de Crédito",
-      d.credit_limit != null ? "$ " + formatMoney(d.credit_limit) : "—",
-      "Localidad pto Venta", locPtoVenta ? escapeHtml(locPtoVenta) : "—") +
-    fila(deudaLbl, deudaTxt, "CUIT",
-      d.cuit ? '<span data-copiable="' + escapeHtml(d.cuit) + '">' + escapeHtml(d.cuit) + "</span>" : "—") +
-    "</tbody>";
-  // Bloque 4: vendedor / entrega
+    "<tr>" + rot("Plazo<br>pago") + rot("Dto<br>vol.") + rot("Dto<br>plazo") + rot("Vend.") +
+    rot("Tipo<br>cliente") + rot("1° compra") + "</tr>" +
+    "<tr>" +
+    dat(d.payment_term != null ? escapeHtml(d.payment_term) : "—") +
+    dat(dtoVolPct) +
+    dat(fcFaltaDato(SD_PLANILLA)) +
+    dat(escapeHtml(d.vendedor || d.vend || "—")) +
+    dat(fcFaltaDato(SD_PLANILLA)) +
+    dat(prim ? escapeHtml(prim) + (prim === "2019" ? '<span class="fc-h-sub">ISIS desde 08/19</span>' : "") : "—") +
+    "</tr></tbody>";
+  // Bloque 4: pagos (juntos) + localidades. PDV y entrega iguales -> una sola celda.
+  var locEntTxt = locEntrega.length ? escapeHtml(locEntrega.join(" · ")) : "—";
+  var locUna = !!locPtoVenta && locEntrega.length === 1 && locEntrega[0] === locPtoVenta;
   html +=
     '<tbody class="fc-h-bloque">' +
-    fila("Vendedor", escapeHtml(d.vendedor || d.vend || "—"),
-      "Localidad Entrega<span class=\"fc-h-sub\">(nosotros)</span>",
-      locEntrega.length ? escapeHtml(locEntrega.join(" · ")) : "—", "fc-h-cen") +
-    "</tbody>";
-  // Bloque 5: historial de pago / antiguedad / contacto
-  html +=
-    '<tbody class="fc-h-bloque">' +
-    fila("Tipo de Cliente", fcFaltaDato("Dato de la planilla: no está en la base"),
-      "Anteúltimo Pago", fcFaltaDato("Dato de la planilla: no está en la base"), "fc-h-cen", "fc-h-cen") +
-    fila("Último Pago", fcFaltaDato("Dato de la planilla: no está en la base"),
-      "Antepenúltimo Pago", fcFaltaDato("Dato de la planilla: no está en la base"), "fc-h-cen", "fc-h-cen") +
-    fila("Año 1° Compra",
-      prim ? escapeHtml(prim) + (prim === "2019" ? '<span class="fc-h-sub">ISIS desde 08/19</span>' : "") : "—",
-      "Mail", d.mail ? escapeHtml(d.mail) : "—", "fc-h-cen") +
-    fila("WhatsApp", d.whatsapp ? escapeHtml(d.whatsapp) : "—", "", "", "fc-h-cen") +
-    "</tbody></table>";
+    "<tr>" + rot("Pagos", ' colspan="3"') +
+    (locUna
+      ? rot('Loc PDV y entrega<span class="fc-h-sub">(nosotros)</span>', ' colspan="3" rowspan="2"')
+      : rot("Loc PDV", ' rowspan="2"') +
+        rot('Loc entrega<span class="fc-h-sub">(nosotros)</span>', ' colspan="2" rowspan="2"')) + "</tr>" +
+    "<tr>" + rot("Último") + rot("Anteúlt.") + rot("Antepenúlt.") + "</tr>" +
+    "<tr>" + dat(fcFaltaDato(SD_PLANILLA)) + dat(fcFaltaDato(SD_PLANILLA)) + dat(fcFaltaDato(SD_PLANILLA)) +
+    (locUna
+      ? dat(locEntTxt, ' colspan="3" class="fc-h-wrap"')
+      : dat(locPtoVenta ? escapeHtml(locPtoVenta) : "—") +
+        dat(locEntTxt, ' colspan="2" class="fc-h-wrap"')) +
+    "</tr></tbody>";
+  // Bloque 5: contacto, sin rotulo. Si falta uno, el otro ocupa la fila entera.
+  var contacto = [];
+  if (d.whatsapp) contacto.push(escapeHtml(d.whatsapp));
+  if (d.mail) contacto.push(escapeHtml(d.mail));
+  if (contacto.length) {
+    html += '<tbody class="fc-h-bloque"><tr class="fc-h-contacto">' +
+      (contacto.length === 2
+        ? dat(contacto[0], ' colspan="2"') + dat(contacto[1], ' colspan="4"')
+        : dat(contacto[0], ' colspan="6"')) +
+      "</tr></tbody>";
+  }
+  html += "</table>";
 
   // Panel derecho: acuerdo
   var acH = _fcAcuerdo;
