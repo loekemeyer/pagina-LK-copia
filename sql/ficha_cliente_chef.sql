@@ -89,7 +89,13 @@ begin
   return jsonb_build_object(
     'anios', v_anios, 'primera_compra', v_prim,
     'deuda', v_deuda, 'deuda_at', v_deuda_at,
-    'lk_cods', to_jsonb(coalesce(v_lk, '{}'::text[]))
+    'lk_cods', to_jsonb(coalesce(v_lk, '{}'::text[])),
+    -- Acuerdo de Chef (Luis, 28/09/2026): MISMOS parametros que LK (indice,
+    -- pago, cotizador, flete, piso); dto de volumen y comision salen de Chef.
+    'acuerdo_parametros', (select jsonb_build_object(
+        'indice_lista', ap.indice_lista, 'dto_pago', ap.dto_pago, 'dto_cot', ap.dto_cot,
+        'flete', ap.flete, 'piso', ap.piso, 'dto_pago_anterior', ap.dto_pago_anterior)
+      from acuerdo_parametros ap where ap.id = 1)
   );
 end;
 $function$;
