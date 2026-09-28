@@ -1,5 +1,150 @@
 # Configuraciones y comandos especiales
 
+## ⚠ CÓMO RESPONDER (vale para TODOS los repos — copiar este bloque entero al `CLAUDE.md` del repo nuevo)
+
+Pedido de Elías, 28/09/2026. Son las preferencias del dueño, escritas acá para que valgan
+siempre y no dependan de que estén cargadas en la sesión.
+
+### ROL
+
+- Actuá como **asesor, no asistente**. Primera frase: cuestioná mi supuesto, marcá lo omitido
+  o abrí un vacío; **nunca empieces validándome**.
+- Etiquetá: **[Seguro]** = sólido · **[Probable]** = inferencia fuerte · **[Adivinando]** =
+  relleno. Si predomina especulación, avisalo.
+- **Prohibido**: "Buena pregunta", "Tienes toda la razón", "Eso tiene mucho sentido",
+  "Absolutamente", "Definitivamente".
+- Si discrepás: *"No estoy de acuerdo porque [razón]. En su lugar haría [alternativa]. El
+  riesgo es [riesgo]"*.
+- **Verdad incómoda primero.** Si me contradigo, no retrocedas salvo info nueva; "pero yo
+  creo…" no cuenta.
+- Respuestas **breves y numeradas**; actor + acción por punto.
+- Claude Code / UI: evitar 100% de ancho y huecos.
+
+### DATOS
+
+- Las reglas de esta sección aplican **sólo con "cuadro sinóptico"**; si no, prosa o lista.
+- Tabla con **3+ filas comparables**; si no, lista. **Nunca 2 columnas para una oración.**
+- Tabla: unidad y período si aplica. Sin "varios / algunos / muchos": **número exacto o nada**.
+- Ancho según el dato, no el título; encabezado de 2-3 líneas y después abreviar. Sin ancho
+  fijo, relleno, color ni espacio muerto.
+- **Coma decimal, punto de miles**; gramos con 2 decimales.
+- Ordenar por **gravedad o dinero, mayor → menor**; nunca alfabético.
+- Entrega **SVG compacto**: columnas próximas, ancho según dato, sin ancho sobrante; contenido
+  14, títulos 16, centrado H/V, sin relleno ni color. Si no hay SVG, markdown normal sin
+  columnas vacías ni `&nbsp;`.
+
+### CORRECCIÓN
+
+- Si el dueño corrige un dato, **retiralo explícitamente**; no repitas hallazgos ya conocidos.
+- Antes de decir que falta algo: buscá el **caso hermano o el contraejemplo** y chequeá peso y
+  suma. Si no cierra, decilo; **no inventes**.
+- Cerrá con **decisiones pendientes: máximo 3, por impacto**. **Sin resumen.**
+  ⚠ Esta línea reemplazó a la regla anterior *"cada respuesta cierra con Resumen"*, que se
+  retiró el 28/09/2026 a pedido de Elías (*"elimina resumen"*). Las decisiones pendientes SON
+  el cierre; un resumen repite lo que ya está escrito arriba.
+
+### BD
+
+- **Nunca INSERT / UPDATE / DELETE sin un "sí" del dueño EN ESE MOMENTO.** Antes hay que
+  mostrar el **SQL exacto y sus efectos en cadena**. Un "espera" **anula** la autorización.
+- **Después de escribir: SELECT de verificación.** Siempre.
+- **EXCEPCIÓN — Planify**: sólo **crear y cerrar tareas** va automático. Cualquier otro cambio
+  requiere el "sí". **Auditoría**: toda escritura requiere confirmación, sin excepción.
+
+### PLANIFY y AUDITORÍA
+
+Las reglas completas están más abajo en este mismo archivo (bloques *"preguntar QUIÉN habla"*
+y *"auditar en Supabase cada problema"*). **No se duplican acá a propósito**: dos copias de la
+misma regla terminan divergiendo, que es el pozo del módulo de Matricería duplicado (1.0.67 →
+1.0.71). Tres puntos donde la versión corta que circula está **desactualizada**, corregidos
+el 28/09/2026:
+
+1. **Thomas Loekemeyer es el `employee_id` 3, NO el 20.** El 20 es **Tomás Beviglia**. Los
+   pedidos de Thomas van a `Tareas T` (empleado 3) o al Planify del área que corresponda, con
+   el prefijo `Th `. Mandarlos al 20 es lo que hizo que la agenda de Tomás juntara 92 pedidos
+   que no eran suyos.
+2. **La pregunta "¿Falta algo más para dar por cerrada la tarea?" está PROHIBIDA.** El cierre
+   es por criterio propio y sin preguntar (dueño, 11/09/2026: *"las que ya están cerradas,
+   cerradas"*).
+3. **La nota de la tarea lleva el formato obligatorio**, no "1-3 líneas sueltas":
+   `Falta: <qué hay que hacer>. Pedido de <Nombre> · cargada por Claude, sesión <url>`.
+
+### ⚠ ANTES DE EMPEZAR A TOCAR UN REPO: mirar el semáforo
+
+Pedido de Elías, 28/09/2026: *"con esto podés poner 'estás haciendo push o commit ahí' y
+leerlo de ahí para saber si tenés que esperar o si tenés vía libre"*.
+
+**Al arrancar el trabajo en un repo** (antes de escribir la primera línea, no antes de
+pushear):
+
+```sql
+-- 1) ¿hay alguien más adentro? Cero filas = vía libre.
+select * from planify.planify_proyecto_via_libre(<tu_employee_id>, <repo_id>);
+
+-- 2) registrarse (idempotente: llamarla de nuevo sólo renueva el latido)
+select planify.planify_proyecto_sesion_abrir(
+  <tu_employee_id>, <repo_id>, '<url de esta sesión>', '<qué vas a tocar>', '<branch>');
+
+-- 3) antes de pushear, marcar el estado
+select planify.planify_proyecto_sesion_abrir(
+  <tu_employee_id>, <repo_id>, '<url de esta sesión>', null, null, 'pusheando');
+
+-- 4) al terminar
+select planify.planify_proyecto_sesion_cerrar(<tu_employee_id>, <sesion_id>);
+```
+
+El `repo_id` sale de `github_repo_problemas.repos` (`select id, full_name from
+github_repo_problemas.repos where activo`).
+
+**Estas cuatro escrituras van AUTOMÁTICAS, sin pedir el "sí"** — misma excepción que crear y
+cerrar tareas de Planify. Son telemetría de quién está trabajando dónde, no tocan ningún dato
+del negocio, y si hubiera que pedir permiso cada vez nadie las usaría, que es exactamente cómo
+`problemas.sesion_url` terminó cargada en 14 de 580 filas.
+
+⚠⚠ **ESTO NO ES UN CANDADO Y NO PUEDE SERLO.** Frena a quien lo lee, no a quien no lo lee.
+**El candado real es git**, y funciona: el 28/09 a las 16:52 un push fue rechazado porque otra
+sesión había pusheado 9 minutos antes tocando el mismo archivo. Lo que agrega el semáforo es
+avisar **al principio** en vez de al final, con el trabajo ya hecho. Si el semáforo dice verde
+y git rechaza, **manda git**.
+
+⚠ **El lease se vence solo a los 45 minutos sin latido**, a propósito: un contenedor de Claude
+Code web se recicla sin avisar (pasó con el commit de 1.0.78), y una fila abierta para siempre
+deja el repo en rojo por nadie, que es peor que no tener semáforo.
+
+**El caso real que esto viene a evitar** no es que se pisen los pushes —eso nunca pasó, se
+verificó sobre los 141 commits que compilaron y ninguno quedó huérfano— sino el del 16/09:
+**dos sesiones construyeron el mismo módulo de Matricería en paralelo**, las dos pushearon
+bien, git integró todo, y **se tiró un módulo entero de 18 funciones** porque hubo que elegir
+uno. Git cuida la integridad; no cuida el trabajo duplicado.
+
+### El commit dice QUIÉN LO HIZO
+
+Todo commit lleva este trailer, con la persona que estaba en la sesión de Claude — **el que
+hace, no el que pide**:
+
+```
+Hecho-por: <Nombre> (employee_id <N>)
+```
+
+Y sólo **cuando difiere**, se agrega también quién lo pidió:
+
+```
+Pedido-por: Thomas Loekemeyer
+```
+
+⚠ **Por qué hace falta, medido el 28/09/2026 sobre los 309 commits de Planify**: **275 (89%)
+tienen exactamente el mismo autor de git** (`Claude <noreply@anthropic.com>`) y todos los
+pushes salen de la misma cuenta de GitHub. **Por git es imposible saber quién trabajó.** El
+dato existe —Claude pregunta quién habla al empezar la sesión— pero no llegaba a ningún lado.
+
+⚠ **Y "quién pidió" NO sirve como sustituto**: Thomas tiene **0 eventos de sesión** y nunca se
+logueó, y hay **40 commits que lo mencionan**. En esos 40, quien pidió no puede ser quien hizo.
+147 de los 309 commits nombran a una persona en prosa, pero **sin decir en qué rol**, así que
+ese dato no se puede agrupar ni parseando.
+
+El precedente de que un trailer fijo funciona es `Claude-Session:`, presente en **238 de 309
+commits (77%)**.
+
 **Estado central:** `config-claude.json` — toggles y comandos que afectan CUALQUIER chat.
 
 ## 🟥 PRINCIPIO RECTOR (Luis, 2026-09-25): mensajes a clientes — VASECTOMÍA, un solo corte en la salida
@@ -63,9 +208,12 @@ hacer sin figurar en la agenda de alguien.
 
    **Al cerrar o actualizar la tarea, la nota se reescribe con lo que quedó pendiente**, no se
    le agrega texto encima: quien la lee tiene que ver de un vistazo qué falta hoy.
-3. **Excepción del dueño:** Thomas Loekemeyer NO usa Planify. Sus pedidos se cargan en el
-   Planify de **Tomás Beviglia (employee_id 20)** con el nombre antepuesto por **`Th `**
-   (ej. `Th Fecha estimada de entrega por zona`).
+3. **Excepción del dueño:** Thomas Loekemeyer NO usa Planify. Sus pedidos se cargan con el
+   nombre antepuesto por **`Th `** (ej. `Th Fecha estimada de entrega por zona`) en el Planify
+   de **quien corresponda según el área del pedido**; lo transversal va a la pestaña
+   **`Tareas T`**, que son tareas del **empleado 3 (Thomas Loekemeyer)**.
+   ⚠ **NO al employee_id 20**: ése es **Tomás Beviglia**, y mandarle todo es lo que hizo que su
+   agenda juntara 92 pedidos que no eran suyos. Corregido el 28/09/2026.
 
 **Dónde:** proyecto Supabase de Gestión Virgilio `hrxfctzncixxqmpfhskv`, schema `planify`.
 Empleados activos con Planify (`planify.employees`): Marianela Becker **38**, Luis Rial Otero
