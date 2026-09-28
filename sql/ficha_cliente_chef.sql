@@ -95,7 +95,16 @@ begin
     'acuerdo_parametros', (select jsonb_build_object(
         'indice_lista', ap.indice_lista, 'dto_pago', ap.dto_pago, 'dto_cot', ap.dto_cot,
         'flete', ap.flete, 'piso', ap.piso, 'dto_pago_anterior', ap.dto_pago_anterior)
-      from acuerdo_parametros ap where ap.id = 1)
+      from acuerdo_parametros ap where ap.id = 1),
+    -- Comision: el MISMO % que tiene el cliente en Loekemeyer (Luis, 28/09/2026).
+    -- Varia por cliente aun dentro del mismo vendedor, asi que va por el cod LK
+    -- vinculado. Si hay mas de una razon social LK, la MAYOR (acuerdo conservador).
+    -- null = sin cliente LK vinculado o sin fila de comision.
+    'comision_lk', (select jsonb_build_object('rate', cc.rate, 'cod', cc.cod_cliente,
+                                              'vendedor', cc.vendor_label)
+                      from customer_commissions cc
+                     where cc.cod_cliente::text = any (coalesce(v_lk, '{}'::text[]))
+                     order by cc.rate desc nulls last, cc.cod_cliente limit 1)
   );
 end;
 $function$;
