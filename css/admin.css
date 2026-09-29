@@ -5799,3 +5799,41 @@ button.op-drill.op-open { color: #1e3a8a; }
   color: var(--text3);
   margin-top: 0.4em;
 }
+
+/* ---- Desglose del Acuerdo cliente (Luis, 29/09/2026) --------------------
+   El valor grande del panel abre un pop-up con la cuenta paso por paso.
+   Ancho segun el dato: la tabla no se estira, el pop-up se ajusta a ella. */
+.fc-acud-click { cursor: pointer; }
+.fc-acud-click:hover { background: #d8ecc8; }
+.fc-acud-fl { font-size: 0.6em; color: #3a6b1f; vertical-align: middle; margin-left: .25em; }
+.fc-acud-ov {
+  position: fixed; inset: 0; z-index: 1200; background: rgba(17,24,39,.55);
+  display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px;
+}
+.fc-acud-box {
+  /* ancho segun el dato: la caja se ajusta a su tabla, no a la pantalla */
+  background: #fff; border-radius: 10px; width: max-content; max-width: 100%; max-height: 86vh;
+  overflow: auto; box-shadow: 0 18px 50px rgba(0,0,0,.28);
+}
+.fc-acud-head {
+  display: flex; align-items: center; gap: 12px; font-weight: 700;
+  padding: 10px 14px; border-bottom: 1px solid #e5e7eb;
+}
+.fc-acud-x {
+  margin-left: auto; background: none; border: 0; font-size: 24px; line-height: 1;
+  color: #9ca3af; cursor: pointer; padding: 0 4px;
+}
+.fc-acud-x:hover { color: #374151; }
+.fc-acud-body { padding: 12px 14px; }
+.fc-acud-tab { border-collapse: collapse; font-size: 14px; color: #111; }
+.fc-acud-tab th,
+.fc-acud-tab td {
+  border: 1px solid #ddd; padding: .25em .6em; text-align: center; white-space: nowrap;
+}
+.fc-acud-tab thead th { background: #f3f4f6; font-size: 12px; }
+.fc-acud-tab tbody th { background: #fafafa; font-weight: 700; }
+.fc-acud-tab .fc-acud-q { font-weight: 700; font-variant-numeric: tabular-nums; }
+.fc-acud-tab .fc-h-sub { font-size: 0.7em; color: #3a6b1f; }
+.fc-acud-res { margin-top: 10px; }
+.fc-acud-res .fc-acud-q { font-size: 1.2em; }
+.fc-acud-pie { margin-top: 8px; font-size: 12px; color: #666; max-width: 30em; }

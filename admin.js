@@ -16921,6 +16921,103 @@ function fcToggleMeses() {
   fcRender();
 }
 
+// =====================================================================
+// Desglose del Acuerdo cliente (Luis, 29/09/2026)
+// ---------------------------------------------------------------------
+// El numero grande del panel no decia de donde salia. Es la MISMA cuenta de
+// get_acuerdo_cliente, escrita paso por paso: el dto de volumen sobre la
+// lista, el pago sobre ese saldo y el cotizador sobre el siguiente (eso es
+// el CHEQUE); recien ahi flete y comision, LOS DOS sobre el cheque y NO
+// encadenados entre si (criterio del duenio, 18/09/2026).
+// Es cuenta del front sobre lo que la RPC ya devuelve: no hay RPC nueva.
+// El mismo bloque vive en ficha-cliente.js de paginach.
+// =====================================================================
+function fcAcuNum(v, d) {
+  return Number(v).toFixed(d == null ? 2 : d).replace(".", ",");
+}
+function fcAcuPct(v) {
+  var n = Number(v) * 100;
+  return (Math.abs(n - Math.round(n)) < 0.005 ? String(Math.round(n)) : fcAcuNum(n, 2)) + "%";
+}
+// o = {I, dto, pago, cot, flete, com, piso, nota}; dto/pago/cot/flete/com en 0..1
+function fcAcuDesgloseHtml(o) {
+  var I = Number(o.I), piso = Number(o.piso);
+  var p1 = I * (1 - o.dto);
+  var p2 = p1 * (1 - o.pago);
+  // Cuando la RPC ya trajo cheque/recibo/factor/acuerdo se muestran ESOS, no los
+  // recalculados: si no, el desglose diría 110,98 donde el panel dice 110,99
+  // (Postgres redondea .985 para arriba y toFixed de JS para abajo).
+  var cheque = o.cheque != null ? Number(o.cheque) : p2 * (1 - o.cot);
+  var recibo = o.recibo != null ? Number(o.recibo) : cheque * (1 - o.flete - o.com);
+  if (!isFinite(recibo) || recibo <= 0) return "<div>No se pudo calcular: falta un parámetro.</div>";
+  var factor = o.factor != null ? Number(o.factor) : I / recibo;
+  var tomado = I / 100, rent = (tomado / factor - 1) * 100;
+  var acu = o.acuerdo != null ? Number(o.acuerdo) : recibo - piso;
+  function f(rot, cuanto, queda, sub) {
+    return "<tr><th>" + rot + "</th><td>" + cuanto + '</td><td class="fc-acud-q">' +
+      fcAcuNum(queda) + (sub ? '<span class="fc-h-sub">' + sub + "</span>" : "") + "</td></tr>";
+  }
+  function res(rot, cuenta, val, cls) {
+    return "<tr><th>" + rot + "</th><td>" + cuenta + '</td><td class="fc-acud-q ' +
+      (cls || "") + '">' + val + "</td></tr>";
+  }
+  var sig = function (n) { return n > 0 ? "+" : ""; };
+  return '<table class="fc-acud-tab"><thead><tr><th>Paso</th><th>Cuánto</th><th>Queda</th></tr></thead><tbody>' +
+    f("Índice de lista", "—", I) +
+    f("− Dto x volumen", fcAcuPct(o.dto), p1) +
+    f("− Dto pago contado", fcAcuPct(o.pago), p2) +
+    f("− Cotizador", fcAcuPct(o.cot), cheque, "cheque") +
+    f("− Flete + comisión", fcAcuPct(o.flete) + " + " + fcAcuPct(o.com), recibo, "recibo") +
+    "</tbody></table>" +
+    '<table class="fc-acud-tab fc-acud-res"><tbody>' +
+    res("Acuerdo cliente", fcAcuNum(I) + " ÷ " + fcAcuNum(recibo), fcAcuNum(factor)) +
+    res("Acuerdo tomado", fcAcuNum(I) + " ÷ 100", fcAcuNum(tomado)) +
+    res("+-Rent", fcAcuNum(tomado) + " ÷ " + fcAcuNum(factor) + " − 1",
+        sig(rent) + Math.round(rent) + "%", rent < 0 ? "fc-acu-rojo" : "fc-acu-verde") +
+    res("Acuerdo", fcAcuNum(recibo) + " − piso " + fcAcuNum(piso),
+        sig(acu) + fcAcuNum(acu), acu < 0 ? "fc-acu-rojo" : "fc-acu-verde") +
+    "</tbody></table>" +
+    '<div class="fc-acud-pie">' + (o.nota || "") +
+    "Flete y comisión se restan <strong>los dos sobre el cheque</strong>, no encadenados entre sí. " +
+    "Acuerdo cliente por encima del tomado = este cliente deja menos margen que el objetivo." +
+    "</div>";
+}
+function fcAcuEsc(e) { if (e.key === "Escape") fcAcuCerrar(); }
+function fcAcuCerrar() {
+  var ov = document.getElementById("fcAcuOv");
+  if (ov) ov.remove();
+  document.removeEventListener("keydown", fcAcuEsc);
+}
+function fcAcuPop(titulo, cuerpo) {
+  fcAcuCerrar();
+  var ov = document.createElement("div");
+  ov.className = "fc-acud-ov";
+  ov.id = "fcAcuOv";
+  ov.innerHTML = '<div class="fc-acud-box"><div class="fc-acud-head"><span>' + titulo +
+    '</span><button type="button" class="fc-acud-x" aria-label="Cerrar">&times;</button></div>' +
+    '<div class="fc-acud-body">' + cuerpo + "</div></div>";
+  ov.addEventListener("click", function (e) {
+    if (e.target === ov || (e.target.classList && e.target.classList.contains("fc-acud-x"))) fcAcuCerrar();
+  });
+  document.addEventListener("keydown", fcAcuEsc);
+  document.body.appendChild(ov);
+}
+// Puerta del panel de la ficha de LK. En get_acuerdo_cliente los parametros
+// vienen crudos (0..1) y dto_vol / comision en porcentaje.
+function fcAcuDesglose() {
+  var a = _fcAcuerdo;
+  if (!a || !a.parametros) return;
+  var p = a.parametros;
+  fcAcuPop("Acuerdo cliente — cómo se calcula", fcAcuDesgloseHtml({
+    I: p.indice_lista, dto: Number(a.dto_vol) / 100, pago: p.dto_pago,
+    cot: p.dto_cot, flete: p.flete, com: Number(a.comision) / 100, piso: p.piso,
+    cheque: a.cheque, recibo: a.recibo, factor: a.factor, acuerdo: a.acuerdo,
+    nota: "Comisión " + fcAcuNum(a.comision) + "%" +
+      (a.vendedor ? " (" + escapeHtml(a.vendedor) + ")" : "") + ". ",
+  }));
+}
+window.fcAcuDesglose = fcAcuDesglose;
+
 function fcRender() {
   var cont = document.getElementById("fcContenido");
   if (!cont || !_fcData) return;
@@ -17101,8 +17198,11 @@ function fcRender() {
   html +=
     '<table class="fc-h-tabla fc-h-acu">' +
     '<tbody class="fc-h-bloque">' +
-    '<tr><th>Acuerdo<br>Cliente</th><td class="fc-h-big">' +
-    (factorCli ? factorCli.toFixed(2).replace(".", ",") : "—") + "</td></tr>" +
+    '<tr><th>Acuerdo<br>Cliente</th>' +
+    (factorCli
+      ? '<td class="fc-h-big fc-acud-click" title="Ver cómo se calcula" onclick="fcAcuDesglose()">' +
+        factorCli.toFixed(2).replace(".", ",") + '<span class="fc-acud-fl">›</span></td>'
+      : '<td class="fc-h-big">—</td>') + "</tr>" +
     '<tr><th>Acuerdo<br>Tomado</th><td class="fc-h-big">' +
     (indiceTom ? indiceTom.toFixed(2).replace(".", ",") : "—") + "</td></tr>" +
     '<tr><th>+-Rent</th><td class="fc-h-big ' +

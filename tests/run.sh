@@ -38,6 +38,7 @@ _correr presupuesto.cjs
 _correr perfil-sin-columna.cjs
 _correr carrito-animacion.cjs
 _correr ficha-hoja.cjs
+_correr fc-acuerdo-desglose.cjs
 
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then
