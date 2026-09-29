@@ -67,7 +67,7 @@ for i, n in NOM.items():
             TOK.setdefault(t, set()).add(i)
 for t, i in pad.get("alias", {}).items():
     TOK.setdefault(t, set()).add(i)
-TOK.setdefault("thomas", set()).add("TH")   # Thomas -> 20 con prefijo 'Th '
+TOK.setdefault("thomas", set()).add("TH")   # Thomas Loekemeyer -> 3 (Tareas T), prefijo 'Th '. NUNCA 20 (Beviglia)
 PREF = pad.get("preferido", {})
 PRES = ("soy", "habla", "escribe", "aca", "aqui")
 
@@ -112,7 +112,7 @@ def emit(msg):
 if quien:
     ids, usados = quien
     if "TH" in ids and len(ids) == 1:
-        quien_txt, ruteo = "Thomas", "Thomas -> employee_id 20 (Tomas Beviglia) con el nombre antepuesto por 'Th '"
+        quien_txt, ruteo = "Thomas", "Thomas -> employee_id 3 (Thomas Loekemeyer, Tareas T) con el nombre antepuesto por 'Th '. NUNCA el 20: es Tomas Beviglia"
     else:
         ids = {i for i in ids if i != "TH"}
         if len(ids) > 1 and len(usados) == 1 and str(PREF.get(usados[0], "")) and PREF.get(usados[0]) in ids:

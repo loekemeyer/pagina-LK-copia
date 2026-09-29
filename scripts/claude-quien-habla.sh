@@ -43,6 +43,6 @@ pero agregá a pendientes o definiciones que te confirme quién es antes de cerr
 se hace lo que se pidió, y la confirmación se pide EN LAS DECISIONES PENDIENTES del
 cierre, hasta que llegue. Lo que sí espera es la ATRIBUCIÓN: no se carga una tarea
 de Planify ni se registra un problema a nombre de alguien adivinado.
-Ruteo, para no equivocarse: Thomas -> employee_id 20 (Tomás Beviglia) con el
+Ruteo, para no equivocarse: Thomas -> employee_id 3 (Tareas T; NUNCA el 20, Beviglia) con el
 nombre antepuesto por "Th ". Cualquier otro -> su propio employee_id, sin prefijo.
 TXT
