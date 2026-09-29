@@ -74,6 +74,9 @@
     ".xkr-totals{display:flex;justify-content:flex-end;gap:18px;padding:10px 0 0;font-size:13px;flex-wrap:wrap}",
     ".xkr-totals .lab{color:var(--text3,#888)}",
     ".xkr-totals .val{font-weight:700;color:var(--text2,#222)}",
+    ".xkr-obs{display:flex;flex-direction:column;gap:4px;padding:10px 0 0;font-size:12px}",
+    ".xkr-obs .lab{color:var(--text3,#888);font-weight:600}",
+    ".xkr-obs textarea{width:100%;box-sizing:border-box;min-height:48px;padding:6px 8px;border:1px solid var(--border,#ddd);border-radius:6px;font-family:inherit;font-size:13px;resize:vertical}",
     ".xkr-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;border-top:1px solid var(--border,#eee);padding-top:10px}",
     ".xkr-btn{font-size:12px;padding:7px 14px;border-radius:6px;border:1px solid var(--border,#ddd);background:#fff;cursor:pointer;color:var(--text2,#222);font-family:inherit}",
     ".xkr-btn:hover{background:var(--bg2,#fafafa)}",
@@ -713,6 +716,10 @@
       submitting: false,
       submitted: false,
       orderId: null,
+      // Observaciones del pedido (Tomás Gonzalez, 29/09/2026). Viven en el
+      // state porque renderResult() rehace la card entera en cada cambio de
+      // cajas: sin esto lo tipeado se perdería al tocar una cantidad.
+      observaciones: "",
     };
 
     function renderInitial() {
@@ -1137,6 +1144,11 @@
               '<span><span class="lab">Total:</span> <span class="val">$ ' + fmtMoney(totals.total) + "</span></span>" +
               "</div>"
             : "") +
+          (state.items.length > 0
+            ? '<label class="xkr-obs"><span class="lab">Observaciones</span>' +
+              '<textarea class="xkr-obs-input" maxlength="500" placeholder="Opcional: van al pedido (Gestión / depósito)"' +
+              (state.submitted ? " disabled" : "") + ">" + escapeHtml(state.observaciones || "") + "</textarea></label>"
+            : "") +
           '<div class="xkr-actions">' +
           '<button class="xkr-btn danger" id="xkrReset">Descartar</button>' +
           (state.items.length > 0
@@ -1224,6 +1236,12 @@
       if (resetBtn) resetBtn.addEventListener("click", resetState);
       var submitBtn = card.querySelector("#xkrSubmit");
       if (submitBtn) submitBtn.addEventListener("click", submitOrder);
+      var obsInp = card.querySelector(".xkr-obs-input");
+      if (obsInp) {
+        obsInp.addEventListener("input", function () {
+          state.observaciones = obsInp.value;
+        });
+      }
 
       // Wire cajas input + incl checkbox
       card.querySelectorAll("tr[data-i]").forEach(function (tr) {
@@ -1284,6 +1302,7 @@
       state.submitting = false;
       state.submitted = false;
       state.orderId = null;
+      state.observaciones = "";
       renderInitial();
     }
 
@@ -1379,6 +1398,7 @@
           ? (state.customer.business_name || "") + " — " + branchLabel
           : (state.customer.business_name || "");
 
+        var obsValue = String(state.observaciones || "").trim();
         var sheetsPayload = {
           order_number: String(orderId),
           pdf_oc: "",
@@ -1387,6 +1407,7 @@
           condicion_pago: paymentMethodText,
           condicion_pago_code: 1,
           sucursal_entrega: sucursalEntrega,
+          observaciones: obsValue,
           cliente_nuevo: "",
           is_promo: false,
           is_chef: false,
@@ -1433,6 +1454,7 @@
           vendedor: state.customer.vend || "",
           direccion_entrega: deliveryDireccion,
           barrio_entrega: "",
+          observaciones: obsValue,
           empresa: "LK",
           is_promo: false,
           extra_discount: 0,
