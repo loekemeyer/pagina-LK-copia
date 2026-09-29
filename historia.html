@@ -8,7 +8,36 @@
       name="description"
       content="Fabricantes de utensilios de cocina en Buenos Aires desde 1950: cuatro generaciones, cinco diseños registrados en el INPI y el origen del abrelatas, el pelapapas y el sacacorchos."
     />
-    <meta name="robots" content="noindex" /><!-- BORRADOR: quitar al publicar -->
+    <meta name="robots" content="noindex,nofollow" /><!-- BORRADOR: quitar al publicar -->
+    <!-- SOLO ADMIN mientras está en revisión (pedido 29/09/2026). La página nace
+         oculta y se muestra recién cuando la sesión de Supabase es de un admin
+         (tabla admins, mismo chequeo que admin.js). Sin sesión o sin admin →
+         mayorista.html. Ojo: es un sitio estático, así que el HTML igual se
+         puede bajar pidiéndolo directo; esto la saca de la vista, no la cifra. -->
+    <style>html.lk-solo-admin body{visibility:hidden}</style>
+    <script>document.documentElement.classList.add("lk-solo-admin");</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.0"></script>
+    <script>
+      (function () {
+        var afuera = function () { location.replace("mayorista.html"); };
+        try {
+          var sb = window.supabase.createClient(
+            "https://kwkclwhmoygunqmlegrg.supabase.co",
+            "sb_publishable_mVX5MnjwM770cNjgiL6yLw_LDNl9pML"
+          );
+          sb.auth.getSession().then(function (r) {
+            var s = r && r.data ? r.data.session : null;
+            if (!s) return afuera();
+            return sb.from("admins").select("auth_user_id")
+              .eq("auth_user_id", s.user.id).maybeSingle()
+              .then(function (a) {
+                if (a.error || !a.data) return afuera();
+                document.documentElement.classList.remove("lk-solo-admin");
+              });
+          }).catch(afuera);
+        } catch (e) { afuera(); }
+      })();
+    </script>
     <link rel="canonical" href="https://loekemeyer.com/historia.html" />
     <meta property="og:title" content="Nuestra historia · Loekemeyer" />
     <meta property="og:description" content="Cuatro generaciones fabricando utensilios de cocina en Buenos Aires desde 1950." />
@@ -16,9 +45,9 @@
     <meta property="og:url" content="https://loekemeyer.com/historia.html" />
     <meta property="og:image" content="https://loekemeyer.com/img/img_landing.webp" />
     <link rel="icon" type="image/png" href="img/favicon.jpg" />
-    <link rel="stylesheet" href="css/styles.index.css?v=23497" />
-    <link rel="stylesheet" href="css/productos.css?v=23497" />
-    <link rel="stylesheet" href="css/publico.css?v=23497" />
+    <link rel="stylesheet" href="css/styles.index.css?v=23498" />
+    <link rel="stylesheet" href="css/productos.css?v=23498" />
+    <link rel="stylesheet" href="css/publico.css?v=23498" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -734,8 +763,8 @@
         window.addEventListener("resize", marcar);
       })();
     </script>
-    <script src="version.js?v=23497"></script>
-    <script src="script.index.js?v=23497"></script>
-    <script src="js/conversiones.js?v=23497"></script>
+    <script src="version.js?v=23498"></script>
+    <script src="script.index.js?v=23498"></script>
+    <script src="js/conversiones.js?v=23498"></script>
   </body>
 </html>

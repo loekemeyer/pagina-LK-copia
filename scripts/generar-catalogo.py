@@ -118,7 +118,6 @@ def topbar(pref, activo):
         </a>
         <nav class="prod-topbar-nav" aria-label="Secciones">
           {a(pref + SALIDA + "/index.html", "Productos", "productos")}
-          {a(pref + "historia.html", "Historia", "historia")}
           <a class="prod-topbar-cta" href="{pref}mayorista.html">Pedido mayorista</a>
         </nav>
       </div>
@@ -153,8 +152,6 @@ def footer(pref):
           <span>© 2026 Loekemeyer Hnos S.R.L. — Todos los derechos reservados.
             <span data-app-version style="font-size: 11px; color: #9a9a9a; margin-left: 6px"></span></span>
           <div class="footer-links">
-            <a href="{pref}{SALIDA}/index.html" class="footer-link">Productos</a>
-            <a href="{pref}historia.html" class="footer-link">Historia</a>
             <a href="#" class="footer-link" data-modal="privacy">Política de privacidad</a>
             <a href="#" class="footer-link" data-modal="terms">Términos y condiciones</a>
           </div>
