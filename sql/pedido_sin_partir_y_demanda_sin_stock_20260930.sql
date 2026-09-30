@@ -133,3 +133,4 @@ on conflict do nothing;
 -- select empresa, origen, count(*), count(distinct order_id) from public.pedido_sin_stock group by 1,2;
 -- select position('pedido_diferido (' in pg_get_functiondef('public.marcar_pedido_diferido(bigint)'::regprocedure)) = 0 as lk_ya_no_parte,
 --        position('pedido_diferido (' in pg_get_functiondef('public.marcar_diferidos_chef_ids(bigint[],text)'::regprocedure)) = 0 as chef_ya_no_parte;
+-- Publicación: con bump de version.js para que el navegador tome el script.js nuevo.
