@@ -5187,16 +5187,31 @@ function getFilteredProducts() {
     }
   }
 
-  // Buscador
+  // Buscador: código/descripción Y ADEMÁS la categoría o subcategoría entera
+  // cuyo nombre coincida (pedido 30/09/2026). "vidrio" no está en ninguna
+  // descripción y la categoría Vidrio no salía; "madera" trae los artículos que
+  // lo dicen MÁS la categoría Madera y la subcategoría Utensilios › Madera
+  // completas. Es unión, no reemplazo, y no cambia el orden: el render agrupa
+  // igual que siempre.
   if (searchTerm && String(searchTerm).trim()) {
     const term = normalizeText(searchTerm);
-    list = list.filter((p) => {
-      const hay = [p.cod, p.description].map(normalizeText).join(" ");
-      return hay.includes(term);
-    });
+    list = list.filter((p) => searchMatchProduct(p, term));
   }
 
   return list;
+}
+
+/* Un solo criterio para el catálogo y la línea Loke. `term` llega normalizado.
+   Código+descripción se comparan pegados como siempre ("505 pelador" sigue
+   encontrando); la categoría y la subcategoría van cada una por su lado, para
+   que un término no matchee cruzando de un campo al otro. */
+function searchMatchProduct(p, term) {
+  if (!term) return true;
+  const hay = [p.cod, p.description].map(normalizeText).join(" ");
+  if (hay.includes(term)) return true;
+  return [p.category, p.subcategory].some(
+    (c) => !!c && normalizeText(c).includes(term),
+  );
 }
 
 async function loadMyAssortmentIds() {
@@ -8530,6 +8545,22 @@ function removeItem(productId) {
   renderProducts();
 }
 
+/* Vaciar carrito (pedido 30/09/2026): antes había que sacar las líneas de a una.
+   Pide confirmación porque no tiene deshacer. En modo edición no se ofrece: las
+   líneas que el pedido ya tenía no se pueden sacar (idea 4990), y para salir de
+   ahí el cartel amarillo ya tiene "Cancelar edición", que vacía el carrito. */
+function vaciarCarrito() {
+  if (!cart.length || editingOrderId) return;
+  const n = cart.length;
+  const ok = confirm(
+    `¿Vaciar el carrito? Se van a sacar ${n} artículo${n === 1 ? "" : "s"}.`,
+  );
+  if (!ok) return;
+  cart.splice(0, cart.length);
+  updateCart(); // persiste en localStorage (saveCartToLS)
+  renderProducts();
+}
+
 function toggleControls(productId, show) {
   const addBtn = $(`add-${productId}`);
   const qtyWrap = $(`qty-${productId}`);
@@ -8758,6 +8789,11 @@ function updateCart() {
 
         <tbody>${rows}</tbody>
       </table>
+      ${
+        editingOrderId
+          ? ""
+          : `<div class="cart-vaciar-row"><button type="button" class="cart-vaciar-btn" onclick="vaciarCarrito()">🗑 Vaciar carrito</button></div>`
+      }
     `;
   }
 
@@ -15468,8 +15504,7 @@ function renderLokeProducts() {
   if (searchTerm && String(searchTerm).trim()) {
     var term = normalizeText(searchTerm);
     filtered = lokeProducts.filter(function (p) {
-      var hay = normalizeText(p.cod) + " " + normalizeText(p.description);
-      return hay.includes(term);
+      return searchMatchProduct(p, term);
     });
   }
 
@@ -15806,6 +15841,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.changeQty = changeQty;
   window.manualQty = manualQty;
   window.removeItem = removeItem;
+  window.vaciarCarrito = vaciarCarrito;
   window.updateCart = updateCart;
   window.submitOrder = submitOrder;
   window.openProfile = openProfile;

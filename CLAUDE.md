@@ -1280,6 +1280,7 @@ Documentos de planificación y replicación, NO ejecutables:
 - Anomaly detection: `ANOMALY_THRESHOLD = 6` flags cart lines > 6× a customer's historical monthly average (from view `v_customer_item_month`), cached per-customer in `_anomalyCache`.
 - A single customer code is treated as special: `cod_cliente === "5000"` triggers list-price-only mode alongside admins (`isListPriceOnlyClient()`).
 - Category ordering is hardcoded: `CATEGORY_ORDER` and `UTENSILIOS_SUB_ORDER` at the top of `script.js`. New categories are ignored in the menu until added here.
+- **El buscador es UNIÓN: código/descripción + categoría o subcategoría entera cuyo nombre coincida** (30/09/2026, `searchMatchProduct`, lo usan el catálogo y la línea Loke). "vidrio" no está en ninguna descripción de la categoría Vidrio (0 de 4) y no daba nada; "madera" suma la categoría Madera (15) y Utensilios › Madera (7, sólo 1 lo dice). El orden no cambia: el render agrupa igual. **"Vaciar carrito"** (`vaciarCarrito`, con `confirm`) no se dibuja en modo edición: ahí vacía "Cancelar edición". Chequeo: `tests/buscador-categoria.cjs`.
 
 ## Common operations
 

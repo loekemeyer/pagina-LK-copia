@@ -16607,3 +16607,27 @@ body { top: 0 !important; }
 .is-presupuesto .ship-row-split > .ship-card {
   max-width: none;
 }
+
+/* Vaciar carrito (30/09/2026): debajo de la tabla, alineado a la derecha y
+   discreto — es destructivo, no tiene que competir con "Confirmar pedido".
+   `vaciarCarrito()` pide confirmación. No se dibuja en modo edición. */
+.cart-vaciar-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.cart-vaciar-btn {
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #666;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.cart-vaciar-btn:hover {
+  border-color: #c62828;
+  color: #c62828;
+  background: #fdf3f3;
+}
