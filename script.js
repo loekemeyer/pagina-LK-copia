@@ -1507,6 +1507,11 @@ function _pintarFechaListo(el, modo, fechaReingreso) {
   });
 }
 
+// Luis (30/09): *"programá el pedido completo, como antes"*. El pedido ya NO se
+// parte por reingreso ni la pantalla dice "sale a partir del dd/mm": con esto en
+// false `_cliNuevo` queda en true y el submit no entra a ninguna de las dos ramas.
+const PARTIR_POR_REINGRESO = false;
+
 // Luis (23/09): un pedido que mezcla artículos EN STOCK con artículos que dicen
 // "Sin stock hasta dd/mm" entra como DOS pedidos, cada uno con su número: el de
 // lo que hay sale como siempre y el de lo que falta, a partir del reingreso. Se
@@ -10120,7 +10125,9 @@ async function submitOrder() {
     // Luis (23/09): son DOS pedidos distintos, con dos números. Editando no se parte.
     var reingresoItems = [];
     var reingresoFecha = "";
-    var _cliNuevo = !editOrderIdSnapshot && (await _esClienteNuevo("lk", customerProfile?.cod_cliente));
+    // Luis (30/09): el pedido ya NO se parte — va completo y lo que no hay sale como
+    // faltante. Para volver a partir: PARTIR_POR_REINGRESO = true.
+    var _cliNuevo = !PARTIR_POR_REINGRESO || (!editOrderIdSnapshot && (await _esClienteNuevo("lk", customerProfile?.cod_cliente)));
     if (!editOrderIdSnapshot && !_cliNuevo) {
       var _spR = _splitPorReingreso(regularItems);
       if (_spR.reingreso.length && _spR.ahora.length) {
