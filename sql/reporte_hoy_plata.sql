@@ -1,3 +1,6 @@
+-- ⚠ REEMPLAZADA el 2026-10-01: la definición vigente de rep_texto_hoy (LK + Chef) está en
+-- sql/reporte_diario_hoy_chef.sql. Este archivo queda como historia: NO correrlo, pisaría a Chef.
+--
 -- rep_texto_hoy / rep_enviar_hoy — v14.24 (2026-09-07)
 --
 -- Proyecto LK (kwkclwhmoygunqmlegrg). Ya aplicado en produccion el 2026-09-07 (cron 36).

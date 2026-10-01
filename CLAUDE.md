@@ -1668,7 +1668,7 @@ los dos llevan, por empresa y "entre las dos": pedido (monto, variación, top 5 
 `chef_ext.orders_total`** (foránea propia, aislada de `public.chef_orders` para no tocar el sync del
 armado): `chef_orders_cache` no tiene el total y el `order_total` del payload falta en los pedidos
 de Krikos/Cotizador (sep: $26,6 M contra $63,0 M). Si Chef no contesta, el reporte sale igual con
-un aviso. El DIARIO y el HOY siguen siendo sólo LK. ⚠ **El
+un aviso. **El DIARIO y el HOY también llevan Chef** desde la misma noche (`sql/reporte_diario_hoy_chef.sql`): despachado de Chef desde `ppp_np_feed` y pedidos por la misma foránea. ⚠ **El
 semanal y el mensual leen el despachado de `ppp_np_feed`, NO de la foto `rep_despacho_diario`**:
 el neto de Gestión estuvo ~10× abajo desde mediados de agosto hasta el 01/10 (sep: $42,9 M en la
 foto contra $419,7 M del feed corregido) y la foto sólo se re-escribe 30 días hacia atrás con la
