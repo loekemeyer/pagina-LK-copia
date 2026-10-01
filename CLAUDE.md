@@ -1660,6 +1660,16 @@ pantalla**: regla del dueño (Gestión v13.64), `rep_ppp()` devuelve `nps_web` p
 Definiciones y medición en `sql/reporte_deposito_gestion.sql`; el lado Virgilio en el repo
 `Gestion-Virgilio`, `sql/gv_lk_np_feed.sql` y §3.bk de `docs/SUPABASE-GESTION-VIRGILIO.md`.
 
+**Pedidos y entregas en el SEMANAL y el MENSUAL (Thomas, 01/10/2026).** El semanal ya traía las
+dos cosas; el mensual no tenía los pedidos del portal. Hoy los dos llevan pedido (monto, variación,
+top 5) + entregas (despachado, variación, **faltantes** = cajas pedidas − entregadas). ⚠ **El
+semanal y el mensual leen el despachado de `ppp_np_feed`, NO de la foto `rep_despacho_diario`**:
+el neto de Gestión estuvo ~10× abajo desde mediados de agosto hasta el 01/10 (sep: $42,9 M en la
+foto contra $419,7 M del feed corregido) y la foto sólo se re-escribe 30 días hacia atrás con la
+guarda `np_neto >= anterior`, así que guarda valores viejos (28/08, 17/09 y todo lo anterior al
+02/09). El DIARIO sigue con la foto, que para el día anterior siempre está fresca.
+`sql/reporte_semanal_mensual_pedidos_entregas.sql` (rollback en `sql/backups/`).
+
 ## Pendientes — AVISAR AL USUARIO
 
 **Instrucción para Claude, no es una nota suelta:** cuando una sesión toque alguno de
