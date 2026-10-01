@@ -1660,9 +1660,15 @@ pantalla**: regla del dueño (Gestión v13.64), `rep_ppp()` devuelve `nps_web` p
 Definiciones y medición en `sql/reporte_deposito_gestion.sql`; el lado Virgilio en el repo
 `Gestion-Virgilio`, `sql/gv_lk_np_feed.sql` y §3.bk de `docs/SUPABASE-GESTION-VIRGILIO.md`.
 
-**Pedidos y entregas en el SEMANAL y el MENSUAL (Thomas, 01/10/2026).** El semanal ya traía las
-dos cosas; el mensual no tenía los pedidos del portal. Hoy los dos llevan pedido (monto, variación,
-top 5) + entregas (despachado, variación, **faltantes** = cajas pedidas − entregadas). ⚠ **El
+**Pedidos y entregas de LK Y CHEF en el SEMANAL y el MENSUAL (Thomas, 01/10/2026).** El semanal
+ya traía las dos cosas de LK; el mensual no tenía los pedidos del portal, y ninguno tenía Chef. Hoy
+los dos llevan, por empresa y "entre las dos": pedido (monto, variación, top 5 conjunto) + entregas
+(despachado, variación, **faltantes** = cajas pedidas − entregadas). Helpers `rep_entregas`,
+`rep_txt_entregas`, `rep_txt_pedidos`. ⚠ **Los pedidos de Chef se leen EN VIVO por FDW con
+`chef_ext.orders_total`** (foránea propia, aislada de `public.chef_orders` para no tocar el sync del
+armado): `chef_orders_cache` no tiene el total y el `order_total` del payload falta en los pedidos
+de Krikos/Cotizador (sep: $26,6 M contra $63,0 M). Si Chef no contesta, el reporte sale igual con
+un aviso. El DIARIO y el HOY siguen siendo sólo LK. ⚠ **El
 semanal y el mensual leen el despachado de `ppp_np_feed`, NO de la foto `rep_despacho_diario`**:
 el neto de Gestión estuvo ~10× abajo desde mediados de agosto hasta el 01/10 (sep: $42,9 M en la
 foto contra $419,7 M del feed corregido) y la foto sólo se re-escribe 30 días hacia atrás con la
