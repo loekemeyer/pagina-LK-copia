@@ -40,6 +40,7 @@ _correr carrito-animacion.cjs
 _correr buscador-categoria.cjs
 _correr ficha-hoja.cjs
 _correr fc-acuerdo-desglose.cjs
+_correr est-madre-unica.cjs
 
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then

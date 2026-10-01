@@ -490,7 +490,8 @@ al espejo bajo `/admin/` del repo `Gestion-Virgilio`.** Archivos espejados:
 `excel-parser-smart.js`, `argentina-map-data.js`, `argentina-provinces.json`,
 `version.js`, `css/admin.css`, `css/analisis-venta-cliente.css`,
 `css/analisis-cobranzas.css`, `css/historial.css`, `css/sugerencias.css`,
-`css/productos.css`, `osa/`, `img/favicon.jpg`, `img/no-image.jpg`.
+`css/productos.css`, `osa/`, `img/favicon.jpg`, `img/no-image.jpg`. **La Est. Madre NO se espeja**: vive sólo en
+`Gestion-Virgilio/admin/est-madre.js` (ver abajo).
 
 Si esto se vuelve tedioso, mover a un mecanismo real de sync (git submodule,
 subtree, o un script `sync-admin-to-virgilio.sh`). Hasta entonces, es a mano.
@@ -512,6 +513,25 @@ admin se sirve desde otro dominio y sin la infraestructura del sitio LK):
   hay sesión de LK: las lecturas van a la Edge Function **`gv-est-madre`** de este proyecto (valida el JWT de
   Gestión con `es_supervisor_virgilio()` y sólo devuelve lo que lee la Est. Madre). **La página LK y el Panel Web
   LK no cambian.** Fuente: `admin/supabase/gv-est-madre/index.ts` del repo `Gestion-Virgilio`.
+
+### ⚠⚠ La ESTADÍSTICA MADRE NO vive en este repo (Tomás Beviglia, 01/10/2026)
+
+*"Es un solo cuadro que se imprime en dos lados distintos. NUNCA puede un cuadro de est madre quedar más
+actualizado que otro. Si alguien quiere cambiar uno solo NO se puede hacer."*
+
+- La página, el CSS y la lógica de la Est. Madre viven **sólo** en `admin/est-madre.js` del repo
+  **`Gestion-Virgilio`**, publicado por GitHub Pages. Este `admin.js` trae únicamente el cargador
+  `abrirEstadisticaMadre`, que lo baja de `https://loekemeyer.github.io/Gestion-Virgilio/admin/est-madre.js`;
+  el espejo de Gestión trae el **mismo** cargador y baja la **misma** URL. La sección `#estadistica-madre` de
+  `admin.html` queda vacía a propósito.
+- **Para cambiar la Est. Madre se edita `est-madre.js` en `Gestion-Virgilio`**, nunca acá: con el push a `main` de
+  aquel repo cambia en los dos lados a la vez. `tests/est-madre-unica.cjs` (acá y allá) tiene la huella md5 del
+  cargador y falla si alguno vuelve a tener una copia propia.
+- **Filas** = los artículos de Stocks de Gestión (`stocks_carga_rapida`); **Est Madre** (caj/mes) = la columna de
+  Stocks; **meses** = cajas por mes y empresa de `get_estadistica_madre_mensual()` (`sql/get_estadistica_madre_mensual.sql`,
+  ya aplicado). El caché `estadistica_madre_cache` sigue para el portal, pero esta pantalla ya no lo lee.
+- ⚠ **loekemeyer.com es manual (SolidCP)**: hasta subir `admin.html`, `admin.js` y `css/admin.css`, producción
+  muestra la tabla vieja. Después de esa subida no hace falta volver a subir nada por cambios de la Est. Madre.
 
 El login del espejo no usa CUIT+PIN (no está `mayorista.html` en ese repo). Usa
 código OTP de 6 dígitos al mail vía la Edge Function `admin-login-otp` en este
