@@ -506,6 +506,12 @@ admin se sirve desde otro dominio y sin la infraestructura del sitio LK):
 - Handler de login OTP al final de admin.js (`lkSendOtp`, `lkVerifyOtp`,
   `lkResetOtp`, constantes `LK_ADMIN_EMAIL`, `LK_OTP_FN_URL`, helper `_lkOtpFn`)
   + form OTP dentro del `#loadingScreen` de admin.html.
+- **Modo Est. Madre de Gestión sin código** (01/10/2026, pedido de Tomás Beviglia): al principio de admin.js
+  del espejo, `GV_EM_EMBED` / `_gvEmFetch` / `GV_EM_PERMITIDAS` / `window.supabaseClient = sb`, y el corte en
+  `checkAuth()` y en el init. Con `admin.html?gv_em=1` dentro del iframe de la pestaña EST. MADRE de Gestión, no
+  hay sesión de LK: las lecturas van a la Edge Function **`gv-est-madre`** de este proyecto (valida el JWT de
+  Gestión con `es_supervisor_virgilio()` y sólo devuelve lo que lee la Est. Madre). **La página LK y el Panel Web
+  LK no cambian.** Fuente: `admin/supabase/gv-est-madre/index.ts` del repo `Gestion-Virgilio`.
 
 El login del espejo no usa CUIT+PIN (no está `mayorista.html` en ese repo). Usa
 código OTP de 6 dígitos al mail vía la Edge Function `admin-login-otp` en este
