@@ -12,9 +12,9 @@
  *     "Entrega estimada" no se muestra nunca. El listado de productos llega al
  *     pie de la pantalla y su encabezado queda fijo al scrollear.
  *
- * ⚠ Este archivo se corría también contra Chef (`node tests/checkout-layout.cjs
- *   ../paginach`). Desde la v2.3.506 LK cambió y Chef no: hasta portarlo, en
- *   Chef da rojo a propósito.
+ * ⚠ Es el MISMO archivo en LK (`pagina-LK-copia`) y en Chef (`paginach`):
+ *   Chef recibió el cambio en la v2.0.90. Chef no tiene la barra "Entrega
+ *   estimada" (nunca se portó), así que el chequeo B ahí pasa solo.
  *
  * ⚠ Viewport ANCHO (1700×1000): la columna del carrito manda, no la ventana.
  *
