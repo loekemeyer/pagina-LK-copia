@@ -10860,6 +10860,12 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   align-items: start;
+  /* `align-content: start` (02/10/2026, Gastón): con el listado al pie de la
+     pantalla, la columna de la derecha queda más alta y estira a ésta. Sin
+     esto la grilla repartía ese alto sobrante entre sus filas: "Pedir para"
+     crecía ~50 px por debajo de Dirección y Método de pago y el Subtotal
+     bajaban. Así cada fila mide lo que su contenido y el sobrante queda abajo. */
+  align-content: start;
 }
 
 /* `align-self: stretch`: con el expreso a la vista, Dirección mide ~290 px y

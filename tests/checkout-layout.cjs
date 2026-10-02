@@ -11,6 +11,11 @@
  *     una tarjeta: es un botón al lado de "Confirmar pedido" que abre #modalObs.
  *     "Entrega estimada" no se muestra nunca. El listado de productos llega al
  *     pie de la pantalla y su encabezado queda fijo al scrollear.
+ *   - 02/10 (Gastón, v2.3.507): el alto de "Pedir para" y Dirección lo manda
+ *     Dirección. Con el listado al pie, la columna derecha estira a la
+ *     izquierda y la grilla repartía ese sobrante entre sus filas: "Pedir
+ *     para" quedaba ~50 px más alta y Pago y Subtotal bajaban. El chequeo D
+ *     estira la columna a propósito para reproducirlo.
  *
  * ⚠ Es el MISMO archivo en LK (`pagina-LK-copia`) y en Chef (`paginach`):
  *   Chef recibió el cambio en la v2.0.90. Chef no tiene la barra "Entrega
@@ -154,6 +159,9 @@ const PRODS = Array.from({ length: 25 }, (_, i) => ({
   /* ── D. CON "PEDIR PARA": las dos tarjetas lado a lado y a la misma altura,
      y nada de hueco debajo (Observaciones ya no está en esa grilla) ────────── */
   const v = await page.evaluate(() => {
+    // La columna derecha (listado al pie) estira a la izquierda: se reproduce
+    // dándole a la izquierda más alto que su contenido.
+    document.querySelector("#carrito .cart-col-left").style.minHeight = "1600px";
     const fila = document.getElementById("shippingSelect").closest(".ship-row");
     const cust = document.createElement("div");
     cust.id = "customerSelectorCart";
@@ -173,6 +181,7 @@ const PRODS = Array.from({ length: 25 }, (_, i) => ({
       cust: B(cust.querySelector(".ship-card")),
       dir: B(document.getElementById("shippingSelect").closest(".ship-card")),
       pago: B(document.getElementById("paymentRow")),
+      total: B(document.querySelector("#carrito .cart-col-left > .cart-total") || document.getElementById("paymentRow")),
     };
   });
   ok(cerca(v.cust.top, v.dir.top) && v.dir.left > v.cust.right,
@@ -183,6 +192,9 @@ const PRODS = Array.from({ length: 25 }, (_, i) => ({
   ok(v.pago.top >= v.dir.bottom && v.pago.top - v.dir.bottom <= 30,
     "D: con Pedir para queda un hueco entre las tarjetas de arriba y Método de pago (" +
     (v.pago.top - v.dir.bottom) + " px)");
+  ok(v.total.top <= v.pago.bottom + 30,
+    "D: con la columna estirada, el Subtotal no quedó pegado a Método de pago (" +
+    (v.total.top - v.pago.bottom) + " px)");
 
   await browser.close();
   if (fallas.length) {
