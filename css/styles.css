@@ -10467,19 +10467,18 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
 #carrito .cart-2col > .cart-col-right { grid-area: right; align-self: stretch; }
 #carrito .cart-2col > .cart-bottom-row { grid-area: bottom; align-self: start; }
 
-/* Bottom row: totales con ancho ~content, missing fill resto.
-   align-items: start para que cada celda tome su alto natural. El sync JS
-   fuerza missingModule.height = totals.height (no usar stretch para evitar
-   loops de ResizeObserver). */
+/* Fila de abajo: sólo "¿Seguro que no necesitás…?", de borde a borde de las
+   dos columnas (desde Método de pago hasta el borde derecho del listado).
+   Hasta el 02/10/2026 compartía la fila con el Subtotal; el Subtotal ahora
+   vive siempre en la columna izquierda, debajo de Método de pago. */
 #carrito .cart-bottom-row {
   display: grid;
-  grid-template-columns: minmax(420px, 520px) minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   width: 100%;
 }
-/* Cuando totals vive dentro de cart-col-left (movido por placeTotalsCard
-   cuando no hay sugerencias), toma el ancho completo de la col (= ship/pay) */
+/* El Subtotal en la columna izquierda: el ancho completo de la columna, igual
+   que Método de pago. */
 #carrito .cart-col-left > .cart-total {
   width: 100%;
   margin: 0;
@@ -10550,10 +10549,9 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
    reduzca si la columna no le da espacio (en vez de quedar cortado al fondo
    sin bordes redondeados visibles). */
 #carrito .cart-bottom-row > #missingAssortmentModule {
-  /* Vive en bottom-right; alto seteado por JS = totals * 1.5 + 40.
-     Fallback CSS: min-height razonable por si el sync no corre (sección
-     oculta al cargar, totals.offsetHeight = 0 → JS skip). */
-  min-height: 360px;
+  /* Mide lo que su contenido (02/10/2026): con una fila de sugerencias no deja
+     hueco abajo; con muchas, las tarjetas scrollean adentro (3 filas). */
+  min-height: 0;
   overflow: hidden;
   border-radius: 14px;
   display: flex;
@@ -10564,11 +10562,14 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
    verticalmente cuando hay menos productos que filas. */
 #carrito .cart-bottom-row > #missingAssortmentModule .missing-cards {
   display: grid;
-  max-height: none;
-  flex: 1 1 auto;
+  /* 3 filas a la vista; el resto scrollea adentro. */
+  max-height: calc(3 * 84px + 2 * 8px + 4px);
+  flex: 0 1 auto;
   min-height: 0;
   align-content: start;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Hasta 5 por fila (02/10/2026): cada columna mide al menos 1/5 del ancho,
+     así nunca entran 6; si el ancho no da 210 px por tarjeta, entran menos. */
+  grid-template-columns: repeat(auto-fill, minmax(max(210px, calc((100% - 4 * 8px) / 5)), 1fr));
   grid-auto-rows: 84px;
   gap: 8px;
   overflow-y: auto;
@@ -16697,6 +16698,36 @@ body { top: 0 !important; }
   #carrito .cart-2col #cart {
     max-height: max(380px, calc((100vh - 270px) / var(--cart-zoom))) !important;
   }
+}
+
+/* 1c. EL LISTADO TERMINA DONDE TERMINA EL SUBTOTAL (Gastón, 02/10/2026,
+   v2.3.509). La columna izquierda (Pedir para / Dirección, Método de pago,
+   Subtotal) manda el alto de la fila: la derecha no aporta alto
+   (`contain: size`) y se estira a esa medida, y el listado la llena y
+   scrollea adentro con el encabezado fijo. Piso de 380 px (~6 artículos)
+   por si la izquierda queda chica.
+   ⚠ Reemplaza al "listado al pie de la pantalla" de la 1b: en 1920×1080 los
+   dos terminan casi en el mismo lugar, y en pantallas bajas la izquierda ya
+   se pasaba del pie igual.
+   ⚠ En modo presupuesto la izquierda queda vacía (sin dirección, pago ni
+   totales): ahí sigue mandando la 1b. */
+@media (min-width: 901px) {
+  body:not(.is-presupuesto) #carrito .cart-2col > .cart-col-right {
+    contain: size;
+    min-height: 380px;
+    max-height: none;
+  }
+  body:not(.is-presupuesto) #carrito .cart-2col #cart {
+    max-height: none !important;
+  }
+}
+
+/* 1d. EL SUBTOTAL AL ANCHO DE MÉTODO DE PAGO. La tarjeta verde era
+   `fit-content` centrada (pensada para la fila de abajo): en la columna
+   izquierda ocupa el ancho entero, igual que la tarjeta de pago. */
+#carrito .cart-2col .cart-col-left > .cart-total .totals-inner {
+  width: 100% !important;
+  max-width: none !important;
 }
 
 /* 2. "Entrega estimada" no se muestra nunca. El JS ya lo deja `hidden`; esto lo

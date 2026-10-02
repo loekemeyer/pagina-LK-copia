@@ -16,6 +16,11 @@
  *     izquierda y la grilla repartía ese sobrante entre sus filas: "Pedir
  *     para" quedaba ~50 px más alta y Pago y Subtotal bajaban. El chequeo D
  *     estira la columna a propósito para reproducirlo.
+ *   - 02/10 (Gastón, v2.3.509): el Subtotal va SIEMPRE debajo de Método de pago,
+ *     al mismo ancho, y el listado termina donde termina el Subtotal (RETIRA
+ *     el "listado al pie de la pantalla" de la v2.3.506: ahora lo manda la
+ *     columna izquierda). "¿Seguro que no necesitás…?" va solo en la fila de
+ *     abajo, de Método de pago al borde derecho del listado, hasta 5 por fila.
  *
  * ⚠ Es el MISMO archivo en LK (`pagina-LK-copia`) y en Chef (`paginach`):
  *   Chef recibió el cambio en la v2.0.90 y el alto de las tarjetas en la v2.0.91. Chef no tiene la barra "Entrega
@@ -38,8 +43,10 @@ const fallas = [];
 const ok = (c, m) => { if (!c) fallas.push(m); };
 const cerca = (a, b, t = 2) => Math.abs(a - b) <= t;
 
-// 25 artículos: con el tope viejo de 380 px el listado mostraba ~6 y scrolleaba.
-const PRODS = Array.from({ length: 25 }, (_, i) => ({
+// 25 artículos en el carrito (con el tope viejo de 380 px el listado mostraba ~6
+// y scrolleaba) y 12 más que no están: son los de "¿Seguro que no necesitás…?".
+const EN_CARRITO = 25;
+const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
   id: "p-" + i, cod: String(500 + i), category: "Peladores", subcategory: null,
   ranking: i + 1, orden_catalogo: i + 1, description: "Artículo de prueba " + (i + 1),
   uxb: 12, list_price: 1000 + i, images: [], badge_status: null, active: true,
@@ -78,15 +85,15 @@ const PRODS = Array.from({ length: 25 }, (_, i) => ({
   await page.waitForFunction(() => typeof window.updateCart === "function", null, { timeout: 15000 });
 
   // Carrito visible y con los 25 artículos.
-  await page.evaluate(async () => {
+  await page.evaluate(async (n) => {
     await window.loadProductsFromDB();
-    products.forEach((p) => cart.push({ productId: p.id, qtyCajas: 1, source: "catalogo" }));
+    products.slice(0, n).forEach((p) => cart.push({ productId: p.id, qtyCajas: 1, source: "catalogo" }));
     const sec = document.getElementById("carrito");
     document.querySelectorAll(".section.active").forEach((s) => s.classList.remove("active"));
     sec.classList.add("active");
     sec.style.display = "block";
     window.updateCart();
-  });
+  }, EN_CARRITO);
   await page.waitForTimeout(300);
 
   const R = (sel) => page.evaluate((s) => {
@@ -136,9 +143,10 @@ const PRODS = Array.from({ length: 25 }, (_, i) => ({
   });
   ok(est === 0, "B: \"Entrega estimada\" se dibuja (alto " + est + " px) y no tiene que aparecer nunca");
 
-  /* ── C. LISTADO AL PIE DE LA PANTALLA, CON EL ENCABEZADO FIJO ──────────── */
+  /* ── C. EL LISTADO TERMINA DONDE TERMINA EL SUBTOTAL, CON EL ENCABEZADO FIJO ── */
   const lista = await page.evaluate(() => {
     const c = document.getElementById("cart");
+    const tot = document.querySelector("#carrito .cart-total").getBoundingClientRect();
     const th = c.querySelector("thead th");
     const r = c.getBoundingClientRect();
     const antes = th.getBoundingClientRect().top;
@@ -147,20 +155,62 @@ const PRODS = Array.from({ length: 25 }, (_, i) => ({
     const scrolleo = c.scrollTop;
     c.scrollTop = 0;
     return { top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height),
-      vh: innerHeight, antes: Math.round(antes), despues: Math.round(despues), scrolleo };
+      totBottom: Math.round(tot.bottom), antes: Math.round(antes), despues: Math.round(despues), scrolleo };
   });
   ok(lista.scrolleo > 0, "C: con 25 artículos el listado no scrollea adentro");
   ok(cerca(lista.antes, lista.despues), "C: el encabezado (COD / DESCRIPCIÓN / …) no queda fijo al scrollear: " +
     "estaba en " + lista.antes + " y quedó en " + lista.despues);
-  ok(lista.bottom <= lista.vh, "C: el listado se pasa del pie de la pantalla (" + lista.bottom + " > " + lista.vh + ")");
-  ok(lista.vh - lista.bottom <= 60, "C: el listado no llega al pie de la pantalla (quedan " +
-    (lista.vh - lista.bottom) + " px libres; con el tope viejo medía 456 px)");
+  ok(cerca(lista.bottom, lista.totBottom, 3), "C: el listado no termina donde termina el Subtotal (listado " +
+    lista.bottom + ", Subtotal " + lista.totBottom + ")");
+
+  /* ── E. CON "¿SEGURO QUE NO NECESITÁS…?" A LA VISTA: el Subtotal sigue debajo
+     de Método de pago y al mismo ancho, el listado termina con él, y el módulo
+     va solo abajo, de Método de pago al borde derecho del listado, 5 por fila ── */
+  const e = await page.evaluate(async (n) => {
+    currentSession = { user: { id: "u-prueba" } };
+    customerProfile = { id: "c-prueba", business_name: "Cliente de prueba", dto_vol: 0 };
+    window.getMissingAssortmentProducts = () => products.slice(n);
+    window.updateCart();
+    await new Promise((r) => setTimeout(r, 300));
+    const B = (el) => { const x = el.getBoundingClientRect();
+      return { top: Math.round(x.top), bottom: Math.round(x.bottom), left: Math.round(x.left), right: Math.round(x.right) }; };
+    const mm = document.getElementById("missingAssortmentModule");
+    const cards = [...mm.querySelectorAll(".missing-card")];
+    const t0 = cards.length ? Math.round(cards[0].getBoundingClientRect().top) : null;
+    const ult = cards.length ? cards[cards.length - 1].getBoundingClientRect() : null;
+    return {
+      enIzq: !!document.querySelector("#carrito .cart-col-left > .cart-total"),
+      pago: B(document.getElementById("paymentRow")),
+      // la tarjeta verde que se ve es .totals-inner, no su contenedor
+      total: B(document.querySelector("#carrito .cart-total .totals-inner")),
+      lista: B(document.getElementById("cart")),
+      mm: B(mm), visible: getComputedStyle(mm).display !== "none",
+      tarjetas: cards.length,
+      porFila: cards.filter((c) => Math.round(c.getBoundingClientRect().top) === t0).length,
+      sobraAbajo: ult ? Math.round(mm.getBoundingClientRect().bottom - ult.bottom) : null,
+    };
+  }, EN_CARRITO);
+  ok(e.visible && e.tarjetas === 12, "E: no se dibuja \"¿Seguro que no necesitás…?\" (" + e.tarjetas + " tarjetas)");
+  ok(e.enIzq, "E: con el módulo a la vista, el Subtotal se fue de la columna izquierda");
+  ok(cerca(e.total.left, e.pago.left) && cerca(e.total.right, e.pago.right),
+    "E: el Subtotal no tiene el ancho de Método de pago. pago=" + JSON.stringify(e.pago) + " total=" + JSON.stringify(e.total));
+  ok(e.total.top >= e.pago.bottom && e.total.top - e.pago.bottom <= 30,
+    "E: el Subtotal no quedó pegado debajo de Método de pago (" + (e.total.top - e.pago.bottom) + " px)");
+  ok(cerca(e.lista.bottom, e.total.bottom, 3),
+    "E: el listado no termina donde termina el Subtotal (listado " + e.lista.bottom + ", Subtotal " + e.total.bottom + ")");
+  ok(cerca(e.mm.left, e.pago.left) && cerca(e.mm.right, e.lista.right),
+    "E: el módulo no va de Método de pago al borde derecho del listado. mm=" + JSON.stringify(e.mm) +
+    " pago.left=" + e.pago.left + " lista.right=" + e.lista.right);
+  ok(e.mm.top > e.total.bottom && e.mm.top > e.lista.bottom, "E: el módulo no quedó debajo de las dos columnas");
+  ok(e.porFila === 5, "E: en la primera fila del módulo hay " + e.porFila + " tarjetas y tienen que ser 5");
+  ok(e.sobraAbajo !== null && e.sobraAbajo <= 30,
+    "E: el módulo deja " + e.sobraAbajo + " px vacíos debajo de la última tarjeta");
 
   /* ── D. CON "PEDIR PARA": las dos tarjetas lado a lado y a la misma altura,
      y nada de hueco debajo (Observaciones ya no está en esa grilla) ────────── */
   const v = await page.evaluate(() => {
-    // La columna derecha (listado al pie) estira a la izquierda: se reproduce
-    // dándole a la izquierda más alto que su contenido.
+    // Si algo estira la columna izquierda (fue el listado al pie, v2.3.507),
+    // la grilla no puede repartir ese alto: se reproduce dándole más alto.
     document.querySelector("#carrito .cart-col-left").style.minHeight = "1600px";
     const fila = document.getElementById("shippingSelect").closest(".ship-row");
     const cust = document.createElement("div");
@@ -203,5 +253,5 @@ const PRODS = Array.from({ length: 25 }, (_, i) => ({
     process.exit(1);
   }
   console.log("checkout-layout: OK (" + path.basename(raiz) +
-    ") — Observaciones al lado de Confirmar, sin fecha estimada, listado al pie con encabezado fijo");
+    ") — Observaciones al lado de Confirmar, sin fecha estimada, listado hasta el Subtotal con encabezado fijo, surtido a ancho total");
 })().catch((e) => { console.error("checkout-layout: ERROR", e); process.exit(1); });

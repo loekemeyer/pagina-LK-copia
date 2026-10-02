@@ -9295,26 +9295,17 @@ var _missingModuleOffset = 0; // offset de rotación (qué 6 mostrar)
 var _missingModuleTotal = 0; // total de productos faltantes (para subtitle)
 var MISSING_MODULE_DISPLAY = 6;
 
-// Mueve la card de totales entre cart-col-left (sin missing) y cart-bottom-row
-// (con missing) para que cuando no haya missing, los totales se peguen al
-// método de pago en vez de quedar abajo del cart-table que es más alto.
+// El Subtotal va SIEMPRE en la columna izquierda, debajo de "Método de pago" y
+// al mismo ancho (Gastón, 02/10/2026). Antes, con "¿Seguro que no necesitás…?"
+// visible, se mudaba a la fila de abajo, al lado del módulo; ahora el módulo va
+// solo en esa fila, al ancho de las dos columnas. El HTML ya lo trae en su
+// lugar: esto sólo lo devuelve si otro código lo movió. `missingVisible` queda
+// por compatibilidad con los llamadores.
 function placeTotalsCard(missingVisible) {
   var totals = document.querySelector("#carrito .cart-total");
-  if (!totals) return;
-  var bottomRow = document.querySelector("#carrito .cart-bottom-row");
   var leftCol = document.querySelector("#carrito .cart-col-left");
-  if (!bottomRow || !leftCol) return;
-  if (missingVisible) {
-    // Devolver totals a la cart-bottom-row (primer hijo)
-    if (totals.parentNode !== bottomRow) {
-      bottomRow.insertBefore(totals, bottomRow.firstChild);
-    }
-  } else {
-    // Pegar totals al final de cart-col-left (debajo de pay-card)
-    if (totals.parentNode !== leftCol) {
-      leftCol.appendChild(totals);
-    }
-  }
+  if (!totals || !leftCol) return;
+  if (totals.parentNode !== leftCol) leftCol.appendChild(totals);
 }
 window.placeTotalsCard = placeTotalsCard;
 
@@ -15766,67 +15757,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadReingresos().then(() => {
     if (typeof renderProducts === "function") renderProducts();
   });
-  // Sincronizar altura cart-col-right con cart-col-left (carrito 2 cols)
-  // → la tabla se estira al alto exacto de la izquierda y scrollea internamente.
-  // CASO ESPECIAL: si el módulo "Seguro que no necesitás esto?" está oculto,
-  // dejamos que la col-right se ajuste al contenido del cart (no forzar alto
-  // de la col-left → no quedan huecos vacíos abajo del cart).
+  // Alto de las columnas del carrito: lo resuelve el CSS (v2.3.509). El listado
+  // termina donde termina el Subtotal y "¿Seguro que no necesitás…?" mide lo
+  // que su contenido. Esto sólo limpia altos fijos que hayan quedado en línea
+  // de versiones anteriores; renderMissingAssortmentModule lo sigue llamando.
   (function setupCartColHeightSync() {
-    var left = document.querySelector("#carrito .cart-col-left");
-    var right = document.querySelector("#carrito .cart-col-right");
-    if (!left || !right) return;
-    var _syncing = false;
-    var _lastTotalsH = 0;
     function syncHeight() {
-      if (_syncing) return; // evita loop de ResizeObserver
-      _syncing = true;
-      try {
-        // Top row: cart-col-left/right toman alto natural. Cart-table scrollea
-        // internamente via CSS (max-height: calc(100vh - 200px)).
+      var right = document.querySelector("#carrito .cart-col-right");
+      var missingEl = document.getElementById("missingAssortmentModule");
+      if (right) {
         right.style.height = "";
         right.style.maxHeight = "";
-
-        // Bottom row: missing assortment module debe igualar al alto de la
-        // card de totales.
-        var totalsCard = document.querySelector("#carrito .cart-bottom-row > .cart-total");
-        var missingEl = document.getElementById("missingAssortmentModule");
-        if (totalsCard && missingEl) {
-          var totalsH = totalsCard.offsetHeight;
-          // Solo si totals tiene un alto razonable (>50). Si la sección
-          // carrito está oculta, offsetHeight=0 y NO debemos colapsar el
-          // missing module — preservar el alto previo.
-          if (totalsH > 50) {
-            var targetH = Math.round(totalsH * 1.5) + 40;
-            if (targetH !== _lastTotalsH) {
-              _lastTotalsH = targetH;
-              missingEl.style.height = targetH + "px";
-              missingEl.style.maxHeight = targetH + "px";
-            }
-          }
-        }
-      } finally {
-        // Liberar el flag en el próximo frame para no bloquear futuros syncs
-        requestAnimationFrame(function () {
-          _syncing = false;
-        });
+      }
+      if (missingEl) {
+        missingEl.style.height = "";
+        missingEl.style.maxHeight = "";
       }
     }
-    if (typeof ResizeObserver !== "undefined") {
-      var ro = new ResizeObserver(syncHeight);
-      ro.observe(left);
-      // Observar SOLO la card de totales (NO observar missing — crearia loop
-      // porque syncHeight le escribe el style.height a missing).
-      var totalsCardObs = document.querySelector("#carrito .cart-bottom-row > .cart-total");
-      if (totalsCardObs) ro.observe(totalsCardObs);
-    }
-    window.addEventListener("resize", syncHeight);
-    document.addEventListener("click", function (e) {
-      if (e.target && e.target.closest && e.target.closest("[onclick*=\"showSection('carrito')\"]")) {
-        setTimeout(syncHeight, 50);
-      }
-    });
-    setTimeout(syncHeight, 100);
-    // Exponer global para que renderMissingAssortmentModule pueda llamarlo
     window.__lkSyncCartColHeight = syncHeight;
   })();
   // ===== LOADER CONTROL (solo 1ra vez por página) =====

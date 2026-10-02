@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23508" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23508" />
+    <link rel="stylesheet" href="css/styles.css?v=23509" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23509" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1556,6 +1556,35 @@
         </div>
       </div>
 
+      <!-- TOTALES — debajo de "Método de pago", mismo ancho (02/10/2026) -->
+      <div class="cart-total">
+        <div class="totals-inner">
+          <div class="totals-lines">
+            <div class="totals-line">
+              <span>Subtotal (Tu Precio):</span>
+              <strong>$<span id="subtotal">0</span></strong>
+            </div>
+            <div id="webDiscountLine" class="totals-line">
+              <span>Dto Pedido Web (2%):</span>
+              <strong>− $<span id="webDiscountValue">0</span></strong>
+            </div>
+            <div id="paymentDiscountLine" class="totals-line">
+              <span
+                >Dto por método de pago:
+                <span id="paymentDiscountPercent">0%</span></span
+              >
+              <strong>− $<span id="paymentDiscountValue">0</span></strong>
+            </div>
+          </div>
+
+          <h3 class="grand-total">
+            <span class="grand-total-label">Total del pedido</span>
+            <span class="grand-total-value">$<span id="total">0</span></span>
+            <span class="iva-tag">+ IVA</span>
+          </h3>
+        </div>
+      </div>
+
         </div><!-- /.cart-col-left -->
 
         <div class="cart-col-right">
@@ -1566,37 +1595,8 @@
 
         </div><!-- /.cart-col-right -->
 
-        <!-- ====== BOTTOM ROW (totals chico izq / missing fill resto) ====== -->
+        <!-- ====== FILA DE ABAJO: "¿Seguro que no necesitás…?" al ancho de las dos columnas ====== -->
         <div class="cart-bottom-row">
-          <!-- TOTALES — bottom-left, ancho ~content -->
-          <div class="cart-total">
-            <div class="totals-inner">
-              <div class="totals-lines">
-                <div class="totals-line">
-                  <span>Subtotal (Tu Precio):</span>
-                  <strong>$<span id="subtotal">0</span></strong>
-                </div>
-                <div id="webDiscountLine" class="totals-line">
-                  <span>Dto Pedido Web (2%):</span>
-                  <strong>− $<span id="webDiscountValue">0</span></strong>
-                </div>
-                <div id="paymentDiscountLine" class="totals-line">
-                  <span
-                    >Dto por método de pago:
-                    <span id="paymentDiscountPercent">0%</span></span
-                  >
-                  <strong>− $<span id="paymentDiscountValue">0</span></strong>
-                </div>
-              </div>
-
-              <h3 class="grand-total">
-                <span class="grand-total-label">Total del pedido</span>
-                <span class="grand-total-value">$<span id="total">0</span></span>
-                <span class="iva-tag">+ IVA</span>
-              </h3>
-            </div>
-          </div>
-
           <!-- MÓDULO: ¿SEGURO QUE NO NECESITÁS ESTO? (surtido habitual no incluido) -->
           <div id="missingAssortmentModule" class="missing-module" style="display:none"></div>
         </div>
@@ -2350,14 +2350,14 @@
     <!-- La versión ya se muestra en el footer; se quitó el badge flotante. -->
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23508"></script>
-    <script src="script.js?v=23508"></script>
+    <script src="./version.js?v=23509"></script>
+    <script src="script.js?v=23509"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23508"></script>
+    <script src="analisis-venta-cliente.js?v=23509"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23508"></script>
-    <script src="admin-excel-krikos.js?v=23508"></script>
-    <script src="vendor-import-excel.js?v=23508"></script>
+    <script src="scotapi-shim.js?v=23509"></script>
+    <script src="admin-excel-krikos.js?v=23509"></script>
+    <script src="vendor-import-excel.js?v=23509"></script>
   </body>
 </html>
