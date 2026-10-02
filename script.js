@@ -4912,7 +4912,15 @@ async function vendorSuggestAddToCart(productId, qty, customerId, btnEl) {
       _csSetValue("customerSelect", customerId);
       _csSetValue("customerSelectCart", customerId);
       if (typeof onLinkedCustomerSelected === "function") {
-        await onLinkedCustomerSelected();
+        // false = no se pudo cambiar de razón social (se está editando un
+        // pedido de otro cliente): no se agrega nada.
+        if ((await onLinkedCustomerSelected()) === false) {
+          if (btnEl) {
+            btnEl.disabled = false;
+            btnEl.textContent = btnEl.dataset._old || "Agregar al pedido";
+          }
+          return;
+        }
       }
     }
 
@@ -8884,12 +8892,9 @@ function updateCart() {
       !isAdmin &&
       !document.getElementById("paymentSelect")?.value;
     var _csv2 = document.getElementById("customerSelect")?.value || "";
-    var _custConfirmBtn = document.getElementById("customerConfirmBtn");
-    var _customerConfirmedByUser =
-      !_custConfirmBtn || _custConfirmBtn.classList.contains("confirmed");
+    // Elegir la razón social alcanza: ya no hay botón "Confirmar" aparte.
     const mustChooseCustomer =
-      isVendorProfile() &&
-      (!_csv2 || _csv2 === VENDOR_SELF_VALUE || !_customerConfirmedByUser);
+      isVendorProfile() && (!_csv2 || _csv2 === VENDOR_SELF_VALUE);
 
     const canConfirm =
       !!currentSession &&
@@ -10564,14 +10569,19 @@ function refreshSubmitEnabled() {
       ? true
       : !!(paySel && String(paySel.value || "").trim());
   const custSelVal = custSel ? String(custSel.value || "").trim() : "";
-  // Vendedor: además de elegir cliente, debe haber clickeado "Confirmar"
-  // (mismo patrón que la dirección de entrega).
-  const custConfirmBtn = document.getElementById("customerConfirmBtn");
-  const customerConfirmedByUser =
-    !custConfirmBtn || custConfirmBtn.classList.contains("confirmed");
+  // Vendedor: elegir la razón social alcanza (sin botón "Confirmar" aparte,
+  // Gastón 02/10/2026).
   const hasCustomer =
-    !isVendorProfile() ||
-    (!!custSelVal && custSelVal !== VENDOR_SELF_VALUE && customerConfirmedByUser);
+    !isVendorProfile() || (!!custSelVal && custSelVal !== VENDOR_SELF_VALUE);
+  // La tarjeta "Pedir para" se marca completa (raya verde, sin la ayuda) apenas
+  // hay una razón social elegida: es lo que antes hacía el botón "Confirmar".
+  var _custCard = document.querySelector("#customerSelectorCart > .ship-card");
+  if (_custCard) {
+    _custCard.classList.toggle(
+      "cs-elegida",
+      !!custSelVal && custSelVal !== VENDOR_SELF_VALUE,
+    );
+  }
 
   // EXPO: si el cliente es NUEVO y sus datos NO están completos (chequeo auto),
   // se puede armar el pedido pero NO enviarlo hasta completarlos.
@@ -12460,14 +12470,6 @@ function syncCustomerSelectors(sourceId) {
 }
 
 function onAnyCustomerSelectChange(e) {
-  // Reset del botón "Confirmada" → "Confirmar" cuando cambia el cliente —
-  // forzar al vendedor a re-confirmar la nueva razón social.
-  var custConfirmReset = document.getElementById("customerConfirmBtn");
-  if (custConfirmReset && custConfirmReset.classList.contains("confirmed")) {
-    custConfirmReset.classList.remove("confirmed");
-    custConfirmReset.textContent = "Confirmar";
-    custConfirmReset.disabled = false;
-  }
   syncCustomerSelectors(e.target.id);
   updateVendorProfileTick();
   onLinkedCustomerSelected();
@@ -14700,9 +14702,9 @@ function renderCustomerSelector() {
   cartCard.className = "ship-row";
 
   var cartInner = document.createElement("div");
-  // .has-confirm activa el grid 2col (dropdown + botón) — mismo patrón
-  // que la card de "Indicar dirección de entrega".
-  cartInner.className = "ship-card has-confirm";
+  // Sin botón "Confirmar" (Gastón, 02/10/2026): elegir la razón social alcanza.
+  // Por eso la tarjeta ya no lleva .has-confirm (la grilla dropdown + botón).
+  cartInner.className = "ship-card";
 
   var cartLabel = document.createElement("label");
   cartLabel.className = "ship-label";
@@ -14724,26 +14726,6 @@ function renderCustomerSelector() {
     { searchable: true },
   );
   cartInner.appendChild(cartDropdown);
-
-  // Botón Confirmar — al costado del dropdown (mismo look que ship-confirm-btn)
-  var custConfirmBtn = document.createElement("button");
-  custConfirmBtn.type = "button";
-  custConfirmBtn.id = "customerConfirmBtn";
-  custConfirmBtn.className = "ship-confirm-btn";
-  custConfirmBtn.textContent = "Confirmar";
-  custConfirmBtn.addEventListener("click", function () {
-    var sel = document.getElementById("customerSelectCart");
-    var v = sel ? String(sel.value || "").trim() : "";
-    // Sólo confirma si hay un cliente real seleccionado (no placeholder
-    // ni "Perfil Vendedor").
-    if (!v || v === VENDOR_SELF_VALUE) return;
-    this.textContent = "Confirmada";
-    this.classList.add("confirmed");
-    this.disabled = true;
-    if (typeof refreshSubmitEnabled === "function") refreshSubmitEnabled();
-    if (typeof updateCart === "function") updateCart();
-  });
-  cartInner.appendChild(custConfirmBtn);
 
   var cartHint = document.createElement("div");
   cartHint.className = "ship-hint";
@@ -15066,41 +15048,40 @@ async function onLinkedCustomerSelected(opts) {
   // sin depender del <select> visible.
   var val = opts.customerId || (sel && sel.value) || (selCart && selCart.value) || "";
 
-  if (val === VENDOR_SELF_VALUE) {
-    // Volver al perfil propio del vendedor — sin necesidad de refresh
-    var prevCustomerIdSelf = customerProfile && customerProfile.id;
-    var prevCustomerNameSelf = customerProfile && customerProfile.business_name;
-    var newSelfId = _vendorOwnProfile && _vendorOwnProfile.id;
-    var isRealChangeSelf =
-      prevCustomerIdSelf &&
-      newSelfId &&
-      String(prevCustomerIdSelf) !== String(newSelfId);
-
-    // Confirm si hay items en el carrito y es un cambio real (NO en fromRestore)
-    if (!fromRestore && isRealChangeSelf && cart.length > 0) {
-      var okSelf = window.confirm(
-        "Vas a cambiar de " +
-          (prevCustomerNameSelf || "cliente") +
-          " a tu Perfil Vendedor. El carrito actual (" +
-          cart.length +
-          " items) se va a vaciar.\n\n¿Continuar?"
+  // ⚠ CAMBIAR DE RAZÓN SOCIAL NUNCA VACÍA EL CARRITO (Gastón, 02/10/2026). Antes
+  // salía un confirm "el carrito se va a vaciar" y, aceptándolo, se borraba todo.
+  // Ahora el carrito sigue igual y los precios se recalculan con el cliente nuevo.
+  //
+  // La única excepción es EDITAR un pedido ya enviado: es de UN cliente y
+  // `edit_order_fast` rechaza el cambio si viene con otro. Ahí no se cambia la
+  // razón social (se vuelve a la del pedido) y se avisa al lado de Confirmar,
+  // sin ventana y sin tocar el carrito.
+  if (
+    !fromRestore &&
+    editingOrderId &&
+    customerProfile &&
+    customerProfile.id &&
+    String(val) !== String(customerProfile.id)
+  ) {
+    _csSetValue("customerSelect", String(customerProfile.id));
+    _csSetValue("customerSelectCart", String(customerProfile.id));
+    if (typeof setOrderStatus === "function") {
+      setOrderStatus(
+        "Estás editando un pedido de " +
+          (customerProfile.business_name || "este cliente") +
+          ": para pedir para otra razón social, terminá o cancelá la edición.",
+        "err",
       );
-      if (!okSelf) {
-        // Revertir
-        _csSetValue("customerSelect", String(prevCustomerIdSelf));
-        _csSetValue("customerSelectCart", String(prevCustomerIdSelf));
-        return;
-      }
     }
+    return false;
+  }
 
+  if (val === VENDOR_SELF_VALUE) {
+    // Volver al perfil propio del vendedor — sin necesidad de refresh. El
+    // carrito queda como está.
     if (_vendorOwnProfile) {
       customerProfile = Object.assign({}, _vendorOwnProfile);
       _presupuestoSyncUI();
-    }
-    // Solo limpiar carrito si realmente cambió el cliente Y no es restore
-    if (!fromRestore && isRealChangeSelf) {
-      cart.splice(0, cart.length);
-      saveCartToLS();
     }
     // Persistir Perfil Vendedor con marcador especial para restoreSelected*
     try {
@@ -15175,46 +15156,13 @@ async function onLinkedCustomerSelected(opts) {
       localStorage.removeItem("lk_vendor_selected_business_name");
       localStorage.removeItem("lk_vendor_selected_dto_vol");
     } catch (e) {}
-    // Solo wipe + confirm si hay items y NO es restore
-    if (cart.length > 0) {
-      var okEmpty = window.confirm(
-        "Vas a deseleccionar al cliente. El carrito actual (" +
-          cart.length +
-          " items) se va a vaciar.\n\n¿Continuar?"
-      );
-      if (!okEmpty) return;
-    }
-    cart.splice(0, cart.length);
-    saveCartToLS();
+    // El carrito se queda como está (no se vacía nunca al cambiar la razón social).
     updateCart();
     refreshSubmitEnabled();
     return;
   }
 
   var customerId = val;
-
-  // Capturar el customer ANTERIOR antes de pisarlo — para decidir si limpiar
-  // el carrito (solo si REALMENTE cambia de cliente, y con confirm si hay items).
-  var prevCustomerId = customerProfile && customerProfile.id;
-  var prevCustomerName = customerProfile && customerProfile.business_name;
-  var isRealChange =
-    prevCustomerId && String(prevCustomerId) !== String(customerId);
-
-  // Confirm SOLO si cambia de cliente Y hay items Y NO es fromRestore.
-  if (!fromRestore && isRealChange && cart.length > 0) {
-    var confirmMsg =
-      "Vas a cambiar de " +
-      (prevCustomerName || "cliente") +
-      " a otro cliente. El carrito actual (" +
-      cart.length +
-      " items) se va a vaciar.\n\n¿Continuar?";
-    var ok = window.confirm(confirmMsg);
-    if (!ok) {
-      _csSetValue("customerSelect", String(prevCustomerId));
-      _csSetValue("customerSelectCart", String(prevCustomerId));
-      return;
-    }
-  }
 
   var result = await _customerSelect(
     "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit",
@@ -15228,12 +15176,6 @@ async function onLinkedCustomerSelected(opts) {
 
   customerProfile = result.data;
   _presupuestoSyncUI();
-
-  // Limpiar carrito SOLO si el cliente realmente CAMBIÓ Y no es restore.
-  if (!fromRestore && isRealChange) {
-    cart.splice(0, cart.length);
-    saveCartToLS();
-  }
 
   // Persist selected client for historial/sugerencias pages
   try {

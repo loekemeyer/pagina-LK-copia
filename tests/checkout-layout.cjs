@@ -24,6 +24,10 @@
  *   - 02/10 (Gastón, v2.3.510 / Chef v2.0.93): el botón Observaciones lleva borde
  *     rojo y un lápiz rojo con la misma técnica que los íconos de "Pedir para" /
  *     "Indicar dirección" (máscara + degradé). Se fue el emoji 📝.
+ *   - 02/10 (Gastón, v2.3.511 / Chef v2.0.94): "Pedir para" ya no tiene botón
+ *     "Confirmar": elegir la razón social alcanza. Y cambiar de razón social
+ *     NUNCA vacía el carrito ni abre una ventana (antes salía un confirm "el
+ *     carrito se va a vaciar"). El chequeo F lo prueba con el selector real.
  *
  * ⚠ Es el MISMO archivo en LK (`pagina-LK-copia`) y en Chef (`paginach`):
  *   Chef recibió el cambio en la v2.0.90, el alto de las tarjetas en la v2.0.91 y
@@ -63,19 +67,29 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
     r.request().url().startsWith("file:") ? r.continue() : r.fulfill({ status: 200, body: "" }),
   );
   const page = await ctx.newPage();
-  page.on("dialog", (d) => d.dismiss().catch(() => {}));
+  const dialogos = [];
+  page.on("dialog", (d) => { dialogos.push(d.message()); d.dismiss().catch(() => {}); });
   await page.addInitScript((prods) => {
     const vacio = { data: [], error: null };
-    const q = {
-      select: () => q, eq: () => q, in: () => q, order: () => q, limit: () => q, gte: () => q,
-      single: () => Promise.resolve({ data: null, error: null }),
-      maybeSingle: () => Promise.resolve({ data: null, error: null }),
-      insert: () => q, update: () => q, upsert: () => q,
-      then: (f, g) => Promise.resolve(vacio).then(f, g),
+    // `customers` por id devuelve una ficha, así "Pedir para" cambia de cliente
+    // de verdad (onLinkedCustomerSelected). El resto, vacío.
+    const mk = (tabla) => {
+      let id = null;
+      const fila = () => (tabla === "customers" && id
+        ? { id, business_name: "Cliente " + id, dto_vol: 0, cod_cliente: id === "c1" ? "100" : "101" } : null);
+      const q = {
+        select: () => q, in: () => q, order: () => q, limit: () => q, gte: () => q,
+        eq: (col, v) => { if (col === "id") id = v; return q; },
+        single: () => Promise.resolve({ data: fila(), error: null }),
+        maybeSingle: () => Promise.resolve({ data: fila(), error: null }),
+        insert: () => q, update: () => q, upsert: () => q,
+        then: (f, g) => Promise.resolve(vacio).then(f, g),
+      };
+      return q;
     };
     window.supabase = {
       createClient: () => ({
-        from: () => q,
+        from: (t) => mk(t),
         rpc: (n) => n === "get_products_public_sorted"
           ? Promise.resolve({ data: prods, error: null }) : Promise.resolve(vacio),
         auth: { getSession: () => Promise.resolve({ data: { session: null } }), onAuthStateChange: () => {} },
@@ -225,20 +239,75 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
   ok(e.sobraAbajo !== null && e.sobraAbajo <= 30,
     "E: el módulo deja " + e.sobraAbajo + " px vacíos debajo de la última tarjeta");
 
+  /* ── F. "PEDIR PARA" SIN BOTÓN CONFIRMAR, Y CAMBIAR DE RAZÓN SOCIAL NO VACÍA
+     EL CARRITO NI ABRE UNA VENTANA (selector real, renderCustomerSelector) ── */
+  const dialogosAntes = dialogos.length;
+  const f = await page.evaluate(async () => {
+    linkedCustomers = [
+      { customer_id: "c1", cod_cliente: "100", business_name: "Cliente c1" },
+      { customer_id: "c2", cod_cliente: "101", business_name: "Cliente c2" },
+    ];
+    renderCustomerSelector();
+    const card = document.querySelector("#customerSelectorCart > .ship-card");
+    const r = { hay: !!card, boton: !!document.getElementById("customerConfirmBtn"),
+      botones: card ? card.querySelectorAll("button.ship-confirm-btn").length : -1 };
+    const elegir = async (id) => {
+      _csSetValue("customerSelectCart", id);
+      onAnyCustomerSelectChange({ target: document.getElementById("customerSelectCart") });
+      await new Promise((ok) => setTimeout(ok, 400));
+    };
+    const antes = cart.length;
+    await elegir("c1");
+    r.trasC1 = { items: cart.length, cliente: customerProfile && customerProfile.id,
+      elegida: card.classList.contains("cs-elegida"),
+      ayuda: getComputedStyle(card.querySelector(".ship-hint")).display };
+    await elegir("c2");
+    r.trasC2 = { items: cart.length, cliente: customerProfile && customerProfile.id };
+    r.antes = antes;
+    // Editando un pedido ya enviado (es de c2): no se cambia de razón social,
+    // se avisa sin ventana y el carrito queda igual.
+    setEditingOrderId("999", {});
+    await elegir("c1");
+    r.edicion = { items: cart.length, cliente: customerProfile && customerProfile.id,
+      sel: document.getElementById("customerSelectCart").value,
+      aviso: (document.getElementById("orderStatus") || {}).textContent || "" };
+    setEditingOrderId(null);
+    return r;
+  });
+  ok(f.hay, "F: no se dibujó la tarjeta \"Pedir para\"");
+  ok(!f.boton && f.botones === 0, "F: \"Pedir para\" todavía tiene el botón Confirmar");
+  ok(f.antes > 0 && f.trasC1.items === f.antes && f.trasC2.items === f.antes,
+    "F: cambiar de razón social cambió el carrito (" + f.antes + " → " + f.trasC1.items + " → " + f.trasC2.items + ")");
+  ok(f.trasC1.cliente === "c1" && f.trasC2.cliente === "c2",
+    "F: elegir la razón social no cambió el cliente del pedido (" + f.trasC1.cliente + ", " + f.trasC2.cliente + ")");
+  ok(dialogos.length === dialogosAntes,
+    "F: cambiar de razón social abrió una ventana: " + JSON.stringify(dialogos.slice(dialogosAntes)));
+  ok(f.edicion.cliente === "c2" && f.edicion.sel === "c2" && f.edicion.items === f.antes,
+    "F: editando un pedido, cambiar de razón social no se frenó o tocó el carrito (" + JSON.stringify(f.edicion) + ")");
+  ok(/editando un pedido/i.test(f.edicion.aviso),
+    "F: editando un pedido, no se avisó por qué no se cambia la razón social (" + JSON.stringify(f.edicion.aviso) + ")");
+  ok(f.trasC1.elegida && f.trasC1.ayuda === "none",
+    "F: con una razón social elegida, la tarjeta no se marca completa o sigue la ayuda (" +
+    JSON.stringify(f.trasC1) + ")");
+
   /* ── D. CON "PEDIR PARA": las dos tarjetas lado a lado y a la misma altura,
      y nada de hueco debajo (Observaciones ya no está en esa grilla) ────────── */
   const v = await page.evaluate(() => {
     // Si algo estira la columna izquierda (fue el listado al pie, v2.3.507),
     // la grilla no puede repartir ese alto: se reproduce dándole más alto.
     document.querySelector("#carrito .cart-col-left").style.minHeight = "1600px";
-    const fila = document.getElementById("shippingSelect").closest(".ship-row");
-    const cust = document.createElement("div");
-    cust.id = "customerSelectorCart";
-    cust.className = "ship-row";
-    cust.innerHTML =
-      '<div class="ship-card has-confirm"><label class="ship-label">Pedir para (Razón Social)</label>' +
-      '<select><option>Retail Plastic SRL</option></select><div class="ship-hint">x</div></div>';
-    fila.parentNode.insertBefore(cust, fila);
+    // El selector real (lo dibujó el chequeo F). Si no está, uno a mano.
+    let cust = document.getElementById("customerSelectorCart");
+    if (!cust) {
+      const fila = document.getElementById("shippingSelect").closest(".ship-row");
+      cust = document.createElement("div");
+      cust.id = "customerSelectorCart";
+      cust.className = "ship-row";
+      cust.innerHTML =
+        '<div class="ship-card"><label class="ship-label">Pedir para (Razón Social)</label>' +
+        '<select><option>Retail Plastic SRL</option></select><div class="ship-hint">x</div></div>';
+      fila.parentNode.insertBefore(cust, fila);
+    }
     const eb = document.getElementById("expresoBox");
     eb.hidden = false;
     eb.innerHTML = '<span class="exp-ico">🚚</span><span class="exp-txt"><span class="exp-k">Expreso</span>' +

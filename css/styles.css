@@ -11056,8 +11056,9 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
 }
 
 /* Stripe verde cuando la card está "completa" (opción confirmada/seleccionada) */
-/* Customer selector (vendor): el botón "Confirmar" del cliente fue clickeado */
-#carrito #customerSelectorCart .ship-card:has(#customerConfirmBtn.confirmed)::before {
+/* Customer selector (vendor): hay una razón social elegida. Ya no hay botón
+   "Confirmar" (02/10/2026): la marca la pone refreshSubmitEnabled. */
+#carrito #customerSelectorCart .ship-card.cs-elegida::before {
   background: linear-gradient(180deg, #0a7a2f 0%, #12a040 100%);
   opacity: 1;
 }
@@ -11176,7 +11177,7 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
      (toma clase .confirmed). NO cuando aparece (que es .has-confirm).
    - Payment card: cuando hay un .pay-btn.active o .selected. */
 #carrito .ship-card:has(#shipConfirmBtn.confirmed) .ship-hint,
-#carrito .ship-card:has(#customerConfirmBtn.confirmed) .ship-hint {
+#carrito #customerSelectorCart .ship-card.cs-elegida .ship-hint {
   display: none;
 }
 
