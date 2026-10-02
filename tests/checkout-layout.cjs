@@ -23,7 +23,8 @@
  *     abajo, de Método de pago al borde derecho del listado, hasta 5 por fila.
  *
  * ⚠ Es el MISMO archivo en LK (`pagina-LK-copia`) y en Chef (`paginach`):
- *   Chef recibió el cambio en la v2.0.90 y el alto de las tarjetas en la v2.0.91. Chef no tiene la barra "Entrega
+ *   Chef recibió el cambio en la v2.0.90, el alto de las tarjetas en la v2.0.91 y
+ *   el Subtotal / surtido a ancho total en la v2.0.92. Chef no tiene la barra "Entrega
  *   estimada" (nunca se portó), así que el chequeo B ahí pasa solo.
  *
  * ⚠ Viewport ANCHO (1700×1000): la columna del carrito manda, no la ventana.
