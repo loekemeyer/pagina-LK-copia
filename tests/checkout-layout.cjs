@@ -32,7 +32,7 @@
  *     ya no muestra CUIT ni "Expreso". Ese "Expreso" era `zona_expreso`, el
  *     BARRIO (Liao Shuting, San Antonio de Padua). El expreso de verdad va
  *     debajo de la dirección de entrega, como para cualquier cliente. Chequeo G.
- *     (Chef no tiene esa tarjeta de vendedor: G se saltea solo.)
+ *     (Chef lo tiene desde la v2.0.96, con las mismas funciones: G corre en los dos.)
  *   - 02/10 (Gastón, v2.3.517): vuelve SÓLO el CUIT debajo de la razón social,
  *     y únicamente cuando entra sin mover nada (con el expreso a la vista sobra
  *     lugar; sin expreso, en CABA/GBA, "Pedir para" crecía 37 px y no va).
@@ -358,8 +358,8 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
      Caso real: Liao Shuting (LK 4262, vend 6): sucursal en San Antonio de
      Padua, GBA, sin nombre_expreso; antes salía "Expreso San Antonio de Padua"
      porque se mostraba `zona_expreso`, que es el BARRIO ─────────────────── */
-  // Chef no tiene esta tarjeta de vendedor (nunca mostró CUIT ni Expreso ahí):
-  // sin updateVendor10006Info el chequeo no aplica.
+  // Chef lo tiene desde la v2.0.96 (mismos nombres que LK). Si una copia vieja
+  // no tiene updateVendor10006Info, el chequeo no aplica.
   const g = await page.evaluate(async () => {
     if (typeof updateVendor10006Info !== "function") return null;
     const realVend = window.isActualVendor, realGeo = window.loadCustomerGeo;
