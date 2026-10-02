@@ -1705,6 +1705,31 @@ guarda `np_neto >= anterior`, así que guarda valores viejos (28/08, 17/09 y tod
 02/09). El DIARIO sigue con la foto, que para el día anterior siempre está fresca.
 `sql/reporte_semanal_mensual_pedidos_entregas.sql` (rollback en `sql/backups/`).
 
+### ⚠⚠ Desde el 02/10/2026 los crons 29/30/31 mandan el formato NUEVO (`rep_ger_*`, Luis)
+
+**Luis:** *"que mande estos y al final le pregunte «querés que envíe también el formato antiguo»"*.
+`rep_enviar_diario/semanal/mensual` mandan `rep_ger_texto_*`: pedidos que entraron (por canal, LK y
+Chef), despachados, m³ pendientes, unidades (semanal/mensual), **facturado "$ 36.812.345 + IVA"** y
+**cobrado** (conciliación de Gestión, IVA incluido). Todo con total y LK / Chef. El texto de arriba
+(`rep_texto_*`) es el **formato antiguo** y sigue vivo.
+
+- **El antiguo sale con un BOTÓN** al final del reporte («📄 Sí, mandame el formato antiguo»). Se
+  arma en el mismo momento que el nuevo y queda en **`rep_ger_formato_viejo`**; el botón sólo lo
+  encola (`rep_ger_viejo_callback`, rama `rv:` de `gv_telegram_callback`). ⚠ **El bot sólo escucha
+  botones** (`allowed_updates = callback_query`): un "sí" escrito no le llega, y abrirlo a mensajes
+  le haría recibir lo que se escribe en los grupos. No volver a proponerlo sin decir eso.
+- **El cobrado va sólo hasta el último día COMPLETO** (Luis: *"se sigue mandando a las 8 con lo que
+  haya y se avisa de lo cobrado el último plazo completo"*): un día está completo cuando las cuatro
+  cuentas tienen una subida de la conciliación posterior a ese día (`virgilio.gv_rep_gerencia_conc_cargas`,
+  `rep_ger_cobrado_completo`). Cada reporte informa lo que se completó **desde el anterior**: si a
+  las 08:00 nadie subió el extracto de ayer, ese día va en el reporte siguiente. Las subidas caen
+  entre las 06:52 y las 09:49.
+- Santander LK tiene la línea amarilla en el 01/09: sale con aviso y **se deja así** (Luis, D6).
+- Tiempo de una corrida (como postgres, sin timeout): diario ~10 s, semanal ~9 s, mensual ~16 s
+  contando el formato antiguo. Corren en el minuto :00/:15/:30 con 6 worker slots (ver la regla).
+- `sql/reporte_gerencia_v2.sql` (rollback de los envíos al final); lo de Gestión en
+  `gv_rep_gerencia_np_v2608.sql`, `gv_rep_gerencia_cobrado_v2611.sql` y `gv_rep_gerencia_conc_cargas_v2613.sql`.
+
 ## Pendientes — AVISAR AL USUARIO
 
 **Instrucción para Claude, no es una nota suelta:** cuando una sesión toque alguno de
