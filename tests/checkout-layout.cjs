@@ -33,6 +33,9 @@
  *     BARRIO (Liao Shuting, San Antonio de Padua). El expreso de verdad va
  *     debajo de la dirección de entrega, como para cualquier cliente. Chequeo G.
  *     (Chef no tiene esa tarjeta de vendedor: G se saltea solo.)
+ *   - 02/10 (Gastón, v2.3.517): vuelve SÓLO el CUIT debajo de la razón social,
+ *     y únicamente cuando entra sin mover nada (con el expreso a la vista sobra
+ *     lugar; sin expreso, en CABA/GBA, "Pedir para" crecía 37 px y no va).
  *   - 02/10 (Gastón, v2.3.515): para el vendedor se va la línea "📍 <localidad>"
  *     debajo del expreso, y la fila del expreso queda en dos renglones bajos
  *     (~44 px contra ~98) para que el Total del pedido entre en la pantalla.
@@ -393,8 +396,13 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
       const dirCard = document.getElementById("shipCardEntrega").getBoundingClientRect();
       const ebr = eb.getBoundingClientRect();
       const dirEl = eb.querySelector(".exp-dir");
+      const infoEl = document.getElementById("v10006CustInfo");
+      const cuitVis = !!infoEl && getComputedStyle(infoEl).display !== "none";
       return {
-        info: !!document.getElementById("v10006CustInfo"),
+        cuitVis,
+        cuitTxt: cuitVis ? infoEl.textContent : "",
+        altoPP: card ? card.offsetHeight : 0,
+        altoDir: document.getElementById("shipCardEntrega").offsetHeight,
         textoPedirPara: card ? card.textContent : "",
         expreso: eb.hidden ? "" : eb.textContent,
         expresoEnDir: !!eb.closest("#shipCardEntrega"),
@@ -415,9 +423,15 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
   });
   if (g) {
   for (const [k, x] of Object.entries(g)) {
-    ok(!x.info && !/CUIT/i.test(x.textoPedirPara) && !/Expreso/i.test(x.textoPedirPara),
-      "G (" + k + "): \"Pedir para\" del vendedor todavía muestra CUIT o Expreso: " + JSON.stringify(x.textoPedirPara));
+    ok(!/Expreso/i.test(x.textoPedirPara),
+      "G (" + k + "): \"Pedir para\" del vendedor volvió a mostrar un \"Expreso\": " + JSON.stringify(x.textoPedirPara));
+    // El CUIT va SÓLO si entra sin mover nada (v2.3.517): visible ⇒ "Pedir para"
+    // no queda más alta que Dirección (el alto de la fila lo manda Dirección).
+    ok(!x.cuitVis || x.altoPP <= x.altoDir + 1,
+      "G (" + k + "): el CUIT agranda \"Pedir para\" y empuja los bloques de abajo (" + x.altoPP + " > " + x.altoDir + ")");
   }
+  ok(g.interior.cuitVis && /CUIT\s*23-94538692-4/.test(g.interior.cuitTxt),
+    "G: con el expreso a la vista hay lugar y el CUIT no aparece debajo de la razón social (" + JSON.stringify(g.interior.cuitTxt) + ")");
   ok(g.padua.expreso === "",
     "G: Liao Shuting (San Antonio de Padua, GBA) muestra un expreso que no tiene: " + JSON.stringify(g.padua.expreso));
   ok(!g.padua.geo && !g.interior.geo, "G: volvió la línea \"📍 <localidad>\" debajo de la dirección (v2.3.515 la sacó)");

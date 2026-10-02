@@ -6885,8 +6885,14 @@ function _expSugPedir(dirEntrega, cuando) {
 }
 
 /* Dibuja la línea del expreso debajo del selector de sucursal. Corre en cada
-   cambio de sucursal y después de guardar. */
+   cambio de sucursal y después de guardar. Al terminar —se muestre o se
+   esconda— el alto de Dirección cambió: el CUIT del vendedor entra o no
+   (ver _v10006CuitEncaja). */
 function _expSyncUI() {
+  _expSyncUIDibujar();
+  if (typeof _v10006CuitEncaja === "function") _v10006CuitEncaja();
+}
+function _expSyncUIDibujar() {
   const sel = document.getElementById("shippingSelect");
   const box = document.getElementById("expresoBox");
   if (!sel || !box) return;
@@ -14930,8 +14936,39 @@ function buildBannerSucursal(banner, geoRows) {
   }
 }
 
-// Para cualquier vendedor sincroniza la sucursal elegida con el carrito; el
-// selector de sucursal del banner es SOLO para 10006.
+/* El CUIT bajo "Pedir para" se muestra SÓLO si entra sin mover nada (Gastón,
+   02/10/2026: "no muevas nada del resto de los bloques ni espaciados"). Las dos
+   tarjetas comparten fila y el alto lo manda Dirección: con el expreso a la
+   vista sobra lugar y el CUIT entra; sin expreso (CABA/GBA) "Pedir para"
+   crecía 37 px y empujaba Método de pago y el Total. En una columna (celular)
+   no comparten fila, así que ahí siempre empujaría: no va.
+   Se mide con el CUIT a la vista y se esconde en el mismo cuadro, sin parpadeo.
+   La llaman updateVendor10006Info, _expSyncUI (el expreso cambia el alto de
+   Dirección) y el resize de la ventana. */
+function _v10006CuitEncaja() {
+  var info = document.getElementById("v10006CustInfo");
+  if (!info) return;
+  info.style.display = "";
+  var card = info.closest(".ship-card");
+  var dir = document.getElementById("shipCardEntrega");
+  var col = card && card.closest(".cart-col-left");
+  var dosCol =
+    !!col && getComputedStyle(col).gridTemplateColumns.trim().split(/\s+/).length >= 2;
+  if (!card || !dir || !dosCol || card.offsetHeight > dir.offsetHeight + 1) {
+    info.style.display = "none";
+  }
+}
+if (typeof window !== "undefined" && !window.__v10006CuitResize) {
+  window.__v10006CuitResize = true;
+  var _v10006CuitT = null;
+  window.addEventListener("resize", function () {
+    clearTimeout(_v10006CuitT);
+    _v10006CuitT = setTimeout(_v10006CuitEncaja, 120);
+  });
+}
+
+// Para cualquier vendedor: el CUIT bajo "Pedir para" y la sucursal elegida
+// sincronizada con el carrito. El selector de sucursal del banner es SOLO 10006.
 async function updateVendor10006Info() {
   // Info del carrito: cualquier vendedor real con un cliente elegido.
   if (!isActualVendor()) {
@@ -14982,14 +15019,32 @@ async function updateVendor10006Info() {
     }
   }
 
-  // Punto 1 RETIRADO (Gastón, 02/10/2026): la tarjeta "Pedir para" del vendedor
-  // ya no muestra CUIT ni "Expreso". Ese "Expreso" caía a `zona_expreso` cuando
-  // la sucursal no tenía `nombre_expreso`, y `zona_expreso` es el BARRIO (Liao
-  // Shuting, 4262: "Expreso San Antonio de Padua", que es GBA y va en camión
-  // propio). El expreso de verdad lo dibuja `_expSyncUI` debajo de la dirección
-  // de entrega, igual que para cualquier cliente.
-  var infoOld = document.getElementById("v10006CustInfo");
-  if (infoOld) infoOld.remove();
+  // Punto 1: SÓLO el CUIT debajo de la razón social (Gastón, 02/10/2026).
+  // El "Expreso" que iba al lado se fue en la v2.3.514: caía a `zona_expreso`,
+  // que es el BARRIO (Liao Shuting, 4262: "Expreso San Antonio de Padua"). El
+  // expreso de verdad lo dibuja `_expSyncUI` debajo de la dirección de entrega.
+  // La v2.3.514 sacó también el CUIT para que la tarjeta no creciera; con la
+  // fila del expreso compacta (v2.3.515) volvió a haber lugar.
+  var cartCard = document.querySelector("#customerSelectorCart .ship-card");
+  var cuitTxt = fmtCuit(cust.cuit);
+  var info = document.getElementById("v10006CustInfo");
+  if (cartCard && cuitTxt) {
+    if (!info) {
+      info = document.createElement("div");
+      info.id = "v10006CustInfo";
+      info.className = "v10006-info";
+      // Justo debajo del desplegable; el hint "Seleccioná un cliente..." queda al final.
+      var hintEl = cartCard.querySelector(".ship-hint");
+      if (hintEl) cartCard.insertBefore(info, hintEl);
+      else cartCard.appendChild(info);
+    }
+    info.innerHTML =
+      '<span class="v10006-field"><span class="v10006-k">CUIT</span>' +
+      '<span class="v10006-v">' + _csEscape(cuitTxt) + "</span></span>";
+    _v10006CuitEncaja();
+  } else if (info) {
+    info.remove();
+  }
 
   // Punto 2 RETIRADO (Gastón, 02/10/2026): la línea "📍 <localidad>" debajo del
   // expreso no va más. Repetía lo que ya dice la sucursal ("… - MdP") y le
