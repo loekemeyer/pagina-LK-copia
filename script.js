@@ -15039,8 +15039,26 @@ async function onLinkedCustomerSelected(opts) {
   }
 
   if (val === VENDOR_SELF_VALUE) {
-    // Volver al perfil propio del vendedor — sin necesidad de refresh. El
-    // carrito queda como está.
+    // Volver a "Perfil vendedor" con productos en el carrito PREGUNTA y, si se
+    // confirma, VACÍA el carrito (Gastón, 02/10/2026). En Perfil vendedor no se
+    // compra: lo que quedaba en el carrito seguía con su barra de cantidades en
+    // vez de "Elegir razón social", y el vendedor no podía hacer nada con eso.
+    // ⚠ Esto NO contradice la v2.3.511: cambiar de una razón social a OTRA
+    // nunca vacía el carrito ni pregunta. Esto es salir de las razones sociales.
+    // Si cancela, se queda con el cliente que tenía.
+    if (!fromRestore && cart.length > 0 && isActualVendor()) {
+      var prevSel = isVendorOwnMode()
+        ? VENDOR_SELF_VALUE
+        : String((customerProfile && customerProfile.id) || "");
+      if (!window.confirm("¿Estás seguro de eliminar los productos seleccionados?")) {
+        _csSetValue("customerSelect", prevSel);
+        _csSetValue("customerSelectCart", prevSel);
+        if (typeof updateVendorProfileTick === "function") updateVendorProfileTick();
+        return false;
+      }
+      cart.splice(0, cart.length);
+    }
+    // Volver al perfil propio del vendedor — sin necesidad de refresh.
     if (_vendorOwnProfile) {
       customerProfile = Object.assign({}, _vendorOwnProfile);
       _presupuestoSyncUI();

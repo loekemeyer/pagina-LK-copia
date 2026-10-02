@@ -36,6 +36,11 @@
  *   - 02/10 (Gastón, v2.3.515): para el vendedor se va la línea "📍 <localidad>"
  *     debajo del expreso, y la fila del expreso queda en dos renglones bajos
  *     (~44 px contra ~98) para que el Total del pedido entre en la pantalla.
+ *   - 02/10 (Gastón, v2.3.516): tocar "Perfil vendedor" con productos en el
+ *     carrito pregunta "¿Estás seguro de eliminar los productos seleccionados?".
+ *     Sí → carrito vacío y las cards vuelven a "Elegir razón social". No → se
+ *     queda el cliente. Cambiar de una razón social a OTRA sigue sin preguntar
+ *     (chequeo F). Chequeo H.
  *
  * ⚠ Es el MISMO archivo en LK (`pagina-LK-copia`) y en Chef (`paginach`):
  *   Chef recibió el cambio en la v2.0.90, el alto de las tarjetas en la v2.0.91 y
@@ -297,6 +302,53 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
   ok(f.trasC1.elegida && f.trasC1.ayuda === "none",
     "F: con una razón social elegida, la tarjeta no se marca completa o sigue la ayuda (" +
     JSON.stringify(f.trasC1) + ")");
+
+  /* ── H. "PERFIL VENDEDOR" CON PRODUCTOS EN EL CARRITO: pregunta si se eliminan.
+     Cancelar deja el cliente y el carrito; aceptar vacía el carrito y las cards
+     vuelven a "Elegir razón social". En LK se toca el tick real (onVendorTickClick);
+     Chef no tiene tick: "— Perfil vendedor —" es una opción del desplegable. ── */
+  const h = await page.evaluate(async () => {
+    if (typeof VENDOR_SELF_VALUE === "undefined") return null;
+    const realConfirm = window.confirm;
+    const prevOwn = _vendorOwnProfile, prevSes = currentSession;
+    _vendorOwnProfile = { id: "v1", cod_cliente: "10006", business_name: "Vendedor Prueba", dto_vol: 0 };
+    currentSession = currentSession || { user: { id: "u-prueba" } };
+    renderCustomerSelector();
+    _csSetValue("customerSelectCart", "c2");
+    onAnyCustomerSelectChange({ target: document.getElementById("customerSelectCart") });
+    await new Promise((ok) => setTimeout(ok, 400));
+    const preguntas = [];
+    const tocar = async (resp) => {
+      window.confirm = (m) => { preguntas.push(m); return resp; };
+      if (typeof onVendorTickClick === "function") onVendorTickClick();
+      else {
+        _csSetValue("customerSelectCart", VENDOR_SELF_VALUE);
+        onAnyCustomerSelectChange({ target: document.getElementById("customerSelectCart") });
+      }
+      await new Promise((ok) => setTimeout(ok, 400));
+    };
+    const r = { antes: cart.length, clienteAntes: customerProfile && customerProfile.id };
+    await tocar(false);
+    r.cancel = { items: cart.length, cliente: customerProfile && customerProfile.id,
+      sel: (document.getElementById("customerSelectCart") || {}).value };
+    await tocar(true);
+    r.ok = { items: cart.length, cliente: customerProfile && customerProfile.id,
+      elegirRS: document.querySelectorAll("#productsContainer .add-btn.add-vendor-browse").length };
+    r.preguntas = preguntas;
+    window.confirm = realConfirm;
+    _vendorOwnProfile = prevOwn; currentSession = prevSes;
+    return r;
+  });
+  if (h) {
+    ok(h.antes > 0 && h.clienteAntes === "c2", "H: la preparación no dejó al vendedor con c2 y carrito (" + JSON.stringify(h) + ")");
+    ok(h.preguntas.length === 2 && /eliminar los productos seleccionados/i.test(h.preguntas[0] || ""),
+      "H: tocar \"Perfil vendedor\" con productos no preguntó si se eliminan (" + JSON.stringify(h.preguntas) + ")");
+    ok(h.cancel.items === h.antes && h.cancel.cliente === "c2" && h.cancel.sel === "c2",
+      "H: al cancelar se cambió el cliente o el carrito (" + JSON.stringify(h.cancel) + ")");
+    ok(h.ok.items === 0 && h.ok.cliente === "v1",
+      "H: al aceptar no se vació el carrito o no volvió a Perfil vendedor (" + JSON.stringify(h.ok) + ")");
+    ok(h.ok.elegirRS > 0, "H: después de vaciar, las cards no muestran \"Elegir razón social\"");
+  }
 
   /* ── G. VENDEDOR: "PEDIR PARA" SIN CUIT NI "EXPRESO"; el expreso va debajo
      de la dirección de entrega (_expSyncUI), como para cualquier cliente.
