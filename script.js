@@ -14924,7 +14924,7 @@ function buildBannerSucursal(banner, geoRows) {
   }
 }
 
-// Actualiza la info del carrito (CUIT/expreso + provincia) para TODOS los
+// Actualiza la localidad bajo la dirección de entrega para TODOS los
 // vendedores, y el selector de sucursal del banner SOLO para 10006.
 async function updateVendor10006Info() {
   // Info del carrito: cualquier vendedor real con un cliente elegido.
@@ -14976,44 +14976,14 @@ async function updateVendor10006Info() {
     }
   }
 
-  // Punto 1: CUIT + expreso bajo "Pedir para" (carrito).
-  var cartCard = document.querySelector("#customerSelectorCart .ship-card");
-  if (cartCard) {
-    var info = document.getElementById("v10006CustInfo");
-    if (!info) {
-      info = document.createElement("div");
-      info.id = "v10006CustInfo";
-      info.className = "v10006-info";
-      // CUIT/BARRIO justo debajo del dropdown; el hint "Seleccioná un
-      // cliente..." queda al final.
-      var hintEl = cartCard.querySelector(".ship-hint");
-      if (hintEl) cartCard.insertBefore(info, hintEl);
-      else cartCard.appendChild(info);
-    }
-    var cuitTxt = fmtCuit(cust.cuit);
-    // Si hay nombre_expreso → transporte ("Expreso"). Si no (cliente
-    // local/CABA), se muestra el barrio (zona_expreso) con label "Barrio".
-    var nombreExp = (activeGeo && activeGeo.nombre_expreso) || "";
-    var zonaExp =
-      (activeGeo && activeGeo.zona_expreso) ||
-      (deliveryChoice && deliveryChoice.zonaExpreso) ||
-      "";
-    var field = function (k, v) {
-      return (
-        '<span class="v10006-field"><span class="v10006-k">' +
-        _csEscape(k) +
-        '</span><span class="v10006-v">' +
-        _csEscape(v) +
-        "</span></span>"
-      );
-    };
-    var parts = [];
-    if (cuitTxt) parts.push(field("CUIT", cuitTxt));
-    if (nombreExp) parts.push(field("Expreso", nombreExp));
-    else if (zonaExp) parts.push(field("Expreso", zonaExp));
-    info.innerHTML = parts.join("");
-    info.style.display = parts.length ? "" : "none";
-  }
+  // Punto 1 RETIRADO (Gastón, 02/10/2026): la tarjeta "Pedir para" del vendedor
+  // ya no muestra CUIT ni "Expreso". Ese "Expreso" caía a `zona_expreso` cuando
+  // la sucursal no tenía `nombre_expreso`, y `zona_expreso` es el BARRIO (Liao
+  // Shuting, 4262: "Expreso San Antonio de Padua", que es GBA y va en camión
+  // propio). El expreso de verdad lo dibuja `_expSyncUI` debajo de la dirección
+  // de entrega, igual que para cualquier cliente.
+  var infoOld = document.getElementById("v10006CustInfo");
+  if (infoOld) infoOld.remove();
 
   // Punto 2: localidad (zona + provincia del mapa) bajo dirección de entrega.
   var shipCard = shipSel ? shipSel.closest(".ship-card") : null;

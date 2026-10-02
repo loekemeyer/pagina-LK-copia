@@ -28,6 +28,11 @@
  *     "Confirmar": elegir la razón social alcanza. Y cambiar de razón social
  *     NUNCA vacía el carrito ni abre una ventana (antes salía un confirm "el
  *     carrito se va a vaciar"). El chequeo F lo prueba con el selector real.
+ *   - 02/10 (Gastón, v2.3.514): para el VENDEDOR, "Pedir para"
+ *     ya no muestra CUIT ni "Expreso". Ese "Expreso" era `zona_expreso`, el
+ *     BARRIO (Liao Shuting, San Antonio de Padua). El expreso de verdad va
+ *     debajo de la dirección de entrega, como para cualquier cliente. Chequeo G.
+ *     (Chef no tiene esa tarjeta de vendedor: G se saltea solo.)
  *
  * ⚠ Es el MISMO archivo en LK (`pagina-LK-copia`) y en Chef (`paginach`):
  *   Chef recibió el cambio en la v2.0.90, el alto de las tarjetas en la v2.0.91 y
@@ -289,6 +294,73 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
   ok(f.trasC1.elegida && f.trasC1.ayuda === "none",
     "F: con una razón social elegida, la tarjeta no se marca completa o sigue la ayuda (" +
     JSON.stringify(f.trasC1) + ")");
+
+  /* ── G. VENDEDOR: "PEDIR PARA" SIN CUIT NI "EXPRESO"; el expreso va debajo
+     de la dirección de entrega (_expSyncUI), como para cualquier cliente.
+     Caso real: Liao Shuting (LK 4262, vend 6): sucursal en San Antonio de
+     Padua, GBA, sin nombre_expreso; antes salía "Expreso San Antonio de Padua"
+     porque se mostraba `zona_expreso`, que es el BARRIO ─────────────────── */
+  // Chef no tiene esta tarjeta de vendedor (nunca mostró CUIT ni Expreso ahí):
+  // sin updateVendor10006Info el chequeo no aplica.
+  const g = await page.evaluate(async () => {
+    if (typeof updateVendor10006Info !== "function") return null;
+    const realVend = window.isActualVendor, realGeo = window.loadCustomerGeo;
+    window.isActualVendor = () => true;
+    const prev = customerProfile;
+    customerProfile = { id: "c2", business_name: "Liao Shuting", cuit: "23945386924", dto_vol: 0 };
+    const sel = document.getElementById("shippingSelect");
+    const filas = {
+      "1": { slot: 1, label: "Italia 1176 - S.A de Padua", direccion_entrega: "Italia 1176",
+        zona_expreso: "San Antonio de Padua", nombre_expreso: "", direccion_expreso: "",
+        localidad: "San Antonio de Padua", provincia: "Buenos Aires" },
+      "2": { slot: 2, label: "Mendoza centro", direccion_entrega: "John W. Cooke 3255",
+        zona_expreso: "Villa Soldati", nombre_expreso: "Expreso De A 4 Bahia",
+        direccion_expreso: "John W. Cooke 3255, Villa Soldati", localidad: "Mendoza", provincia: "Mendoza" },
+    };
+    sel.innerHTML = "";
+    Object.values(filas).forEach((row) => {
+      const o = document.createElement("option");
+      o.value = String(row.slot); o.textContent = row.slot + ": " + row.label;
+      o.dataset.label = row.label; o.dataset.direccionEntrega = row.direccion_entrega;
+      o.dataset.zonaExpreso = row.zona_expreso; o.dataset.nombreExpreso = row.nombre_expreso;
+      o.dataset.direccionExpreso = row.direccion_expreso; o.dataset.localidad = row.localidad;
+      o.dataset.provincia = row.provincia; o.dataset.expresoPendiente = "";
+      sel.appendChild(o);
+    });
+    window.loadCustomerGeo = async () => Object.values(filas);
+    const ver = async (slot) => {
+      sel.value = slot; deliveryChoice.slot = slot;
+      await updateVendor10006Info();
+      window._expSyncUI();
+      const card = document.querySelector("#customerSelectorCart > .ship-card");
+      const eb = document.getElementById("expresoBox");
+      const geo = document.getElementById("v10006ShipGeo");
+      return {
+        info: !!document.getElementById("v10006CustInfo"),
+        textoPedirPara: card ? card.textContent : "",
+        expreso: eb.hidden ? "" : eb.textContent,
+        expresoEnDir: !!eb.closest("#shipCardEntrega"),
+        geo: geo && geo.style.display !== "none" ? geo.textContent.trim() : "",
+      };
+    };
+    const r = { padua: await ver("1"), interior: await ver("2") };
+    window.isActualVendor = realVend; window.loadCustomerGeo = realGeo;
+    customerProfile = prev;
+    _v10006Remove();
+    document.getElementById("expresoBox").hidden = true;
+    return r;
+  });
+  if (g) {
+  for (const [k, x] of Object.entries(g)) {
+    ok(!x.info && !/CUIT/i.test(x.textoPedirPara) && !/Expreso/i.test(x.textoPedirPara),
+      "G (" + k + "): \"Pedir para\" del vendedor todavía muestra CUIT o Expreso: " + JSON.stringify(x.textoPedirPara));
+  }
+  ok(g.padua.expreso === "",
+    "G: Liao Shuting (San Antonio de Padua, GBA) muestra un expreso que no tiene: " + JSON.stringify(g.padua.expreso));
+  ok(/San Antonio de Padua/.test(g.padua.geo), "G: no quedó la localidad 📍 bajo la dirección (" + g.padua.geo + ")");
+  ok(/Expreso De A 4 Bahia/.test(g.interior.expreso) && g.interior.expresoEnDir,
+    "G: con expreso real, no aparece debajo de la dirección de entrega (" + JSON.stringify(g.interior) + ")");
+  }
 
   /* ── D. CON "PEDIR PARA": las dos tarjetas lado a lado y a la misma altura,
      y nada de hueco debajo (Observaciones ya no está en esa grilla) ────────── */
