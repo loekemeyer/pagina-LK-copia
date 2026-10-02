@@ -396,8 +396,9 @@ interviene**, no de uno solo. Un pedido web vive en varios proyectos a la vez:
 ## Git: commitear a main por defecto (OBLIGATORIO)
 
 Salvo que el usuario aclare otra branch, **todo commit y push va a `main`**.
-No usar branches de trabajo por defecto. `main` es la branch de deploy
-(GitHub Pages), así que pushear ahí publica el cambio. Si el usuario pide una
+No usar branches de trabajo por defecto. `main` es la branch de deploy de la
+copia de prueba (Vercel, `pagina-lk-copia.vercel.app`), así que pushear ahí la
+actualiza; a `loekemeyer.com` no llega (ver Deploy). Si el usuario pide una
 branch puntual, respetarla solo para ese pedido y volver a `main` después.
 
 ## Respuestas concisas (OBLIGATORIO)
@@ -1347,7 +1348,13 @@ Documentos de planificación y replicación, NO ejecutables:
   | Sitio | Quién entra | Cómo se despliega |
   |---|---|---|
   | **`www.loekemeyer.com`** (CPanel — IIS / panel SolidCP) | **los clientes — es producción** | **a mano por SolidCP** (`/publicar-sitio` arma el `.zip`; `scripts\deploy-iis.ps1` si hay FTP) |
-  | `loekemeyer.github.io` (GitHub Pages) | desarrollo / revisión | solo, con cada push a `main` |
+  | **`pagina-lk-copia.vercel.app`** (Vercel) | prueba / revisión | solo, con cada push a `main` |
+
+  ⚠ **GitHub Pages YA NO SIRVE ESTE REPO** (medido el 02/10/2026): el repo pasó a **privado**,
+  `has_pages = false` y `loekemeyer.github.io/pagina-LK-copia/` da **404**; el último build de
+  Pages fue la 2.3.468 (23/09). La copia de prueba es **Vercel**, que el 02/10 ya servía la
+  2.3.505 minutos después del push. Ojo: usa la MISMA base de Supabase que producción, así que
+  un pedido confirmado ahí es un pedido real. Donde abajo dice "Pages", leer Vercel.
 
   **Pushear a `main` NO llega a los clientes.** Hasta el 14/09 este archivo decía que el sitio "se
   despliega SOLO con el push" y que el IIS era "aparte y ocasional". Es al revés, y salió caro: ese
@@ -1406,7 +1413,7 @@ Documentos de planificación y replicación, NO ejecutables:
     seccion "Llevarlo a otro repo" del SKILL.md tiene los tres pasos.
 - **Third-party libs** are loaded from CDN in the HTML files (Supabase JS v2, jsPDF, lottie-web, xlsx). There is no bundler; add new libs the same way (a `<script src="https://cdn...">` tag).
 - **SQL fix scripts** like `fix_missing.sql` are one-shot data repairs run manually in the Supabase SQL editor; they are not migrations and have no framework.
-- **`vercel.json`** tiene rewrites de URLs limpias (mayorista, historial, sugerencias, admin). Presente por si se hace un deploy de prueba a Vercel, pero la producción va por IIS/GitHub Pages.
+- **`vercel.json`** tiene rewrites de URLs limpias (mayorista, historial, sugerencias, admin). Es la copia de prueba (`pagina-lk-copia.vercel.app`, se actualiza sola con cada push a `main`); la producción va por IIS.
 - **SQL files en la raíz** (one-shot, no documentados como módulo): `add_module_usage_tracking.sql`, `add_order_source_tracking.sql`, `crear_ventas_chef.sql`, `estadistica_madre_cache.sql`, `impactar_ventas_chef_en_sales_lines.sql`, `programar_pedido_automatico.sql`, `recordatorio_mail_ventas.sql`. Todos son scripts de data repair o setup que se corren a mano.
 
 ## Versionamiento automático

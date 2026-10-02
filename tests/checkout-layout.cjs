@@ -74,6 +74,69 @@ const ok = (c, m) => { if (!c) fallas.push(m); };
     "Observaciones NO quedó al lado de Dirección de entrega (falta el CSS de .ship-row-split). " +
     "dir=" + JSON.stringify(r.dir) + " obs=" + JSON.stringify(r.obs));
 
+  /* ── CON "PEDIR PARA (RAZÓN SOCIAL)" (02/10/2026) ──────────────────────────
+     Vendedores y clientes con varias razones sociales tienen una tarjeta más,
+     `#customerSelectorCart`, que el JS mete antes de la fila de envío. Ahí la
+     columna pasa a grilla de 2: "Pedir para" | "Dirección". Hasta hoy la fila
+     de envío ENTERA iba a la columna 2, así que Observaciones caía debajo de
+     Dirección y debajo de "Pedir para" quedaba un hueco vacío. Pedido: que
+     Observaciones ocupe el ancho de las dos de arriba.
+     Se arma la tarjeta como lo hace el JS (misma clase, mismo lugar) y se mide. */
+  const v = await page.evaluate(() => {
+    const fila = document.getElementById("shippingSelect").closest(".ship-row");
+    const cust = document.createElement("div");
+    cust.id = "customerSelectorCart";
+    cust.className = "ship-row";
+    cust.innerHTML =
+      '<div class="ship-card has-confirm"><label class="ship-label">Pedir para (Razón Social)</label>' +
+      '<select><option>Retail Plastic SRL</option></select><div class="ship-hint">x</div></div>';
+    fila.parentNode.insertBefore(cust, fila);
+    // la fecha estimada también puede estar: va arriba, a todo el ancho
+    const est = document.getElementById("entregaEstimada");
+    if (est) { est.hidden = false; est.textContent = "Entrega estimada: 09/10"; }
+    const R = (el) => { const x = el.getBoundingClientRect();
+      return { top: Math.round(x.top), bottom: Math.round(x.bottom), left: Math.round(x.left), right: Math.round(x.right) }; };
+    const sel = document.getElementById("shippingSelect");
+    return {
+      cust: R(cust.querySelector(".ship-card")),
+      dir: R(sel.closest(".ship-card")),
+      obs: R(document.getElementById("obsPedidoInput").closest(".ship-card")),
+      pago: R(document.getElementById("paymentRow")),
+      est: est ? R(est) : null,
+    };
+  });
+  const cerca = (a, b) => Math.abs(a - b) <= 2;
+  ok(cerca(v.cust.top, v.dir.top) && v.dir.left > v.cust.right,
+    "con Pedir para: Dirección de entrega no quedó al lado de Pedir para. cust=" +
+    JSON.stringify(v.cust) + " dir=" + JSON.stringify(v.dir));
+  ok(v.obs.top >= Math.max(v.cust.bottom, v.dir.bottom),
+    "con Pedir para: Observaciones no quedó debajo de la fila Pedir para + Dirección. obs=" + JSON.stringify(v.obs));
+  ok(cerca(v.obs.left, v.cust.left) && cerca(v.obs.right, v.dir.right),
+    "con Pedir para: Observaciones no ocupa el ancho de Pedir para + Dirección (queda un hueco). obs=" +
+    JSON.stringify(v.obs) + " cust=" + JSON.stringify(v.cust) + " dir=" + JSON.stringify(v.dir));
+  ok(v.pago.top >= v.obs.bottom, "con Pedir para: Método de pago quedó arriba de Observaciones");
+  if (v.est)
+    ok(v.est.bottom <= v.cust.top && cerca(v.est.left, v.cust.left) && cerca(v.est.right, v.dir.right),
+      "con Pedir para: la fecha estimada no quedó arriba y a todo el ancho. est=" + JSON.stringify(v.est));
+
+  // Con el expreso a la vista Dirección crece (~290 px contra ~170 de "Pedir
+  // para"): las dos tienen que terminar a la misma altura, sin hueco abajo.
+  const w = await page.evaluate(() => {
+    const eb = document.getElementById("expresoBox");
+    eb.hidden = false;
+    eb.innerHTML = '<span class="exp-ico">🚚</span><span class="exp-txt"><span class="exp-k">Expreso</span>' +
+      '<span class="exp-v">Expreso De A 4 Bahia</span><span class="exp-dir">John W. Cooke 3255, Villa Soldati</span></span>' +
+      '<button type="button" class="exp-btn">Cambiar</button>';
+    const B = (el) => Math.round(el.getBoundingClientRect().bottom);
+    return {
+      cust: B(document.querySelector("#customerSelectorCart .ship-card")),
+      dir: B(document.getElementById("shippingSelect").closest(".ship-card")),
+    };
+  });
+  ok(cerca(w.cust, w.dir),
+    "con Pedir para y el expreso a la vista: las dos tarjetas de arriba no terminan a la misma altura " +
+    "(queda hueco debajo de la más corta). cust=" + w.cust + " dir=" + w.dir);
+
   await browser.close();
   if (fallas.length) {
     console.error("checkout-layout: FALLA (" + path.basename(raiz) + ")");
