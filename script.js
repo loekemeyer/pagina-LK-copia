@@ -13883,6 +13883,18 @@ function _expoNewGenPin() {
 }
 
 // Crea el usuario auth con un cliente aparte (no pisa la sesión del operador).
+// 02/10 (Tomás Gonzalez, problema 679): si hay CUIT y el login NO se pudo crear, TIRA
+// error y el alta frena. Antes devolvía null y el cliente se guardaba sin login: el
+// panel mostraba CUIT y PIN y la página decía "incorrectos".
+function _expoAuthMotivo(em) {
+  if (em === "pin_debil")
+    return "Supabase rechazó el PIN por «contraseña filtrada» (avisá a administración: hay que apagar esa protección en Auth de LK)";
+  if (em === "no_autorizado") return "tu usuario no tiene permiso para crear logins";
+  if (em === "sin_sesion") return "no hay sesión: volvé a entrar";
+  if (em === "red") return "error de red, probá de nuevo";
+  return em;
+}
+
 async function _expoCreateAuthUser(cuit, pin) {
   // El alta del usuario auth va por la Edge Function crear-cliente-auth
   // (service_role -> auth.admin.createUser), NO por signUp: Supabase rechaza el
@@ -13895,10 +13907,7 @@ async function _expoCreateAuthUser(cuit, pin) {
       sess && sess.data && sess.data.session
         ? sess.data.session.access_token
         : null;
-    if (!token) {
-      console.warn("expo auth: sin sesión de admin para crear el login");
-      return null;
-    }
+    if (!token) throw new Error("LOGIN:sin_sesion");
     var res = await fetch(SUPABASE_URL + "/functions/v1/crear-cliente-auth", {
       method: "POST",
       headers: {
@@ -13916,17 +13925,17 @@ async function _expoCreateAuthUser(cuit, pin) {
       throw new Error("Ese CUIT ya tiene usuario en la página: no se creó el cliente");
     }
     if (!res.ok || !data.id) {
-      console.warn(
-        "expo auth crear-cliente-auth:",
-        data.error || "http_" + res.status,
-      );
-      return null;
+      throw new Error("LOGIN:" + (data.error || "http_" + res.status));
     }
     return data.id;
   } catch (e) {
     if (e && /ya tiene usuario/.test(e.message || "")) throw e;
+    var m = e && e.message ? e.message : "";
+    var motivo = m.indexOf("LOGIN:") === 0 ? m.slice(6) : "red";
     console.warn("expo auth error:", e);
-    return null;
+    throw new Error(
+      "No se pudo crear el login del cliente (CUIT + PIN): " + _expoAuthMotivo(motivo) + ". No se guardó nada.",
+    );
   }
 }
 
@@ -14286,6 +14295,15 @@ async function _expoGuardarNuevo(mode) {
   _expoNewStatus("Guardando…");
 
   try {
+    // El usuario auth (login del cliente) SOLO se puede crear con CUIT (el email
+    // sintético es <cuit>@cuit.loekemeyer). Si todavía no hay CUIT, se difiere:
+    // se crea cuando se complete. Puede pasar en el alta o en un guardado posterior.
+    // 02/10: va ANTES de reservar el código. Si el login falla, _expoCreateAuthUser
+    // tira y el alta frena acá, sin gastar un número de cliente.
+    if (cuit && !_expoNewState.authId) {
+      _expoNewState.authId = await _expoCreateAuthUser(cuit, pin);
+    }
+
     if (!_expoNewState.id) {
       // Reservar el código asignado por el sistema (solo en el alta inicial).
       try {
@@ -14310,13 +14328,6 @@ async function _expoGuardarNuevo(mode) {
       // Escala activa: el cliente fija su dto con su 1er pedido (lo ve al entrar él).
       escala_activa: true,
     };
-
-    // El usuario auth (login del cliente) SOLO se puede crear con CUIT (el email
-    // sintético es <cuit>@cuit.loekemeyer). Si todavía no hay CUIT, se difiere:
-    // se crea cuando se complete. Puede pasar en el alta o en un guardado posterior.
-    if (cuit && !_expoNewState.authId) {
-      _expoNewState.authId = await _expoCreateAuthUser(cuit, pin);
-    }
 
     // Persistencia en UNA sola RPC (SECURITY DEFINER): customers (insert/update) +
     // direcciones de entrega + staging del ERP, atómico y autorizado para ADMIN o

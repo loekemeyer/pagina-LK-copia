@@ -415,8 +415,22 @@ async function generateSyntheticVendorCuit() {
   throw new Error("No se pudo generar CUIT sintetico unico tras 20 intentos");
 }
 
+// Motivo legible de un error de crear-cliente-auth.
+function _authLoginMotivo(em) {
+  if (em === "pin_debil")
+    return "Supabase rechazó el PIN por «contraseña filtrada». Hay que apagar «Prevent use of leaked passwords» en Authentication del proyecto LK";
+  if (em === "no_autorizado") return "tu usuario no tiene permiso para crear logins";
+  if (em === "sin_sesion") return "no hay sesión de admin: volvé a entrar al panel";
+  if (em === "red") return "error de red, probá de nuevo";
+  return em;
+}
+
 // Crea usuario en Supabase Auth y devuelve el auth_user_id.
 // Usa un cliente separado para no perder la sesion del admin.
+// 02/10 (Tomás Gonzalez, problema 679): si hay CUIT y el login NO se pudo crear, TIRA
+// error y el alta frena. Antes devolvía null y el cliente se creaba igual "sin acceso
+// login" con un toast que nadie veía: el panel mostraba CUIT y PIN y la página decía
+// "incorrectos" (25 clientes así al 02/10). Sin CUIT sigue devolviendo null: no hay login posible.
 async function createAuthUser(cuit, pin, sincronizar) {
   if (!cuit) return null;
   var digits = cuit.replace(/[^0-9]/g, "");
@@ -430,10 +444,7 @@ async function createAuthUser(cuit, pin, sincronizar) {
       sess && sess.data && sess.data.session
         ? sess.data.session.access_token
         : null;
-    if (!token) {
-      toast("Aviso: cliente se creará sin acceso login (sin sesión)", "warning");
-      return null;
-    }
+    if (!token) throw new Error("LOGIN:sin_sesion");
     var res = await fetch(SUPABASE_URL + "/functions/v1/crear-cliente-auth", {
       method: "POST",
       headers: {
@@ -457,16 +468,18 @@ async function createAuthUser(cuit, pin, sincronizar) {
       if (res.status === 429 || (em && em.toLowerCase().indexOf("rate limit") >= 0)) {
         throw new Error("RATE_LIMIT");
       }
-      toast("Aviso: cliente se creará sin acceso login (" + em + ")", "warning");
-      return null;
+      throw new Error("LOGIN:" + em);
     }
     return data.id;
   } catch (e) {
     // 24/09: estos dos NO son "error de red": el que llama los tiene que ver.
     if (e && (e.message === "RATE_LIMIT" || /ya tiene usuario/.test(e.message || ""))) throw e;
+    var m = e && e.message ? e.message : "";
+    var motivo = m.indexOf("LOGIN:") === 0 ? m.slice(6) : "red";
     console.warn("createAuthUser error:", e);
-    toast("Aviso: cliente se creará sin acceso login (red)", "warning");
-    return null;
+    throw new Error(
+      "No se pudo crear el login (CUIT + PIN): " + _authLoginMotivo(motivo) + ". No se guardó nada.",
+    );
   }
 }
 
@@ -1061,6 +1074,9 @@ document
     var importBtn = this;
     importBtn.disabled = true;
     try {
+      // 02/10 (problema 679): la fila cuyo login no se pudo crear NO se importa
+      // (antes entraba igual, sin login). Queda en la vista previa para reintentar.
+      var sinLogin = [];
       for (var i = 0; i < importData.length; i++) {
         var row = importData[i];
         importBtn.textContent = "Creando auth " + (i + 1) + "/" + importData.length + "...";
@@ -1068,18 +1084,33 @@ document
           var authId = await _createAuthWithRetry(row.cuit, row.pin);
           if (authId) row.auth_user_id = authId;
         } catch (e) {
-          toast("Auth falló para " + row.cod_cliente + ": " + e.message, "warning");
+          sinLogin.push(row);
+          toast("NO se importa " + row.cod_cliente + ": " + e.message, "error");
         }
         // Pausa entre llamadas para evitar rate limit
         if (i < importData.length - 1) await _repairDelay(REPAIR_DELAY_MS);
       }
+      var aInsertar = importData.filter(function (r) {
+        return sinLogin.indexOf(r) < 0;
+      });
       importBtn.textContent = "Guardando...";
-      var insertedRows = await sbInsert(TABLE_CUSTOMERS, importData);
+      var insertedRows = aInsertar.length ? await sbInsert(TABLE_CUSTOMERS, aInsertar) : [];
       // Vincular cada cliente importado a su vendedor
       for (var j = 0; j < insertedRows.length; j++) {
         if (insertedRows[j].vend) {
           await linkCustomerToVendor(insertedRows[j].vend, insertedRows[j].id);
         }
+      }
+      if (sinLogin.length) {
+        toast(
+          aInsertar.length + " clientes importados · " + sinLogin.length +
+            " NO (no se pudo crear su login): " +
+            sinLogin.map(function (r) { return r.cod_cliente; }).join(", "),
+          "error",
+        );
+        importData = sinLogin;
+        renderPreview(importData);
+        return;
       }
       toast(importData.length + " clientes importados");
       importData = [];
