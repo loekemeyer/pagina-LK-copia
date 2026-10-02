@@ -1744,12 +1744,12 @@
       : allProductsCache || [];
   }
 
-  // Cargar customer fijo en Chef segun super
+  // Cargar customer fijo en Chef segun super (si Chef no lo deja ver -> loadChefCustomerLK)
   async function loadChefCustomer(superKey) {
     var codCliente = CHEF_CUSTOMER_COD[superKey];
     if (!codCliente) return null;
     var client = getChefClient();
-    if (!client) return null;
+    if (!client) return await loadChefCustomerLK(codCliente);
     var r = await client
       .from("customers")
       .select("*")
@@ -1757,9 +1757,9 @@
       .limit(1);
     if (r.error) {
       console.error("loadChefCustomer error:", r.error);
-      return null;
+      return await loadChefCustomerLK(codCliente);
     }
-    return r.data && r.data[0] ? r.data[0] : null;
+    return r.data && r.data[0] ? r.data[0] : await loadChefCustomerLK(codCliente);
   }
 
   // Buscar sucursal en customer_delivery_addresses por super_branch_id (text)
@@ -2067,6 +2067,37 @@
   // y una línea agregada más arriba los corre.
   function superListaEnEsteAdmin(superKey) {
     return !isChefSuper(superKey) || !usesChefProducts(superKey);
+  }
+
+  // Tomás Gonzalez, 02/10/2026: el cliente de Chef de una cadena que factura por Chef
+  // (Cencosud 2444, Dorinka 2686) NO se puede leer con la clave pública de Chef: su RLS
+  // devuelve 0 filas SIN error, y la card decía "CLIENTE no encontrado (esperaba cod
+  // 2444)" y no dejaba subir el pedido. Se pide a la RPC de LK scot_chef_cliente_super
+  // (sólo admins), que lo lee por el FDW de Chef con vend, deuda, límite y plazo vivos
+  // y, si Chef no contesta, de la copia local (parcial: sin vend ni deuda). Las
+  // sucursales sí se leen con la clave pública (customer_delivery_addresses), así que
+  // con el id del cliente la sucursal del PDF (super_branch_id) se mapea como siempre.
+  // Va acá abajo por los RANGOS DE LÍNEA de gen-krikos-parsers.sh (ver arriba).
+  async function loadChefCustomerLK(codCliente) {
+    if (!window.sb || !codCliente) return null;
+    try {
+      var r = await window.sb.rpc("scot_chef_cliente_super", { p_cod: String(codCliente) });
+      if (r.error) {
+        console.error("scot_chef_cliente_super error:", r.error);
+        return null;
+      }
+      var c = r.data || null;
+      if (c && c.parcial && window.toast) {
+        window.toast(
+          "Chef no contestó: cliente " + c.cod_cliente + " tomado de la copia de LK, sin vendedor ni deuda.",
+          "warning",
+        );
+      }
+      return c && c.id ? c : null;
+    } catch (e) {
+      console.error("loadChefCustomerLK error:", e);
+      return null;
+    }
   }
 
   // Selector de supermercado: se muestra al clickear "Actualizar lista de
@@ -3709,12 +3740,16 @@
         // create-super-order: valida el JWT del admin LK e inserta con
         // service_role, devolviendo el id bigint real.
         try {
+          // Tomás Gonzalez, 02/10/2026: el `apikey` tiene que ser el de CHEF. Desde el
+          // 11/09 (claves legacy → sb_publishable) acá iba la de LK y el gateway de Chef
+          // contestaba 401 "Invalid API key" ANTES de llegar a la función. El JWT del
+          // admin de LK va en Authorization y lo valida create-super-order (verify_jwt off).
           var coResp = await fetch(CHEF_CREATE_ORDER_URL, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: "Bearer " + authToken,
-              apikey: apiKey,
+              apikey: CHEF_KEY,
             },
             body: JSON.stringify({
               customer_id: state.customer.id,
@@ -3738,18 +3773,19 @@
           }
           orderId = coData.order_id;
         } catch (coErr) {
-          // Fallback: order_number sintetico (red de seguridad). Ojo: no entra
-          // al reporte Chef automatico, hay que asignar N° a mano.
-          console.warn(
-            "scot Chef create-super-order fallo, usando order_number sintetico:",
-            coErr && (coErr.message || coErr),
+          // Tomás Gonzalez, 02/10/2026: SE CORTA, ya no hay order_number sintético.
+          // El "CHEF-<SUPER>-<fecha>" mandaba el pedido sólo a la hoja "Pedidos CH" y
+          // decía "subido": no existía en la base de Chef, así que Gestión (que lee de
+          // ahí) nunca lo veía. Pasó con TODA OC de súper de Chef desde el 11/09. Ahora
+          // no se manda nada y se puede reintentar.
+          var coMsg = (coErr && (coErr.message || coErr)) || "error desconocido";
+          console.error("scot Chef create-super-order fallo:", coMsg);
+          window.alert(
+            "⛔ El pedido NO se creó en Chef (" + coMsg + ").\n\n" +
+              "No se mandó a la hoja ni va a llegar a Gestión. Reintentá en un rato; " +
+              "si vuelve a fallar, avisá a sistemas.",
           );
-          var ts = new Date()
-            .toISOString()
-            .replace(/[-:T]/g, "")
-            .slice(0, 14);
-          orderId =
-            "CHEF-" + state.superKey.toUpperCase() + "-" + ts;
+          throw new Error("El pedido no se creó en Chef: " + coMsg);
         }
       } else {
         var rpcResultLk = await dbClient.rpc("submit_order_fast", {
