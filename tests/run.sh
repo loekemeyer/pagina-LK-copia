@@ -41,6 +41,7 @@ _correr buscador-categoria.cjs
 _correr ficha-hoja.cjs
 _correr fc-acuerdo-desglose.cjs
 _correr est-madre-unica.cjs
+_correr lista-super-jumbo.cjs
 
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then

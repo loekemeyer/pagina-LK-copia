@@ -2057,15 +2057,28 @@
     return scotModal(html, { info: true, maxWidth: 960 });
   }
 
+  // Tomás Gonzalez, 02/10/2026: la LISTA DE PRECIOS de una cadena se carga en el
+  // admin donde se cargan sus OC, o sea donde se matchea su catálogo. Cencosud
+  // (Jumbo/Disco/Vea) factura por Chef pero matchea contra LK + Loke y sus OC van
+  // por el PDF Krikos de ESTE admin (en el de Chef se bloquearon): su lista va acá.
+  // Dorinka matchea contra el catálogo de Chef y su lista sigue en el admin de Chef.
+  // ⚠ Va acá abajo y no junto a usesChefProducts a propósito: Gestión-Virgilio
+  // copia los parsers de este archivo por RANGOS DE LÍNEA (scripts/gen-krikos-parsers.sh)
+  // y una línea agregada más arriba los corre.
+  function superListaEnEsteAdmin(superKey) {
+    return !isChefSuper(superKey) || !usesChefProducts(superKey);
+  }
+
   // Selector de supermercado: se muestra al clickear "Actualizar lista de
-  // precios". Devuelve la super_key elegida, o null si se cancela. Lista solo
-  // las cadenas LK configuradas (con hoja); las de Chef no van por este panel.
+  // precios". Devuelve la super_key elegida, o null si se cancela. Lista las
+  // cadenas configuradas (con hoja) cuyas OC se cargan acá: las de LK y Cencosud
+  // (Jumbo). Dorinka no, porque matchea contra el catálogo de Chef.
   async function scotChooseSuper() {
     function keysLK() {
       var ks = [];
       Object.keys(SHEET_CONFIG).forEach(function (n) {
         var k = SHEET_CONFIG[n].key;
-        if (isChefSuper(k)) return;
+        if (!superListaEnEsteAdmin(k)) return;
         if (ks.indexOf(k) < 0) ks.push(k);
       });
       return ks;
@@ -2129,7 +2142,7 @@
   // Actualizar la lista de precios subiendo el xlsx: se parsea en el browser y
   // se manda al RPC set_super_prices (gated por admin, service_role). El archivo
   // NO se guarda en el server (deja de estar público). En LK se procesan los
-  // supers LK (se saltean dorinka/cencosud, que son de Chef).
+  // supers LK y Cencosud (se saltea Dorinka, que matchea contra Chef).
   // onlySuperKey: si viene (desde el selector), se carga UNA sola cadena y UNA
   // sola hoja (un archivo = una lista). Sin él, procesa todas las hojas LK
   // reconocidas (camino viejo, se mantiene por compatibilidad).
@@ -2174,7 +2187,7 @@
         targets.push({ sheetName: useSheet, cfg: cfgOnly });
       } else {
         Object.keys(SHEET_CONFIG).forEach(function (n) {
-          if (isChefSuper(SHEET_CONFIG[n].key)) return; // saltear dorinka/cencosud (Chef)
+          if (!superListaEnEsteAdmin(SHEET_CONFIG[n].key)) return; // saltear Dorinka (catálogo Chef)
           if (wb.Sheets[n]) targets.push({ sheetName: n, cfg: SHEET_CONFIG[n] });
         });
       }
