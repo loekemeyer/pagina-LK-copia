@@ -5,7 +5,9 @@
 --   diario : pedidos que entraron (por canal) · pedidos despachados · m3 pendientes · $ facturado · $ cobrado
 --   semanal: pedidos que entraron · despachados · m3 pendientes · unidades vendidas · $ facturado · $ cobrado
 --   mensual: idem semanal
---   Cada numero: total y discriminado LK / Chef (Luis, 02/10). La plata facturada va "$ X + IVA".
+--   Cada numero: total y discriminado LK / Chef (Luis, 02/10). La plata va con todos los digitos,
+--   redondeada al peso ("$ 36.812.345 + IVA" lo facturado; lo cobrado ya trae el IVA).
+--   Al final de cada reporte: boton "📄 Si, mandame el formato antiguo" (seccion 9).
 --
 -- De donde sale cada numero:
 --   pedidos que entraron -> orders (LK, canal de v_orders_origen) + chef_orders_cache (Chef). El canal de Chef
@@ -29,10 +31,13 @@
 --                           ACREDITO en el banco (con IVA) arriba de la linea amarilla de cada cuenta: depositos y
 --                           transferencias de clientes, cheques acreditados y lo "No identificado" (cliente sin
 --                           imputar). Fuera: transferencias propias, venta de cheques, inversiones, devoluciones y
---                           los clientes internos. Si una cuenta no esta conciliada hasta el fin del periodo, el
---                           texto lo avisa (virgilio.gv_rep_gerencia_conc_al).
+--                           los clientes internos. Va SOLO hasta el ultimo dia completo (las cuatro cuentas
+--                           subidas, virgilio.gv_rep_gerencia_conc_cargas) y cubre lo que se completo desde el
+--                           reporte anterior: nunca se pierde ni se repite un dia (seccion 7b). Una cuenta cuya
+--                           linea quedo atras (Santander LK al 01/09) sale con aviso.
 --
--- El lado Gestion esta en Gestion-Virgilio/sql/gv_rep_gerencia_np_v2608.sql y gv_rep_gerencia_cobrado_v2611.sql.
+-- El lado Gestion esta en Gestion-Virgilio/sql/gv_rep_gerencia_np_v2608.sql, gv_rep_gerencia_cobrado_v2611.sql y
+-- gv_rep_gerencia_conc_cargas_v2613.sql.
 -- =====================================================================================
 
 -- 0) tablas externas
@@ -43,6 +48,10 @@ import foreign schema public limit to (gv_rep_gerencia_cobrado, gv_rep_gerencia_
 revoke all on virgilio.gv_rep_gerencia_np from anon, authenticated;
 revoke all on virgilio."GV_Web_Cancelados" from anon, authenticated;
 revoke all on virgilio.gv_rep_gerencia_cobrado, virgilio.gv_rep_gerencia_conc_al from anon, authenticated;
+--    v26.13 de Gestion: cuando se subio cada cuenta (cobrado del ultimo dia completo)
+alter foreign table virgilio.gv_rep_gerencia_conc_al add column if not exists ultima_carga timestamptz;
+import foreign schema public limit to (gv_rep_gerencia_conc_cargas) from server virgilio_db into virgilio;
+revoke all on virgilio.gv_rep_gerencia_conc_cargas from anon, authenticated;
 --    Chef (FDW chef_db): quien cargo cada pedido. Foraneas propias, aisladas de public.chef_orders (sync del armado).
 create foreign table if not exists chef_ext.orders_quien (
   id bigint, created_at timestamptz, customer_id uuid, auth_user_id uuid)
@@ -60,15 +69,15 @@ returns text language sql immutable set search_path = public, pg_temp as $$
       'FM999,999,999,990' || case when p_dec > 0 then '.' || repeat('0', p_dec) else '' end), ',.', '.,') end
 $$;
 
+-- plata con todos los digitos, redondeada al peso (Luis, 02/10: "completos redondeando decimales")
 create or replace function public.rep_ger_plata(p numeric)
 returns text language sql immutable set search_path = public, pg_temp as $$
   select case when p is null then '—'
-    when abs(p) >= 1e6 then '$ ' || public.rep_ger_num(p / 1e6, 1) || ' M'
-    when abs(p) >= 1e3 then '$ ' || public.rep_ger_num(p / 1e3, 0) || ' k'
+    when round(p) < 0 then '−$ ' || public.rep_ger_num(-p, 0)
     else '$ ' || public.rep_ger_num(p, 0) end
 $$;
 
--- plata sin IVA (facturado): "$ 36,8 M + IVA"
+-- plata sin IVA (facturado): "$ 36.812.345 + IVA"
 create or replace function public.rep_ger_plata_iva(p numeric)
 returns text language sql immutable set search_path = public, pg_temp as $$
   select public.rep_ger_plata(p) || case when p is null then '' else ' + IVA' end
@@ -252,6 +261,31 @@ language sql stable security definer set search_path = public, pg_temp as $$
    group by 1
 $$;
 
+-- 7b) hasta que dia esta COMPLETO lo cobrado, visto desde un momento dado (el envio del reporte).
+--     Completo = TODAS las cuentas tienen una carga de la conciliacion posterior a ese dia: el extracto de
+--     ayer se sube hoy a la manana, asi que una carga del dia X deja completo hasta X-1 [Probable: lo hace
+--     la persona que concilia, no un proceso]. Una cuenta sin cargas en 7 dias no frena a las demas: sale aparte.
+create or replace function public.rep_ger_cobrado_completo(p_corte timestamptz, p_hasta date default null)
+returns table(completo_al date, sin_cargar text, falta text, n_falta int, n_activas int)
+language sql stable security definer set search_path = public, pg_temp as $$
+  with k as materialized (
+    select g.banco, g.empresa, max(g.cargado_en) carga
+      from virgilio.gv_rep_gerencia_conc_cargas g where g.cargado_en < p_corte group by 1, 2),
+  a as (
+    select initcap(l.banco) || ' ' || case l.empresa when 'lk' then 'LK' else 'Chef' end cuenta, l.empresa, l.banco, k.carga,
+           (k.carga at time zone 'America/Argentina/Buenos_Aires')::date - 1 completo_al,
+           coalesce(k.carga >= p_corte - interval '7 days', false) activa
+      from virgilio.gv_rep_gerencia_conc_al l left join k on k.banco = l.banco and k.empresa = l.empresa)
+  select min(completo_al) filter (where activa),
+         string_agg(cuenta || ' (última carga ' || coalesce(to_char(carga at time zone 'America/Argentina/Buenos_Aires', 'DD/MM'), '—') || ')',
+                    ', ' order by empresa, banco) filter (where not activa),
+         -- las cuentas activas que todavia no tienen subido p_hasta
+         string_agg(cuenta, ', ' order by empresa, banco) filter (where activa and completo_al < p_hasta),
+         (count(*) filter (where activa and completo_al < p_hasta))::int,
+         (count(*) filter (where activa))::int
+    from a
+$$;
+
 -- 8) textos
 create or replace function public.rep_ger_texto(p_tipo text, p_titulo text, p_desde date, p_hasta date,
   p_prev_desde date default null, p_prev_hasta date default null, p_cmp text default null)
@@ -265,6 +299,8 @@ declare
   f_lk numeric; f_ch numeric; f_fc numeric; f_nc numeric; f_prev numeric;
   u_lk numeric; u_ch numeric; cj numeric; cj_sin numeric; u_prev numeric;
   c_lk numeric; c_ch numeric; c_sin numeric; c_prev numeric;
+  cc record; hh interval; c_desde date; c_hasta date; pv_d date; pv_h date; viejas text;
+  dias text[] := array['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   cmp boolean := p_prev_desde is not null;
   ahora text := to_char(now() at time zone 'America/Argentina/Buenos_Aires', 'DD/MM HH24:MI');
 begin
@@ -344,23 +380,65 @@ begin
          || E'\n   Chef ' || public.rep_ger_plata_iva(f_ch)
          || E'\n   Facturas ' || public.rep_ger_plata(f_fc) || ' · notas de crédito −' || public.rep_ger_plata(f_nc) || ' (+ IVA)';
 
-  -- 6) $ cobrado (acreditado en el banco, IVA incluido)
-  select coalesce(sum(cliente + sin_identificar) filter (where empresa = 'lk'), 0),
-         coalesce(sum(cliente + sin_identificar) filter (where empresa = 'chef'), 0),
-         coalesce(sum(sin_identificar), 0)
-    into c_lk, c_ch, c_sin from public.rep_ger_cobrado(p_desde, p_hasta);
-  t := t || E'\n\n💰 COBRADO (acreditado en banco, IVA incluido): ' || public.rep_ger_plata(c_lk + c_ch);
-  if cmp then
-    select coalesce(sum(cliente + sin_identificar), 0) into c_prev from public.rep_ger_cobrado(p_prev_desde, p_prev_hasta);
-    t := t || public.rep_ger_var(c_lk + c_ch, c_prev, p_cmp);
+  -- 6) $ cobrado (acreditado en el banco, IVA incluido). Luis, 02/10: "se sigue mandando a las 8 con lo que
+  --    haya y se avisa de lo cobrado el ultimo plazo completo". Se informa lo que se COMPLETO desde el reporte
+  --    anterior (ver rep_ger_cobrado_completo): si a las 08:00 ninguna cuenta subio el extracto de ayer, ese dia
+  --    va en el reporte siguiente, nunca se pierde ni se repite. Los dos cortes son el horario del envio
+  --    (08:00 el diario, 08:15 el semanal), asi la vista previa de un dia pasado da lo mismo que se mando.
+  --    El mensual (dia 3) mira el mes entero con lo cargado hasta ahora.
+  if p_tipo = 'mensual' then
+    select * into cc from public.rep_ger_cobrado_completo(now(), p_hasta);
+    c_desde := p_desde;
+  else
+    hh := case p_tipo when 'diario' then interval '8 hours' else interval '8 hours 15 minutes' end;
+    select * into cc from public.rep_ger_cobrado_completo(
+      least(now(), ((p_hasta + 1)::timestamp + hh) at time zone 'America/Argentina/Buenos_Aires'), p_hasta);
+    -- el reporte anterior salio el dia p_desde a la misma hora (el lunes del diario: el sabado)
+    select coalesce(least(x.completo_al, p_desde - 1), p_desde - 1) + 1 into c_desde
+      from public.rep_ger_cobrado_completo((p_desde::timestamp + hh) at time zone 'America/Argentina/Buenos_Aires') x;
   end if;
-  t := t || E'\n   LK ' || public.rep_ger_plata(c_lk)
-         || E'\n   Chef ' || public.rep_ger_plata(c_ch);
-  if c_sin > 0 then t := t || E'\n   (' || public.rep_ger_plata(c_sin) || ' todavía sin imputar a un cliente)'; end if;
+  c_hasta := least(p_hasta, cc.completo_al);
+
+  if c_desde > c_hasta then
+    t := t || E'\n\n💰 COBRADO: sin días nuevos completos desde el reporte anterior (último completo: '
+           || to_char(c_hasta, 'DD/MM') || ').';
+  else
+    select coalesce(sum(cliente + sin_identificar) filter (where empresa = 'lk'), 0),
+           coalesce(sum(cliente + sin_identificar) filter (where empresa = 'chef'), 0),
+           coalesce(sum(sin_identificar), 0)
+      into c_lk, c_ch, c_sin from public.rep_ger_cobrado(c_desde, c_hasta);
+    t := t || E'\n\n💰 COBRADO'
+           || case when c_desde = p_desde and c_hasta = p_hasta then ''
+                   when c_desde = c_hasta then ' del ' || dias[extract(dow from c_hasta)::int + 1] || ' ' || to_char(c_hasta, 'DD/MM')
+                   else ' del ' || to_char(c_desde, 'DD/MM') || ' al ' || to_char(c_hasta, 'DD/MM') end
+           || ' (acreditado en banco, IVA incluido): ' || public.rep_ger_plata(c_lk + c_ch);
+    if cmp then
+      if p_tipo = 'mensual' then
+        pv_d := p_prev_desde;
+        pv_h := case when c_hasta >= p_hasta then p_prev_hasta else least(p_prev_hasta, p_prev_desde + (c_hasta - c_desde)) end;
+      else
+        pv_d := c_desde - (p_desde - p_prev_desde);
+        pv_h := c_hasta - (p_desde - p_prev_desde);
+      end if;
+      select coalesce(sum(cliente + sin_identificar), 0) into c_prev from public.rep_ger_cobrado(pv_d, pv_h);
+      t := t || public.rep_ger_var(c_lk + c_ch, c_prev,
+                  p_cmp || case when c_desde = p_desde and c_hasta = p_hasta then '' else ', mismos días' end);
+    end if;
+    t := t || E'\n   LK ' || public.rep_ger_plata(c_lk)
+           || E'\n   Chef ' || public.rep_ger_plata(c_ch);
+    if c_sin > 0 then t := t || E'\n   (' || public.rep_ger_plata(c_sin) || ' todavía sin imputar a un cliente)'; end if;
+  end if;
+  if c_hasta < p_hasta then
+    t := t || E'\n   Lo del ' || to_char(c_hasta + 1, 'DD/MM') || ' en adelante va en el próximo reporte ('
+           || case when cc.n_falta = cc.n_activas then 'ninguna cuenta lo subió todavía'
+                   else 'falta ' || cc.falta end || ').';
+  end if;
+  if cc.sin_cargar is not null then t := t || E'\n   ⚠ Sin cargar hace más de 7 días (no suma): ' || cc.sin_cargar; end if;
+  -- una cuenta cuya linea amarilla quedo atras (Santander LK al 01/09): lo de despues no suma. Luis, D6: "dejalo".
   select string_agg(initcap(a.banco) || ' ' || case a.empresa when 'lk' then 'LK' else 'Chef' end
                     || ' (al ' || to_char(a.conciliado_al, 'DD/MM') || ')', ', ' order by a.empresa, a.banco)
-    into falta from virgilio.gv_rep_gerencia_conc_al a where a.conciliado_al < p_hasta;
-  if falta is not null then t := t || E'\n   ⚠ Sin conciliar hasta el ' || to_char(p_hasta, 'DD/MM') || ': ' || falta; end if;
+    into viejas from virgilio.gv_rep_gerencia_conc_al a where a.conciliado_al < c_hasta - 7;
+  if viejas is not null then t := t || E'\n   ⚠ Conciliada sólo hasta (lo de después no suma): ' || viejas; end if;
   return t;
 end $$;
 
@@ -416,34 +494,162 @@ revoke execute on function public.rep_ger_pedidos(date,date), public.rep_ger_des
 --   select public.rep_ger_texto_mensual('2026-10-03');  -- septiembre
 
 -- =====================================================================================
--- 8) EL PASE (PENDIENTE del "si" de Luis): los crons 29/30/31 siguen igual, cambia el texto.
---    Claves de dedup nuevas (ger_*) para no chocar con las de los reportes viejos.
+-- 9) EL PASE (Luis, 02/10: "que mande estos y al final le pregunte al chat «queres que envie tambien el
+--    formato antiguo» y que si dice algo en el chat el usuario lo mande"). Los crons 29/30/31 no cambian.
+--    * Al final del reporte va la pregunta con un BOTON. El bot hoy solo escucha botones (setWebhook con
+--      allowed_updates = callback_query): un "si" escrito no le llega. Abrirlo a mensajes le haria recibir
+--      tambien lo que se escribe en los grupos donde esta el bot, por eso se resuelve con el boton.
+--    * El texto antiguo se arma en el MISMO momento que el nuevo (misma foto) y queda guardado: el boton
+--      solo lo encola, asi el webhook no corre 3 a 6 s de consultas (el mensual viejo tarda 6,3 s y
+--      authenticator corta a los 8 s).
+--    * Claves de dedup nuevas (ger_*): no chocan con las de los reportes viejos.
 -- =====================================================================================
--- create or replace function public.rep_enviar_diario() returns void language plpgsql security definer
--- set search_path to 'public', 'pg_temp' as $function$
--- declare f date := (now() at time zone 'America/Argentina/Buenos_Aires')::date - 1;
--- begin
---   perform rep_snapshot_despacho(30);
---   perform tg_enqueue_largo(rep_ger_texto_diario(), 'ger_diario_' || to_char(f,'YYYYMMDD'));
--- end $function$;
---
--- create or replace function public.rep_enviar_semanal() returns void language plpgsql security definer
--- set search_path to 'public', 'pg_temp' as $function$
--- declare hoy date := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
--- begin
---   perform tg_enqueue_largo(rep_ger_texto_semanal(hoy),
---                            'ger_semanal_' || to_char(date_trunc('week',hoy)::date - 7,'IYYY_IW'));
--- end $function$;
---
--- create or replace function public.rep_enviar_mensual() returns void language plpgsql security definer
--- set search_path to 'public', 'pg_temp' as $function$
--- declare hoy date := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
--- begin
---   perform tg_enqueue_largo(rep_ger_texto_mensual(hoy),
---                            'ger_mensual_' || to_char(date_trunc('month',hoy) - interval '1 month','YYYY_MM'));
--- end $function$;
+create table if not exists public.rep_ger_formato_viejo (
+  id bigserial primary key,
+  tipo text not null,                 -- diario | semanal | mensual
+  ref text not null unique,           -- diario_20261001, semanal_2026_39, mensual_2026_09
+  chat_id text not null,
+  texto text not null,
+  creado_en timestamptz not null default now(),
+  enviado_en timestamptz);
+alter table public.rep_ger_formato_viejo enable row level security;
+revoke all on public.rep_ger_formato_viejo from anon, authenticated;
+revoke all on sequence public.rep_ger_formato_viejo_id_seq from anon, authenticated;
 
--- ROLLBACK del pase (definiciones vivas al 02/10/2026, antes de tocarlas):
+create or replace function public.rep_ger_ya_encolado(p_key text)
+returns boolean language sql stable security definer set search_path = public, pg_temp as $$
+  select exists (select 1 from public.telegram_outbox where left(dedup_key, length(p_key) + 1) = p_key || '_')
+$$;
+
+-- encola el reporte nuevo; si hay texto antiguo, lo guarda y pone la pregunta + boton en la ULTIMA parte
+create or replace function public.rep_ger_enviar(p_nuevo text, p_key text, p_tipo text,
+  p_viejo_ref text, p_viejo text, p_chat text default '6282395816')
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare n int; v_id bigint;
+begin
+  if public.rep_ger_ya_encolado(p_key) then return; end if;
+  if p_viejo is not null and btrim(p_viejo) <> '' then
+    insert into public.rep_ger_formato_viejo (tipo, ref, chat_id, texto)
+    values (p_tipo, p_viejo_ref, p_chat, p_viejo)
+    on conflict (ref) do update set texto = excluded.texto, chat_id = excluded.chat_id
+    returning id into v_id;
+  end if;
+  n := public.tg_enqueue_largo(p_nuevo || case when v_id is not null
+                                 then E'\n\n❓ ¿Querés que te mande también el formato antiguo?' else '' end,
+                               p_key, p_chat);
+  if v_id is not null and n > 0 then
+    update public.telegram_outbox
+       set reply_markup = jsonb_build_object('inline_keyboard', jsonb_build_array(jsonb_build_array(
+             jsonb_build_object('text', '📄 Sí, mandame el formato antiguo', 'callback_data', 'rv:' || v_id))))
+     where dedup_key = p_key || '_' || n and status = 'pending' and req_id is null;
+  end if;
+end $$;
+
+-- el boton: encola el texto antiguo guardado (rapido: no recalcula nada)
+create or replace function public.rep_ger_viejo_callback(p_data text)
+returns text language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_id bigint; r record;
+begin
+  v_id := nullif(split_part(p_data, ':', 2), '')::bigint;
+  select * into r from public.rep_ger_formato_viejo where id = v_id;
+  if not found then return 'ese reporte ya no está guardado'; end if;
+  if r.enviado_en is not null then return '📄 El formato antiguo ya se mandó'; end if;
+  perform public.tg_enqueue_largo(r.texto, 'ger_viejo_' || r.ref, r.chat_id);
+  update public.rep_ger_formato_viejo set enviado_en = now() where id = v_id;
+  perform public.tg_outbox_flush();
+  return '📄 Formato antiguo enviado';
+exception when others then
+  raise notice 'rep_ger_viejo_callback: %', sqlerrm;
+  return 'no pude mandarlo, probá de nuevo';
+end $$;
+
+-- el webhook del bot ya existe (gerente-ventas-telegram-webhook -> gv_telegram_webhook -> gv_telegram_callback);
+-- se le agrega UNA rama al principio. Sin ella "rv:12" buscaria la sugerencia 12 del gerente de ventas.
+create or replace function public.gv_telegram_callback(p_data text)
+ returns text
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_eje  text; v_id bigint; v_val text; v_tit text;
+begin
+  -- reportes de gerencia: "📄 Sí, mandame el formato antiguo" (Luis, 02/10/2026)
+  if p_data like 'rv:%' then return public.rep_ger_viejo_callback(p_data); end if;
+
+  v_eje := split_part(p_data, ':', 1);
+  v_id  := nullif(split_part(p_data, ':', 2), '')::bigint;
+  v_val := split_part(p_data, ':', 3);
+  if v_id is null then return 'callback inválido'; end if;
+
+  select titulo into v_tit from gv_sugerencias where id = v_id;
+  if v_tit is null then return 'esa sugerencia ya no existe'; end if;
+
+  if v_eje = 'u' and v_val in ('util','no_util') then
+    perform gv_marcar_utilidad(v_id, v_val, false);
+    return case when v_val = 'util' then '👍 Anotado: te sirvió'
+                else '👎 Anotado: no te sirvió' end;
+  elsif v_eje = 'r' and v_val in ('gano','perdio') then
+    perform gv_marcar_resultado(v_id, v_val, null);
+    return case when v_val = 'gano' then '✅ Anotado: se concretó'
+                else '❌ Anotado: se perdió' end;
+  end if;
+  return 'acción desconocida';
+end $function$;
+
+create or replace function public.rep_enviar_diario() returns void language plpgsql security definer
+set search_path to 'public', 'pg_temp' as $function$
+declare
+  hoy date := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
+  f date := hoy - 1;
+  k text := 'ger_diario_' || to_char(f, 'YYYYMMDD');
+  v text;
+begin
+  perform rep_snapshot_despacho(30);
+  if rep_ger_ya_encolado(k) then return; end if;
+  begin v := rep_texto_diario(f);
+  exception when others then raise notice 'formato antiguo diario: %', sqlerrm; v := null; end;
+  perform rep_ger_enviar(rep_ger_texto_diario(hoy), k, 'diario', 'diario_' || to_char(f, 'YYYYMMDD'), v);
+end $function$;
+
+create or replace function public.rep_enviar_semanal() returns void language plpgsql security definer
+set search_path to 'public', 'pg_temp' as $function$
+declare
+  hoy date := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
+  sem text := to_char(date_trunc('week', hoy)::date - 7, 'IYYY_IW');
+  k text := 'ger_semanal_' || sem;
+  v text;
+begin
+  if rep_ger_ya_encolado(k) then return; end if;
+  begin v := rep_texto_semanal(hoy);
+  exception when others then raise notice 'formato antiguo semanal: %', sqlerrm; v := null; end;
+  perform rep_ger_enviar(rep_ger_texto_semanal(hoy), k, 'semanal', 'semanal_' || sem, v);
+end $function$;
+
+-- el mensual sale el dia 3 (el cron 31 corre 3, 5, 8 y 12: los otros dias el dedup lo saltea)
+create or replace function public.rep_enviar_mensual() returns void language plpgsql security definer
+set search_path to 'public', 'pg_temp' as $function$
+declare
+  hoy date := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
+  m text := to_char(date_trunc('month', hoy) - interval '1 month', 'YYYY_MM');
+  k text := 'ger_mensual_' || m;
+  mes text; v text;
+begin
+  if rep_ger_ya_encolado(k) then return; end if;
+  begin
+    select data#>>'{resumen,mes}' into mes from gv_dash_cache where id = 1;
+    if mes is not null then v := rep_texto_mensual(); end if;
+  exception when others then raise notice 'formato antiguo mensual: %', sqlerrm; v := null; end;
+  perform rep_ger_enviar(rep_ger_texto_mensual(hoy), k, 'mensual', 'mensual_' || m, v);
+end $function$;
+
+revoke execute on function public.rep_ger_cobrado_completo(timestamptz, date), public.rep_ger_ya_encolado(text),
+  public.rep_ger_enviar(text,text,text,text,text,text), public.rep_ger_viejo_callback(text),
+  public.rep_enviar_diario(), public.rep_enviar_semanal(), public.rep_enviar_mensual()
+  from public, anon, authenticated;
+
+-- ROLLBACK del pase (definiciones vivas al 02/10/2026, antes de tocarlas; la rama 'rv:' de
+-- gv_telegram_callback se puede dejar, no molesta):
 -- create or replace function public.rep_enviar_diario() returns void language plpgsql security definer
 -- set search_path to 'public', 'pg_temp' as $function$
 -- declare f date := (now() at time zone 'America/Argentina/Buenos_Aires')::date - 1;
