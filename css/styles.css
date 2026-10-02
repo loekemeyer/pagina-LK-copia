@@ -16752,16 +16752,34 @@ body { top: 0 !important; }
   font-size: 13px;
   font-weight: 700;
   border-radius: 8px;
-  border: 1.5px solid #ddd;
+  /* Borde rojo y lápiz rojo (Gastón, 02/10/2026): mismo rojo que los íconos de
+     "Pedir para" / "Indicar dirección" / "Método de pago". */
+  border: 1.5px solid #d00000;
   background: #fff;
   color: #333;
   white-space: nowrap;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
+/* El lápiz: misma técnica que `.ship-label::before` (máscara + degradé rojo),
+   así se ve igual que el muñequito y el pin de las tarjetas. */
+#carrito .section-header .section-center .submit-row .obs-btn::before {
+  content: "";
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #d00000, #ff0000);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/></svg>") center / contain no-repeat;
+}
 #carrito .section-header .section-center .submit-row .obs-btn:hover {
-  background: #f5f5f5;
-  border-color: #999;
+  background: #fdf3f3;
+  border-color: #b10000;
 }
 /* Con texto escrito el botón se marca, para que no quede una observación
    olvidada sin que se vea. */

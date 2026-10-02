@@ -21,6 +21,9 @@
  *     el "listado al pie de la pantalla" de la v2.3.506: ahora lo manda la
  *     columna izquierda). "¿Seguro que no necesitás…?" va solo en la fila de
  *     abajo, de Método de pago al borde derecho del listado, hasta 5 por fila.
+ *   - 02/10 (Gastón, v2.3.510 / Chef v2.0.93): el botón Observaciones lleva borde
+ *     rojo y un lápiz rojo con la misma técnica que los íconos de "Pedir para" /
+ *     "Indicar dirección" (máscara + degradé). Se fue el emoji 📝.
  *
  * ⚠ Es el MISMO archivo en LK (`pagina-LK-copia`) y en Chef (`paginach`):
  *   Chef recibió el cambio en la v2.0.90, el alto de las tarjetas en la v2.0.91 y
@@ -112,6 +115,21 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
   if (obs && sub) {
     ok(cerca(obs.top, sub.top, 4) && obs.left > sub.right && obs.left - sub.right < 40,
       "A: Observaciones no quedó AL LADO de Confirmar pedido. sub=" + JSON.stringify(sub) + " obs=" + JSON.stringify(obs));
+  }
+  // Borde rojo y lápiz rojo como los íconos de las tarjetas (v2.3.510), sin emoji.
+  const look = await page.evaluate(() => {
+    const b = document.getElementById("obsBtn");
+    if (!b) return null;
+    const bf = getComputedStyle(b, "::before");
+    const mask = bf.getPropertyValue("-webkit-mask-image") || bf.getPropertyValue("mask-image") || "";
+    return { borde: getComputedStyle(b).borderTopColor, emoji: /\u{1F4DD}/u.test(b.textContent),
+      lapiz: bf.content !== "none" && mask.includes("svg"), fondo: bf.backgroundImage };
+  });
+  if (look) {
+    ok(look.borde === "rgb(208, 0, 0)", "A: el botón Observaciones no tiene el borde rojo (" + look.borde + ")");
+    ok(!look.emoji, "A: el botón Observaciones volvió a tener el emoji 📝 en vez del lápiz");
+    ok(look.lapiz && look.fondo.includes("208, 0, 0"),
+      "A: el botón Observaciones no tiene el lápiz rojo (máscara + degradé, como los íconos de las tarjetas)");
   }
   const tarjeta = await page.evaluate(() => {
     const t = document.getElementById("obsPedidoInput");
