@@ -1696,6 +1696,21 @@ async function _repairTestPin(cuit, pin) {
   }
 }
 
+// El login es UNO por CUIT (<cuit>@cuit.loekemeyer). Si OTRO código con el mismo CUIT ya
+// tiene login, «reparar» a éste le pisa la clave a ese otro cliente (la Edge Function
+// sincroniza la cuenta que ya existe) y después falla con "duplicate key" al vincularla.
+// Pasó en Chef el 02/10 (274→2447, 2311→1310, 1708→1589: los tres activos quedaron con la
+// clave del código viejo). Esos se saltean y se avisan: no hay login que crear.
+function _repairCuitConLoginDeOtro(c, lista) {
+  var cu = cleanCuit(c && c.cuit);
+  if (!cu) return null;
+  for (var j = 0; j < lista.length; j++) {
+    var o = lista[j];
+    if (o && o.id !== c.id && o.auth_user_id && cleanCuit(o.cuit) === cu) return o;
+  }
+  return null;
+}
+
 document
   .getElementById("repairAuthBtn")
   .addEventListener("click", async function () {
@@ -1704,8 +1719,22 @@ document
     btn.textContent = "Analizando...";
     try {
       // Fase 1: clientes sin auth_user_id
-      var sinAuth = allClientes.filter(function (c) {
+      var sinAuthTodos = allClientes.filter(function (c) {
         return !c.auth_user_id && c.cuit && c.pin;
+      });
+      // CUIT que ya entra con OTRO código: no se toca (ver _repairCuitConLoginDeOtro).
+      var cuitDeOtro = [];
+      var sinAuth = sinAuthTodos.filter(function (c) {
+        var otro = _repairCuitConLoginDeOtro(c, allClientes);
+        if (otro) cuitDeOtro.push({ c: c, otro: otro });
+        return !otro;
+      });
+      cuitDeOtro.forEach(function (x) {
+        toast(
+          "No se repara " + x.c.cod_cliente + ": su CUIT ya entra como " + x.otro.cod_cliente +
+            " (un login por CUIT)",
+          "warning",
+        );
       });
 
       // Fase 2: clientes CON auth_user_id — detectar PINes rotos
@@ -1717,7 +1746,11 @@ document
       // Auth (los que dan "rate" no se cuentan como rotos, así que se pierden en silencio).
       // Se elige a quiénes revisar; los SIN login se reparan siempre.
       var elegir = window.prompt(
-        "Reparar Auth: los " + sinAuth.length + " clientes SIN login se reparan siempre.\n\n" +
+        "Reparar Auth: los " + sinAuth.length + " clientes SIN login se reparan siempre." +
+          (cuitDeOtro.length
+            ? " (" + cuitDeOtro.length + " sin login NO: su CUIT ya entra con otro código)"
+            : "") +
+          "\n\n" +
           "¿Revisar también el PIN de clientes que YA tienen login?\n" +
           "· Escribí sus códigos separados por coma (ej: 3924)\n" +
           "· * = los " + conAuthTodos.length + " (tarda mucho y puede chocar con el límite de ingresos)\n" +
