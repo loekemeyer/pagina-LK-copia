@@ -1472,6 +1472,7 @@ Cambios:
 - No necesitas ejecutar nada manual, todo ocurre al hacer `git commit`
 - El mensaje de commit será sobrescrito con el descriptivo automático
 - `prepare-commit-msg` corre DESPUÉS de `pre-commit`, así que cuando lee `version.js` ya está bumpeada. Por eso saca la versión vieja de `git show HEAD:version.js` y no restándole 1 al archivo. Si se toca ese orden, el mensaje vuelve a anunciar una versión que el commit no contiene.
+- ⚠ **Para poner un mensaje propio (con el `Hecho-por:`) después del bump: `git -c core.hooksPath=/dev/null commit --amend -F <archivo>`.** Un `git commit --amend -F` con los hooks prendidos **vuelve a correr `prepare-commit-msg`** (con `-F` el origen es `message`, no `commit`) y pisa el mensaje con *"bump: version X → X"*. Pasó con `419df7a` (v2.3.521, videos para redes, hecho por Gastón Dalponte): quedó publicado sin descripción ni firma y no se reescribió `main`.
 
 ## SEO / crawling
 
