@@ -1231,6 +1231,18 @@ pedido — igual que el m3, que si llega tarde deja la NP armada sin volumen.
   de `sheets_payload` se castea directo.** SQL, medición y rollback:
   `sql/gv_turno_entrega_oc_v1911.sql` del repo `Gestion-Virgilio` (+ §3.in de su doc de Supabase).
   Problema 357.
+- **Cencosud (y Dorinka) se cargan acá con el cliente de CHEF, y ese cliente NO se lee con la
+  clave pública de Chef** (Tomás Gonzalez, 02/10/2026). La RLS de `customers` de Chef devuelve
+  **0 filas sin error**, así que la card decía *"CLIENTE ⚠ no encontrado (esperaba cod 2444)"* y
+  *"SUCURSAL 221 — sin mapear"* y no dejaba subir el pedido. `loadChefCustomer` ahora cae a
+  **`loadChefCustomerLK`** → RPC **`scot_chef_cliente_super(p_cod)`** de LK (sólo admins, sólo
+  códigos de `precios_super.cadena.cod_cliente_chef`), que lee por la foránea propia
+  `chef_ext.customers_super` con vend, deuda, límite y plazo vivos (~3,2 s) y, si Chef no
+  contesta, de `chef_customers_cache` (parcial: sin vendedor ni deuda, con aviso). **Las
+  sucursales sí se leen con la clave pública** (`customer_delivery_addresses.super_branch_id`:
+  Cencosud 779 = Cd Córdoba, 221 = Cd Cuyo, 5299 = Km 38,5). `loadChefCustomerLK` va **debajo
+  de la línea 1882** por los rangos de `gen-krikos-parsers.sh` de Gestión. `sql/scot_chef_cliente_super.sql`,
+  `tests/cencosud-cliente-chef.cjs`.
 - `krikos_inbox_list` y `krikos_inbox_resolver` son `SECURITY DEFINER` con chequeo de `admins`
   adentro y `EXECUTE` revocado a `PUBLIC`/`anon`. La tabla tiene RLS de solo lectura para admins
   (escribe únicamente `service_role`) y el bucket es privado con policy de lectura para admins.

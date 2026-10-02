@@ -1744,12 +1744,12 @@
       : allProductsCache || [];
   }
 
-  // Cargar customer fijo en Chef segun super
+  // Cargar customer fijo en Chef segun super (si Chef no lo deja ver -> loadChefCustomerLK)
   async function loadChefCustomer(superKey) {
     var codCliente = CHEF_CUSTOMER_COD[superKey];
     if (!codCliente) return null;
     var client = getChefClient();
-    if (!client) return null;
+    if (!client) return await loadChefCustomerLK(codCliente);
     var r = await client
       .from("customers")
       .select("*")
@@ -1757,9 +1757,9 @@
       .limit(1);
     if (r.error) {
       console.error("loadChefCustomer error:", r.error);
-      return null;
+      return await loadChefCustomerLK(codCliente);
     }
-    return r.data && r.data[0] ? r.data[0] : null;
+    return r.data && r.data[0] ? r.data[0] : await loadChefCustomerLK(codCliente);
   }
 
   // Buscar sucursal en customer_delivery_addresses por super_branch_id (text)
@@ -2067,6 +2067,37 @@
   // y una línea agregada más arriba los corre.
   function superListaEnEsteAdmin(superKey) {
     return !isChefSuper(superKey) || !usesChefProducts(superKey);
+  }
+
+  // Tomás Gonzalez, 02/10/2026: el cliente de Chef de una cadena que factura por Chef
+  // (Cencosud 2444, Dorinka 2686) NO se puede leer con la clave pública de Chef: su RLS
+  // devuelve 0 filas SIN error, y la card decía "CLIENTE no encontrado (esperaba cod
+  // 2444)" y no dejaba subir el pedido. Se pide a la RPC de LK scot_chef_cliente_super
+  // (sólo admins), que lo lee por el FDW de Chef con vend, deuda, límite y plazo vivos
+  // y, si Chef no contesta, de la copia local (parcial: sin vend ni deuda). Las
+  // sucursales sí se leen con la clave pública (customer_delivery_addresses), así que
+  // con el id del cliente la sucursal del PDF (super_branch_id) se mapea como siempre.
+  // Va acá abajo por los RANGOS DE LÍNEA de gen-krikos-parsers.sh (ver arriba).
+  async function loadChefCustomerLK(codCliente) {
+    if (!window.sb || !codCliente) return null;
+    try {
+      var r = await window.sb.rpc("scot_chef_cliente_super", { p_cod: String(codCliente) });
+      if (r.error) {
+        console.error("scot_chef_cliente_super error:", r.error);
+        return null;
+      }
+      var c = r.data || null;
+      if (c && c.parcial && window.toast) {
+        window.toast(
+          "Chef no contestó: cliente " + c.cod_cliente + " tomado de la copia de LK, sin vendedor ni deuda.",
+          "warning",
+        );
+      }
+      return c && c.id ? c : null;
+    } catch (e) {
+      console.error("loadChefCustomerLK error:", e);
+      return null;
+    }
   }
 
   // Selector de supermercado: se muestra al clickear "Actualizar lista de

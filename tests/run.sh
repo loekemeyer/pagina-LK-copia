@@ -42,6 +42,7 @@ _correr ficha-hoja.cjs
 _correr fc-acuerdo-desglose.cjs
 _correr est-madre-unica.cjs
 _correr lista-super-jumbo.cjs
+_correr cencosud-cliente-chef.cjs
 
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then
