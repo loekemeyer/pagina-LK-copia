@@ -4009,6 +4009,7 @@ async function openProfile() {
   loadVendorNotificationsUI();
   initVendorInactivosUI();
   loadVendorInactivosUI();
+  loadVendorRepetirUI();
 
   // Análisis de compras embebido (modo customer): exponemos customerProfile
   // global para que el módulo lo lea cuando el usuario expanda la card.
@@ -5146,6 +5147,7 @@ async function openNotificationsFromMenu() {
   await loadVendorNotificationsUI();
   initVendorInactivosUI();
   loadVendorInactivosUI();
+  loadVendorRepetirUI();
   // Scroll a la card
   setTimeout(function () {
     var el = document.getElementById("vendorNotifsCard");
@@ -11879,6 +11881,450 @@ function initVendorInactivosUI() {
 
 window.loadVendorInactivosUI = loadVendorInactivosUI;
 window.descargarVendorInactivosExcel = descargarVendorInactivosExcel;
+
+/* ===========================================================================
+   REPETIR PEDIDOS — panel del vendedor (Gastón, 02/10/2026)
+   ---------------------------------------------------------------------------
+   Lista los pedidos de SUS clientes y copia uno al carrito, preguntando en
+   orden: razón social → sucursal de esa razón social → método de pago.
+   La copia queda en el carrito para sacar o agregar artículos, y se envía con
+   el botón de siempre (submitOrder), con todos sus controles (SIN STOCK, etc.).
+
+   ⚠ QUIÉN ES "SU CLIENTE" lo decide el SERVER, no esta pantalla: las RPC
+     vend_repetir_pedidos / vend_repetir_pedido_items (sql/vendedor_repetir_
+     pedidos.sql) exigen que quien llama sea vendedor y que el cliente esté
+     vinculado a su usuario Y tenga su código de vendedor. Un cliente común
+     recibe cero filas. Por eso los renglones del pedido se piden por RPC: la
+     RLS de order_items sólo deja leer los pedidos que cargó uno mismo, y uno
+     que cargó el cliente (o el Cotizador) no se podía copiar.
+   ⚠ La razón social destino sale de linkedCustomers (la misma lista de
+     "Pedir para"), así que sólo se puede copiar a un cliente propio.
+   =========================================================================== */
+var _vrepPedidos = [];
+var _vrepVerTodos = false;
+var _vrepCargando = false;
+var _vrep = null; // asistente abierto: { pedido, custId, slot, pago, sucursales, errSuc, enviando, err }
+var VREP_VISIBLES = 10;
+
+function _vrepFecha(iso) {
+  var d = new Date(iso);
+  return isNaN(d)
+    ? ""
+    : d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+}
+function _vrepNorm(s) {
+  return String(s == null ? "" : s)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function _vrepInit() {
+  var buscar = document.getElementById("vendorRepetirBuscar");
+  if (buscar && !buscar._vrepBound) {
+    buscar._vrepBound = true;
+    buscar.addEventListener("input", function () {
+      _vrepVerTodos = false;
+      _vrepRender();
+    });
+  }
+  var btnMas = document.getElementById("btnVendorRepetirToggle");
+  if (btnMas && !btnMas._vrepBound) {
+    btnMas._vrepBound = true;
+    btnMas.addEventListener("click", function () {
+      _vrepVerTodos = !_vrepVerTodos;
+      _vrepRender();
+    });
+  }
+}
+
+async function loadVendorRepetirUI() {
+  var card = document.getElementById("vendorRepetirCard");
+  if (!card) return;
+  // Igual que "Clientes que no están comprando": sólo el vendedor en su perfil.
+  if (typeof isVendorOwnMode !== "function" || !isVendorOwnMode()) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  _vrepInit();
+  if (_vrepCargando) return;
+  _vrepCargando = true;
+  var box = document.getElementById("vendorRepetirBox");
+  if (box && !_vrepPedidos.length) box.innerHTML = '<div class="vinact-vacio">Cargando…</div>';
+  try {
+    var res = await supabaseClient.rpc("vend_repetir_pedidos", { p_dias: 365, p_limit: 500 });
+    if (res.error) throw res.error;
+    _vrepPedidos = res.data || [];
+    _vrepRender();
+  } catch (e) {
+    console.error("vend_repetir_pedidos:", e);
+    // Una lectura rota no es "no hay pedidos": se dice que falló.
+    if (box)
+      box.innerHTML =
+        '<div class="vinact-vacio">No se pudo cargar el listado. Probá de nuevo en un rato.</div>';
+  } finally {
+    _vrepCargando = false;
+  }
+}
+
+function _vrepFiltrados() {
+  var inp = document.getElementById("vendorRepetirBuscar");
+  var q = _vrepNorm(inp ? inp.value : "");
+  if (!q) return _vrepPedidos;
+  var palabras = q.split(/\s+/);
+  return _vrepPedidos.filter(function (p) {
+    var t = _vrepNorm([p.razon_social, p.cod_cliente, p.sucursal, p.order_id].join(" "));
+    return palabras.every(function (w) {
+      return t.indexOf(w) >= 0;
+    });
+  });
+}
+
+function _vrepRender() {
+  var box = document.getElementById("vendorRepetirBox");
+  if (!box) return;
+  var btn = document.getElementById("btnVendorRepetirToggle");
+  if (!_vrepPedidos.length) {
+    box.innerHTML = '<div class="vinact-vacio">Tus clientes no tienen pedidos en el último año.</div>';
+    if (btn) btn.hidden = true;
+    return;
+  }
+  var lista = _vrepFiltrados();
+  if (!lista.length) {
+    box.innerHTML = '<div class="vinact-vacio">Ningún pedido coincide con la búsqueda.</div>';
+    if (btn) btn.hidden = true;
+    return;
+  }
+  var vis = _vrepVerTodos ? lista : lista.slice(0, VREP_VISIBLES);
+  var h =
+    '<div class="vrep-wrap"><table class="vrep-tabla"><thead><tr>' +
+    "<th>Fecha</th><th>Cliente</th><th>Sucursal</th><th>Art.</th><th>Cajas</th>" +
+    "<th>Total<br>$</th><th></th></tr></thead><tbody>";
+  vis.forEach(function (p) {
+    var tot = Number(p.total || 0);
+    h +=
+      "<tr>" +
+      "<td>" + _vrepFecha(p.created_at) + '<div class="vrep-np">#' + Number(p.order_id) + "</div></td>" +
+      '<td class="vrep-cli">' + escapeHtml(p.razon_social || "") +
+      ' <span class="vrep-cod">(' + escapeHtml(String(p.cod_cliente || "")) + ")</span></td>" +
+      '<td class="vrep-suc">' + escapeHtml(p.sucursal || "—") + "</td>" +
+      "<td>" + Number(p.articulos || 0) + "</td>" +
+      "<td>" + Number(p.cajas || 0) + "</td>" +
+      '<td class="vrep-tot">' + (tot > 0 ? Math.round(tot).toLocaleString("es-AR") : "—") + "</td>" +
+      '<td><button type="button" class="vrep-btn" onclick="abrirRepetirPedido(' +
+      Number(p.order_id) + ')">Repetir</button></td>' +
+      "</tr>";
+  });
+  h += "</tbody></table></div>";
+  box.innerHTML = h;
+  if (btn) {
+    btn.hidden = lista.length <= VREP_VISIBLES;
+    btn.textContent = _vrepVerTodos ? "Ver Menos" : "Ver Más (" + lista.length + ")";
+  }
+}
+
+/* ---------------- asistente ---------------- */
+
+function abrirRepetirPedido(orderId) {
+  var p = _vrepPedidos.find(function (x) {
+    return Number(x.order_id) === Number(orderId);
+  });
+  if (!p) return;
+  // Por defecto, la misma razón social del pedido (el caso más común); se cambia
+  // en el paso 1. Sólo si es un cliente de "Pedir para".
+  var esPropio = (linkedCustomers || []).some(function (c) {
+    return String(c.customer_id) === String(p.customer_id);
+  });
+  _vrep = {
+    pedido: p,
+    custId: esPropio ? String(p.customer_id) : "",
+    slot: "",
+    pago: "",
+    sucursales: null,
+    errSuc: false,
+    enviando: false,
+    err: "",
+  };
+  var modal = document.getElementById("modalRepetir");
+  if (modal) modal.classList.add("open");
+  _vrepWizRender();
+  if (_vrep.custId) _vrepCargarSucursales();
+}
+
+function cerrarModalRepetir() {
+  var modal = document.getElementById("modalRepetir");
+  if (modal) modal.classList.remove("open");
+  _vrep = null;
+}
+
+async function _vrepCargarSucursales() {
+  var st = _vrep;
+  if (!st || !st.custId) return;
+  var custId = st.custId;
+  st.sucursales = null;
+  st.errSuc = false;
+  st.slot = "";
+  _vrepWizRender();
+  try {
+    var r = await supabaseClient
+      .from("customer_delivery_addresses")
+      .select("slot,label")
+      .eq("customer_id", custId)
+      .order("slot", { ascending: true });
+    if (r.error) throw r.error;
+    if (!_vrep || _vrep.custId !== custId) return; // cambió mientras cargaba
+    _vrep.sucursales = r.data || [];
+    if (_vrep.sucursales.length === 1) {
+      _vrep.slot = String(_vrep.sucursales[0].slot);
+    } else if (custId === String(_vrep.pedido.customer_id) && _vrep.pedido.sucursal) {
+      // Misma razón social: la sucursal del pedido original (el pedido guarda el
+      // rótulo de la sucursal, que es el `label` de la ficha).
+      var orig = _vrepNorm(_vrep.pedido.sucursal);
+      var m = _vrep.sucursales.find(function (s) {
+        return _vrepNorm(s.label) === orig;
+      });
+      if (m) _vrep.slot = String(m.slot);
+    }
+  } catch (e) {
+    console.error("repetir: sucursales:", e);
+    if (_vrep && _vrep.custId === custId) _vrep.errSuc = true;
+  }
+  _vrepWizRender();
+}
+
+function vrepElegirCliente(val) {
+  if (!_vrep) return;
+  _vrep.custId = String(val || "");
+  _vrepCargarSucursales(); // el método de pago elegido se conserva
+
+}
+function vrepElegirSucursal(val) {
+  if (!_vrep) return;
+  _vrep.slot = String(val || "");
+  _vrepWizRender();
+}
+function vrepElegirPago(val) {
+  if (!_vrep) return;
+  _vrep.pago = String(val || "");
+  _vrepWizRender();
+}
+
+// Las opciones de pago salen de los botones del carrito: una sola lista.
+function _vrepOpcionesPago() {
+  var out = [];
+  document.querySelectorAll("#paymentButtons .pay-btn").forEach(function (b) {
+    var n = b.querySelector(".pay-name");
+    var o = b.querySelector(".pay-off");
+    out.push({
+      v: String(b.dataset.value),
+      nombre: n ? n.textContent.trim() : b.textContent.trim(),
+      dto: o ? o.textContent.trim() : "",
+    });
+  });
+  out.push({ v: "LATER", nombre: "Prefiero no decidir ahora", dto: "" });
+  return out;
+}
+
+function _vrepWizRender() {
+  var body = document.getElementById("vrepBody");
+  if (!body || !_vrep) return;
+  var st = _vrep;
+  var p = st.pedido;
+  var h =
+    '<div class="vrep-orig">Pedido <b>#' + Number(p.order_id) + "</b> del " + _vrepFecha(p.created_at) +
+    " · " + escapeHtml(p.razon_social || "") + " · " + Number(p.articulos || 0) + " art. · " +
+    Number(p.cajas || 0) + " cajas</div>";
+
+  // Paso 1: razón social
+  h += '<div class="vrep-paso"><label class="vrep-k" for="vrepCliente">1 · ¿Para qué razón social?</label>' +
+    '<select id="vrepCliente" class="vrep-sel" onchange="vrepElegirCliente(this.value)">' +
+    '<option value="" disabled' + (st.custId ? "" : " selected") + ">Elegir razón social…</option>";
+  (linkedCustomers || []).forEach(function (c) {
+    var id = String(c.customer_id);
+    h += '<option value="' + escapeHtml(id) + '"' + (id === st.custId ? " selected" : "") + ">" +
+      escapeHtml(c.business_name || "") + " (" + escapeHtml(String(c.cod_cliente || "")) + ")</option>";
+  });
+  h += "</select></div>";
+
+  // Paso 2: sucursal de esa razón social
+  if (st.custId) {
+    h += '<div class="vrep-paso"><label class="vrep-k" for="vrepSucursal">2 · ¿Para qué sucursal?</label>';
+    if (st.errSuc) {
+      h += '<div class="vrep-err">No se pudieron leer las sucursales. ' +
+        '<button type="button" class="vrep-link" onclick="_vrepCargarSucursales()">Reintentar</button></div>';
+    } else if (!st.sucursales) {
+      h += '<div class="vrep-nota">Cargando sucursales…</div>';
+    } else if (!st.sucursales.length) {
+      h += '<div class="vrep-err">Esta razón social no tiene sucursales cargadas.</div>';
+    } else {
+      h += '<select id="vrepSucursal" class="vrep-sel" onchange="vrepElegirSucursal(this.value)">' +
+        '<option value="" disabled' + (st.slot ? "" : " selected") + ">Elegir sucursal…</option>";
+      st.sucursales.forEach(function (s) {
+        var v = String(s.slot);
+        h += '<option value="' + escapeHtml(v) + '"' + (v === st.slot ? " selected" : "") + ">" +
+          escapeHtml(v + ": " + (s.label || "")) + "</option>";
+      });
+      h += "</select>";
+    }
+    h += "</div>";
+  }
+
+  // Paso 3: método de pago
+  if (st.custId && st.slot) {
+    h += '<div class="vrep-paso"><div class="vrep-k">3 · ¿Qué método de pago elige el cliente?</div><div class="vrep-pagos">';
+    _vrepOpcionesPago().forEach(function (o) {
+      h += '<button type="button" class="vrep-pago' + (o.v === "LATER" ? " vrep-pago-full" : "") +
+        (o.v === st.pago ? " on" : "") + '" onclick="vrepElegirPago(\'' + o.v + "')\">" +
+        '<span class="vrep-pago-n">' + escapeHtml(o.nombre) + "</span>" +
+        (o.dto ? '<span class="vrep-pago-d">' + escapeHtml(o.dto) + "</span>" : "") + "</button>";
+    });
+    h += "</div>";
+    if (p.condicion_pago) {
+      h += '<div class="vrep-nota">En el pedido original: ' + escapeHtml(p.condicion_pago) + "</div>";
+    }
+    h += "</div>";
+  }
+
+  if (st.err) h += '<div class="vrep-err">' + escapeHtml(st.err) + "</div>";
+
+  var listo = !!(st.custId && st.slot && st.pago) && !st.enviando;
+  h += '<button type="button" class="modal-submit vrep-ok" onclick="confirmarRepetirPedido()"' +
+    (listo ? "" : " disabled") + ">" + (st.enviando ? "Copiando…" : "Copiar al carrito") + "</button>" +
+    '<div class="vrep-nota">En el carrito vas a poder sacar o agregar artículos antes de confirmarlo.</div>';
+  body.innerHTML = h;
+}
+
+function _vrepAplicarPago(v) {
+  var ps = document.getElementById("paymentSelect");
+  var later = document.getElementById("payLaterBtn");
+  document.querySelectorAll("#paymentButtons .pay-btn").forEach(function (b) {
+    b.classList.remove("selected", "active");
+  });
+  if (later) later.classList.remove("selected", "active");
+  if (v === "LATER") {
+    if (ps) ps.value = "LATER";
+    if (later) later.classList.add("selected", "active");
+    return;
+  }
+  if (typeof setPaymentByValue === "function") setPaymentByValue(v);
+  var btn = document.querySelector('#paymentButtons .pay-btn[data-value="' + v + '"]');
+  if (btn) btn.classList.add("selected");
+}
+
+async function confirmarRepetirPedido() {
+  var st = _vrep;
+  if (!st || st.enviando || !st.custId || !st.slot || !st.pago) return;
+  if (
+    cart.length &&
+    !window.confirm(
+      "El carrito tiene " + cart.length + " artículo" + (cart.length === 1 ? "" : "s") +
+        ". Se reemplaza por la copia del pedido #" + Number(st.pedido.order_id) + ". ¿Seguir?",
+    )
+  ) {
+    return;
+  }
+  st.enviando = true;
+  st.err = "";
+  _vrepWizRender();
+  try {
+    var r = await supabaseClient.rpc("vend_repetir_pedido_items", {
+      p_order_id: Number(st.pedido.order_id),
+    });
+    if (r.error) throw r.error;
+    var items = r.data || [];
+    if (!items.length) throw new Error("El pedido no tiene artículos para copiar.");
+
+    // Siempre un pedido NUEVO: salir de cualquier edición.
+    if (typeof setEditingOrderId === "function") setEditingOrderId(null);
+    if (typeof setEditBanner === "function") setEditBanner(null);
+
+    // 1) Razón social: el mismo camino que el desplegable "Pedir para".
+    _csSetValue("customerSelect", st.custId);
+    _csSetValue("customerSelectCart", st.custId);
+    if (typeof updateVendorProfileTick === "function") updateVendorProfileTick();
+    var okCli = await onLinkedCustomerSelected({ customerId: st.custId });
+    if (okCli === false) throw new Error("No se pudo elegir la razón social.");
+
+    // 2) Copia de los artículos (lo que ya no se vende no se copia).
+    cart.splice(0, cart.length);
+    var sinStock = [];
+    var fuera = 0;
+    items.forEach(function (it) {
+      var pid = it.is_loke ? it.loke_product_id : it.product_id;
+      var cajas = Math.round(Number(it.cajas || 0));
+      if (!pid || cajas <= 0) return;
+      var prod = typeof findAnyProduct === "function" ? findAnyProduct(pid) : null;
+      if (!prod) {
+        fuera++;
+        return;
+      }
+      var badge = String(prod.badge_status || "").trim().toUpperCase();
+      if (badge === "SIN STOCK" || badge === "PROXIMAMENTE") {
+        sinStock.push(prod.cod || "");
+        return;
+      }
+      var ya = cart.find(function (c) {
+        return String(c.productId) === String(pid);
+      });
+      if (ya) ya.qtyCajas += cajas;
+      else cart.push({ productId: pid, qtyCajas: cajas, source: "repetir_vendedor" });
+      if (typeof logCartAddEvent === "function") logCartAddEvent(pid, "repetir_vendedor");
+    });
+    if (!cart.length) throw new Error("Ninguno de los artículos del pedido se puede pedir hoy.");
+
+    // 3) Sucursal (dispara el mismo change que elegirla a mano).
+    var shipSel = document.getElementById("shippingSelect");
+    if (
+      shipSel &&
+      Array.prototype.some.call(shipSel.options, function (o) {
+        return o.value === st.slot;
+      })
+    ) {
+      shipSel.value = st.slot;
+      if (typeof _csRefreshDropdownVisual === "function") _csRefreshDropdownVisual(shipSel);
+      shipSel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    // 4) Método de pago.
+    _vrepAplicarPago(st.pago);
+
+    updateCart();
+    renderProducts();
+    refreshSubmitEnabled();
+
+    var pedido = st.pedido;
+    var cli = (linkedCustomers || []).find(function (c) {
+      return String(c.customer_id) === String(st.custId);
+    });
+    cerrarModalRepetir();
+    showSection("carrito");
+    var msg =
+      "Copia del pedido #" + Number(pedido.order_id) + " para " +
+      ((cli && cli.business_name) || "el cliente") +
+      ": revisá, sacá o agregá artículos y tocá Confirmar pedido.";
+    if (sinStock.length) msg += " No se copiaron (sin stock): " + sinStock.join(", ") + ".";
+    if (fuera) msg += " " + fuera + " artículo" + (fuera === 1 ? " ya no está" : "s ya no están") + " en el catálogo.";
+    if (typeof setOrderStatus === "function") setOrderStatus(msg, sinStock.length || fuera ? "err" : "");
+  } catch (e) {
+    console.error("repetir pedido:", e);
+    if (_vrep) {
+      _vrep.enviando = false;
+      _vrep.err = (e && e.message) || "No se pudo copiar el pedido.";
+      _vrepWizRender();
+    }
+  }
+}
+
+window.loadVendorRepetirUI = loadVendorRepetirUI;
+window.abrirRepetirPedido = abrirRepetirPedido;
+window.cerrarModalRepetir = cerrarModalRepetir;
+window.confirmarRepetirPedido = confirmarRepetirPedido;
+window.vrepElegirCliente = vrepElegirCliente;
+window.vrepElegirSucursal = vrepElegirSucursal;
+window.vrepElegirPago = vrepElegirPago;
+window._vrepCargarSucursales = _vrepCargarSucursales;
 
 function isVendorProfile() {
   return linkedCustomers.length > 0;

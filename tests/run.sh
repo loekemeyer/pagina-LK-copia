@@ -34,6 +34,7 @@ _correr expreso-render.cjs
 _correr expreso-padron-caido.cjs
 _correr expreso-galpon.cjs
 _correr checkout-layout.cjs
+_correr vendedor-repetir.cjs
 _correr presupuesto.cjs
 _correr perfil-sin-columna.cjs
 _correr carrito-animacion.cjs

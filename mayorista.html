@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23517" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23517" />
+    <link rel="stylesheet" href="css/styles.css?v=23518" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23518" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -899,6 +899,29 @@
                 hidden
               >
                 Marcar todas leídas
+              </button>
+            </div>
+          </div>
+
+          <!-- Repetir pedidos (solo vendedor, perfil propio). Gastón, 02/10/2026:
+               lista los pedidos de SUS clientes (RPC vend_repetir_pedidos, el control
+               está en el server) y copia uno al carrito: razón social → sucursal →
+               método de pago. La copia se puede editar antes de confirmarla. -->
+          <div class="profile-card wide" id="vendorRepetirCard" hidden>
+            <div class="profile-card-title">Repetir pedidos</div>
+            <div class="vinact-controls">
+              <input
+                type="search"
+                id="vendorRepetirBuscar"
+                class="vinact-buscar"
+                placeholder="Buscar cliente, código, sucursal o N° de pedido…"
+                autocomplete="off"
+              />
+            </div>
+            <div id="vendorRepetirBox" class="profile-box">Cargando…</div>
+            <div class="profile-card-actions">
+              <button type="button" class="profile-btn" id="btnVendorRepetirToggle" hidden>
+                Ver Más
               </button>
             </div>
           </div>
@@ -1853,6 +1876,17 @@
       </div>
     </div>
 
+    <!-- Repetir pedido (vendedor): el asistente lo arma vrepWizRender() -->
+    <div class="modal" id="modalRepetir" aria-hidden="true">
+      <div class="modal-content vrep-modal">
+        <div class="modal-header">
+          <h3>Repetir pedido</h3>
+          <button class="modal-close" type="button" onclick="cerrarModalRepetir()">✕</button>
+        </div>
+        <div class="modal-body" id="vrepBody"></div>
+      </div>
+    </div>
+
     <div class="modal" id="modalExpreso" aria-hidden="true">
       <div class="modal-content exp-modal">
         <div class="modal-header">
@@ -2350,14 +2384,14 @@
     <!-- La versión ya se muestra en el footer; se quitó el badge flotante. -->
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23517"></script>
-    <script src="script.js?v=23517"></script>
+    <script src="./version.js?v=23518"></script>
+    <script src="script.js?v=23518"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23517"></script>
+    <script src="analisis-venta-cliente.js?v=23518"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23517"></script>
-    <script src="admin-excel-krikos.js?v=23517"></script>
-    <script src="vendor-import-excel.js?v=23517"></script>
+    <script src="scotapi-shim.js?v=23518"></script>
+    <script src="admin-excel-krikos.js?v=23518"></script>
+    <script src="vendor-import-excel.js?v=23518"></script>
   </body>
 </html>

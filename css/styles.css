@@ -16839,3 +16839,108 @@ body.is-vendor-user #carrito .exp-btn { padding: 2px 8px; font-size: 11.5px; }
     flex: 0 0 auto;
   }
 }
+
+/* ============================================================================
+   REPETIR PEDIDOS — panel del vendedor (Gastón, 02/10/2026)
+   Tarjeta del perfil (#vendorRepetirCard) + asistente (#modalRepetir).
+   Tabla al ancho del dato, centrada, rótulos cortos y la unidad ($) una vez
+   en el encabezado (regla rectora de espacio).
+   ========================================================================== */
+.vrep-wrap { overflow-x: auto; }
+.vrep-tabla {
+  width: auto;
+  margin: 0 auto;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.vrep-tabla th {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #8a8a8a;
+  padding: 4px 6px;
+  text-align: center;
+  line-height: 1.15;
+  border-bottom: 1px solid #ececec;
+}
+.vrep-tabla td {
+  padding: 5px 6px;
+  text-align: center;
+  vertical-align: middle;
+  border-bottom: 1px solid #f3f3f3;
+  line-height: 1.25;
+}
+.vrep-np { font-size: 10.5px; color: #8a8a8a; }
+.vrep-cli { font-weight: 700; color: #1f1f1f; }
+.vrep-cod { font-weight: 500; color: #8a8a8a; white-space: nowrap; }
+.vrep-suc { font-size: 12px; color: #555; }
+.vrep-tot { font-weight: 700; white-space: nowrap; }
+.vrep-btn {
+  border: 1.5px solid #d00000;
+  background: #fff;
+  color: #d00000;
+  border-radius: 7px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.vrep-btn:hover { background: #fdf3f3; }
+
+#modalRepetir .vrep-modal { max-width: 560px; }
+.vrep-orig {
+  font-size: 13px;
+  color: #444;
+  background: #fafafa;
+  border: 1px solid #ececec;
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.vrep-paso { margin-bottom: 12px; }
+.vrep-k {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #555;
+  margin-bottom: 5px;
+}
+.vrep-sel {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+}
+.vrep-pagos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.vrep-pago {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid #d4d4d4;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.vrep-pago-full { grid-column: 1 / -1; }
+.vrep-pago-n { font-weight: 700; }
+.vrep-pago-d { font-size: 11px; color: #1b7f3a; font-weight: 700; }
+.vrep-pago.on { border-color: #16a34a; box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25); background: #f2fbf5; }
+.vrep-nota { font-size: 12px; color: #777; margin-top: 5px; text-align: center; }
+.vrep-err { font-size: 13px; color: #b00020; margin: 6px 0; }
+.vrep-link { border: none; background: none; color: #d00000; text-decoration: underline; cursor: pointer; padding: 0; }
+.vrep-ok { width: 100%; }
+.vrep-ok[disabled] { opacity: 0.45; cursor: not-allowed; }
