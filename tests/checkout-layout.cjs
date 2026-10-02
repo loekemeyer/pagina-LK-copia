@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 /**
- * tests/checkout-layout.cjs — Dirección de entrega y Observaciones, UNA fila.
+ * tests/checkout-layout.cjs — cómo se arma el carrito (columna izquierda, botones
+ * de arriba y listado de productos). Mide POSICIONES en Chromium, no markup.
  *
- * POR QUÉ EXISTE. El 24/09 Tomás comparó las dos páginas: en LK las dos
- * tarjetas del envío van lado a lado (`.ship-row-split`) y en Chef Observaciones
- * caía debajo, en su propia `.ship-row`. Es el mismo checkout y tiene que verse
- * igual en las dos.
+ * HISTORIA, para no volver a pedir lo que ya se retiró:
+ *   - 24/09 (Tomás): Dirección y Observaciones lado a lado en LK y en Chef.
+ *   - 02/10 (Gastón): con "Pedir para", Observaciones al ancho de las dos de
+ *     arriba (v2.3.505).
+ *   - 02/10 (Gastón, v2.3.506): RETIRADO lo anterior. Observaciones ya no es
+ *     una tarjeta: es un botón al lado de "Confirmar pedido" que abre #modalObs.
+ *     "Entrega estimada" no se muestra nunca. El listado de productos llega al
+ *     pie de la pantalla y su encabezado queda fijo al scrollear.
  *
- * Mide POSICIONES, no markup: dos `.ship-card` hermanas pueden estar en la misma
- * fila del HTML y apilarse igual si falta el CSS de `.ship-row-split` — que es
- * justo lo que le faltaba a Chef.
+ * ⚠ Este archivo se corría también contra Chef (`node tests/checkout-layout.cjs
+ *   ../paginach`). Desde la v2.3.506 LK cambió y Chef no: hasta portarlo, en
+ *   Chef da rojo a propósito.
  *
- * ⚠ Va con viewport ANCHO (1700). La columna del carrito manda, no la ventana:
- *   con 1280 mide 683 px y las dos tarjetas (flex-basis 340 + gap 16 = 696) NO
- *   entran, así que se apilan — y ahí el test da rojo con las dos páginas bien.
- *   A 1700 la columna mide 858 y entran. Apilarse en pantalla angosta es el
- *   comportamiento correcto (`flex-wrap: wrap`), no una falla.
+ * ⚠ Viewport ANCHO (1700×1000): la columna del carrito manda, no la ventana.
  *
  * Correr:  node tests/checkout-layout.cjs
- *          node tests/checkout-layout.cjs ../paginach
  */
 const path = require("path");
 let chromium;
@@ -31,6 +31,14 @@ catch (_e) {
 const raiz = process.argv[2] ? path.resolve(__dirname, "..", process.argv[2]) : path.join(__dirname, "..");
 const fallas = [];
 const ok = (c, m) => { if (!c) fallas.push(m); };
+const cerca = (a, b, t = 2) => Math.abs(a - b) <= t;
+
+// 25 artículos: con el tope viejo de 380 px el listado mostraba ~6 y scrolleaba.
+const PRODS = Array.from({ length: 25 }, (_, i) => ({
+  id: "p-" + i, cod: String(500 + i), category: "Peladores", subcategory: null,
+  ranking: i + 1, orden_catalogo: i + 1, description: "Artículo de prueba " + (i + 1),
+  uxb: 12, list_price: 1000 + i, images: [], badge_status: null, active: true,
+}));
 
 (async () => {
   const browser = await chromium.launch();
@@ -40,48 +48,111 @@ const ok = (c, m) => { if (!c) fallas.push(m); };
   );
   const page = await ctx.newPage();
   page.on("dialog", (d) => d.dismiss().catch(() => {}));
+  await page.addInitScript((prods) => {
+    const vacio = { data: [], error: null };
+    const q = {
+      select: () => q, eq: () => q, in: () => q, order: () => q, limit: () => q, gte: () => q,
+      single: () => Promise.resolve({ data: null, error: null }),
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      insert: () => q, update: () => q, upsert: () => q,
+      then: (f, g) => Promise.resolve(vacio).then(f, g),
+    };
+    window.supabase = {
+      createClient: () => ({
+        from: () => q,
+        rpc: (n) => n === "get_products_public_sorted"
+          ? Promise.resolve({ data: prods, error: null }) : Promise.resolve(vacio),
+        auth: { getSession: () => Promise.resolve({ data: { session: null } }), onAuthStateChange: () => {} },
+        storage: { from: () => ({ getPublicUrl: () => ({ data: { publicUrl: "" } }) }) },
+      }),
+    };
+  }, PRODS);
+
   await page.goto("file://" + path.join(raiz, "mayorista.html"));
   await page.waitForLoadState("domcontentloaded");
+  await page.waitForFunction(() => typeof window.updateCart === "function", null, { timeout: 15000 });
 
-  const r = await page.evaluate(() => {
-    const sel = document.getElementById("shippingSelect");
-    const fila = sel && sel.closest(".ship-row");
-    if (!fila) return { err: "no se encontró la .ship-row del selector de sucursal" };
-    const sec = fila.closest(".section");
-    if (sec) { sec.classList.add("active"); sec.style.display = "block"; }
-    const obs = document.getElementById("obsPedidoInput");
-    if (!obs) return { err: "no se encontró #obsPedidoInput" };
-    const tarjetaDir = sel.closest(".ship-card");
-    const tarjetaObs = obs.closest(".ship-card");
-    const a = tarjetaDir.getBoundingClientRect();
-    const b = tarjetaObs.getBoundingClientRect();
-    return {
-      hermanas: tarjetaDir.parentElement === tarjetaObs.parentElement,
-      split: fila.classList.contains("ship-row-split"),
-      mismaFila: Math.abs(a.top - b.top) < 24 && b.left > a.left + 40,
-      dir: { top: Math.round(a.top), left: Math.round(a.left), w: Math.round(a.width) },
-      obs: { top: Math.round(b.top), left: Math.round(b.left), w: Math.round(b.width) },
-      obsVisible: b.width > 0 && b.height > 0,
-    };
+  // Carrito visible y con los 25 artículos.
+  await page.evaluate(async () => {
+    await window.loadProductsFromDB();
+    products.forEach((p) => cart.push({ productId: p.id, qtyCajas: 1, source: "catalogo" }));
+    const sec = document.getElementById("carrito");
+    document.querySelectorAll(".section.active").forEach((s) => s.classList.remove("active"));
+    sec.classList.add("active");
+    sec.style.display = "block";
+    window.updateCart();
   });
+  await page.waitForTimeout(300);
 
-  if (r.err) { console.error("checkout-layout: ERROR —", r.err); process.exit(1); }
+  const R = (sel) => page.evaluate((s) => {
+    const el = typeof s === "string" ? document.querySelector(s) : null;
+    if (!el) return null;
+    const x = el.getBoundingClientRect();
+    return { top: Math.round(x.top), bottom: Math.round(x.bottom), left: Math.round(x.left),
+      right: Math.round(x.right), w: Math.round(x.width), h: Math.round(x.height) };
+  }, sel);
 
-  ok(r.hermanas, "las dos .ship-card no son hermanas: Observaciones quedó en otra fila del HTML");
-  ok(r.split, "a la fila le falta la clase .ship-row-split");
-  ok(r.obsVisible, "la tarjeta de Observaciones no se está dibujando");
-  ok(r.mismaFila,
-    "Observaciones NO quedó al lado de Dirección de entrega (falta el CSS de .ship-row-split). " +
-    "dir=" + JSON.stringify(r.dir) + " obs=" + JSON.stringify(r.obs));
+  /* ── A. OBSERVACIONES = BOTÓN AL LADO DE "CONFIRMAR PEDIDO" ─────────────── */
+  const sub = await R("#submitOrderBtn");
+  const obs = await R("#obsBtn");
+  ok(obs && obs.w > 0, "A: no está el botón #obsBtn (Observaciones) o no se dibuja");
+  if (obs && sub) {
+    ok(cerca(obs.top, sub.top, 4) && obs.left > sub.right && obs.left - sub.right < 40,
+      "A: Observaciones no quedó AL LADO de Confirmar pedido. sub=" + JSON.stringify(sub) + " obs=" + JSON.stringify(obs));
+  }
+  const tarjeta = await page.evaluate(() => {
+    const t = document.getElementById("obsPedidoInput");
+    return { enCol: !!(t && t.closest(".cart-col-left")), visible: !!(t && t.getBoundingClientRect().width > 0) };
+  });
+  ok(!tarjeta.enCol, "A: la tarjeta de Observaciones sigue en la columna izquierda");
+  ok(!tarjeta.visible, "A: el cuadro de Observaciones se ve sin haber tocado el botón");
 
-  /* ── CON "PEDIR PARA (RAZÓN SOCIAL)" (02/10/2026) ──────────────────────────
-     Vendedores y clientes con varias razones sociales tienen una tarjeta más,
-     `#customerSelectorCart`, que el JS mete antes de la fila de envío. Ahí la
-     columna pasa a grilla de 2: "Pedir para" | "Dirección". Hasta hoy la fila
-     de envío ENTERA iba a la columna 2, así que Observaciones caía debajo de
-     Dirección y debajo de "Pedir para" quedaba un hueco vacío. Pedido: que
-     Observaciones ocupe el ancho de las dos de arriba.
-     Se arma la tarjeta como lo hace el JS (misma clase, mismo lugar) y se mide. */
+  // El botón abre la ventana, se escribe, se cierra y el texto queda donde lo lee el pedido.
+  if (obs && obs.w > 0) {
+  await page.click("#obsBtn");
+  ok(await page.isVisible("#obsPedidoInput"), "A: tocar Observaciones no abrió el cuadro para escribir");
+  await page.fill("#obsPedidoInput", "Entregar por la tarde");
+  await page.click("#modalObs .modal-submit");
+  ok(!(await page.isVisible("#obsPedidoInput")), "A: el botón Listo no cerró la ventana de Observaciones");
+  const tick = await page.evaluate(() => ({
+    v: document.getElementById("obsPedidoInput").value,
+    tick: !document.querySelector("#obsBtn .obs-btn-tick").hidden,
+  }));
+  ok(tick.v === "Entregar por la tarde", "A: el texto no quedó en #obsPedidoInput, que es de donde lo lee el pedido");
+  ok(tick.tick, "A: con una observación escrita el botón no muestra el ✓");
+  }
+
+  /* ── B. "ENTREGA ESTIMADA" NO SE MUESTRA NUNCA ──────────────────────────── */
+  const est = await page.evaluate(() => {
+    window._renderEntregaEstimada && window._renderEntregaEstimada("2026-10-09");
+    const el = document.getElementById("entregaEstimada");
+    if (el) el.hidden = false; // aunque otro código le saque el hidden
+    return el ? el.getBoundingClientRect().height : 0;
+  });
+  ok(est === 0, "B: \"Entrega estimada\" se dibuja (alto " + est + " px) y no tiene que aparecer nunca");
+
+  /* ── C. LISTADO AL PIE DE LA PANTALLA, CON EL ENCABEZADO FIJO ──────────── */
+  const lista = await page.evaluate(() => {
+    const c = document.getElementById("cart");
+    const th = c.querySelector("thead th");
+    const r = c.getBoundingClientRect();
+    const antes = th.getBoundingClientRect().top;
+    c.scrollTop = 400;
+    const despues = th.getBoundingClientRect().top;
+    const scrolleo = c.scrollTop;
+    c.scrollTop = 0;
+    return { top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height),
+      vh: innerHeight, antes: Math.round(antes), despues: Math.round(despues), scrolleo };
+  });
+  ok(lista.scrolleo > 0, "C: con 25 artículos el listado no scrollea adentro");
+  ok(cerca(lista.antes, lista.despues), "C: el encabezado (COD / DESCRIPCIÓN / …) no queda fijo al scrollear: " +
+    "estaba en " + lista.antes + " y quedó en " + lista.despues);
+  ok(lista.bottom <= lista.vh, "C: el listado se pasa del pie de la pantalla (" + lista.bottom + " > " + lista.vh + ")");
+  ok(lista.vh - lista.bottom <= 60, "C: el listado no llega al pie de la pantalla (quedan " +
+    (lista.vh - lista.bottom) + " px libres; con el tope viejo medía 456 px)");
+
+  /* ── D. CON "PEDIR PARA": las dos tarjetas lado a lado y a la misma altura,
+     y nada de hueco debajo (Observaciones ya no está en esa grilla) ────────── */
   const v = await page.evaluate(() => {
     const fila = document.getElementById("shippingSelect").closest(".ship-row");
     const cust = document.createElement("div");
@@ -91,51 +162,27 @@ const ok = (c, m) => { if (!c) fallas.push(m); };
       '<div class="ship-card has-confirm"><label class="ship-label">Pedir para (Razón Social)</label>' +
       '<select><option>Retail Plastic SRL</option></select><div class="ship-hint">x</div></div>';
     fila.parentNode.insertBefore(cust, fila);
-    // la fecha estimada también puede estar: va arriba, a todo el ancho
-    const est = document.getElementById("entregaEstimada");
-    if (est) { est.hidden = false; est.textContent = "Entrega estimada: 09/10"; }
-    const R = (el) => { const x = el.getBoundingClientRect();
-      return { top: Math.round(x.top), bottom: Math.round(x.bottom), left: Math.round(x.left), right: Math.round(x.right) }; };
-    const sel = document.getElementById("shippingSelect");
-    return {
-      cust: R(cust.querySelector(".ship-card")),
-      dir: R(sel.closest(".ship-card")),
-      obs: R(document.getElementById("obsPedidoInput").closest(".ship-card")),
-      pago: R(document.getElementById("paymentRow")),
-      est: est ? R(est) : null,
-    };
-  });
-  const cerca = (a, b) => Math.abs(a - b) <= 2;
-  ok(cerca(v.cust.top, v.dir.top) && v.dir.left > v.cust.right,
-    "con Pedir para: Dirección de entrega no quedó al lado de Pedir para. cust=" +
-    JSON.stringify(v.cust) + " dir=" + JSON.stringify(v.dir));
-  ok(v.obs.top >= Math.max(v.cust.bottom, v.dir.bottom),
-    "con Pedir para: Observaciones no quedó debajo de la fila Pedir para + Dirección. obs=" + JSON.stringify(v.obs));
-  ok(cerca(v.obs.left, v.cust.left) && cerca(v.obs.right, v.dir.right),
-    "con Pedir para: Observaciones no ocupa el ancho de Pedir para + Dirección (queda un hueco). obs=" +
-    JSON.stringify(v.obs) + " cust=" + JSON.stringify(v.cust) + " dir=" + JSON.stringify(v.dir));
-  ok(v.pago.top >= v.obs.bottom, "con Pedir para: Método de pago quedó arriba de Observaciones");
-  if (v.est)
-    ok(v.est.bottom <= v.cust.top && cerca(v.est.left, v.cust.left) && cerca(v.est.right, v.dir.right),
-      "con Pedir para: la fecha estimada no quedó arriba y a todo el ancho. est=" + JSON.stringify(v.est));
-
-  // Con el expreso a la vista Dirección crece (~290 px contra ~170 de "Pedir
-  // para"): las dos tienen que terminar a la misma altura, sin hueco abajo.
-  const w = await page.evaluate(() => {
     const eb = document.getElementById("expresoBox");
     eb.hidden = false;
     eb.innerHTML = '<span class="exp-ico">🚚</span><span class="exp-txt"><span class="exp-k">Expreso</span>' +
       '<span class="exp-v">Expreso De A 4 Bahia</span><span class="exp-dir">John W. Cooke 3255, Villa Soldati</span></span>' +
       '<button type="button" class="exp-btn">Cambiar</button>';
-    const B = (el) => Math.round(el.getBoundingClientRect().bottom);
+    const B = (el) => { const x = el.getBoundingClientRect();
+      return { top: Math.round(x.top), bottom: Math.round(x.bottom), left: Math.round(x.left), right: Math.round(x.right) }; };
     return {
-      cust: B(document.querySelector("#customerSelectorCart .ship-card")),
+      cust: B(cust.querySelector(".ship-card")),
       dir: B(document.getElementById("shippingSelect").closest(".ship-card")),
+      pago: B(document.getElementById("paymentRow")),
     };
   });
-  ok(cerca(w.cust, w.dir),
-    "con Pedir para y el expreso a la vista: las dos tarjetas de arriba no terminan a la misma altura " +
-    "(queda hueco debajo de la más corta). cust=" + w.cust + " dir=" + w.dir);
+  ok(cerca(v.cust.top, v.dir.top) && v.dir.left > v.cust.right,
+    "D: con Pedir para, Dirección no quedó al lado. cust=" + JSON.stringify(v.cust) + " dir=" + JSON.stringify(v.dir));
+  ok(cerca(v.cust.bottom, v.dir.bottom),
+    "D: con Pedir para y el expreso a la vista, las dos tarjetas no terminan a la misma altura. cust=" +
+    v.cust.bottom + " dir=" + v.dir.bottom);
+  ok(v.pago.top >= v.dir.bottom && v.pago.top - v.dir.bottom <= 30,
+    "D: con Pedir para queda un hueco entre las tarjetas de arriba y Método de pago (" +
+    (v.pago.top - v.dir.bottom) + " px)");
 
   await browser.close();
   if (fallas.length) {
@@ -143,5 +190,6 @@ const ok = (c, m) => { if (!c) fallas.push(m); };
     fallas.forEach((f) => console.error("  · " + f));
     process.exit(1);
   }
-  console.log("checkout-layout: OK (" + path.basename(raiz) + ") — dirección y observaciones en la misma fila");
+  console.log("checkout-layout: OK (" + path.basename(raiz) +
+    ") — Observaciones al lado de Confirmar, sin fecha estimada, listado al pie con encabezado fijo");
 })().catch((e) => { console.error("checkout-layout: ERROR", e); process.exit(1); });

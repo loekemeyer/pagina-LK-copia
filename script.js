@@ -1259,17 +1259,15 @@ async function getFechaEstimadaEntrega() {
 let _entregaEstCache = {}; // "customerId|slot" -> ISO o ""
 let _entregaEstActual = ""; // la que se está mostrando (se guarda en el pedido)
 
+// ⚠ NO SE MUESTRA NUNCA (Gastón, 02/10/2026): el cartel "Entrega estimada" del
+//   carrito se sacó. La fecha se sigue calculando y guardando en
+//   `_entregaEstActual`, que viaja en el pedido (lastConfirmedOrder); lo único
+//   que cambia es que no se dibuja. css/styles.css lo tapa también por si otro
+//   código le saca el `hidden`.
 function _renderEntregaEstimada(iso) {
   _entregaEstActual = String(iso || "").trim();
   const el = $("entregaEstimada");
-  if (!el) return;
-  const ddmm = fmtDdMm(_entregaEstActual) || _entregaEstActual;
-  if (ddmm) {
-    el.innerHTML = `Entrega estimada: <strong>${ddmm}</strong>`;
-    el.hidden = false;
-  } else {
-    el.hidden = true;
-  }
+  if (el) el.hidden = true;
 }
 
 // ---- RETIRA: el cliente elige día (desde +3 días hábiles) y franja ----
@@ -7056,6 +7054,41 @@ function cerrarModalExpreso() {
 }
 window.cerrarModalExpreso = cerrarModalExpreso;
 
+/* OBSERVACIONES (Gastón, 02/10/2026): la tarjeta de la columna izquierda pasó a
+   ser el botón "📝 Observaciones" de al lado de "Confirmar pedido". El texto
+   vive en #obsPedidoInput (adentro de #modalObs), que es de donde lo leen
+   submitOrder() y el reset del carrito: ese id no se cambia. El botón muestra
+   un ✓ cuando hay algo escrito, así no queda texto olvidado sin que se vea. */
+function _obsSyncBtn() {
+  const inp = document.getElementById("obsPedidoInput");
+  const btn = document.getElementById("obsBtn");
+  if (!btn) return;
+  const txt = String((inp && inp.value) || "").trim();
+  const tick = btn.querySelector(".obs-btn-tick");
+  if (tick) tick.hidden = !txt;
+  btn.classList.toggle("has-obs", !!txt);
+  btn.title = txt
+    ? "Observación: " + (txt.length > 120 ? txt.slice(0, 120) + "…" : txt)
+    : "Agregar una observación al pedido (opcional)";
+}
+window._obsSyncBtn = _obsSyncBtn;
+
+function abrirModalObs() {
+  const modal = document.getElementById("modalObs");
+  if (!modal) return;
+  modal.classList.add("open");
+  const inp = document.getElementById("obsPedidoInput");
+  setTimeout(() => { if (inp) inp.focus(); }, 80);
+}
+window.abrirModalObs = abrirModalObs;
+
+function cerrarModalObs() {
+  const modal = document.getElementById("modalObs");
+  if (modal) modal.classList.remove("open");
+  _obsSyncBtn();
+}
+window.cerrarModalObs = cerrarModalObs;
+
 /* Ordena el padrón contra lo que el cliente tipeó. Función PURA a propósito:
    así `tests/expreso-buscador.cjs` la corre de verdad contra el padrón real en
    vez de leerla. El orden importa — "la sev" tiene que traer LA SEVILLANITA
@@ -10427,6 +10460,7 @@ async function submitOrder() {
     if (paySel) paySel.value = "";
     var obsInput = $("obsPedidoInput");
     if (obsInput) obsInput.value = "";
+    _obsSyncBtn();
     _resetRetiro();
     document.querySelectorAll("#paymentButtons .pay-btn").forEach(function (b) {
       b.classList.remove("selected", "active");

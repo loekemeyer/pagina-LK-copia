@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23505" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23505" />
+    <link rel="stylesheet" href="css/styles.css?v=23506" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23506" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1386,15 +1386,29 @@
             Pedido · Total: $<span id="pedidoTotalHeader">0</span>
             <span class="iva-tag">+ IVA</span>
           </h2>
-          <button
-            id="submitOrderBtn"
-            class="submit-order"
-            type="button"
-            onclick="submitOrder()"
-            disabled
-          >
-            Confirmar pedido
-          </button>
+          <!-- Confirmar + Observaciones, lado a lado (Gastón, 02/10/2026). La tarjeta
+               de Observaciones ya no está en la columna izquierda: el texto se
+               escribe en #modalObs y sigue viajando en #obsPedidoInput. -->
+          <div class="submit-row">
+            <button
+              id="submitOrderBtn"
+              class="submit-order"
+              type="button"
+              onclick="submitOrder()"
+              disabled
+            >
+              Confirmar pedido
+            </button>
+            <button
+              id="obsBtn"
+              class="obs-btn"
+              type="button"
+              onclick="abrirModalObs()"
+              title="Agregar una observación al pedido (opcional)"
+            >
+              📝 Observaciones<span class="obs-btn-tick" hidden> ✓</span>
+            </button>
+          </div>
           <div id="expoOrderGate" class="expo-order-gate" hidden></div>
           <div id="orderStatus" class="order-status" aria-live="polite" hidden></div>
         </div>
@@ -1418,13 +1432,15 @@
            ============================================================ -->
       <div class="cart-2col">
         <div class="cart-col-left">
-      <!-- Fecha estimada de entrega (global). La completa updateCart() desde
-           app_settings['fecha_estimada_entrega']; oculta si no está seteada. -->
+      <!-- Fecha estimada de entrega: NO SE MUESTRA NUNCA (Gastón, 02/10/2026).
+           La fecha se sigue calculando y viaja en el pedido (_entregaEstActual);
+           sólo no se dibuja. El div queda porque el JS lo busca. -->
       <div id="entregaEstimada" class="entrega-estimada" hidden></div>
       <!-- Aviso de deuda (dato de Gestión Virgilio, se sube 1x por semana). Sólo
            avisa, no bloquea. Lo completa updateCart() desde el cache _deudaCliente. -->
       <div id="deudaAviso" class="deuda-aviso" hidden></div>
-      <!-- Dirección de entrega + Observaciones (misma fila, mitad y mitad) -->
+      <!-- Dirección de entrega (Observaciones se mudó al botón de al lado de
+           "Confirmar pedido", 02/10/2026) -->
       <div class="ship-row ship-row-split">
         <div class="ship-card" id="shipCardEntrega">
           <label class="ship-label" for="shippingSelect"
@@ -1459,16 +1475,8 @@
             </div>
           </div>
         </div>
-        <div class="ship-card">
-          <label class="ship-label" for="obsPedidoInput">Observaciones</label>
-          <textarea
-            id="obsPedidoInput"
-            class="ship-textarea"
-            rows="3"
-            placeholder="Anotá algo sobre este pedido (opcional)"
-          ></textarea>
-          <div class="ship-hint">Se envía junto con el pedido.</div>
-        </div>
+        <!-- Observaciones: se mudó al botón "📝 Observaciones" de al lado de
+             "Confirmar pedido" (#modalObs). -->
       </div>
 
       <div id="clienteNuevoRow" class="ship-row" style="display: none">
@@ -1822,6 +1830,29 @@
          Busca por nombre Y por dirección del galpón. Si no está en el padrón
          NO frena: se manda igual y queda la alerta para cargarlo en ISIS.
          ===================================================================== -->
+    <!-- Observaciones del pedido (Gastón, 02/10/2026): se abre con el botón de
+         al lado de "Confirmar pedido". El textarea conserva el id
+         #obsPedidoInput: de ahí lo leen submitOrder() y el reset del carrito. -->
+    <div class="modal" id="modalObs" aria-hidden="true">
+      <div class="modal-content obs-modal">
+        <div class="modal-header">
+          <h3>Observaciones del pedido</h3>
+          <button class="modal-close" type="button" onclick="cerrarModalObs()">✕</button>
+        </div>
+        <div class="modal-body">
+          <textarea
+            id="obsPedidoInput"
+            class="ship-textarea"
+            rows="5"
+            placeholder="Anotá algo sobre este pedido (opcional)"
+            oninput="_obsSyncBtn()"
+          ></textarea>
+          <div class="ship-hint">Se envía junto con el pedido.</div>
+          <button type="button" class="modal-submit" onclick="cerrarModalObs()">Listo</button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal" id="modalExpreso" aria-hidden="true">
       <div class="modal-content exp-modal">
         <div class="modal-header">
@@ -2319,14 +2350,14 @@
     <!-- La versión ya se muestra en el footer; se quitó el badge flotante. -->
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23505"></script>
-    <script src="script.js?v=23505"></script>
+    <script src="./version.js?v=23506"></script>
+    <script src="script.js?v=23506"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23505"></script>
+    <script src="analisis-venta-cliente.js?v=23506"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23505"></script>
-    <script src="admin-excel-krikos.js?v=23505"></script>
-    <script src="vendor-import-excel.js?v=23505"></script>
+    <script src="scotapi-shim.js?v=23506"></script>
+    <script src="admin-excel-krikos.js?v=23506"></script>
+    <script src="vendor-import-excel.js?v=23506"></script>
   </body>
 </html>

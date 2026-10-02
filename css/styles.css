@@ -10883,18 +10883,9 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
   grid-column: 2;
 }
 
-#carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > .ship-row:has(#shippingSelect) > .ship-card:not(#shipCardEntrega) {
-  grid-column: 1 / -1;
-}
-
-/* PRESUPUESTO: la tarjeta de dirección no se dibuja; Observaciones toma su
-   lugar al lado de "Pedir para" en vez de dejar ese hueco. */
-.is-presupuesto #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > .ship-row:has(#shippingSelect) > .ship-card:not(#shipCardEntrega) {
-  grid-column: 2;
-}
-
 /* Todo lo demás (fecha estimada, deuda, clienteNuevo, paymentRow, cart-total)
-   ocupa toda la fila */
+   ocupa toda la fila. Observaciones ya no vive acá: es un botón al lado de
+   "Confirmar pedido" (02/10/2026). */
 #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #entregaEstimada,
 #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #deudaAviso,
 #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #clienteNuevoRow,
@@ -10909,8 +10900,7 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
     grid-template-columns: 1fr;
   }
   #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #customerSelectorCart,
-  #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) #shipCardEntrega,
-  #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > .ship-row:has(#shippingSelect) > .ship-card {
+  #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) #shipCardEntrega {
     grid-column: 1;
   }
 }
@@ -16631,14 +16621,14 @@ body { top: 0 !important; }
    presupuesto a cotizar; el despacho lo define administración después. Se
    esconde la tarjeta ENTERA porque el selector, el hint, la línea del expreso
    y el bloque de Retira cuelgan todos de ella.
-   ⚠ Y Observaciones tiene que poder crecer: `.ship-row-split > .ship-card`
-   lleva `max-width: 382px`, así que sin esto queda sola a media fila con el
-   resto en blanco. */
+   ⚠ Desde el 02/10/2026 Observaciones es un botón al lado de "Confirmar
+   pedido", así que sin la tarjeta de dirección la fila queda vacía: se
+   esconde entera para que no deje un hueco. */
 .is-presupuesto #shipCardEntrega {
   display: none !important;
 }
-.is-presupuesto .ship-row-split > .ship-card {
-  max-width: none;
+.is-presupuesto #carrito .ship-row-split:has(#shippingSelect) {
+  display: none !important;
 }
 
 /* Vaciar carrito (30/09/2026): debajo de la tabla, alineado a la derecha y
@@ -16663,4 +16653,101 @@ body { top: 0 !important; }
   border-color: #c62828;
   color: #c62828;
   background: #fdf3f3;
+}
+
+/* ============================================================
+   CARRITO (Gastón, 02/10/2026) — tres pedidos juntos.
+   Chequeo de los tres: `node tests/checkout-layout.cjs`.
+   ============================================================ */
+
+/* 1a. ENCABEZADO FIJO DEL LISTADO. El `th` ya era sticky, pero NO quedaba fijo:
+   la regla base `.cart-table { overflow: hidden }` (puesta para redondear las
+   esquinas) convierte a la TABLA en el contenedor de scroll del sticky, y la
+   tabla no scrollea — scrollea #cart. Medido antes del arreglo: bajando 400 px
+   el encabezado se iba 480 px para arriba. En el carrito las esquinas
+   redondeadas viven en #cart, así que la tabla no necesita el hidden. */
+#carrito .cart-2col .cart-table {
+  overflow: visible !important;
+}
+
+/* 1b. EL LISTADO LLEGA AL PIE DE LA PANTALLA. Antes tenía tope fijo de 380 px
+   (~6 artículos) y con pedidos largos se scrolleaba de a poco. Ahora crece
+   hasta el pie de la ventana y recién ahí scrollea adentro, con el encabezado
+   fijo.
+   ⚠ #carrito lleva `zoom: 1.2` desde 1024 px, y el zoom agranda también el
+   100vh: por eso se divide por --cart-zoom. 270 px (en pantalla) es lo que
+   hay arriba del listado (barra del sitio + título + Confirmar) más un margen.
+   Con dos columnas recién desde 901 px: en celular el listado va apilado y
+   queda como estaba. */
+#carrito {
+  --cart-zoom: 1;
+}
+@media (min-width: 1024px) {
+  #carrito {
+    --cart-zoom: 1.2;
+  }
+}
+@media (min-width: 901px) {
+  #carrito .cart-2col #cart {
+    max-height: max(380px, calc((100vh - 270px) / var(--cart-zoom))) !important;
+  }
+}
+
+/* 2. "Entrega estimada" no se muestra nunca. El JS ya lo deja `hidden`; esto lo
+   sostiene si otro código se lo saca. La fecha se sigue calculando y viaja en
+   el pedido. */
+#entregaEstimada {
+  display: none !important;
+}
+
+/* 3. OBSERVACIONES = botón al lado de "Confirmar pedido". El par va en el
+   lugar del grid que antes ocupaba Confirmar solo. */
+#carrito .section-header .section-center .submit-row {
+  grid-area: confirm;
+  justify-self: center;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+#carrito .section-header .section-center .submit-row .obs-btn {
+  margin: 0;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1.5px solid #ddd;
+  background: #fff;
+  color: #333;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+#carrito .section-header .section-center .submit-row .obs-btn:hover {
+  background: #f5f5f5;
+  border-color: #999;
+}
+/* Con texto escrito el botón se marca, para que no quede una observación
+   olvidada sin que se vea. */
+#carrito .section-header .section-center .submit-row .obs-btn.has-obs {
+  border-color: #0a7a2f;
+  color: #0a7a2f;
+  background: #f1f9f3;
+}
+#modalObs .obs-modal {
+  max-width: 520px;
+}
+#modalObs .ship-textarea {
+  min-height: 120px;
+}
+@media (max-width: 900px) {
+  #carrito .section-header .section-center .submit-row {
+    justify-self: stretch;
+    width: 100%;
+  }
+  #carrito .section-header .section-center .submit-row .submit-order {
+    flex: 1 1 auto;
+  }
+  #carrito .section-header .section-center .submit-row .obs-btn {
+    flex: 0 0 auto;
+  }
 }
