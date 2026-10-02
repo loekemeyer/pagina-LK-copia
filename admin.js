@@ -372,19 +372,13 @@ function fixDto(val) {
   if (isNaN(n) || n === 0) return val;
   return n > 0 && n < 1 ? n * 100 : n;
 }
+// 02/10 (problema 679): el PIN es de 8 DÍGITOS. Supabase Auth tiene prendida la
+// protección de contraseñas filtradas y TODO PIN de 6 dígitos está en esa lista (300 de
+// 300 medidos), así que el login no se creaba nunca. De 8 dígitos está ~22 %: por eso
+// el alta reintenta con otro PIN (createAuthUserPinNuevo). La base acepta 6 a 8
+// (customers_pin_6a8_digits): los clientes viejos siguen con sus 6.
 function generatePin() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-// Genera contraseña aleatoria de 30 caracteres alfanuméricos.
-// Excluye 0, O, 1, I, l para evitar confusiones al leer.
-function generatePassword30() {
-  var chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  var result = "";
-  for (var i = 0; i < 30; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  return String(Math.floor(10000000 + Math.random() * 90000000));
 }
 
 // Estado del modal expo — persiste mientras el modal está abierto para un nuevo cliente
@@ -418,7 +412,7 @@ async function generateSyntheticVendorCuit() {
 // Motivo legible de un error de crear-cliente-auth.
 function _authLoginMotivo(em) {
   if (em === "pin_debil")
-    return "Supabase rechazó el PIN por «contraseña filtrada». Hay que apagar «Prevent use of leaked passwords» en Authentication del proyecto LK";
+    return "Supabase rechazó el PIN por «contraseña filtrada»: hace falta un PIN nuevo de 8 números (los de 6 no pasan nunca)";
   if (em === "no_autorizado") return "tu usuario no tiene permiso para crear logins";
   if (em === "sin_sesion") return "no hay sesión de admin: volvé a entrar al panel";
   if (em === "red") return "error de red, probá de nuevo";
@@ -477,9 +471,28 @@ async function createAuthUser(cuit, pin, sincronizar) {
     var m = e && e.message ? e.message : "";
     var motivo = m.indexOf("LOGIN:") === 0 ? m.slice(6) : "red";
     console.warn("createAuthUser error:", e);
-    throw new Error(
+    var err = new Error(
       "No se pudo crear el login (CUIT + PIN): " + _authLoginMotivo(motivo) + ". No se guardó nada.",
     );
+    if (motivo === "pin_debil") err.pinDebil = true;
+    throw err;
+  }
+}
+
+// 02/10: alta con un PIN GENERADO acá. Si Supabase lo rechaza por estar en la lista de
+// contraseñas filtradas, se genera otro y se reintenta (hasta 6 veces), y holder.pin
+// queda con el que se usó, que es el que se guarda en customers. NUNCA para un PIN que
+// ya tiene el cliente («Reparar Auth»): ahí cambiarlo en silencio desincroniza el admin.
+async function createAuthUserPinNuevo(cuit, holder, alCambiar, crear) {
+  crear = crear || createAuthUser;
+  for (var intento = 0; ; intento++) {
+    try {
+      return await crear(cuit, holder.pin);
+    } catch (e) {
+      if (!e || !e.pinDebil || intento >= 5) throw e;
+      holder.pin = generatePin();
+      if (typeof alCambiar === "function") alCambiar(holder.pin);
+    }
   }
 }
 
@@ -931,7 +944,7 @@ document
         escala_activa: !!escalaOn,
       };
       if (usernameVal) payload.username = usernameVal;
-      var authId = await createAuthUser(payload.cuit, payload.pin);
+      var authId = await createAuthUserPinNuevo(payload.cuit, payload);
       if (authId) payload.auth_user_id = authId;
       var inserted = await sbInsert(TABLE_CUSTOMERS, payload);
       if (payload.vend && inserted.length) {
@@ -1081,7 +1094,7 @@ document
         var row = importData[i];
         importBtn.textContent = "Creando auth " + (i + 1) + "/" + importData.length + "...";
         try {
-          var authId = await _createAuthWithRetry(row.cuit, row.pin);
+          var authId = await createAuthUserPinNuevo(row.cuit, row, null, _createAuthWithRetry);
           if (authId) row.auth_user_id = authId;
         } catch (e) {
           sinLogin.push(row);
@@ -1593,11 +1606,12 @@ document
         }
       } else {
         // Nuevo cliente — modo expo: crear y quedar en el modal
+        // 02/10: PIN de 8 dígitos (antes 30 caracteres, que la base rechaza: customers.pin es de 6 a 8 dígitos)
         var pwd30El = document.getElementById("editPassword");
-        payload.pin = (pwd30El && pwd30El.value.length >= 20)
-          ? pwd30El.value
-          : generatePassword30();
-        var authId = await createAuthUser(payload.cuit, payload.pin);
+        payload.pin = (pwd30El && /^\d{8}$/.test(pwd30El.value)) ? pwd30El.value : generatePin();
+        var authId = await createAuthUserPinNuevo(payload.cuit, payload, function (p) {
+          if (pwd30El) pwd30El.value = p;
+        });
         if (authId) payload.auth_user_id = authId;
         var insertedEdit = await sbInsert(TABLE_CUSTOMERS, payload);
         if (!insertedEdit.length) throw new Error("No se pudo crear el cliente");
@@ -2105,7 +2119,7 @@ async function _expoAutoSave() {
 
   // Primer guardado: INSERT
   var pwd30El = document.getElementById("editPassword");
-  var pin = (pwd30El && pwd30El.value.length >= 20) ? pwd30El.value : generatePassword30();
+  var pin = (pwd30El && /^\d{8}$/.test(pwd30El.value)) ? pwd30El.value : generatePin();
   document.getElementById("editPassword").value = pin;
   var payload = {
     cod_cliente: cod ? parseInt(cod, 10) : null,
@@ -2117,7 +2131,10 @@ async function _expoAutoSave() {
     pin: pin,
   };
   try {
-    var authId = await createAuthUser(cuit, pin);
+    var authId = await createAuthUserPinNuevo(cuit, payload, function (p) {
+      pin = p;
+      document.getElementById("editPassword").value = p;
+    });
     if (authId) payload.auth_user_id = authId;
     var inserted = await sbInsert(TABLE_CUSTOMERS, payload);
     if (!inserted.length) throw new Error("insert vacío");
@@ -2240,8 +2257,8 @@ document.getElementById("newClienteBtn").addEventListener("click", function () {
   ].forEach(function (id) {
     document.getElementById(id).value = "";
   });
-  // Generar contraseña de 30 caracteres y mostrarla
-  var pwd = generatePassword30();
+  // Generar el PIN (8 dígitos) y mostrarlo
+  var pwd = generatePin();
   document.getElementById("editPassword").value = pwd;
   document.getElementById("editPasswordRow").style.display = "block";
   // Mostrar tabs y resetear al panel Datos

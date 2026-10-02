@@ -19,6 +19,10 @@
      G. la importación masiva NO inserta las filas cuyo login falló
      H. en la página el login se intenta ANTES de reservar el código de cliente
      I. la Edge Function devuelve pin_debil y mira el error de updateUserById
+   Y desde el 02/10 (8 dígitos: Auth rechaza TODO PIN de 6, 300 de 300 medidos):
+     K. si Auth rechaza el PIN, el alta genera OTRO y reintenta (hasta 6); el PIN que
+        queda guardado es el que tiene el login. Un 409 o un error de red NO reintentan.
+     L. los generadores de PIN dan 8 dígitos
 
    Correr:  node tests/alta-sin-login-frena.cjs
 */
@@ -55,21 +59,28 @@ function ok(cond, msg) {
 
 function sandbox(respuesta, conSesion) {
   const toasts = [];
+  const pedidos = [];
   const sesion = conSesion === false ? null : { access_token: "tok" };
   const ctx = {
     console: { warn: () => {}, log: () => {} },
     toasts,
+    pedidos,
     SUPABASE_URL: "https://x.supabase.co",
     SUPABASE_ANON_KEY: "anon",
     toast: (m, t) => toasts.push(String(m) + "|" + (t || "")),
     sb: { auth: { getSession: async () => ({ data: { session: sesion } }) } },
     supabaseClient: { auth: { getSession: async () => ({ data: { session: sesion } }) } },
-    fetch: async () => {
-      if (respuesta === "red") throw new TypeError("Failed to fetch");
+    fetch: async (url, opt) => {
+      pedidos.push(JSON.parse((opt && opt.body) || "{}"));
+      // una lista = una respuesta por llamada (la última se repite)
+      const r = Array.isArray(respuesta)
+        ? respuesta[Math.min(pedidos.length - 1, respuesta.length - 1)]
+        : respuesta;
+      if (r === "red") throw new TypeError("Failed to fetch");
       return {
-        ok: respuesta.status >= 200 && respuesta.status < 300,
-        status: respuesta.status,
-        json: async () => respuesta.body,
+        ok: r.status >= 200 && r.status < 300,
+        status: r.status,
+        json: async () => r.body,
       };
     },
   };
@@ -79,13 +90,14 @@ function sandbox(respuesta, conSesion) {
 
 async function correr(src, archivo, fn, aux, args, respuesta, conSesion) {
   const ctx = sandbox(respuesta, conSesion);
-  vm.runInContext(opcional(src, aux, archivo) + "\n" + extraer(src, fn, archivo), ctx);
+  const auxs = Array.isArray(aux) ? aux : [aux];
+  vm.runInContext(auxs.map((a) => opcional(src, a, archivo)).join("\n") + "\n" + extraer(src, fn, archivo), ctx);
   ctx.__args = args;
   try {
     const v = await vm.runInContext(fn + ".apply(null, __args)", ctx);
-    return { valor: v, error: null, toasts: ctx.toasts };
+    return { valor: v, error: null, toasts: ctx.toasts, pedidos: ctx.pedidos };
   } catch (e) {
-    return { valor: undefined, error: e, toasts: ctx.toasts };
+    return { valor: undefined, error: e, toasts: ctx.toasts, pedidos: ctx.pedidos };
   }
 }
 
@@ -121,6 +133,61 @@ async function correr(src, archivo, fn, aux, args, respuesta, conSesion) {
     ok(r.error && /sesión/.test(r.error.message), "E. sin sesión → tira");
   }
 
+  // K. reintento con otro PIN cuando Auth lo rechaza por «filtrado».
+  const DEBIL = { status: 422, body: { error: "pin_debil" } };
+  console.log("== admin.js · createAuthUserPinNuevo ==");
+  {
+    const auxA = ["createAuthUser", "_authLoginMotivo", "generatePin"];
+    // el holder es el payload del alta: su .pin es lo que se guarda en customers
+    let r = await correr(adminSrc, "admin.js", "createAuthUserPinNuevo", auxA,
+      ["27238837745", { pin: "11111111" }], [DEBIL, DEBIL, { status: 200, body: { id: "uid-k" } }]);
+    const fin = r.pedidos.length ? r.pedidos[r.pedidos.length - 1].pin : null;
+    ok(r.valor === "uid-k" && r.pedidos.length === 3, "K. rechazado 2 veces → reintenta y crea el login (" + r.pedidos.length + " intentos)");
+    ok(/^\d{8}$/.test(fin) && fin !== "11111111" && r.pedidos[0].pin === "11111111",
+      "K. el 1.º intento usa el PIN mostrado y los siguientes uno nuevo de 8 dígitos (" + fin + ")");
+    // el PIN que queda en el holder (lo que se guarda) es el del login
+    const ctx = sandbox([DEBIL, { status: 200, body: { id: "uid-h" } }]);
+    vm.runInContext(auxA.map((a) => opcional(adminSrc, a, "admin.js")).join("\n") + "\n" +
+      extraer(adminSrc, "createAuthUserPinNuevo", "admin.js"), ctx);
+    ctx.__h = { pin: "22222222" }; ctx.__vistos = [];
+    await vm.runInContext("createAuthUserPinNuevo('27238837745', __h, function(p){ __vistos.push(p); })", ctx);
+    ok(ctx.__h.pin === ctx.pedidos[1].pin && ctx.__vistos[0] === ctx.__h.pin,
+      "K. el PIN guardado (holder.pin) y el mostrado son el mismo que tiene el login");
+
+    r = await correr(adminSrc, "admin.js", "createAuthUserPinNuevo", auxA, ["27238837745", { pin: "11111111" }], DEBIL);
+    ok(r.error && /contraseña filtrada/.test(r.error.message) && r.pedidos.length === 6,
+      "K. siempre rechazado → frena a los 6 intentos (" + r.pedidos.length + ")");
+    r = await correr(adminSrc, "admin.js", "createAuthUserPinNuevo", auxA, ["27238837745", { pin: "11111111" }],
+      { status: 409, body: { error: "cuit_ya_registrado" } });
+    ok(r.error && r.pedidos.length === 1, "K. CUIT con login (409) → NO reintenta");
+    r = await correr(adminSrc, "admin.js", "createAuthUserPinNuevo", auxA, ["27238837745", { pin: "11111111" }], "red");
+    ok(r.error && r.pedidos.length === 1, "K. error de red → NO reintenta");
+  }
+  console.log("== script.js · _expoCreateAuthUserPinNuevo ==");
+  {
+    const auxS = ["_expoCreateAuthUser", "_expoAuthMotivo", "_expoNewGenPin"];
+    const ctx = sandbox([DEBIL, DEBIL, { status: 200, body: { id: "uid-e" } }]);
+    vm.runInContext(auxS.map((a) => opcional(scriptSrc, a, "script.js")).join("\n") + "\n" +
+      extraer(scriptSrc, "_expoCreateAuthUserPinNuevo", "script.js"), ctx);
+    ctx.__vistos = [];
+    const v = await vm.runInContext("_expoCreateAuthUserPinNuevo('27238837745', '33333333', function(p){ __vistos.push(p); })", ctx);
+    ok(v === "uid-e" && ctx.pedidos.length === 3 && ctx.__vistos.length === 2 &&
+       ctx.__vistos[1] === ctx.pedidos[2].pin && /^\d{8}$/.test(ctx.pedidos[2].pin),
+      "K. expo: rechazado 2 veces → reintenta y avisa el PIN con que quedó el login");
+    let r = await correr(scriptSrc, "script.js", "_expoCreateAuthUserPinNuevo", auxS, ["27238837745", "33333333"], DEBIL);
+    ok(r.error && r.pedidos.length === 6, "K. expo: siempre rechazado → frena a los 6 intentos");
+  }
+
+  console.log("== generadores ==");
+  {
+    const ctx = {};
+    vm.createContext(ctx);
+    vm.runInContext(extraer(adminSrc, "generatePin", "admin.js") + "\n" +
+      extraer(scriptSrc, "_expoNewGenPin", "script.js"), ctx);
+    const muestras = vm.runInContext("var a=[];for(var i=0;i<2000;i++){a.push(generatePin(),_expoNewGenPin())}a", ctx);
+    ok(muestras.every((p) => /^\d{8}$/.test(p)), "L. generatePin y _expoNewGenPin dan siempre 8 dígitos");
+  }
+
   console.log("== candados de texto ==");
   const imp = adminSrc.slice(adminSrc.indexOf('getElementById("importBtn")'));
   const impCuerpo = imp.slice(0, imp.indexOf("// ---- CARGAR SUCURSAL"));
@@ -128,7 +195,7 @@ async function correr(src, archivo, fn, aux, args, respuesta, conSesion) {
     "G. la importación masiva inserta sólo las filas con login (aInsertar)");
 
   const guardar = extraer(scriptSrc, "_expoGuardarNuevo", "script.js");
-  const iAuth = guardar.indexOf("_expoCreateAuthUser(");
+  const iAuth = guardar.search(/_expoCreateAuthUser(PinNuevo)?\(/);
   const iCod = guardar.indexOf('"expo_reservar_cod"');
   ok(iAuth > 0 && iCod > 0 && iAuth < iCod, "H. el login se intenta ANTES de reservar el código");
 

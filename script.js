@@ -3792,8 +3792,10 @@ async function changePasswordUI() {
     setStatus("La contraseña debe ser solo numérica.");
     return;
   }
-  if (p1.length < 6) {
-    setStatus("La contraseña debe tener al menos 6 números.");
+  // 02/10 (problema 679): 8 números exactos. Auth rechaza por «filtrado» todo PIN de
+  // 6, y customers.pin acepta hasta 8: con más, el login cambiaba y la ficha no.
+  if (p1.length !== 8) {
+    setStatus("La contraseña debe tener 8 números.");
     return;
   }
   if (p1 !== p2) {
@@ -3848,6 +3850,9 @@ async function changePasswordUI() {
 
     if (!resp.ok) {
       const txt = await resp.text().catch(() => "");
+      if (resp.status === 422 && /weak|pwned|leaked|known/i.test(txt)) {
+        throw new Error("Ese número figura en listas de claves filtradas. Probá con otros 8 números.");
+      }
       throw new Error(`Auth ${resp.status}: ${txt || resp.statusText}`);
     }
 
@@ -14332,12 +14337,12 @@ window._expoStopScan = _expoStopScan;
 var _expoNewState = { id: null, authId: null };
 var _expoNewWired = false;
 
-// PIN de 6 DÍGITOS: es el password del login del cliente (CUIT + PIN) y la tabla
-// customers tiene el constraint customers_pin_6_digits (pin ~ '^\d{6}$').
+// PIN de 8 DÍGITOS: es el password del login del cliente (CUIT + PIN). 02/10 (problema
+// 679): Auth rechaza por «contraseña filtrada» TODO PIN de 6 dígitos (300 de 300
+// medidos); de 8 dígitos ~22 %, y por eso el alta reintenta con otro (ver
+// _expoCreateAuthUserPinNuevo). La tabla acepta 6 a 8 (customers_pin_6a8_digits).
 function _expoNewGenPin() {
-  var r = "";
-  for (var i = 0; i < 6; i++) r += String(Math.floor(Math.random() * 10));
-  return r;
+  return String(Math.floor(10000000 + Math.random() * 90000000));
 }
 
 // Crea el usuario auth con un cliente aparte (no pisa la sesión del operador).
@@ -14346,7 +14351,7 @@ function _expoNewGenPin() {
 // panel mostraba CUIT y PIN y la página decía "incorrectos".
 function _expoAuthMotivo(em) {
   if (em === "pin_debil")
-    return "Supabase rechazó el PIN por «contraseña filtrada» (avisá a administración: hay que apagar esa protección en Auth de LK)";
+    return "Supabase rechazó el PIN por «contraseña filtrada» aun después de probar varios PINs (avisá a administración)";
   if (em === "no_autorizado") return "tu usuario no tiene permiso para crear logins";
   if (em === "sin_sesion") return "no hay sesión: volvé a entrar";
   if (em === "red") return "error de red, probá de nuevo";
@@ -14391,9 +14396,26 @@ async function _expoCreateAuthUser(cuit, pin) {
     var m = e && e.message ? e.message : "";
     var motivo = m.indexOf("LOGIN:") === 0 ? m.slice(6) : "red";
     console.warn("expo auth error:", e);
-    throw new Error(
+    var err = new Error(
       "No se pudo crear el login del cliente (CUIT + PIN): " + _expoAuthMotivo(motivo) + ". No se guardó nada.",
     );
+    if (motivo === "pin_debil") err.pinDebil = true;
+    throw err;
+  }
+}
+
+// 02/10 (problema 679): si Auth rechaza el PIN por «filtrado», se genera otro y se
+// reintenta (hasta 6 en total). alCambiar(pin) avisa el PIN nuevo para mostrarlo y
+// guardarlo: lo que queda en customers.pin tiene que ser el que tiene el login.
+async function _expoCreateAuthUserPinNuevo(cuit, pin, alCambiar) {
+  for (var intento = 0; ; intento++) {
+    try {
+      return await _expoCreateAuthUser(cuit, pin);
+    } catch (e) {
+      if (!e || !e.pinDebil || intento >= 5) throw e;
+      pin = _expoNewGenPin();
+      if (typeof alCambiar === "function") alCambiar(pin);
+    }
   }
 }
 
@@ -14759,7 +14781,11 @@ async function _expoGuardarNuevo(mode) {
     // 02/10: va ANTES de reservar el código. Si el login falla, _expoCreateAuthUser
     // tira y el alta frena acá, sin gastar un número de cliente.
     if (cuit && !_expoNewState.authId) {
-      _expoNewState.authId = await _expoCreateAuthUser(cuit, pin);
+      _expoNewState.authId = await _expoCreateAuthUserPinNuevo(cuit, pin, function (p) {
+        pin = p;
+        var pe = document.getElementById("expoNewPin");
+        if (pe) pe.value = p;
+      });
     }
 
     if (!_expoNewState.id) {
