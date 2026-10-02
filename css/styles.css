@@ -10841,10 +10841,19 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
 }
 
 /* ============================================================
-   VENDEDOR: cuando existe #customerSelectorCart (vendor en carrito de cliente),
+   VENDEDOR / VARIAS RAZONES SOCIALES: cuando existe #customerSelectorCart,
    "Pedir para (Razón Social)" + "Indicar Dirección de Entrega" van en la
-   misma fila. El resto (clienteNuevoRow, paymentRow, cart-total) ocupa
-   ancho completo.
+   misma fila, y ABAJO Observaciones ocupa el ancho de las dos.
+   El resto (fecha estimada, deuda, clienteNuevoRow, paymentRow, cart-total)
+   ocupa ancho completo.
+
+   ⚠ La fila de envío (.ship-row-split) va con `display: contents` (02/10/2026):
+   sus dos tarjetas pasan a ser celdas de ESTA grilla. Antes la fila entera iba
+   a la columna 2, Observaciones caía debajo de Dirección y debajo de
+   "Pedir para" quedaba un hueco vacío.
+   ⚠ Sin `grid-row` fijo: la ubicación sale del orden del HTML. Con la fila 1
+   fijada, la fecha estimada (que viene antes en el HTML) se iba abajo de todo.
+   Chequeo: `node tests/checkout-layout.cjs`.
    ============================================================ */
 #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) {
   display: grid;
@@ -10853,17 +10862,41 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
   align-items: start;
 }
 
+/* `align-self: stretch`: con el expreso a la vista, Dirección mide ~290 px y
+   "Pedir para" ~170. Sin estirarla quedaba otro hueco debajo de "Pedir para".
+   Es flex (.ship-row), así que su tarjeta se estira con ella. */
 #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #customerSelectorCart {
   grid-column: 1;
-  grid-row: 1;
+  align-self: stretch;
+}
+/* La tarjeta es grilla (.has-confirm): estirada, repartía el alto sobrante
+   entre sus filas y el desplegable quedaba corrido al medio. Todo arriba. */
+#carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #customerSelectorCart > .ship-card {
+  align-content: start;
 }
 
 #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > .ship-row:has(#shippingSelect) {
-  grid-column: 2;
-  grid-row: 1;
+  display: contents;
 }
 
-/* Todo lo demás (clienteNuevo, paymentRow, cart-total, etc) ocupa toda la fila */
+#carrito .cart-2col .cart-col-left:has(#customerSelectorCart) #shipCardEntrega {
+  grid-column: 2;
+}
+
+#carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > .ship-row:has(#shippingSelect) > .ship-card:not(#shipCardEntrega) {
+  grid-column: 1 / -1;
+}
+
+/* PRESUPUESTO: la tarjeta de dirección no se dibuja; Observaciones toma su
+   lugar al lado de "Pedir para" en vez de dejar ese hueco. */
+.is-presupuesto #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > .ship-row:has(#shippingSelect) > .ship-card:not(#shipCardEntrega) {
+  grid-column: 2;
+}
+
+/* Todo lo demás (fecha estimada, deuda, clienteNuevo, paymentRow, cart-total)
+   ocupa toda la fila */
+#carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #entregaEstimada,
+#carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #deudaAviso,
 #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #clienteNuevoRow,
 #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #paymentRow,
 #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > .cart-total {
@@ -10876,9 +10909,9 @@ body.is-vendor-user.is-vendor-own-mode #menuAnalisisMobile {
     grid-template-columns: 1fr;
   }
   #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > #customerSelectorCart,
-  #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > .ship-row:has(#shippingSelect) {
+  #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) #shipCardEntrega,
+  #carrito .cart-2col .cart-col-left:has(#customerSelectorCart) > .ship-row:has(#shippingSelect) > .ship-card {
     grid-column: 1;
-    grid-row: auto;
   }
 }
 
