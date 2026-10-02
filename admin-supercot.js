@@ -3740,12 +3740,16 @@
         // create-super-order: valida el JWT del admin LK e inserta con
         // service_role, devolviendo el id bigint real.
         try {
+          // Tomás Gonzalez, 02/10/2026: el `apikey` tiene que ser el de CHEF. Desde el
+          // 11/09 (claves legacy → sb_publishable) acá iba la de LK y el gateway de Chef
+          // contestaba 401 "Invalid API key" ANTES de llegar a la función. El JWT del
+          // admin de LK va en Authorization y lo valida create-super-order (verify_jwt off).
           var coResp = await fetch(CHEF_CREATE_ORDER_URL, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: "Bearer " + authToken,
-              apikey: apiKey,
+              apikey: CHEF_KEY,
             },
             body: JSON.stringify({
               customer_id: state.customer.id,
@@ -3769,18 +3773,19 @@
           }
           orderId = coData.order_id;
         } catch (coErr) {
-          // Fallback: order_number sintetico (red de seguridad). Ojo: no entra
-          // al reporte Chef automatico, hay que asignar N° a mano.
-          console.warn(
-            "scot Chef create-super-order fallo, usando order_number sintetico:",
-            coErr && (coErr.message || coErr),
+          // Tomás Gonzalez, 02/10/2026: SE CORTA, ya no hay order_number sintético.
+          // El "CHEF-<SUPER>-<fecha>" mandaba el pedido sólo a la hoja "Pedidos CH" y
+          // decía "subido": no existía en la base de Chef, así que Gestión (que lee de
+          // ahí) nunca lo veía. Pasó con TODA OC de súper de Chef desde el 11/09. Ahora
+          // no se manda nada y se puede reintentar.
+          var coMsg = (coErr && (coErr.message || coErr)) || "error desconocido";
+          console.error("scot Chef create-super-order fallo:", coMsg);
+          window.alert(
+            "⛔ El pedido NO se creó en Chef (" + coMsg + ").\n\n" +
+              "No se mandó a la hoja ni va a llegar a Gestión. Reintentá en un rato; " +
+              "si vuelve a fallar, avisá a sistemas.",
           );
-          var ts = new Date()
-            .toISOString()
-            .replace(/[-:T]/g, "")
-            .slice(0, 14);
-          orderId =
-            "CHEF-" + state.superKey.toUpperCase() + "-" + ts;
+          throw new Error("El pedido no se creó en Chef: " + coMsg);
         }
       } else {
         var rpcResultLk = await dbClient.rpc("submit_order_fast", {

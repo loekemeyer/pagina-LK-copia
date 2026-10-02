@@ -19,6 +19,8 @@
  *   F. el pedido de Cencosud se sube como de CHEF (Pedidos CH, empresa CH) y cada código
  *      lleva L al final (816E → 816EL); Dorinka y las cadenas LK, sin L. Es lo que después
  *      toma Gestión por gv_pedidos_web_np_chef (NP CH, artículo con L → góndola LK).
+ *   G. el pedido se CREA en la base de Chef: create-super-order recibe el apikey de Chef y,
+ *      si falla, el admin corta en vez de inventar un número que sólo llega a la hoja.
  *
  * Verificado contra el admin-supercot.js anterior: falla 0, A, A2, B y D (C y E ya andaban).
  *
@@ -129,6 +131,19 @@ async function correr(chefResp, rpcResp) {
   ok(/target_sheet:\s*isChef \? "Pedidos CH"/.test(sub) && /empresa:\s*isChef \? "CH"/.test(sub) &&
      /cod_art:\s*outCod\(it\.codLk\)/.test(sub),
      "F4. el sheets_payload va a «Pedidos CH», empresa CH, con los códigos de outCod");
+
+  // G — Tomás Gonzalez, 02/10/2026: "llegó bien el pedido de Jumbo en Chef pero no lo veo
+  // en la PPP". Desde el 11/09 el admin le mandaba a create-super-order (proyecto CHEF) el
+  // `apikey` de LK; el gateway de Chef contestaba 401 "Invalid API key" y el admin caía a un
+  // número sintético CHEF-CENCOSUD-<fecha>: el pedido iba a la hoja y decía "subido", pero no
+  // existía en la base de Chef, de donde lo lee Gestión.
+  const iCo = sub.indexOf("fetch(CHEF_CREATE_ORDER_URL");
+  const coFetch = iCo < 0 ? "" : sub.slice(iCo, sub.indexOf("body:", iCo));
+  ok(/apikey:\s*CHEF_KEY\b/.test(coFetch),
+     "G1. create-super-order recibe el apikey de CHEF, no el de LK");
+  ok(!/"CHEF-"\s*\+\s*state\.superKey/.test(sub) &&
+     /throw new Error\("El pedido no se creó en Chef/.test(sub),
+     "G2. si Chef no crea el pedido, se corta (sin número sintético que vaya sólo a la hoja)");
 
   if (fallas) {
     console.log("\n✗ " + fallas + " chequeo(s) en rojo");
