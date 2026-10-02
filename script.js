@@ -595,68 +595,97 @@ window.syncFotosMenuItem = syncFotosMenuItem;
 const VIDEO_BUCKET = "products-videos";
 const VIDEO_BASE = `${SUPABASE_URL}/storage/v1/object/public/${VIDEO_BUCKET}/`;
 let PRODUCT_VIDEO_MAP = null; // Map cod -> nombre de archivo (o null si no cargó)
+// Versión WEB liviana de cada video (Gastón, 02/10/2026): la grilla reproduce
+// "preview/<cod>.mp4" (H.264 ~480px, < 1 MB) y el botón Descargar baja el
+// ORIGINAL "<cod>.mp4" en calidad máxima. Si un producto no tiene versión web,
+// la grilla cae al original (más pesado, pero se ve igual).
+const VIDEO_WEB_DIR = "preview";
+let PRODUCT_VIDEO_WEB_MAP = null; // Map cod -> nombre de archivo dentro de preview/
 let _productVideoLoading = null;
 let _crFavs = new Set(); // cods marcados como favoritos por este usuario
 let _crFiltro = "todos"; // 'todos' | 'favoritos'
 
-// Lista el bucket de videos y arma el mapa cod -> archivo (prefiere .mp4).
+// Lista una carpeta del bucket y arma el mapa cod -> archivo (prefiere .mp4).
+async function _crListarVideos(prefix) {
+  const map = new Map();
+  const pageSize = 1000;
+  let offset = 0;
+  for (let guard = 0; guard < 20; guard++) {
+    const resp = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/list/${VIDEO_BUCKET}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${
+            currentSession?.access_token || SUPABASE_ANON_KEY
+          }`,
+        },
+        body: JSON.stringify({
+          prefix,
+          limit: pageSize,
+          offset,
+          sortBy: { column: "name", order: "asc" },
+        }),
+      },
+    );
+    if (!resp.ok) break;
+    const rows = await resp.json();
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    rows.forEach((r) => {
+      const name = r && r.name;
+      if (!name || !/\.\w+$/.test(name)) return; // ignora carpetas / placeholders
+      const cod = name.replace(/\.\w+$/, "").trim();
+      if (!cod) return;
+      const prev = map.get(cod);
+      // Si ya hay uno, priorizar .mp4 sobre otros formatos.
+      if (!prev || (/\.mp4$/i.test(name) && !/\.mp4$/i.test(prev))) {
+        map.set(cod, name);
+      }
+    });
+    if (rows.length < pageSize) break;
+    offset += pageSize;
+  }
+  return map;
+}
+
+// Lista el bucket de videos: originales (raíz) y versiones web (preview/).
 async function loadProductVideoManifest(force) {
   if (PRODUCT_VIDEO_MAP && !force) return PRODUCT_VIDEO_MAP;
   if (_productVideoLoading && !force) return _productVideoLoading;
   _productVideoLoading = (async () => {
-    const map = new Map();
+    let map = new Map();
+    let web = new Map();
     try {
-      const pageSize = 1000;
-      let offset = 0;
-      for (let guard = 0; guard < 20; guard++) {
-        const resp = await fetch(
-          `${SUPABASE_URL}/storage/v1/object/list/${VIDEO_BUCKET}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${
-                currentSession?.access_token || SUPABASE_ANON_KEY
-              }`,
-            },
-            body: JSON.stringify({
-              prefix: "",
-              limit: pageSize,
-              offset,
-              sortBy: { column: "name", order: "asc" },
-            }),
-          },
-        );
-        if (!resp.ok) break;
-        const rows = await resp.json();
-        if (!Array.isArray(rows) || rows.length === 0) break;
-        rows.forEach((r) => {
-          const name = r && r.name;
-          if (!name || !/\.\w+$/.test(name)) return; // ignora carpetas / placeholders
-          const cod = name.replace(/\.\w+$/, "").trim();
-          if (!cod) return;
-          const prev = map.get(cod);
-          // Si ya hay uno, priorizar .mp4 sobre otros formatos.
-          if (!prev || (/\.mp4$/i.test(name) && !/\.mp4$/i.test(prev))) {
-            map.set(cod, name);
-          }
-        });
-        if (rows.length < pageSize) break;
-        offset += pageSize;
-      }
+      const [m, w] = await Promise.all([
+        _crListarVideos(""),
+        // Sin versiones web la galería anda igual con los originales.
+        _crListarVideos(VIDEO_WEB_DIR).catch(() => new Map()),
+      ]);
+      map = m;
+      web = w;
     } catch (e) {
       // Silencioso: sin manifest la galería queda vacía.
     }
     PRODUCT_VIDEO_MAP = map;
+    PRODUCT_VIDEO_WEB_MAP = web;
     return map;
   })();
   return _productVideoLoading;
 }
 
+// URL del ORIGINAL (es lo que se descarga).
 function videoUrlDeCod(cod) {
   const name = PRODUCT_VIDEO_MAP && PRODUCT_VIDEO_MAP.get(String(cod));
   return name ? VIDEO_BASE + encodeURIComponent(name) : null;
+}
+
+// URL de lo que se REPRODUCE en la grilla: la versión web si existe, si no el original.
+function videoWebUrlDeCod(cod) {
+  const web = PRODUCT_VIDEO_WEB_MAP && PRODUCT_VIDEO_WEB_MAP.get(String(cod));
+  if (web) return VIDEO_BASE + VIDEO_WEB_DIR + "/" + encodeURIComponent(web);
+  return videoUrlDeCod(cod);
 }
 
 // Muestra "Contenido para tus redes" a cualquier usuario logueado.
@@ -785,10 +814,15 @@ function crRender() {
       })();
       const fav = _crFavs.has(cod);
       const nombre = String(p.description || "").replace(/"/g, "&quot;");
+      // La grilla reproduce la versión WEB (liviana); Descargar baja el ORIGINAL.
+      // Sin autoplay ni precarga: arranca sólo el que está a la vista
+      // (_crObservarVideos), así abrir la galería no baja todos los videos.
+      const webUrl = vUrl ? videoWebUrlDeCod(cod) : null;
+      const tieneWeb = !!(PRODUCT_VIDEO_WEB_MAP && PRODUCT_VIDEO_WEB_MAP.get(cod));
       const media = vUrl
-        ? `<video class="cr-video" controls autoplay muted loop playsinline preload="metadata"${
+        ? `<video class="cr-video" controls muted loop playsinline preload="none"${
             thumb ? ` poster="${thumb}"` : ""
-          } src="${vUrl}"></video>`
+          } src="${webUrl}"></video>`
         : `<div class="cr-novideo">${
             thumb ? `<img src="${thumb}" alt="" loading="lazy">` : ""
           }<span>Sin video</span></div>`;
@@ -796,15 +830,20 @@ function crRender() {
         fav ? "Quitar de favoritos" : "Marcar favorito"
       }" aria-pressed="${fav}" onclick="crToggleFav('${cod}', this)">★</button>`;
       const dlBtn = vUrl
-        ? `<button type="button" class="cr-dl" onclick="crDescargarVideo('${cod}', this)">Descargar</button>`
+        ? `<button type="button" class="cr-dl" title="Descarga el video en calidad máxima" onclick="crDescargarVideo('${cod}', this)">Descargar</button>`
         : "";
       const adminBox = isAdmin
         ? `<div class="cr-admin">
-             <label class="cr-upload">
-               <input type="file" accept="video/mp4,video/quicktime,video/webm" onchange="crSubirVideo('${cod}', this)">
+             <label class="cr-upload" title="Original en calidad máxima (MP4 H.264): es lo que se descarga">
+               <input type="file" accept="video/mp4" onchange="crSubirVideo('${cod}', this)">
                <span>${vUrl ? "Reemplazar" : "Subir video"}</span>
              </label>
+             ${vUrl ? `<label class="cr-upload cr-upload-web" title="Versión liviana para mirar en la página (MP4 H.264, menos de 5 MB)">
+               <input type="file" accept="video/mp4" onchange="crSubirVideoWeb('${cod}', this)">
+               <span>${tieneWeb ? "Reemplazar web" : "Subir versión web"}</span>
+             </label>` : ""}
              ${vUrl ? `<button type="button" class="cr-del" onclick="crEliminarVideo('${cod}', this)">Borrar</button>` : ""}
+             ${vUrl && !tieneWeb ? `<div class="cr-sinweb">Sin versión web: se muestra el original</div>` : ""}
            </div>`
         : "";
       return `
@@ -818,8 +857,77 @@ function crRender() {
         </div>`;
     })
     .join("");
+  _crObservarVideos(grid);
 }
 window.crRender = crRender;
+
+// Reproduce (muteado, en loop) sólo los videos que están a la vista y pausa
+// los que salen. Con preload="none" el navegador no baja nada hasta acá.
+let _crVideoObs = null;
+function _crObservarVideos(grid) {
+  if (_crVideoObs) {
+    try { _crVideoObs.disconnect(); } catch (e) {}
+    _crVideoObs = null;
+  }
+  const vids = grid ? grid.querySelectorAll("video.cr-video") : [];
+  if (!vids.length) return;
+  if (typeof IntersectionObserver !== "function") {
+    // Navegador sin IntersectionObserver: se comporta como antes.
+    vids.forEach((v) => {
+      v.autoplay = true;
+      try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    });
+    return;
+  }
+  _crVideoObs = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((en) => {
+        const v = en.target;
+        if (en.isIntersecting) {
+          try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+        } else {
+          try { v.pause(); } catch (e) {}
+        }
+      });
+    },
+    { threshold: 0.5 },
+  );
+  vids.forEach((v) => _crVideoObs.observe(v));
+}
+
+// HEVC (H.265, el formato "Alta eficiencia" del iPhone) no se reproduce en
+// todos los navegadores (Firefox, PCs sin aceleración, Android viejos). Se
+// busca la marca del códec ('hvc1'/'hev1') al principio y al final del archivo,
+// donde la cámara deja la caja moov.
+async function _crEsHevc(file) {
+  try {
+    const TRAMO = 4 * 1024 * 1024;
+    const partes = [file.slice(0, TRAMO)];
+    if (file.size > TRAMO) partes.push(file.slice(Math.max(0, file.size - TRAMO)));
+    for (const parte of partes) {
+      const buf = new Uint8Array(await parte.arrayBuffer());
+      for (let i = 0; i + 3 < buf.length; i++) {
+        if (buf[i] !== 0x68 || buf[i + 3] !== 0x31) continue;              // h···1
+        if (buf[i + 1] === 0x76 && buf[i + 2] === 0x63) return true;      // hvc1
+        if (buf[i + 1] === 0x65 && buf[i + 2] === 0x76) return true;      // hev1
+      }
+    }
+  } catch (e) {}
+  return false;
+}
+
+// Control común de los dos uploads: MP4 y H.264. Devuelve el motivo si no sirve.
+async function _crVideoNoCompatible(file) {
+  if (!file) return "No se eligió ningún archivo.";
+  const esMp4 = /\.mp4$/i.test(file.name || "") || file.type === "video/mp4";
+  if (!esMp4) {
+    return "El video tiene que ser MP4 (H.264): es el único formato que se reproduce en todos los celulares y computadoras. Un .mov o .webm no anda en todos lados.";
+  }
+  if (await _crEsHevc(file)) {
+    return "Este video está en HEVC (H.265, el formato \"Alta eficiencia\" del iPhone) y no se reproduce en todos los dispositivos. Pasalo a MP4 H.264 antes de subirlo, o grabá con el iPhone en Ajustes → Cámara → Formatos → \"Más compatible\".";
+  }
+  return null;
+}
 
 // Marca/desmarca favorito (persiste por usuario en Supabase).
 async function crToggleFav(cod, btn) {
@@ -898,12 +1006,20 @@ async function crDescargarVideo(cod, btn) {
 window.crDescargarVideo = crDescargarVideo;
 
 // ---- Admin: subir / reemplazar / borrar ----
+// Sube el ORIGINAL (calidad máxima, es lo que se descarga). Como la versión web
+// vieja ya no corresponde al video nuevo, se borra: hasta subir la nueva, la
+// grilla muestra el original.
 async function crSubirVideo(cod, input) {
   if (!isAdmin) return;
   const file = input && input.files && input.files[0];
   if (!file) return;
-  const ext = (file.name.match(/\.\w+$/) || [".mp4"])[0].toLowerCase();
-  const dest = String(cod) + ext;
+  const motivo = await _crVideoNoCompatible(file);
+  if (motivo) {
+    window.alert(motivo);
+    input.value = "";
+    return;
+  }
+  const dest = String(cod) + ".mp4";
   const item = input.closest(".cr-item");
   if (item) item.classList.add("cr-busy");
   try {
@@ -914,11 +1030,17 @@ async function crSubirVideo(cod, input) {
     }
     const { error } = await supabaseClient.storage
       .from(VIDEO_BUCKET)
-      .upload(dest, file, { upsert: true, contentType: file.type || undefined });
+      .upload(dest, file, { upsert: true, contentType: "video/mp4" });
     if (error) throw error;
     if (!PRODUCT_VIDEO_MAP) PRODUCT_VIDEO_MAP = new Map();
     PRODUCT_VIDEO_MAP.set(String(cod), dest);
-    if (typeof showToast === "function") showToast("Video subido: " + cod);
+    const web = PRODUCT_VIDEO_WEB_MAP && PRODUCT_VIDEO_WEB_MAP.get(String(cod));
+    if (web) {
+      await supabaseClient.storage.from(VIDEO_BUCKET).remove([VIDEO_WEB_DIR + "/" + web]);
+      PRODUCT_VIDEO_WEB_MAP.delete(String(cod));
+    }
+    if (typeof showToast === "function")
+      showToast("Video subido: " + cod + (web ? " · subí de nuevo la versión web" : ""));
     crRender();
   } catch (e) {
     if (typeof showToast === "function")
@@ -928,17 +1050,59 @@ async function crSubirVideo(cod, input) {
 }
 window.crSubirVideo = crSubirVideo;
 
+// Sube la versión WEB liviana (la que se reproduce en la grilla).
+async function crSubirVideoWeb(cod, input) {
+  if (!isAdmin) return;
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const motivo = await _crVideoNoCompatible(file);
+  if (motivo) {
+    window.alert(motivo);
+    input.value = "";
+    return;
+  }
+  const MAX_WEB = 5 * 1024 * 1024;
+  if (file.size > MAX_WEB &&
+      !window.confirm("La versión web pesa " + (file.size / 1048576).toFixed(1).replace(".", ",") +
+        " MB. Conviene que pese menos de 5 MB para que la página cargue rápido. ¿Subirla igual?")) {
+    input.value = "";
+    return;
+  }
+  const name = String(cod) + ".mp4";
+  const item = input.closest(".cr-item");
+  if (item) item.classList.add("cr-busy");
+  try {
+    const { error } = await supabaseClient.storage
+      .from(VIDEO_BUCKET)
+      .upload(VIDEO_WEB_DIR + "/" + name, file, { upsert: true, contentType: "video/mp4" });
+    if (error) throw error;
+    if (!PRODUCT_VIDEO_WEB_MAP) PRODUCT_VIDEO_WEB_MAP = new Map();
+    PRODUCT_VIDEO_WEB_MAP.set(String(cod), name);
+    if (typeof showToast === "function") showToast("Versión web subida: " + cod);
+    crRender();
+  } catch (e) {
+    if (typeof showToast === "function")
+      showToast("Error al subir: " + (e?.message || e));
+    if (item) item.classList.remove("cr-busy");
+  }
+}
+window.crSubirVideoWeb = crSubirVideoWeb;
+
 async function crEliminarVideo(cod, btn) {
   if (!isAdmin) return;
   const name = PRODUCT_VIDEO_MAP && PRODUCT_VIDEO_MAP.get(String(cod));
   if (!name) return;
   if (!window.confirm("¿Borrar el video del producto " + cod + "?")) return;
   try {
+    const web = PRODUCT_VIDEO_WEB_MAP && PRODUCT_VIDEO_WEB_MAP.get(String(cod));
+    const borrar = [name];
+    if (web) borrar.push(VIDEO_WEB_DIR + "/" + web);
     const { error } = await supabaseClient.storage
       .from(VIDEO_BUCKET)
-      .remove([name]);
+      .remove(borrar);
     if (error) throw error;
     PRODUCT_VIDEO_MAP.delete(String(cod));
+    if (web) PRODUCT_VIDEO_WEB_MAP.delete(String(cod));
     if (typeof showToast === "function") showToast("Video borrado: " + cod);
     crRender();
   } catch (e) {
