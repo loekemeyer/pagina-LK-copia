@@ -136,6 +136,20 @@ async function correr(src, archivo, fn, aux, args, respuesta, conSesion) {
   ok(/error:\s*uErr\s*}\s*=\s*await admin\.auth\.admin\.updateUserById/.test(edgeSrc) && /if \(uErr\)/.test(edgeSrc),
     "I. «Reparar Auth» mira el error de updateUserById (no dice «sincronizado» si falló)");
 
+  // J. «Reparar Auth» no prueba el PIN de TODOS los clientes con login sin preguntar
+  //    (~1.237 ingresos, choca con el límite por IP y los "rate" se pierden en silencio).
+  //    Sólo LK tiene esa fase; en Chef el botón repara sólo los que no tienen login.
+  const iRep = adminSrc.indexOf('getElementById("repairAuthBtn")');
+  if (iRep >= 0 && adminSrc.indexOf("_repairTestPin(", iRep) >= 0) {
+    const rep = adminSrc.slice(iRep, adminSrc.indexOf("// ---- VERIFICAR PINES", iRep));
+    const iPrompt = rep.indexOf("window.prompt(");
+    const iLoop = rep.indexOf("_repairTestPin(");
+    ok(iPrompt > 0 && iPrompt < iLoop && /conAuthTodos/.test(rep),
+      "J. «Reparar Auth» pregunta a quién revisar el PIN antes de probar ingresos");
+  } else {
+    console.log("  · J. (este admin no prueba PINes en «Reparar Auth»)");
+  }
+
   console.log(fallas ? "\nROJO — " + fallas + " fallas" : "\nVERDE");
   process.exit(fallas ? 1 : 0);
 })();

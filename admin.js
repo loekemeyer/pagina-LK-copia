@@ -1695,9 +1695,32 @@ document
       });
 
       // Fase 2: clientes CON auth_user_id — detectar PINes rotos
-      var conAuth = allClientes.filter(function (c) {
+      var conAuthTodos = allClientes.filter(function (c) {
         return c.auth_user_id && c.cuit && c.pin && cleanCuit(c.cuit).length >= 10;
       });
+      // 02/10 (Tomás Gonzalez, problema 679): probar el PIN entrando con CADA cliente son
+      // ~1.237 ingresos: tarda cerca de una hora y choca con el límite de ingresos por IP de
+      // Auth (los que dan "rate" no se cuentan como rotos, así que se pierden en silencio).
+      // Se elige a quiénes revisar; los SIN login se reparan siempre.
+      var elegir = window.prompt(
+        "Reparar Auth: los " + sinAuth.length + " clientes SIN login se reparan siempre.\n\n" +
+          "¿Revisar también el PIN de clientes que YA tienen login?\n" +
+          "· Escribí sus códigos separados por coma (ej: 3924)\n" +
+          "· * = los " + conAuthTodos.length + " (tarda mucho y puede chocar con el límite de ingresos)\n" +
+          "· Vacío = ninguno",
+        "",
+      );
+      if (elegir === null) return; // Cancelar: no se hace nada
+      elegir = String(elegir).trim();
+      var conAuth;
+      if (elegir === "*") {
+        conAuth = conAuthTodos;
+      } else {
+        var codsElegidos = elegir.split(/[\s,;]+/).filter(Boolean);
+        conAuth = conAuthTodos.filter(function (c) {
+          return codsElegidos.indexOf(String(c.cod_cliente)) >= 0;
+        });
+      }
       var pinRotos = [];
       for (var k = 0; k < conAuth.length; k++) {
         btn.textContent = "Verificando PINes " + (k + 1) + "/" + conAuth.length + "...";
@@ -1716,7 +1739,11 @@ document
 
       var totalArreglar = sinAuth.length + pinRotos.length;
       if (!totalArreglar) {
-        toast("Todos los clientes tienen auth_user_id y PINes sincronizados", "success");
+        toast(
+          "Nada que reparar: ningún cliente sin login" +
+            (conAuth.length ? " y los " + conAuth.length + " revisados tienen el PIN bien" : ""),
+          "success",
+        );
         return;
       }
 
