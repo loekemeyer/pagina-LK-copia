@@ -16495,6 +16495,38 @@ body { top: 0 !important; }
   .exp-btn { margin-left: auto; }
 }
 
+/* VENDEDOR: la línea del expreso va COMPACTA (Gastón, 02/10/2026). En tres
+   renglones (rótulo / nombre / dirección) empujaba Método de pago y el Total
+   del pedido quedaba fuera de la pantalla. Ahora son dos renglones bajos:
+   "EXPRESO Carnevali" con el botón al lado, y la dirección del galpón abajo,
+   chica. La dirección NO se recorta: es a dónde va el camión. La nota "según
+   la dirección de tu ficha" es para el cliente y al vendedor no se le muestra.
+   El cliente la sigue viendo como siempre. */
+/* min-width:0 en la tarjeta y en el recuadro: con una dirección larga, sin eso
+   el contenido le impone su ancho a la columna (1fr = minmax(auto,1fr)) y la
+   tarjeta de Dirección se mete arriba del listado. */
+body.is-vendor-user #carrito #shipCardEntrega { min-width: 0; }
+body.is-vendor-user #carrito .exp-box {
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 4px 3px 8px;
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+body.is-vendor-user #carrito .exp-txt {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 5px;
+  row-gap: 0;
+}
+body.is-vendor-user #carrito .exp-dir,
+body.is-vendor-user #carrito .exp-pend { flex-basis: 100%; font-size: 11px; }
+body.is-vendor-user #carrito .exp-nota { display: none; }
+body.is-vendor-user #carrito .exp-btn { padding: 2px 8px; font-size: 11.5px; }
+
 /* =========================================================================
    MODO PRESUPUESTO — cliente de exportación (customers.modo_presupuesto)
    =========================================================================

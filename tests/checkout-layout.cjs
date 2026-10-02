@@ -33,6 +33,9 @@
  *     BARRIO (Liao Shuting, San Antonio de Padua). El expreso de verdad va
  *     debajo de la dirección de entrega, como para cualquier cliente. Chequeo G.
  *     (Chef no tiene esa tarjeta de vendedor: G se saltea solo.)
+ *   - 02/10 (Gastón, v2.3.515): para el vendedor se va la línea "📍 <localidad>"
+ *     debajo del expreso, y la fila del expreso queda en dos renglones bajos
+ *     (~44 px contra ~98) para que el Total del pedido entre en la pantalla.
  *
  * ⚠ Es el MISMO archivo en LK (`pagina-LK-copia`) y en Chef (`paginach`):
  *   Chef recibió el cambio en la v2.0.90, el alto de las tarjetas en la v2.0.91 y
@@ -306,6 +309,7 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
     if (typeof updateVendor10006Info !== "function") return null;
     const realVend = window.isActualVendor, realGeo = window.loadCustomerGeo;
     window.isActualVendor = () => true;
+    document.body.classList.add("is-vendor-user");
     const prev = customerProfile;
     customerProfile = { id: "c2", business_name: "Liao Shuting", cuit: "23945386924", dto_vol: 0 };
     const sel = document.getElementById("shippingSelect");
@@ -334,17 +338,24 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
       window._expSyncUI();
       const card = document.querySelector("#customerSelectorCart > .ship-card");
       const eb = document.getElementById("expresoBox");
-      const geo = document.getElementById("v10006ShipGeo");
+      const dirCard = document.getElementById("shipCardEntrega").getBoundingClientRect();
+      const ebr = eb.getBoundingClientRect();
+      const dirEl = eb.querySelector(".exp-dir");
       return {
         info: !!document.getElementById("v10006CustInfo"),
         textoPedirPara: card ? card.textContent : "",
         expreso: eb.hidden ? "" : eb.textContent,
         expresoEnDir: !!eb.closest("#shipCardEntrega"),
-        geo: geo && geo.style.display !== "none" ? geo.textContent.trim() : "",
+        geo: !!document.getElementById("v10006ShipGeo"),
+        altoExp: eb.hidden ? 0 : Math.round(ebr.height),
+        desborda: !eb.hidden && ebr.right > dirCard.right + 1,
+        dirEntera: !dirEl || dirEl.scrollWidth <= dirEl.clientWidth + 1,
+        title: eb.title || "",
       };
     };
     const r = { padua: await ver("1"), interior: await ver("2") };
     window.isActualVendor = realVend; window.loadCustomerGeo = realGeo;
+    document.body.classList.remove("is-vendor-user");
     customerProfile = prev;
     _v10006Remove();
     document.getElementById("expresoBox").hidden = true;
@@ -357,9 +368,18 @@ const PRODS = Array.from({ length: EN_CARRITO + 12 }, (_, i) => ({
   }
   ok(g.padua.expreso === "",
     "G: Liao Shuting (San Antonio de Padua, GBA) muestra un expreso que no tiene: " + JSON.stringify(g.padua.expreso));
-  ok(/San Antonio de Padua/.test(g.padua.geo), "G: no quedó la localidad 📍 bajo la dirección (" + g.padua.geo + ")");
+  ok(!g.padua.geo && !g.interior.geo, "G: volvió la línea \"📍 <localidad>\" debajo de la dirección (v2.3.515 la sacó)");
   ok(/Expreso De A 4 Bahia/.test(g.interior.expreso) && g.interior.expresoEnDir,
     "G: con expreso real, no aparece debajo de la dirección de entrega (" + JSON.stringify(g.interior) + ")");
+  // Para el vendedor el expreso va compacto (2 renglones bajos; con un nombre largo
+  // como "Expreso De A 4 Bahia" el nombre baja un renglón: ~59 px), sin salirse de la
+  // tarjeta y con la dirección del galpón entera (es a dónde va el camión).
+  ok(g.interior.altoExp > 0 && g.interior.altoExp <= 64,
+    "G: la fila del expreso del vendedor no quedó compacta (" + g.interior.altoExp + " px; antes ~98)");
+  ok(!g.interior.desborda, "G: la fila del expreso se sale de la tarjeta de Dirección");
+  ok(g.interior.dirEntera, "G: la dirección del galpón quedó recortada en la fila del expreso");
+  ok(/Expreso De A 4 Bahia/.test(g.interior.title) && /Cooke 3255/.test(g.interior.title),
+    "G: el recuadro del expreso no tiene el texto entero en el title (" + g.interior.title + ")");
   }
 
   /* ── D. CON "PEDIR PARA": las dos tarjetas lado a lado y a la misma altura,

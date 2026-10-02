@@ -7005,6 +7005,12 @@ function _expSyncUI() {
     }
   }
   box.innerHTML = html;
+  // Para el vendedor la línea va compacta y recortada (css: body.is-vendor-user
+  // .exp-box): el texto entero queda en el title.
+  const txt = box.querySelector(".exp-txt");
+  box.title = txt
+    ? Array.from(txt.children).map((c) => c.textContent.trim()).filter(Boolean).join(" · ")
+    : "";
   box.hidden = false;
 }
 window._expSyncUI = _expSyncUI;
@@ -14924,8 +14930,8 @@ function buildBannerSucursal(banner, geoRows) {
   }
 }
 
-// Actualiza la localidad bajo la dirección de entrega para TODOS los
-// vendedores, y el selector de sucursal del banner SOLO para 10006.
+// Para cualquier vendedor sincroniza la sucursal elegida con el carrito; el
+// selector de sucursal del banner es SOLO para 10006.
 async function updateVendor10006Info() {
   // Info del carrito: cualquier vendedor real con un cliente elegido.
   if (!isActualVendor()) {
@@ -14985,36 +14991,11 @@ async function updateVendor10006Info() {
   var infoOld = document.getElementById("v10006CustInfo");
   if (infoOld) infoOld.remove();
 
-  // Punto 2: localidad (zona + provincia del mapa) bajo dirección de entrega.
-  var shipCard = shipSel ? shipSel.closest(".ship-card") : null;
-  if (shipCard) {
-    var geoEl = document.getElementById("v10006ShipGeo");
-    if (!geoEl) {
-      geoEl = document.createElement("div");
-      geoEl.id = "v10006ShipGeo";
-      geoEl.className = "v10006-geo";
-      shipCard.appendChild(geoEl);
-    }
-    if (activeGeo) {
-      var prov =
-        activeGeo.provincia && activeGeo.provincia !== "Sin provincia"
-          ? activeGeo.provincia
-          : "";
-      // CABA / Buenos Aires → mostrar localidad (barrio/partido).
-      // Otra provincia → mostrar solo la provincia.
-      var loc = activeGeo.localidad ? String(activeGeo.localidad).trim() : "";
-      var geoTxt =
-        prov === "CABA" || prov === "Buenos Aires" ? loc || prov : prov;
-      geoEl.innerHTML = geoTxt
-        ? '<span class="v10006-geo-pin" aria-hidden="true">📍</span> ' +
-          _csEscape(geoTxt)
-        : "";
-      geoEl.style.display = geoTxt ? "" : "none";
-    } else {
-      geoEl.innerHTML = "";
-      geoEl.style.display = "none";
-    }
-  }
+  // Punto 2 RETIRADO (Gastón, 02/10/2026): la línea "📍 <localidad>" debajo del
+  // expreso no va más. Repetía lo que ya dice la sucursal ("… - MdP") y le
+  // comía alto a la tarjeta: el vendedor no llegaba a ver el Total del pedido.
+  var geoOld = document.getElementById("v10006ShipGeo");
+  if (geoOld) geoOld.remove();
 }
 
 async function onLinkedCustomerSelected(opts) {
