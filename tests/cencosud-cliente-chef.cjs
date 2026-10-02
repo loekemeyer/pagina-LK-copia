@@ -16,6 +16,9 @@
  *   C. Chef SÍ lo devuelve → se usa ése y la RPC no se llama;
  *   D. la RPC trae la copia parcial → avisa (toast) y devuelve el cliente igual;
  *   E. la RPC falla → null (la card dice "no encontrado", no inventa un cliente).
+ *   F. el pedido de Cencosud se sube como de CHEF (Pedidos CH, empresa CH) y cada código
+ *      lleva L al final (816E → 816EL); Dorinka y las cadenas LK, sin L. Es lo que después
+ *      toma Gestión por gv_pedidos_web_np_chef (NP CH, artículo con L → góndola LK).
  *
  * Verificado contra el admin-supercot.js anterior: falla 0, A, A2, B y D (C y E ya andaban).
  *
@@ -89,6 +92,43 @@ async function correr(chefResp, rpcResp) {
 
   const e = await correr({ data: [], error: null }, { data: null, error: { message: "no autorizado" } });
   ok(e.c === null, "E. la RPC falla → null, no inventa un cliente");
+
+  // F — Tomás Gonzalez, 02/10/2026: "al hacer la conversión en Gestión-Virgilio, el pedido
+  // debe pasar a ser de Chef, y los códigos de los artículos se le agregan una L al final".
+  // El feed de Gestión (gv_pedidos_web_np_chef) toma empresa y códigos del sheets_payload que
+  // arma submitOrder, así que se corre ese pedazo con la config real de las cadenas.
+  const sub = (function () {
+    const i = src.indexOf("async function submitOrder(");
+    return i < 0 ? "" : src.slice(i, src.indexOf("\n  }\n", i));
+  })();
+  function fnSync(nombre) {
+    const i = src.indexOf("function " + nombre + "(");
+    return i < 0 ? "" : src.slice(i, src.indexOf("\n  }\n", i) + 4);
+  }
+  const mL = sub.match(/var addLSuffix = ([^;]+);/);
+  const mOut = sub.match(/function outCod\(cod\) \{[\s\S]*?\n      \}/);
+  function salida(superKey) {
+    return Function(
+      "SUPER_EMPRESA", "SUPER_USA_PRODUCTOS_CHEF", "state",
+      fnSync("isChefSuper") + fnSync("usesChefProducts") +
+        "var isChef = isChefSuper(state.superKey);\n" +
+        "var addLSuffix = " + (mL ? mL[1] : "false") + ";\n" +
+        "var SUPER_COD_MAP = { coto: { '505': '505I' } };\n" +
+        (mOut ? mOut[0] : "function outCod(c){return String(c);}") +
+        "\nreturn { isChef: isChef, cods: ['816E', '026', '102E'].map(outCod) };",
+    )({ cencosud: "chef", dorinka: "chef", coto: "lk" },
+      { cencosud: false, dorinka: true, coto: false }, { superKey: superKey });
+  }
+  const cen = salida("cencosud"), dor = salida("dorinka"), cot = salida("coto");
+  ok(!!mL && !!mOut, "F0. submitOrder tiene addLSuffix y outCod");
+  ok(cen.isChef && cen.cods.join(",") === "816EL,026L,102EL",
+     "F1. Cencosud: el pedido es de Chef y cada código lleva L (816E → 816EL)");
+  ok(dor.isChef && dor.cods.join(",") === "816E,026,102E",
+     "F2. Dorinka: es de Chef pero SIN L (sus artículos son de Chef)");
+  ok(!cot.isChef && cot.cods.join(",") === "816E,026,102E", "F3. una cadena LK (Coto): sin L");
+  ok(/target_sheet:\s*isChef \? "Pedidos CH"/.test(sub) && /empresa:\s*isChef \? "CH"/.test(sub) &&
+     /cod_art:\s*outCod\(it\.codLk\)/.test(sub),
+     "F4. el sheets_payload va a «Pedidos CH», empresa CH, con los códigos de outCod");
 
   if (fallas) {
     console.log("\n✗ " + fallas + " chequeo(s) en rojo");

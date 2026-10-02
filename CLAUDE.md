@@ -1243,6 +1243,16 @@ pedido — igual que el m3, que si llega tarde deja la NP armada sin volumen.
   Cencosud 779 = Cd Córdoba, 221 = Cd Cuyo, 5299 = Km 38,5). `loadChefCustomerLK` va **debajo
   de la línea 1882** por los rangos de `gen-krikos-parsers.sh` de Gestión. `sql/scot_chef_cliente_super.sql`,
   `tests/cencosud-cliente-chef.cjs`.
+- ⚠ **Y en la conversión a Gestión el pedido de Cencosud es de CHEF y cada código lleva L al final**
+  (Tomás Gonzalez, 02/10/2026: *"al hacer la conversión en Gestión-Virgilio, el pedido debe pasar a ser
+  de Chef, y los códigos de los artículos se le agregan una L al final"*). La cadena completa, verificada
+  ese día: `submitOrder` crea el pedido en Chef (`create-super-order`, hoja **Pedidos CH**, `empresa: CH`)
+  con `cod_art` = código LK + **L** (`addLSuffix = isChef && !usesChefProducts`: 816E → **816EL**, 026 →
+  **026L**) → `gv_pedidos_web_np_chef` lo toma del `sheets_payload` como `empresa = 'chef'` y **conserva la
+  L** (sólo la saca a los súper con `usa_productos_chef`, o sea Dorinka) → en Gestión es una **NP CH**, el
+  picking sale de la góndola **LK** (`pkStripL`) y el Excel ISIS va al ISIS de **Chef con la L** (así lo
+  factura ISIS Chef desde feb/2026: 031L, 816EL, 102EL…). **Dorinka NO lleva L** (sus artículos son de
+  Chef). Lo sostiene el bloque F de `tests/cencosud-cliente-chef.cjs`.
 - `krikos_inbox_list` y `krikos_inbox_resolver` son `SECURITY DEFINER` con chequeo de `admins`
   adentro y `EXECUTE` revocado a `PUBLIC`/`anon`. La tabla tiene RLS de solo lectura para admins
   (escribe únicamente `service_role`) y el bucket es privado con policy de lectura para admins.
