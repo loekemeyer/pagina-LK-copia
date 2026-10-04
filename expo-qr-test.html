@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" /><!-- privada: detrás de login o herramienta interna -->
 <title>Test QR Expo</title>
 <style>
   :root { color-scheme: light dark; }
@@ -173,7 +174,7 @@ function loadJsQR() {
   if (jsqrLoading) return jsqrLoading;
   jsqrLoading = new Promise(function (res, rej) {
     var s = document.createElement("script");
-    s.src = "jsqr.js?v=23522";              // debe estar en la misma carpeta (está en los 3 repos)
+    s.src = "jsqr.js?v=23523";              // debe estar en la misma carpeta (está en los 3 repos)
     s.onload = res; s.onerror = function () { rej(new Error("No se pudo cargar jsqr.js (¿está en la carpeta?)")); };
     document.head.appendChild(s);
   });

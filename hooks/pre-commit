@@ -38,7 +38,8 @@ if [ -f "version.js" ]; then
   # alguien hubiera puesto a mano. Resultado: se desplegaban estilos nuevos
   # y el navegador seguía sirviendo el CSS cacheado, sin ninguna señal de
   # que algo estaba mal.
-  find . -maxdepth 2 -name "*.html" -type f 2>/dev/null | while read -r html_file; do
+  # maxdepth 3: las fichas del catálogo viven en productos/articulo/ (nivel 3).
+  find . -maxdepth 3 -name "*.html" -not -path "./.git/*" -type f 2>/dev/null | while read -r html_file; do
     sed -i "s/\.js?v=[0-9a-zA-Z-]*/.js?v=$NEW_VERSION_PARAM/g" "$html_file"
     sed -i "s/\.css?v=[0-9a-zA-Z-]*/.css?v=$NEW_VERSION_PARAM/g" "$html_file"
     git add "$html_file"

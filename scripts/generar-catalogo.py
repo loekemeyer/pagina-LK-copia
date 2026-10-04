@@ -41,11 +41,43 @@ BASE_IMG = SUPABASE_URL + "/storage/v1/object/public/products-images/"
 IMG_PARAMS = ""  # se completa en main() con la fecha de la exportación
 
 WA_VENTAS = "5491131181021"
-V = "23400"  # ?v= de assets; el hook pre-commit lo sincroniza en cada commit
+def _v_actual():
+    """?v= de assets = versión de version.js sin puntos (2.3.522 -> 23522), el
+    mismo valor que pone el hook pre-commit. Antes era un literal que quedaba
+    viejo y cada regeneración desfasaba el cache-busting de las 20 páginas."""
+    try:
+        with open(os.path.join(RAIZ, "version.js"), encoding="utf-8") as f:
+            m = re.search(r'APP_VERSION = "(\d+)\.(\d+)\.(\d+)"', f.read())
+        return "".join(m.groups()) if m else "0"
+    except OSError:
+        return "0"
+
+
+V = _v_actual()  # el hook pre-commit lo vuelve a sincronizar en cada commit
 
 # Mientras no se publiquen (no están linkeadas desde el sitio ni en el
 # sitemap) van con noindex. Al publicar: NOINDEX = False y agregarlas al sitemap.
 NOINDEX = True
+
+# Fichas individuales: una URL estable por artículo, armada SOLO con el código.
+# El nombre cambia (se corrige una tilde, se renombra) y el código no, así que
+# la URL no se mueve. productos/articulo/<cod>.html
+SUB_ART = "articulo"
+
+# El único dato de MATERIAL que hay en la base es la subcategoría de Utensilios
+# (products.subcategory). No se deduce de ningún otro lado: si no está acá, la
+# ficha no declara material.
+MATERIAL_SUB = {
+    "Inoxidable": "Acero inoxidable",
+    "Silicona": "Silicona",
+    "Madera": "Madera",
+    "Nylon": "Nylon",
+    "Nylon Premium": "Nylon",
+}
+
+MARCA = {"@type": "Brand", "name": "Loekemeyer"}
+ORG_ID = DOMINIO + "/#organizacion"
+WEB_ID = DOMINIO + "/#sitio"
 
 
 def esc(s):
@@ -79,7 +111,7 @@ def wa_url(texto):
     return f"https://wa.me/{WA_VENTAS}?text={quote(texto)}"
 
 
-def head(titulo, descripcion, canonical, pref, extra_jsonld=None):
+def head(titulo, descripcion, canonical, pref, extra_jsonld=None, og_image=None, og_type="website"):
     robots = '<meta name="robots" content="noindex" /><!-- BORRADOR: quitar al publicar -->' if NOINDEX else ""
     jsonld = ""
     if extra_jsonld:
@@ -95,9 +127,12 @@ def head(titulo, descripcion, canonical, pref, extra_jsonld=None):
     <link rel="canonical" href="{canonical}" />
     <meta property="og:title" content="{esc(titulo)}" />
     <meta property="og:description" content="{esc(descripcion)}" />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content="{og_type}" />
     <meta property="og:url" content="{canonical}" />
-    <meta property="og:image" content="{DOMINIO}/img/img_landing.webp" />
+    <meta property="og:image" content="{og_image or DOMINIO + '/img/img_landing.webp'}" />
+    <meta property="og:site_name" content="Loekemeyer" />
+    <meta property="og:locale" content="es_AR" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/png" href="{pref}img/favicon.jpg" />
     <link rel="stylesheet" href="{pref}css/styles.index.css?v={V}" />
     <link rel="stylesheet" href="{pref}css/productos.css?v={V}" />
@@ -211,7 +246,11 @@ def bajada(cat):
     return " ".join(x for x in partes if x)
 
 
-def card(p):
+def url_art(cod, pref=""):
+    return f"{pref}{SUB_ART}/{quote(str(cod))}.html"
+
+
+def card(p, hnivel=3):
     """Una ficha del mosaico, para las páginas de línea.
 
     Adentro de una línea la ficha va en mosaico: el comercio reconoce el
@@ -226,11 +265,11 @@ def card(p):
     return f"""
           <article class="prod-card" id="p-{esc(p['cod'])}">
             <div class="prod-thumb">
-              <img src="{img_url(p)}" alt="{esc(p['nombre'])} Loekemeyer, código {esc(p['cod'])}" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='IMGFALLBACK'" />
+              <a href="{url_art(p['cod'])}" tabindex="-1"><img src="{img_url(p)}" alt="{esc(p['nombre'])} Loekemeyer, código {esc(p['cod'])}" width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src='IMGFALLBACK'" /></a>
             </div>
             <div class="prod-body">
               <p class="prod-cod">{esc(p['cod'])}{badge}</p>
-              <h3 class="prod-name">{esc(p['nombre'])}</h3>
+              <h{hnivel} class="prod-name"><a href="{url_art(p['cod'])}">{esc(p['nombre'])}</a></h{hnivel}>
               <p class="prod-meta">{uxb}</p>
               {sub}
               <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(p['cod'])}">Consultar disponibilidad</a>
@@ -238,10 +277,11 @@ def card(p):
           </article>"""
 
 
-def lista(ps):
+def lista(ps, hnivel=3):
     """Mosaico de fichas. Se llama lista() por compatibilidad con las tres
-    llamadas de pagina_categoria(); devuelve la grilla."""
-    return '<div class="prod-grid">' + "".join(card(p) for p in ps) + "\n        </div>"
+    llamadas de pagina_categoria(); devuelve la grilla. hnivel: h2 si la
+    página no tiene subsecciones (cuelga del H1), h3 si cuelga de un H2."""
+    return '<div class="prod-grid">' + "".join(card(p, hnivel) for p in ps) + "\n        </div>"
 
 
 def pagina_categoria(cat, todas):
@@ -255,8 +295,14 @@ def pagina_categoria(cat, todas):
         "@context": "https://schema.org",
         "@type": "CollectionPage",
         "name": cat["nombre"],
+        "description": bajada(cat),
         "url": canonical,
-        "isPartOf": {"@type": "WebSite", "name": "Loekemeyer Hnos S.R.L.", "url": DOMINIO + "/"},
+        "inLanguage": "es-AR",
+        "isPartOf": {"@type": "WebSite", "@id": WEB_ID, "name": "Loekemeyer", "url": DOMINIO + "/"},
+        "publisher": {"@id": ORG_ID},
+        "mainEntity": {"@type": "ItemList", "numberOfItems": n, "itemListElement": [
+            {"@type": "ListItem", "position": i + 1, "url": f"{DOMINIO}/{SALIDA}/{url_art(p['cod'])}",
+             "name": p["nombre"]} for i, p in enumerate(cat["productos"])]},
         "breadcrumb": {"@type": "BreadcrumbList", "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "Inicio", "item": DOMINIO + "/"},
             {"@type": "ListItem", "position": 2, "name": "Productos", "item": f"{DOMINIO}/{SALIDA}/"},
@@ -283,7 +329,7 @@ def pagina_categoria(cat, todas):
         if resto:
             cuerpo += f'<section class="prod-subsection" data-sub=""><h2 class="prod-subtitle">Otros <span class="prod-count">{len(resto)}</span></h2>{lista(resto)}</section>'
     else:
-        cuerpo += lista(cat["productos"])
+        cuerpo += lista(cat["productos"], 2)
 
     otras = "".join(
         f'<a href="{c["slug"]}.html">{esc(c["nombre"])}</a>' for c in todas if c["slug"] != slug)
@@ -324,8 +370,17 @@ def pagina_index(cats, total):
         "@context": "https://schema.org",
         "@type": "CollectionPage",
         "name": "Productos Loekemeyer",
+        "description": desc,
         "url": canonical,
-        "isPartOf": {"@type": "WebSite", "name": "Loekemeyer Hnos S.R.L.", "url": DOMINIO + "/"},
+        "inLanguage": "es-AR",
+        "isPartOf": {"@type": "WebSite", "@id": WEB_ID, "name": "Loekemeyer", "url": DOMINIO + "/"},
+        "publisher": {"@id": ORG_ID},
+        "breadcrumb": {"@type": "BreadcrumbList", "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Inicio", "item": DOMINIO + "/"},
+            {"@type": "ListItem", "position": 2, "name": "Productos", "item": canonical}]},
+        "mainEntity": {"@type": "ItemList", "numberOfItems": len(cats), "itemListElement": [
+            {"@type": "ListItem", "position": i + 1, "url": f"{DOMINIO}/{SALIDA}/{c['slug']}.html",
+             "name": c["nombre"]} for i, c in enumerate(cats)]},
     }
     # El índice vuelve al mosaico, pero cada cuadro muestra HASTA CUATRO
     # artículos de la línea, al estilo de WhatsApp, y el cuarto lleva el
@@ -378,6 +433,154 @@ def pagina_index(cats, total):
     </main>{footer(pref)}"""
 
 
+def frase_art(p, cat):
+    """El texto de la ficha sale SOLO de los datos: nombre, código, línea,
+    material (si la base lo tiene) y unidades por caja. No se inventan medidas,
+    usos ni características: la base no las tiene (products guarda el nombre
+    en `description` y nada más). Ojo: no dice que la empresa FABRICÓ este
+    artículo —hay importados (sufijo E) y el texto público no lo distingue—,
+    dice qué es la empresa."""
+    partes = [f"{p['nombre']} (código {p['cod']}) es un artículo de la línea {cat['nombre']} de Loekemeyer."]
+    mat = MATERIAL_SUB.get(p.get("subcategoria") or "")
+    if mat:
+        partes.append(f"Material: {mat.lower()}.")
+    if p.get("uxb"):
+        partes.append(f"Se vende por mayor en caja cerrada de {p['uxb']} unidades.")
+    partes.append("Loekemeyer Hnos S.R.L. es una empresa argentina de utensilios de cocina, fabricantes desde 1950.")
+    return " ".join(partes)
+
+
+def pagina_articulo(p, cat):
+    pref = "../../"
+    cod = p["cod"]
+    canonical = f"{DOMINIO}/{SALIDA}/{url_art(cod)}"
+    url_linea = f"{DOMINIO}/{SALIDA}/{cat['slug']}.html"
+    titulo = f"{p['nombre']} · Código {cod} · Loekemeyer"
+    desc = frase_art(p, cat)
+    mat = MATERIAL_SUB.get(p.get("subcategoria") or "")
+    foto = img_url(p)
+    prod_ld = {
+        "@type": "Product",
+        "@id": canonical + "#producto",
+        "name": p["nombre"],
+        "sku": cod,
+        "image": foto,
+        "description": desc,
+        "brand": MARCA,
+        "category": cat["nombre"],
+        "url": canonical,
+    }
+    if mat:
+        prod_ld["material"] = mat
+    if p.get("uxb"):
+        prod_ld["additionalProperty"] = [{"@type": "PropertyValue", "name": "Unidades por caja", "value": p["uxb"]}]
+    # Sin "offers": la web pública no tiene precio y no se inventa. Sin
+    # reviews ni ratings por la misma razón.
+    jsonld = {"@context": "https://schema.org", "@graph": [
+        prod_ld,
+        {"@type": "BreadcrumbList", "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Inicio", "item": DOMINIO + "/"},
+            {"@type": "ListItem", "position": 2, "name": "Productos", "item": f"{DOMINIO}/{SALIDA}/"},
+            {"@type": "ListItem", "position": 3, "name": cat["nombre"], "item": url_linea},
+            {"@type": "ListItem", "position": 4, "name": p["nombre"], "item": canonical}]},
+    ]}
+    badge = '<span class="prod-nuevo">NUEVO</span>' if p.get("badge") == "NUEVO" else ""
+    filas = [("Código", esc(cod)),
+             ("Línea", f'<a href="../{cat["slug"]}.html">{esc(cat["nombre"])}</a>')]
+    if p.get("subcategoria"):
+        filas.append(("Material" if mat else "Tipo", esc(mat or p["subcategoria"])))
+    filas.append(("Unidades por caja", esc(p["uxb"]) if p.get("uxb") else "Consultar"))
+    filas.append(("Marca", "Loekemeyer"))
+    dl = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in filas)
+    # Relacionados: los vecinos de la misma línea (misma subcategoría primero).
+    vec = [q for q in cat["productos"] if q["cod"] != cod]
+    vec.sort(key=lambda q: 0 if q.get("subcategoria") == p.get("subcategoria") else 1)
+    rel = "".join(
+        f'<li><a href="{quote(str(q["cod"]))}.html"><img src="{img_url(q)}" alt="{esc(q["nombre"])} Loekemeyer, código {esc(q["cod"])}" '
+        f'width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src=\'{pref}img/no-image.jpg\'" />'
+        f'<span class="prod-cod">{esc(q["cod"])}</span><span class="art-rel-nombre">{esc(q["nombre"])}</span></a></li>'
+        for q in vec[:6])
+    texto = f"Hola Loekemeyer, quiero consultar por el artículo {cod} {p['nombre']}."
+    return head(titulo, desc, canonical, pref, jsonld, og_image=foto, og_type="product") + f"""
+  <body class="prod-page">{topbar(pref, "productos")}
+    <main class="prod-main">
+      <div class="pub-wrap">
+        <nav class="prod-breadcrumb" aria-label="Ubicación">
+          <a href="{pref}index.html">Inicio</a> › <a href="../index.html">Productos</a> › <a href="../{cat['slug']}.html">{esc(cat['nombre'])}</a> › <span aria-current="page">{esc(p['nombre'])}</span>
+        </nav>
+        <article class="art-ficha">
+          <figure class="art-foto">
+            <img src="{foto}" alt="{esc(p['nombre'])} Loekemeyer, código {esc(cod)}" width="400" height="400" fetchpriority="high" onerror="this.onerror=null;this.src='{pref}img/no-image.jpg'" />
+          </figure>
+          <div class="art-datos">
+            <p class="prod-cod">CÓDIGO {esc(cod)}{badge}</p>
+            <h1>{esc(p['nombre'])}</h1>
+            <p class="art-desc">{esc(desc)}</p>
+            <dl class="art-tabla">{dl}</dl>
+            <a class="prod-cta art-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(cod)}">Consultar disponibilidad por WhatsApp →</a>
+          </div>
+        </article>
+        <section class="art-linea">
+          <h2>Sobre la línea {esc(cat['nombre'])}</h2>
+          <p>{esc(bajada(cat))}</p>
+          <p><a href="../{cat['slug']}.html">Ver los {len(cat['productos'])} artículos de {esc(cat['nombre'])}</a> · <a href="../index.html">Todo el catálogo</a></p>
+        </section>
+        {f'<section class="art-rel"><h2>Otros artículos de {esc(cat["nombre"])}</h2><ul class="art-rel-grid">{rel}</ul></section>' if rel else ''}
+      </div>
+    </main>{footer(pref)}"""
+
+
+def escribir_sitemap(cats, generado):
+    """sitemap.xml completo. Mientras NOINDEX esté en True, el catálogo NO entra
+    (sería contradecir el noindex de las propias páginas): queda como estaba,
+    con la home y el login mayorista. Al publicar entran índice, líneas y fichas."""
+    # lastmod: la fecha de la exportación para el catálogo (es cuando cambió el
+    # dato), ninguna para la home y el login. Poner "hoy" en cada corrida es
+    # mentirle al buscador, y aprende a ignorar el campo.
+    urls = [(DOMINIO + "/", "1.0", None), (DOMINIO + "/mayorista", "0.8", None)]
+    if not NOINDEX:
+        urls.append((f"{DOMINIO}/{SALIDA}/", "0.9", generado))
+        urls += [(f"{DOMINIO}/{SALIDA}/{c['slug']}.html", "0.8", generado) for c in cats]
+        urls += [(f"{DOMINIO}/{SALIDA}/{url_art(p['cod'])}", "0.6", generado) for c in cats for p in c["productos"]]
+    cuerpo = "".join(f"  <url>\n    <loc>{u}</loc>\n" + (f"    <lastmod>{lm}</lastmod>\n" if lm else "")
+                     + f"    <priority>{pr}</priority>\n  </url>\n" for u, pr, lm in urls)
+    with open(os.path.join(RAIZ, "sitemap.xml"), "w", encoding="utf-8") as f:
+        f.write('<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + cuerpo + "</urlset>\n")
+    return len(urls)
+
+
+def escribir_llms(cats, total):
+    """llms.txt: resumen en texto plano para asistentes que lo leen (propuesta
+    llmstxt.org). No es un truco: repite lo que dice el sitio, con los mismos
+    datos. Los links al catálogo entran sólo cuando el catálogo es público."""
+    lineas = ", ".join(c["nombre"].lower() for c in cats)
+    txt = f"""# Loekemeyer
+
+> Loekemeyer Hnos S.R.L. es una empresa argentina de utensilios de cocina, con sede y planta en Cervantes 2868, Ciudad Autónoma de Buenos Aires. Fabrica utensilios desde 1950 y hoy está al frente la cuarta generación de la familia. Vende por mayor a supermercados, bazares, distribuidores y comercios de todo el país.
+
+- Nombre legal: Loekemeyer Hnos S.R.L. (CUIT 30-51584245-0)
+- Marca: Loekemeyer
+- Fundación: 1950, Buenos Aires, Argentina
+- Rubro: diseño, fabricación y comercialización de utensilios y accesorios de cocina
+- Catálogo: {total} artículos en {len(cats)} líneas ({lineas})
+- Venta: mayorista, por caja cerrada. Los precios se ven con usuario en la web mayorista.
+- Contacto comercial: ventas@loekemeyer.com · +54 9 11 3118 1021
+- Instagram: https://www.instagram.com/loekemeyer
+
+## Páginas
+
+- [Inicio]({DOMINIO}/): quiénes somos, catálogo y contacto
+- [Catálogo en PDF]({DOMINIO}/pdf/catalogo.pdf)
+- [Pedido mayorista]({DOMINIO}/mayorista): acceso para clientes (requiere usuario)
+"""
+    if not NOINDEX:
+        txt += f"\n## Catálogo\n\n- [Todos los productos]({DOMINIO}/{SALIDA}/)\n"
+        txt += "".join(f"- [{c['nombre']}]({DOMINIO}/{SALIDA}/{c['slug']}.html): {c['intro'].strip()}\n" for c in cats)
+    with open(os.path.join(RAIZ, "llms.txt"), "w", encoding="utf-8") as f:
+        f.write(txt)
+
+
 def slugify(s):
     s = s.lower()
     s = re.sub(r"[áàä]", "a", s); s = re.sub(r"[éèë]", "e", s); s = re.sub(r"[íìï]", "i", s)
@@ -401,7 +604,24 @@ def main():
     for c in cats:
         with open(os.path.join(out, c["slug"] + ".html"), "w", encoding="utf-8") as f:
             f.write(pagina_categoria(c, cats))
-    print(f"{len(cats) + 1} páginas en {out}/ ({datos['total']} artículos)")
+    # Fichas: se borran las de artículos que ya no están (un código dado de
+    # baja no puede quedar con su página viva y huérfana).
+    dart = os.path.join(out, SUB_ART)
+    os.makedirs(dart, exist_ok=True)
+    vivos = set()
+    for c in cats:
+        for prod in c["productos"]:
+            nombre = str(prod["cod"]) + ".html"
+            vivos.add(nombre)
+            with open(os.path.join(dart, nombre), "w", encoding="utf-8") as f:
+                f.write(pagina_articulo(prod, c))
+    for viejo in os.listdir(dart):
+        if viejo.endswith(".html") and viejo not in vivos:
+            os.remove(os.path.join(dart, viejo))
+    n_map = escribir_sitemap(cats, datos.get("generado") or None)
+    escribir_llms(cats, datos["total"])
+    print(f"{len(cats) + 1} páginas en {out}/ + {len(vivos)} fichas en {out}/{SUB_ART}/ "
+          f"({datos['total']} artículos) · sitemap {n_map} URLs · NOINDEX={NOINDEX}")
 
 
 if __name__ == "__main__":

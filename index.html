@@ -3,41 +3,83 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Loekemeyer Hnos S.R.L.</title>
+    <title>Loekemeyer · Utensilios de cocina argentinos, fabricantes desde 1950</title>
+    <meta
+      name="description"
+      content="Loekemeyer Hnos S.R.L. es una empresa argentina de utensilios de cocina: abrelatas, pelapapas, sacacorchos, ralladores, coladores, bombillas y utensilios de acero inoxidable, nylon, silicona y madera. Cuarta generación de fabricantes desde 1950, venta mayorista a todo el país."
+    />
+    <link rel="canonical" href="https://loekemeyer.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Loekemeyer" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:url" content="https://loekemeyer.com/" />
+    <meta property="og:title" content="Loekemeyer · Utensilios de cocina argentinos desde 1950" />
+    <meta property="og:description" content="Cuarta generación de fabricantes de utensilios de cocina en Buenos Aires. Catálogo de abrelatas, pelapapas, sacacorchos, ralladores, coladores y más, con venta mayorista a todo el país." />
+    <meta property="og:image" content="https://loekemeyer.com/img/img_landing.webp" />
+    <meta property="og:image:alt" content="Afila cuchillos, sacacorchos, pelapapas y abrelatas Loekemeyer sobre una mesada" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/png" href="./img/favicon.jpg" />
+    <link rel="apple-touch-icon" href="./img/logo.png" />
 
     <link rel="stylesheet" href="./css/styles.index.css" />
 
+    <!-- Datos estructurados. Sólo lo verificable: nombre legal, CUIT, DUNS,
+         domicilio, contacto y la única red oficial que figura en el sitio
+         (Instagram). El @id de la organización lo referencian las páginas del
+         catálogo (productos/), así un buscador une todo a la misma entidad. -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "Loekemeyer Hnos S.R.L.",
-        "legalName": "LOEKEMEYER HNOS S.R.L.",
-        "url": "https://loekemeyer.com/",
-        "logo": "https://loekemeyer.com/img/logo.png",
-        "foundingDate": "1950",
-        "taxID": "30-51584245-0",
-        "duns": "972011928",
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": "Cervantes 2868",
-          "addressLocality": "Ciudad Autónoma de Buenos Aires",
-          "postalCode": "C1417CBT",
-          "addressCountry": "AR"
-        },
-        "contactPoint": {
-          "@type": "ContactPoint",
-          "contactType": "sales",
-          "email": "ventas@loekemeyer.com",
-          "telephone": "+54-9-11-3118-1021"
-        },
-        "sameAs": ["https://www.instagram.com/loekemeyer"]
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://loekemeyer.com/#organizacion",
+            "name": "Loekemeyer Hnos S.R.L.",
+            "alternateName": ["Loekemeyer", "Loekemeyer Hermanos"],
+            "legalName": "LOEKEMEYER HNOS S.R.L.",
+            "url": "https://loekemeyer.com/",
+            "logo": "https://loekemeyer.com/img/logo.png",
+            "image": "https://loekemeyer.com/img/img_landing.webp",
+            "description": "Empresa argentina de utensilios de cocina. Cuarta generación de fabricantes desde 1950; diseña, fabrica y comercializa abrelatas, pelapapas, sacacorchos, ralladores, coladores, bombillas para mate y utensilios de acero inoxidable, nylon, silicona y madera, con venta mayorista a comercios de todo el país.",
+            "foundingDate": "1950",
+            "foundingLocation": { "@type": "Place", "name": "Buenos Aires, Argentina" },
+            "areaServed": { "@type": "Country", "name": "Argentina" },
+            "knowsAbout": ["Utensilios de cocina", "Abrelatas", "Pelapapas", "Sacacorchos", "Ralladores", "Coladores", "Bombillas para mate", "Afiladores de cuchillos"],
+            "brand": { "@type": "Brand", "name": "Loekemeyer", "logo": "https://loekemeyer.com/img/logo.png" },
+            "taxID": "30-51584245-0",
+            "duns": "972011928",
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "Cervantes 2868",
+              "addressLocality": "Ciudad Autónoma de Buenos Aires",
+              "postalCode": "C1417CBT",
+              "addressCountry": "AR"
+            },
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "contactType": "sales",
+              "email": "ventas@loekemeyer.com",
+              "telephone": "+54-9-11-3118-1021",
+              "areaServed": "AR",
+              "availableLanguage": "es"
+            },
+            "sameAs": ["https://www.instagram.com/loekemeyer"]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://loekemeyer.com/#sitio",
+            "url": "https://loekemeyer.com/",
+            "name": "Loekemeyer",
+            "inLanguage": "es-AR",
+            "publisher": { "@id": "https://loekemeyer.com/#organizacion" }
+          }
+        ]
       }
     </script>
   </head>
 
   <body>
+    <main>
     <!-- ================= HOME PUBLICA ================= -->
     <section class="hero">
       <div class="hero-video" aria-hidden="true">
@@ -94,7 +136,7 @@
           </div>
 
           <div class="about-text">
-            <h2>Sobre Nosotros...</h2>
+            <h2>Sobre Nosotros...<span class="about-sub">Fabricantes argentinos de utensilios de cocina</span></h2>
             <p>
               Somos cuarta generación de fabricantes de utensilios de cocina. Te
               acompañamos a vos y a todos tus familiares desde 1950.
@@ -108,6 +150,18 @@
               Fabricamos utensilios pensados para durar, acompañar generaciones
               y formar parte de la vida cotidiana de miles de hogares
               argentinos.
+            </p>
+            <p>
+              Nuestro catálogo incluye
+              <a href="/productos/abrelatas.html">abrelatas</a>,
+              <a href="/productos/peladores.html">pelapapas</a>,
+              <a href="/productos/sacacorchos.html">sacacorchos</a>,
+              <a href="/productos/ralladores.html">ralladores</a>,
+              <a href="/productos/coladores.html">coladores</a>,
+              <a href="/productos/mate-y-bombillas.html">bombillas para mate</a>
+              y <a href="/productos/utensilios.html">utensilios de acero
+              inoxidable, nylon, silicona y madera</a>, que vendemos por mayor a
+              supermercados, bazares y distribuidores de todo el país.
             </p>
           </div>
         </div>
@@ -782,6 +836,8 @@
       </div>
     </section>
 
+    </main>
+
     <footer class="main-footer">
       <div class="container footer-grid">
         <!-- Logo -->
@@ -881,8 +937,8 @@
       </svg>
     </a>
 
-    <script src="./version.js?v=23522"></script>
-    <script src="script.index.js?v=23522"></script>
+    <script src="./version.js?v=23523"></script>
+    <script src="script.index.js?v=23523"></script>
 
     <!-- ================= MODAL LEGAL ================= -->
     <div class="modal-backdrop" id="legalModal" aria-hidden="true">

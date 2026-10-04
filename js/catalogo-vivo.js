@@ -114,18 +114,26 @@
     actualizarBajada(ps);
   }
 
+  // Sólo los códigos que ya tienen ficha generada (productos/articulo/<cod>.html)
+  // llevan link: un artículo nuevo que todavía no se regeneró daría 404.
+  var conFicha = {};
+  firmaEnHtml.split("|").forEach(function (c) { if (c) conFicha[c] = true; });
+
   function ficha(p) {
+    var url = conFicha[p.cod] ? "articulo/" + encodeURIComponent(p.cod) + ".html" : "";
+    var nombre = url ? '<a href="' + esc(url) + '">' + esc(p.description) + "</a>" : esc(p.description);
     var nuevo = p.badge_status === "NUEVO" ? '<span class="prod-nuevo">NUEVO</span>' : "";
     var uxb = p.uxb ? p.uxb + " unidades por caja" : "consultar unidades por caja";
     var sub = p.subcategory ? '<p class="prod-meta">' + esc(p.subcategory) + "</p>" : "";
     var texto = "Hola Loekemeyer, quiero consultar por el artículo " + p.cod + " " + p.description + ".";
     return '<article class="prod-card" id="p-' + esc(p.cod) + '">' +
-             '<div class="prod-thumb"><img src="' + esc(foto(p)) + '" alt="' + esc(p.description) +
+             '<div class="prod-thumb">' + (url ? '<a href="' + esc(url) + '" tabindex="-1">' : "") +
+               '<img src="' + esc(foto(p)) + '" alt="' + esc(p.description) +
                ' Loekemeyer, código ' + esc(p.cod) + '" width="400" height="400" loading="lazy" ' +
-               "onerror=\"this.onerror=null;this.src='../img/no-image.jpg'\" /></div>" +
+               "onerror=\"this.onerror=null;this.src='../img/no-image.jpg'\" />" + (url ? "</a>" : "") + "</div>" +
              '<div class="prod-body">' +
                '<p class="prod-cod">' + esc(p.cod) + nuevo + "</p>" +
-               '<h3 class="prod-name">' + esc(p.description) + "</h3>" +
+               '<h3 class="prod-name">' + nombre + "</h3>" +
                '<p class="prod-meta">' + esc(uxb) + "</p>" + sub +
                '<a class="prod-cta" href="' + esc(waUrl(texto)) + '" target="_blank" rel="noopener" data-cod="' +
                  esc(p.cod) + '">Consultar disponibilidad</a>' +

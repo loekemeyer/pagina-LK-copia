@@ -1,0 +1,18 @@
+# Loekemeyer
+
+> Loekemeyer Hnos S.R.L. es una empresa argentina de utensilios de cocina, con sede y planta en Cervantes 2868, Ciudad Autónoma de Buenos Aires. Fabrica utensilios desde 1950 y hoy está al frente la cuarta generación de la familia. Vende por mayor a supermercados, bazares, distribuidores y comercios de todo el país.
+
+- Nombre legal: Loekemeyer Hnos S.R.L. (CUIT 30-51584245-0)
+- Marca: Loekemeyer
+- Fundación: 1950, Buenos Aires, Argentina
+- Rubro: diseño, fabricación y comercialización de utensilios y accesorios de cocina
+- Catálogo: 199 artículos en 19 líneas (abrelatas, peladores y pelapapas, sacacorchos y descorchadores, cortadores, ralladores y mandolinas, coladores y filtros, afiladores de cuchillos, utensilios de cocina, pinzas de cocina, destapadores, tapones de vino y cerveza, repostería, utensilios de madera, mate y bombillas, accesorios de cocina, vidrio, cuchillos de untar, contenedores, línea acacia)
+- Venta: mayorista, por caja cerrada. Los precios se ven con usuario en la web mayorista.
+- Contacto comercial: ventas@loekemeyer.com · +54 9 11 3118 1021
+- Instagram: https://www.instagram.com/loekemeyer
+
+## Páginas
+
+- [Inicio](https://loekemeyer.com/): quiénes somos, catálogo y contacto
+- [Catálogo en PDF](https://loekemeyer.com/pdf/catalogo.pdf)
+- [Pedido mayorista](https://loekemeyer.com/mayorista): acceso para clientes (requiere usuario)

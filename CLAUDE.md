@@ -1521,8 +1521,24 @@ las aprueben. No muestran precios.
   dos links sin tocar la home. Las URLs del sitio viejo (`abrelatas.htm`, `coladores.html`,
   `quienes_somos.html`…) siguen indexadas en Google pero ya no responden: si alguna vale la pena, se
   reemplaza con una página nueva del mismo nombre.
-- **Para publicar**: `NOINDEX = False` en el generador y quitar la meta `robots` de `historia.html`; agregar todas al `sitemap.xml`; linkear desde la home (nav, footer y el botón
-  "Ver productos online", que ya apunta a `/productos/` y empieza a funcionar solo).
+- **Para publicar el catálogo es UN interruptor**: `NOINDEX = False` en `scripts/generar-catalogo.py` y
+  correr el generador. Eso saca el `noindex` de las 219 páginas y **reescribe `sitemap.xml` y `llms.txt`**
+  con el catálogo adentro (221 URLs, `lastmod` = fecha de la exportación). Con `NOINDEX = True` el sitemap
+  queda con la home y `/mayorista` solamente, para no contradecir el `noindex`. `historia.html` va aparte
+  (hoy sólo-admin): quitarle el guard y la meta `robots` y sumarla a mano a `escribir_sitemap`.
+- **Fichas por artículo (04/10/2026, SEO semántico)**: `productos/articulo/<cod>.html`, una por artículo
+  activo (199). URL armada **sólo con el código** a propósito: el nombre se corrige y el código no. Llevan
+  `Product` + `BreadcrumbList` en JSON-LD (`sku`, `brand`, `category`, `image`; `material` **sólo** si
+  `products.subcategory` es un material — hoy únicamente Utensilios). **Sin `offers`, reviews ni ratings**:
+  no hay precio público y no se inventa. La base no tiene descripción, medidas, uso ni cuidados
+  (`products.description` es el nombre), así que el texto de la ficha se arma con lo que hay y **no dice
+  que la empresa fabricó el artículo** (hay importados). El generador borra las fichas de códigos que ya no
+  están activos. Las páginas de línea suman `ItemList` apuntando a las fichas, y `catalogo-vivo.js` sólo
+  linkea a ficha los códigos que ya la tienen (un código nuevo sin regenerar daría 404).
+- **El hook `pre-commit` recorre hasta `maxdepth 3`** desde el 04/10/2026: las fichas viven en el nivel 3
+  y con 2 quedaban con el `?v=` viejo. El `V` del generador ahora se lee de `version.js`.
+- **La home lleva `@graph` Organization + WebSite con `@id`** (`https://loekemeyer.com/#organizacion`), que
+  referencian todas las páginas del catálogo como `publisher`, así un buscador une todo a la misma entidad.
 - El sufijo `E` en el código de artículo marca importado (`importado: true` en el JSON). Es dato
   interno: **el texto público NO dice que importamos** (instrucción de Tomás, 16/09/2026). Se sacó la
   frase "completamos la línea con productos importados seleccionados" de `productos/index.html`, del
