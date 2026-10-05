@@ -26,9 +26,10 @@
 //         cada una. Sirve para encontrar a dónde archivan los mails. No escribe.
 //   { action: "status" }
 //       → conteo por estado de la bandeja.
-//   { action: "buscar", q: "9400210783", cuenta?: "chef", days?: 30 }
+//   { action: "buscar", q: "9400210783", cuenta?: "chef", days?: 30, todas?: false }
 //       → busca ese texto en toda la casilla y devuelve De / Asunto / Fecha / adjuntos.
-//         Para saber por dónde llega una OC que no es de Krikos. No escribe.
+//         Para saber por dónde llega una OC que no es de Krikos. `todas` suma papelera y
+//         enviados. No escribe.
 //
 // Estados en `krikos_oc_inbox`: pendiente (hay que cargarla) · cargado · descartado ·
 // error (es una OC y algo falló: el link no dio PDF, o directamente no había link) ·
@@ -552,14 +553,15 @@ async function actionTestImap(cuenta: Cuenta = "lk") {
 /** Busca un texto (número de OC, remitente…) en toda la casilla y devuelve De / Asunto / Fecha
  *  y los adjuntos de cada mail. Sirve para saber por dónde llega una OC que no es de Krikos.
  *  Sólo lectura: no baja el cuerpo ni escribe nada. */
-async function actionBuscar(q: string, days: number, cuenta: Cuenta) {
+async function actionBuscar(q: string, days: number, cuenta: Cuenta, todas = false) {
   const started = Date.now();
   const texto = q.replace(/[^A-Za-z0-9@._ -]/g, "").trim();
   if (texto.length < 3) return { ok: false, error: "q: al menos 3 caracteres (letras, números, @ . _ -)" };
   const { imap, auth } = await openMailbox("INBOX", cuenta);
   try {
     const since = new Date(Date.now() - days * 86400000);
-    const mbs = (await imap.list()).filter((m) => cuenta !== "chef" || !CARPETA_NO_MIRAR.test(m));
+    // todas = true mira también papelera / enviados (un mail ya cargado a mano puede estar borrado)
+    const mbs = (await imap.list()).filter((m) => todas || cuenta !== "chef" || !CARPETA_NO_MIRAR.test(m));
     const hits: unknown[] = [];
     for (const mb of mbs) {
       if (hits.length >= 15) break;
@@ -770,7 +772,7 @@ Deno.serve(async (req) => {
   if (!secret) return json({ ok: false, error: "KRIKOS_INGEST_SECRET no configurado (ni env ni Vault)" }, 503);
   if ((req.headers.get("x-krikos-secret") ?? "") !== secret) return json({ ok: false, error: "forbidden" }, 403);
 
-  let body: { action?: string; days?: number; dry_run?: boolean; cuenta?: string; q?: string } = {};
+  let body: { action?: string; days?: number; dry_run?: boolean; cuenta?: string; q?: string; todas?: boolean } = {};
   try { body = await req.json(); } catch { return json({ ok: false, error: "bad json" }, 400); }
   const action = String(body.action ?? "sync");
   try {
@@ -787,7 +789,7 @@ Deno.serve(async (req) => {
     }
     if (action === "buscar") {
       const days = Math.min(365, Math.max(1, Number(body.days ?? 30)));
-      return json(await actionBuscar(String(body.q ?? ""), days, cuenta));
+      return json(await actionBuscar(String(body.q ?? ""), days, cuenta, !!body.todas));
     }
     return json({ ok: false, error: "action desconocida", valid: ["sync", "test_imap", "list_folders", "status", "buscar"] }, 400);
   } catch (e) {
