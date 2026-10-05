@@ -26,6 +26,9 @@
 //         cada una. Sirve para encontrar a dónde archivan los mails. No escribe.
 //   { action: "status" }
 //       → conteo por estado de la bandeja.
+//   { action: "buscar", q: "9400210783", cuenta?: "chef", days?: 30 }
+//       → busca ese texto en toda la casilla y devuelve De / Asunto / Fecha / adjuntos.
+//         Para saber por dónde llega una OC que no es de Krikos. No escribe.
 //
 // Estados en `krikos_oc_inbox`: pendiente (hay que cargarla) · cargado · descartado ·
 // error (es una OC y algo falló: el link no dio PDF, o directamente no había link) ·
@@ -305,6 +308,13 @@ class Imap {
     return { raw: r.literals[0], internalDate: d ? d[1] : "" };
   }
 
+  /** Sólo De / Asunto / Fecha y la estructura (nombres de adjuntos): no baja el mail entero. */
+  async uidFetchHead(uid: number): Promise<string> {
+    const r = await this.cmd(`UID FETCH ${uid} (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)] BODYSTRUCTURE)`);
+    const dec = new TextDecoder("latin1");
+    return r.literals.map((l) => dec.decode(l)).join("\n") + "\n" + r.lines.join("\n");
+  }
+
   async logout(): Promise<void> {
     try { await withTimeout(this.cmd("LOGOUT"), 5000, "logout"); } catch { /* ignore */ }
     try { this.conn.close(); } catch { /* ignore */ }
@@ -539,6 +549,37 @@ async function actionTestImap(cuenta: Cuenta = "lk") {
   } finally { await imap.logout(); }
 }
 
+/** Busca un texto (número de OC, remitente…) en toda la casilla y devuelve De / Asunto / Fecha
+ *  y los adjuntos de cada mail. Sirve para saber por dónde llega una OC que no es de Krikos.
+ *  Sólo lectura: no baja el cuerpo ni escribe nada. */
+async function actionBuscar(q: string, days: number, cuenta: Cuenta) {
+  const started = Date.now();
+  const texto = q.replace(/[^A-Za-z0-9@._ -]/g, "").trim();
+  if (texto.length < 3) return { ok: false, error: "q: al menos 3 caracteres (letras, números, @ . _ -)" };
+  const { imap, auth } = await openMailbox("INBOX", cuenta);
+  try {
+    const since = new Date(Date.now() - days * 86400000);
+    const mbs = (await imap.list()).filter((m) => cuenta !== "chef" || !CARPETA_NO_MIRAR.test(m));
+    const hits: unknown[] = [];
+    for (const mb of mbs) {
+      if (hits.length >= 15) break;
+      try {
+        await imap.examine(mb);
+        const uids = await imap.uidSearch(`SINCE ${imapDate(since)} TEXT "${texto}"`);
+        for (const uid of uids.slice(-5)) {
+          const head = await imap.uidFetchHead(uid);
+          const g = (h: string) => decodeRfc2047(new RegExp("^" + h + ":\\s*(.*)$", "im").exec(head)?.[1]?.trim() ?? "");
+          const adjuntos = [...head.matchAll(/"(?:name|filename)"\s+"([^"]+)"/gi)].map((m) => decodeRfc2047(m[1]));
+          hits.push({ carpeta: mb, uid, de: g("From"), asunto: g("Subject"), fecha: g("Date"), adjuntos: [...new Set(adjuntos)] });
+        }
+      } catch (e) {
+        hits.push({ carpeta: mb, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { ok: true, cuenta, auth, q: texto, days, hits, ms: Date.now() - started };
+  } finally { await imap.logout(); }
+}
+
 async function actionStatus() {
   const { data, error } = await sb.from("krikos_oc_inbox").select("estado");
   if (error) throw new Error(error.message);
@@ -729,7 +770,7 @@ Deno.serve(async (req) => {
   if (!secret) return json({ ok: false, error: "KRIKOS_INGEST_SECRET no configurado (ni env ni Vault)" }, 503);
   if ((req.headers.get("x-krikos-secret") ?? "") !== secret) return json({ ok: false, error: "forbidden" }, 403);
 
-  let body: { action?: string; days?: number; dry_run?: boolean; cuenta?: string } = {};
+  let body: { action?: string; days?: number; dry_run?: boolean; cuenta?: string; q?: string } = {};
   try { body = await req.json(); } catch { return json({ ok: false, error: "bad json" }, 400); }
   const action = String(body.action ?? "sync");
   try {
@@ -744,7 +785,11 @@ Deno.serve(async (req) => {
       const days = Math.min(365, Math.max(1, Number(body.days ?? 30)));
       return json(await actionSync(days, !!body.dry_run));
     }
-    return json({ ok: false, error: "action desconocida", valid: ["sync", "test_imap", "list_folders", "status"] }, 400);
+    if (action === "buscar") {
+      const days = Math.min(365, Math.max(1, Number(body.days ?? 30)));
+      return json(await actionBuscar(String(body.q ?? ""), days, cuenta));
+    }
+    return json({ ok: false, error: "action desconocida", valid: ["sync", "test_imap", "list_folders", "status", "buscar"] }, 400);
   } catch (e) {
     console.error("krikos-ingest error:", e);
     return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500);
