@@ -744,6 +744,33 @@ def slugify(s):
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
 
 
+def escribir_fichas_json(cats, manual):
+    """productos/fichas.json: SOLO los artículos activos con algún dato cargado a
+    mano en fichas-manual.csv. Lo lee el catálogo mayorista (script.js) para
+    mostrar el botón «Ficha técnica» y su popup. Un código que no figura acá no
+    lleva botón. Mismas reglas que la ficha pública: celda vacía = no se publica,
+    las columnas propuesta_ml* nunca salen."""
+    fichas = {}
+    for c in cats:
+        for prod in c["productos"]:
+            cod = str(prod["cod"])
+            m = manual.get(cod) or {}
+            f = {k: v for k, v in (
+                ("d", m.get("descripcion", "")),
+                ("m", m.get("material", "")),
+                ("lv", lavavajillas(m.get("apto_lavavajillas"))),
+                ("lav", m.get("instrucciones_lavado", "")),
+                ("dst", m.get("destacado", "")),
+            ) if v}
+            if f:
+                f["n"] = prod["nombre"]
+                fichas[cod] = f
+    with open(os.path.join(RAIZ, SALIDA, "fichas.json"), "w", encoding="utf-8") as fh:
+        json.dump(fichas, fh, ensure_ascii=False, sort_keys=True, indent=0)
+        fh.write("\n")
+    return len(fichas)
+
+
 def main():
     global IMG_PARAMS
     with open(DATOS, encoding="utf-8") as f:
@@ -780,6 +807,8 @@ def main():
             os.remove(os.path.join(dart, viejo))
     n_map = escribir_sitemap(cats, datos.get("generado") or None)
     escribir_llms(cats, datos["total"])
+    n_fichas = escribir_fichas_json(cats, manual)
+    print(f"fichas.json: {n_fichas} artículos con ficha técnica cargada")
     print(f"{len(cats) + 1} páginas en {out}/ + {len(vivos)} fichas en {out}/{SUB_ART}/ "
           f"({datos['total']} artículos) · sitemap {n_map} URLs · NOINDEX={NOINDEX}")
 

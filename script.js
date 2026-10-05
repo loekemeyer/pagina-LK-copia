@@ -5553,6 +5553,7 @@ function renderProducts() {
           </div>
 
           <div class="card-desc">${String(p.description || "")}</div>
+          ${fichaTecBtnHtml(p)}
 
           ${stockHtml}
 
@@ -17895,6 +17896,118 @@ function ppToggleVideo(ev) {
   if (pr && typeof pr.catch === "function") pr.catch(() => {});
 }
 window.ppToggleVideo = ppToggleVideo;
+
+/* Botón «Ficha técnica» de la card del catálogo (05/10/2026, Thomas).
+   Aparece SÓLO en los artículos con algún dato cargado a mano en
+   scripts/fichas-manual.csv (descripción, material, apto lavavajillas, lavado,
+   destacado). La lista la exporta scripts/generar-catalogo.py a
+   productos/fichas.json; un código que no está ahí no lleva botón. No se
+   deduce ni se completa nada acá: se muestra lo cargado, tal cual. */
+let FICHAS_TEC = null;
+let _fichasTecPromise = null;
+
+function loadFichasTec() {
+  if (_fichasTecPromise) return _fichasTecPromise;
+  const v = typeof APP_VERSION !== "undefined" ? APP_VERSION : String(Date.now());
+  _fichasTecPromise = fetch("productos/fichas.json?v=" + encodeURIComponent(v), {
+    cache: "no-cache",
+  })
+    .then((r) => (r.ok ? r.json() : {}))
+    .then((j) => {
+      FICHAS_TEC = j && typeof j === "object" ? j : {};
+      return FICHAS_TEC;
+    })
+    .catch(() => {
+      // Una lectura rota NO se cachea como "sin fichas": se reintenta en la
+      // próxima carga. Mientras tanto la card sale sin botón, nada más.
+      _fichasTecPromise = null;
+      return null;
+    });
+  return _fichasTecPromise;
+}
+
+function _ftEsc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function fichaTecDe(cod) {
+  if (!FICHAS_TEC) return null;
+  return FICHAS_TEC[String(cod || "").trim()] || null;
+}
+
+function fichaTecBtnHtml(p) {
+  const cod = String((p && p.cod) || "").trim();
+  if (!fichaTecDe(cod)) return "";
+  return `<button class="ft-btn" type="button" onclick="abrirFichaTec('${_ftEsc(cod)}',event)" aria-label="Ver ficha técnica del ${_ftEsc(cod)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>Ficha técnica</button>`;
+}
+
+function abrirFichaTec(cod, ev) {
+  if (ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
+  }
+  const f = fichaTecDe(cod);
+  if (!f) return;
+  let m = document.getElementById("fichaTecModal");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "fichaTecModal";
+    m.className = "ft-modal";
+    m.setAttribute("role", "dialog");
+    m.setAttribute("aria-modal", "true");
+    m.setAttribute("aria-labelledby", "ftTitulo");
+    m.addEventListener("click", (e) => {
+      if (e.target === m) cerrarFichaTec();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && m.classList.contains("open")) cerrarFichaTec();
+    });
+    document.body.appendChild(m);
+  }
+  const filas = [
+    ["Material", f.m],
+    ["Apto lavavajillas", f.lv],
+    ["Lavado", f.lav],
+  ]
+    .filter((x) => x[1])
+    .map((x) => `<tr><th>${x[0]}</th><td>${_ftEsc(x[1])}</td></tr>`)
+    .join("");
+  m.innerHTML = `
+    <div class="ft-card">
+      <button class="ft-close" type="button" onclick="cerrarFichaTec()" aria-label="Cerrar">×</button>
+      <div class="ft-cod">Código ${_ftEsc(codDisplay(cod))}</div>
+      <h3 id="ftTitulo" class="ft-titulo">${_ftEsc(f.n || "")}</h3>
+      ${f.dst ? `<div class="ft-dst">${_ftEsc(f.dst)}</div>` : ""}
+      ${f.d ? `<p class="ft-desc">${_ftEsc(f.d)}</p>` : ""}
+      ${filas ? `<table class="ft-tabla">${filas}</table>` : ""}
+      <a class="ft-link" href="productos/articulo/${encodeURIComponent(cod)}.html" target="_blank" rel="noopener">Ver ficha completa →</a>
+    </div>`;
+  m.classList.add("open");
+  const btn = m.querySelector(".ft-close");
+  if (btn) btn.focus();
+}
+window.abrirFichaTec = abrirFichaTec;
+
+function cerrarFichaTec() {
+  const m = document.getElementById("fichaTecModal");
+  if (m) m.classList.remove("open");
+}
+window.cerrarFichaTec = cerrarFichaTec;
+
+// Se pide una vez al cargar. Si el catálogo ya se dibujó sin la lista, se
+// redibuja una sola vez para que aparezcan los botones.
+loadFichasTec().then((j) => {
+  if (!j || !Object.keys(j).length) return;
+  try {
+    if (Array.isArray(products) && products.length && typeof renderProducts === "function") {
+      renderProducts();
+    }
+  } catch (e) {}
+});
 
 function cerrarProdPreview() {
   const m = document.getElementById("prodPreviewModal");

@@ -1565,6 +1565,13 @@ las aprueben. No muestran precios.
   sesión** (proxy): hay que probarlos una vez a mano. El generador borra las fichas de códigos que ya no
   están activos. Las páginas de línea suman `ItemList` apuntando a las fichas, y `catalogo-vivo.js` sólo
   linkea a ficha los códigos que ya la tienen (un código nuevo sin regenerar daría 404).
+- **Botón «Ficha técnica» en la card del catálogo mayorista (05/10/2026, Thomas)**: el generador escribe
+  `productos/fichas.json` con SOLO los artículos activos que tienen algún dato en `fichas-manual.csv`
+  (descripción, material, lavavajillas, lavado, destacado; nunca las `propuesta_ml*`). `script.js`
+  (`loadFichasTec` / `fichaTecBtnHtml` / `abrirFichaTec`) lo baja una vez y dibuja el botón debajo de la
+  descripción; el popup muestra lo cargado y linkea a `productos/articulo/<cod>.html`. **Para que un artículo
+  tenga botón se completa el CSV y se corre el generador**: no hay nada que tocar en `script.js`. Si el JSON
+  no carga, la card sale igual sin botón (no se cachea el fallo). Chequeo: `tests/ficha-tecnica-btn.cjs`.
 - **El hook `pre-commit` recorre hasta `maxdepth 3`** desde el 04/10/2026: las fichas viven en el nivel 3
   y con 2 quedaban con el `?v=` viejo. El `V` del generador ahora se lee de `version.js`.
 - **La home lleva `@graph` Organization + WebSite con `@id`** (`https://loekemeyer.com/#organizacion`), que
