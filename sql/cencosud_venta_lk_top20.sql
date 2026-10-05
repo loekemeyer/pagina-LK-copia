@@ -70,3 +70,13 @@ create or replace view public.ventas_proy_lineas as
 -- cli_super_lk / cod_lk y sin la linea del import_batch.
 -- ROLLBACK de rep_top_clientes: CTE mov desde sales_lines where empresa='lk'
 -- and customer_code not in ('1','3878'), nombre por customers.cod_cliente.
+
+-- ============================================================================
+-- D6 (Thomas, 05/10/2026) — YA APLICADO. Sacar a "Relca" de todo lector que filtra empresa='lk'
+-- (Ranking Inactivos, dashboard, ficha de cliente, agrupar, agenda del gerente): las 525 lineas
+-- de la copia cambian de empresa. No se borran.
+update public.sales_lines set empresa = 'lk_copia_cencosud'
+ where import_batch = 'jumbo_2026_02_20' and empresa = 'lk';      -- 525 filas
+select public.refrescar_lk_ch_excluidos();
+-- ROLLBACK:
+-- update public.sales_lines set empresa = 'lk' where import_batch = 'jumbo_2026_02_20';

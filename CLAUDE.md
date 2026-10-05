@@ -1757,8 +1757,11 @@ El TOP 20 decía *"Relca S.R.L — DEJÓ DE COMPRAR"*: el lote manual **`jumbo_2
 LK el 2444 es **Relca**. Ese lote **duplica** el historial de Chef. Hoy: `ventas_proy_lineas` cuenta como LK
 **toda** venta de Chef a Cencosud (con o sin L, artículos del padrón LK) y **no cuenta** el lote (no se borró);
 `rep_top_clientes` lee esa vista y nombra por empresa que factura (`Cencosud S.A. (Chef 2444)`). LK en 12 meses
-no cambió (228.731 cajas). ⚠ **Ranking Inactivos, dashboard y ficha de cliente siguen leyendo `sales_lines`
-lk a secas**: ahí el lote todavía aparece como Relca. `sql/cencosud_venta_lk_top20.sql`.
+no cambió (228.731 cajas). **D6 (05/10): las 525 líneas del lote pasaron a `empresa = 'lk_copia_cencosud'`** (no se
+borraron), así ningún lector que filtra `empresa='lk'` las ve: Ranking Inactivos, dashboard, ficha, agrupar,
+agenda del gerente. Volver atrás: `update sales_lines set empresa='lk' where import_batch='jumbo_2026_02_20';`.
+⚠ El dashboard de ventas todavía NO suma lo que Chef le factura a Cencosud con artículos LK (lee
+`sales_lines` lk a secas). `sql/cencosud_venta_lk_top20.sql`.
 
 ### ⚠⚠ Desde el 02/10/2026 los crons 29/30/31 mandan el formato NUEVO (`rep_ger_*`, Luis)
 
