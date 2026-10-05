@@ -1,38 +1,38 @@
 ﻿cod;nombre;linea;material;apto_lavavajillas;instrucciones_lavado;descripcion;destacado;propuesta_ml_descripcion;propuesta_ml_material;propuesta_ml_medidas;propuesta_ml_lavavajillas;propuesta_ml_confianza
-506;Abrelatas Uña Rojo;Abrelatas;;;;;;Abrelatas tipo uña, doble uso: abre latas y tiene destapador incorporado.;Las publicaciones dicen acero inoxidable;8 cm de largo, 4 cm de ancho;Sí;media
+506;Abrelatas Uña Rojo;Abrelatas;;;;Abrelatas tipo uña de doble uso: abre latas y trae destapador de botellas incorporado.;;Abrelatas tipo uña, doble uso: abre latas y tiene destapador incorporado.;Las publicaciones dicen acero inoxidable;8 cm de largo, 4 cm de ancho;Sí;media
 510;Abrelata Uña Cromado;Abrelatas;;;;;;Abrelatas tipo uña.;Las publicaciones dicen acero inoxidable;;;baja
-501;Abrelatas A Manija;Abrelatas;;;;;;Abrelatas a manija para abrir latas de forma rápida y sencilla, con destapador de botellas incorporado.;Acero inoxidable;Largo 15,5 cm;Sí;media
+501;Abrelatas A Manija;Abrelatas;;;;Abrelatas a manija para abrir latas de forma rápida y sencilla, con destapador de botellas incorporado.;;Abrelatas a manija para abrir latas de forma rápida y sencilla, con destapador de botellas incorporado.;Acero inoxidable;Largo 15,5 cm;Sí;media
 503E;Abrelatas Doble Engranaje;Abrelatas;;;;;;;;;;
-066;Abrelatas Super Mariposa;Abrelatas;;;;;;Abrelatas tipo mariposa, compacto y fácil de manejar, que abre latas y botellas sin esfuerzo. Su diseño da un agarre firme que evita resbalones.;Acero inoxidable;Largo 15 cm;Sí;alta
-512;Abrelatas Mariposa Capuchon Rojo;Abrelatas;;;;;;Abrelatas tipo mariposa con capuchón rojo y destapador incorporado.;Las publicaciones dicen acero inoxidable;16 cm de largo;Sí;media
-502;Abrelatas Mariposa Cromado;Abrelatas;;;;;;"Abrelatas tipo mariposa que abre todo tipo de latas de forma rápida; también sirve para destapar botellas.";Acero y plástico;15,5 cm de largo, 6 cm de ancho;;media
+066;Abrelatas Super Mariposa;Abrelatas;;;;Abrelatas tipo mariposa, compacto y fácil de manejar, que abre latas y botellas sin esfuerzo con un agarre firme.;;Abrelatas tipo mariposa, compacto y fácil de manejar, que abre latas y botellas sin esfuerzo. Su diseño da un agarre firme que evita resbalones.;Acero inoxidable;Largo 15 cm;Sí;alta
+512;Abrelatas Mariposa Capuchon Rojo;Abrelatas;;;;Abrelatas tipo mariposa con capuchón rojo y destapador incorporado.;;Abrelatas tipo mariposa con capuchón rojo y destapador incorporado.;Las publicaciones dicen acero inoxidable;16 cm de largo;Sí;media
+502;Abrelatas Mariposa Cromado;Abrelatas;;;;"Abrelatas tipo mariposa que abre todo tipo de latas; también sirve para destapar botellas.";;"Abrelatas tipo mariposa que abre todo tipo de latas de forma rápida; también sirve para destapar botellas.";Acero y plástico;15,5 cm de largo, 6 cm de ancho;;media
 511;Abrelatas Uña 3 En 1;Abrelatas;;;;;;;;;;
 500;Abrelata Uña Pie Color;Abrelatas;;;;;;;;;;
-505;Pelador mango Plástico;Peladores y pelapapas;;No;;;El pelapapas más vendido de Mercado Libre Argentina (octubre 2026);Pelapapas vertical para pelar papas y verduras, con hoja de acero y mango de polipropileno de agarre cómodo.;Hoja de acero, mango de polipropileno;Largo total 16,5 cm;Sí (INCORRECTO según Thomas 05/10);alta
-513;Pelador mango Metálico;Peladores y pelapapas;;;;;;Pelapapas con mango metálico de agarre firme y hoja para un corte limpio de papas y verduras. Fácil de limpiar.;Metal (las publicaciones no coinciden: acero inoxidable o acero al carbono en la hoja);Largo total 15,5 cm;Sí;media
-586;Pelapapas mango Ergonomico;Peladores y pelapapas;;;;;;Pelapapas vertical con mango plástico ergonómico, pensado para un agarre cómodo y seguro que cansa menos la mano, y hoja metálica para pelar papas y verduras.;Hoja metálica, mango plástico;Largo total 15 cm;Sí;alta
-587;Pelador Metálico Corte Laser;Peladores y pelapapas;;;;;;Pelador con hoja de corte láser y mango plástico ergonómico, para pelar papas y verduras con buen filo y durabilidad.;Hoja de acero inoxidable, mango plástico;Largo total 16 cm;Sí;alta
+505;Pelador mango Plástico;Peladores y pelapapas;;No;;Pelapapas vertical para pelar papas y verduras, con mango de agarre cómodo.;El pelapapas más vendido de Mercado Libre Argentina (octubre 2026);Pelapapas vertical para pelar papas y verduras, con hoja de acero y mango de polipropileno de agarre cómodo.;Hoja de acero, mango de polipropileno;Largo total 16,5 cm;Sí (INCORRECTO según Thomas 05/10);alta
+513;Pelador mango Metálico;Peladores y pelapapas;;;;Pelapapas con mango metálico de agarre firme, para pelar papas y verduras con un corte limpio.;;Pelapapas con mango metálico de agarre firme y hoja para un corte limpio de papas y verduras. Fácil de limpiar.;Metal (las publicaciones no coinciden: acero inoxidable o acero al carbono en la hoja);Largo total 15,5 cm;Sí;media
+586;Pelapapas mango Ergonomico;Peladores y pelapapas;;;;Pelapapas vertical con mango ergonómico, pensado para un agarre cómodo y seguro que cansa menos la mano al pelar papas y verduras.;;Pelapapas vertical con mango plástico ergonómico, pensado para un agarre cómodo y seguro que cansa menos la mano, y hoja metálica para pelar papas y verduras.;Hoja metálica, mango plástico;Largo total 15 cm;Sí;alta
+587;Pelador Metálico Corte Laser;Peladores y pelapapas;;;;Pelador con hoja de corte láser y mango ergonómico, para pelar papas y verduras con buen filo.;;Pelador con hoja de corte láser y mango plástico ergonómico, para pelar papas y verduras con buen filo y durabilidad.;Hoja de acero inoxidable, mango plástico;Largo total 16 cm;Sí;alta
 598E;Pelador Negro Dentado;Peladores y pelapapas;;;;;;Pelador dentado de color negro.;;;;baja
 589E;Pelador mango Acrílico;Peladores y pelapapas;;;;;;;;;;sin datos
 599E;Pelador Madera Multifunción;Peladores y pelapapas;;;;;;;;;;
-816E;Pelador V Con mango Ergonómico;Peladores y pelapapas;;;;;;Pelador en V horizontal con mango plástico ergonómico, para pelar papas, verduras y frutas de forma rápida y segura.;Hoja de acero inoxidable, mango plástico;;;media
+816E;Pelador V Con mango Ergonómico;Peladores y pelapapas;;;;Pelador en V horizontal con mango ergonómico, para pelar papas, verduras y frutas de forma rápida y segura.;;Pelador en V horizontal con mango plástico ergonómico, para pelar papas, verduras y frutas de forma rápida y segura.;Hoja de acero inoxidable, mango plástico;;;media
 569;Pelanaranjas x 1 Display;Peladores y pelapapas;;;;;;;;;;
-520;Sacacorcho Tipo Mozo Cromado;Sacacorchos y descorchadores;;;;;;Sacacorchos tipo mozo de doble palanca: saca el corcho en dos tiempos, con menos fuerza y sin movimientos bruscos sobre la botella. Plegable, combina sacacorchos, destapador y cortacápsulas.;Chapa;;;alta
-521;Sacacorcho Combinado Cromado;Sacacorchos y descorchadores;;;;;;Sacacorchos combinado con destapador incorporado. Fácil de limpiar y se puede colgar.;Acero inoxidable;Aprox. 15 cm;;media
-530;Sacacorcho Tipo Mozo Color;Sacacorchos y descorchadores;;;;;;Sacacorchos tipo mozo de dos tiempos, plegable, con sacacorchos, destapador y cortacápsulas. Viene pintado en colores (rojo, azul).;Acero pintado;;;media
+520;Sacacorcho Tipo Mozo Cromado;Sacacorchos y descorchadores;;;;Sacacorchos tipo mozo de doble palanca: saca el corcho en dos tiempos, con menos fuerza y sin movimientos bruscos sobre la botella. Plegable, combina sacacorchos, destapador y cortacápsulas.;;Sacacorchos tipo mozo de doble palanca: saca el corcho en dos tiempos, con menos fuerza y sin movimientos bruscos sobre la botella. Plegable, combina sacacorchos, destapador y cortacápsulas.;Chapa;;;alta
+521;Sacacorcho Combinado Cromado;Sacacorchos y descorchadores;;;;Sacacorchos combinado con destapador incorporado.;;Sacacorchos combinado con destapador incorporado. Fácil de limpiar y se puede colgar.;Acero inoxidable;Aprox. 15 cm;;media
+530;Sacacorcho Tipo Mozo Color;Sacacorchos y descorchadores;;;;Sacacorchos tipo mozo de dos tiempos, plegable, con sacacorchos, destapador y cortacápsulas. En colores.;;Sacacorchos tipo mozo de dos tiempos, plegable, con sacacorchos, destapador y cortacápsulas. Viene pintado en colores (rojo, azul).;Acero pintado;;;media
 531;Sacacorcho Combinado Color;Sacacorchos y descorchadores;;;;;;;;;;
-529E;Sac. Doble Impulso Acero;Sacacorchos y descorchadores;;;;;;Sacacorchos tipo mozo de doble impulso: el sistema de dos tiempos saca el corcho sin esfuerzo. Trae cortacápsulas y se puede colgar.;Acero inoxidable;Aprox. 12 cm;;alta
+529E;Sac. Doble Impulso Acero;Sacacorchos y descorchadores;;;;Sacacorchos tipo mozo de doble impulso: el sistema de dos tiempos saca el corcho sin esfuerzo. Trae cortacápsulas.;;Sacacorchos tipo mozo de doble impulso: el sistema de dos tiempos saca el corcho sin esfuerzo. Trae cortacápsulas y se puede colgar.;Acero inoxidable;Aprox. 12 cm;;alta
 540E;Sacacorcho Premium;Sacacorchos y descorchadores;;;;;;;;;;
 536E;Sacacorcho Full Black;Sacacorchos y descorchadores;;;;;;;;;;
 539E;Sacacorcho Negro;Sacacorchos y descorchadores;;;;;;;;;;
 538E;Sacacorcho Azul;Sacacorchos y descorchadores;;;;;;;;;;
 819E;"Sacacorcho ""Fish"" 14cm";Sacacorchos y descorchadores;;;;;;;;;;
 522E;Sacacorcho Doble Aleta Premium;Sacacorchos y descorchadores;;;;;;;;;;
-523;Sacacorcho Doble Aleta;Sacacorchos y descorchadores;;;;;;Sacacorchos de doble aleta: al girar la espiral en el corcho las aletas suben, y al bajarlas hacen palanca para sacarlo. Se puede colgar.;Acero y plástico;19,5 cm de largo;;alta
-585E;Sacacorcho Doble Aleta Fundicion;Sacacorchos y descorchadores;;;;;;Sacacorchos de doble aleta: se gira la espiral en el corcho, suben las aletas y al bajarlas sale el corcho.;Las publicaciones mencionan fundición y acero;;;media
+523;Sacacorcho Doble Aleta;Sacacorchos y descorchadores;;;;Sacacorchos de doble aleta: al girar la espiral en el corcho las aletas suben, y al bajarlas hacen palanca para sacarlo.;;Sacacorchos de doble aleta: al girar la espiral en el corcho las aletas suben, y al bajarlas hacen palanca para sacarlo. Se puede colgar.;Acero y plástico;19,5 cm de largo;;alta
+585E;Sacacorcho Doble Aleta Fundicion;Sacacorchos y descorchadores;;;;Sacacorchos de doble aleta: se gira la espiral en el corcho, suben las aletas y al bajarlas sale el corcho.;;Sacacorchos de doble aleta: se gira la espiral en el corcho, suben las aletas y al bajarlas sale el corcho.;Las publicaciones mencionan fundición y acero;;;media
 581;Sacacorcho Mango Ergonómico;Sacacorchos y descorchadores;;;;;;;;;;
-525E;Sacacorcho Cabo De Madera;Sacacorchos y descorchadores;;;;;;Sacacorchos simple con mango de madera de agarre anatómico. Sin cortacápsulas.;Acero y madera;10,2 cm de largo;;alta
-546;Corta Queso Blandos Mango Loeke;Cortadores;;;;;;Cortador de quesos de alambre: corta quesos blandos con precisión y el alambre no necesita afilarse como un cuchillo. Mango de agarre cómodo.;Alambre de acero inoxidable, mango plástico;Largo total 16 cm;;alta
+525E;Sacacorcho Cabo De Madera;Sacacorchos y descorchadores;;;;Sacacorchos simple con mango de agarre anatómico.;;Sacacorchos simple con mango de madera de agarre anatómico. Sin cortacápsulas.;Acero y madera;10,2 cm de largo;;alta
+546;Corta Queso Blandos Mango Loeke;Cortadores;;;;Cortador de quesos blandos de alambre: corta con precisión y, a diferencia de un cuchillo, no necesita afilarse.;;Cortador de quesos de alambre: corta quesos blandos con precisión y el alambre no necesita afilarse como un cuchillo. Mango de agarre cómodo.;Alambre de acero inoxidable, mango plástico;Largo total 16 cm;;alta
 574E;Corta Queso Blandos Mango Alambre;Cortadores;;;;;;Cortador de quesos de alambre con mango plástico blanco, de uso fácil en casa o en gastronomía.;Acero inoxidable, mango plástico;16 cm de largo, 11 cm de ancho;Sí;baja
 562;Corta Pizza 6cm mango Loeke;Cortadores;;;;;;;;;;
 564;Corta Pizza 8cm mango Madera;Cortadores;;;;;;;;;;
@@ -55,18 +55,18 @@
 366E;Rallador Cónico acero inoxidable;Ralladores y mandolinas;;;;;;;;;;
 367E;Rallador Hexagonal;Ralladores y mandolinas;;;;;;;;;;
 870E;Mandolina 3 Grosores;Ralladores y mandolinas;;;;;;;;;;
-031;Filtro De Café 10cm;Coladores y filtros;;;;;;"Filtro de tela para preparar café de filtro tradicional. Su boca de 10 cm se adapta a la mayoría de las tazas y cafeteras; es resistente y lavable.";Alambre y tela;10 cm de diámetro, 9 cm de profundidad, 18 cm de largo total;;alta
+031;Filtro De Café 10cm;Coladores y filtros;;;;"Filtro de tela para preparar café de filtro tradicional; su boca se adapta a la mayoría de las tazas y cafeteras. Reutilizable: se lava y se vuelve a usar.";;"Filtro de tela para preparar café de filtro tradicional. Su boca de 10 cm se adapta a la mayoría de las tazas y cafeteras; es resistente y lavable.";Alambre y tela;10 cm de diámetro, 9 cm de profundidad, 18 cm de largo total;;alta
 034;Filtro De Café Gastro 14cm;Coladores y filtros;;;;;;;;;;
-026;Colador Ø 8cm;Coladores y filtros;;;;;;Colador de malla fina de 8 cm, útil para tamizar ingredientes secos, colar pequeñas cantidades o lavar frutas chicas.;;8 cm de diámetro, 3 cm de profundidad, 19,5 cm de largo;Sí;media
-027;Colador Ø 10cm;Coladores y filtros;;;;;;Colador de 10 cm para colar pequeñas cantidades: hierbas frescas, especias o una taza de té.;Las publicaciones dicen acero inoxidable;10 cm de diámetro, 24 cm de largo total;;media
+026;Colador Ø 8cm;Coladores y filtros;;;;Colador chico de malla fina, útil para tamizar ingredientes secos, colar pequeñas cantidades o lavar frutas chicas.;;Colador de malla fina de 8 cm, útil para tamizar ingredientes secos, colar pequeñas cantidades o lavar frutas chicas.;;8 cm de diámetro, 3 cm de profundidad, 19,5 cm de largo;Sí;media
+027;Colador Ø 10cm;Coladores y filtros;;;;Colador chico para colar pequeñas cantidades: hierbas, especias o una taza de té.;;Colador de 10 cm para colar pequeñas cantidades: hierbas frescas, especias o una taza de té.;Las publicaciones dicen acero inoxidable;10 cm de diámetro, 24 cm de largo total;;media
 437E;Colador Ø 16cm;Coladores y filtros;;;;;;;;;;
-438E;Colador Ø 20cm;Coladores y filtros;;;;;;Colador de 20 cm de diámetro para colar y tamizar.;Las publicaciones dicen acero inoxidable;20 cm de diámetro, 8 cm de profundidad;;media
+438E;Colador Ø 20cm;Coladores y filtros;;;;Colador grande para colar y tamizar.;;Colador de 20 cm de diámetro para colar y tamizar.;Las publicaciones dicen acero inoxidable;20 cm de diámetro, 8 cm de profundidad;;media
 439E;Colador Pasta;Coladores y filtros;;;;;;;;;;
 440E;Colador Extensible 25x34/57cm;Coladores y filtros;;;;;;;;;;
 260E;Infusor de Te;Coladores y filtros;;;;;;;;;;
 441;Colador de Pasta Plástico;Coladores y filtros;;;;;;;;;;
 035E;Cernidor de Harina;Coladores y filtros;;;;;;;;;;
-504;Afila Cuchillos;Afiladores de cuchillos;;;;;;Afilador de cuchillos de ruedas con mango plástico blanco. Afila cuchillos de filo liso de cocina y de mesa: se apoya el cuchillo en las ruedas del centro y se tira hacia atrás, siempre en dirección a la base. No sirve para cuchillos de filo serrucho ni de cerámica.;Plástico con ruedas de acero inoxidable;;;alta
+504;Afila Cuchillos;Afiladores de cuchillos;;;;Afilador de cuchillos de ruedas para cuchillos de filo liso, de cocina y de mesa. Se apoya el cuchillo en las ruedas del centro y se tira hacia atrás, siempre en dirección a la base. No sirve para cuchillos de filo serrucho ni de cerámica.;;Afilador de cuchillos de ruedas con mango plástico blanco. Afila cuchillos de filo liso de cocina y de mesa: se apoya el cuchillo en las ruedas del centro y se tira hacia atrás, siempre en dirección a la base. No sirve para cuchillos de filo serrucho ni de cerámica.;Plástico con ruedas de acero inoxidable;;;alta
 404E;Afila Cuchillos Premium;Afiladores de cuchillos;;;;;;;;;;
 981E;Espátula Lisa Linea Premium;Utensilios de cocina;;;;;;;;;;
 982E;Cuchara Linea Premium;Utensilios de cocina;;;;;;;;;;
@@ -97,7 +97,7 @@
 941E;Espátula Lisa acero inoxidable;Utensilios de cocina;;;;;;;;;;
 946E;Cuchara Calada acero inoxidable;Utensilios de cocina;;;;;;;;;;
 948E;Espumadera acero inoxidable;Utensilios de cocina;;;;;;;;;;
-315;Pisa Papas Acero inoxidable;Utensilios de cocina;;;;;;Pisapapas para hacer puré de forma rápida y sencilla, con mango plástico blanco.;Acero inoxidable reforzado, mango plástico;19 cm de largo, 8 cm de diámetro;;alta
+315;Pisa Papas Acero inoxidable;Utensilios de cocina;;;;Pisapapas para hacer puré de forma rápida y sencilla.;;Pisapapas para hacer puré de forma rápida y sencilla, con mango plástico blanco.;Acero inoxidable reforzado, mango plástico;19 cm de largo, 8 cm de diámetro;;alta
 335;Cuchara Calada acero inoxidable;Utensilios de cocina;;;;;;;;;;
 332;Espatula Calada acero inoxidable;Utensilios de cocina;;;;;;;;;;
 338;Espatula Lisa acero inoxidable;Utensilios de cocina;;;;;;;;;;
@@ -126,15 +126,15 @@
 575;Tapón De Vino/Cerveza x1 Negro;Tapones de vino y cerveza;;;;;;;;;;
 577;Tapón De Vino/Cerveza x1 Prem;Tapones de vino y cerveza;;;;;;;;;;
 579;Tapón De Vino/Cerveza x1 Color;Tapones de vino y cerveza;;;;;;;;;;
-544;Batidor Pera Alambre;Repostería;;;;;;Batidor de alambre tipo pera para mezclar y batir ingredientes en cocina y repostería. Simple de usar y muy resistente.;Acero inoxidable;Largo 30 cm, diámetro del batidor 8 cm;;alta
+544;Batidor Pera Alambre;Repostería;;;;Batidor tipo pera para mezclar y batir ingredientes en la cocina y en repostería.;;Batidor de alambre tipo pera para mezclar y batir ingredientes en cocina y repostería. Simple de usar y muy resistente.;Acero inoxidable;Largo 30 cm, diámetro del batidor 8 cm;;alta
 580;Batidor Mini;Repostería;;;;;;;;;;
 969E;Batidor Silicona;Repostería;;;;;;;;;;
 970E;Cuchara Silicona;Repostería;;;;;;;;;;
 971E;Espátula Silicona;Repostería;;;;;;;;;;
 960E;Pincel Silicona 52 g;Repostería;;;;;;;;;;
-280;Manga Repostera + 4 Boquillas;Repostería;;;;;;Manga repostera reutilizable con 4 picos intercambiables para distintas decoraciones.;Plástico;;;media
+280;Manga Repostera + 4 Boquillas;Repostería;;;;Manga repostera reutilizable con 4 picos intercambiables para distintas decoraciones.;;Manga repostera reutilizable con 4 picos intercambiables para distintas decoraciones.;Plástico;;;media
 590E;Pincel Silicona 11 g;Repostería;;;;;;;;;;
-325;Espatula Repostera plástico 1 Pza;Repostería;;;;;;"Espátula repostera flexible, apta para recipientes antiadherentes; ideal para tortas y postres.";Nylon flexible;Aprox. 24 cm de largo;;media
+325;Espatula Repostera plástico 1 Pza;Repostería;;;;"Espátula repostera flexible, apta para recipientes antiadherentes; ideal para tortas y postres.";;"Espátula repostera flexible, apta para recipientes antiadherentes; ideal para tortas y postres.";Nylon flexible;Aprox. 24 cm de largo;;media
 590ES;Pincel Silicona 11 g Suelto;Repostería;;;;;;;;;;
 326;Corta Torta Plástica 3 Usos;Repostería;;;;;;;;;;
 312;Pala De Torta Acero inoxidable;Repostería;;;;;;;;;;
@@ -144,8 +144,8 @@
 311;Cuchillo De Torta acero inoxidable;Repostería;;;;;;;;;;
 208;Cucharita 13cm Azucarera Madera;Utensilios de madera;;;;;;;;;;
 223;Cuchara Madera 25 Cm;Utensilios de madera;;;;;;;;;;
-224;Cuchara Madera 30 Cm;Utensilios de madera;;;;;;"Cuchara de madera de 30 cm, larga para llegar al fondo de ollas y sartenes. Sirve para revolver sopas, guisos y salsas y para servir; no raya las superficies antiadherentes.";Madera;Largo 30 cm;;alta
-248;Cuchara Nylon Reforzada 33 Cm;Utensilios de madera;;;;;;Cuchara de nylon reforzada de 33 cm para mezclar y servir. El mango largo es cómodo y no raya los recipientes antiadherentes.;Nylon;Largo 33 cm;;alta
+224;Cuchara Madera 30 Cm;Utensilios de madera;;;;Cuchara de madera larga, que llega al fondo de ollas y sartenes. Sirve para revolver sopas, guisos y salsas y para servir, y no raya las superficies antiadherentes.;;"Cuchara de madera de 30 cm, larga para llegar al fondo de ollas y sartenes. Sirve para revolver sopas, guisos y salsas y para servir; no raya las superficies antiadherentes.";Madera;Largo 30 cm;;alta
+248;Cuchara Nylon Reforzada 33 Cm;Utensilios de madera;;;;Cuchara de nylon reforzada, de mango largo, para mezclar y servir. No raya los recipientes antiadherentes.;;Cuchara de nylon reforzada de 33 cm para mezclar y servir. El mango largo es cómodo y no raya los recipientes antiadherentes.;Nylon;Largo 33 cm;;alta
 225;Cuchara Madera 35 Cm;Utensilios de madera;;;;;;;;;;
 220;Cuchara Madera 40 Cm;Utensilios de madera;;;;;;;;;;
 221;Cuchara Madera 45 Cm;Utensilios de madera;;;;;;;;;;
@@ -158,7 +158,7 @@
 232;Palo de Amasar 40cm;Utensilios de madera;;;;;;;;;;
 233;Palo de Amasar 50cm;Utensilios de madera;;;;;;;;;;
 557;Bombilla Resorte Chata;Mate y bombillas;;;;;;;;;;
-558;Bombilla Resorte Tradicional;Mate y bombillas;;;;;;Bombilla de mate tradicional de resorte, que filtra bien la yerba y deja la infusión sin residuos. Cómoda y fácil de limpiar.;Acero inoxidable;Largo 15,5 cm;;media
+558;Bombilla Resorte Tradicional;Mate y bombillas;;;;Bombilla de mate tradicional de resorte, que filtra la yerba y deja la infusión sin residuos.;;Bombilla de mate tradicional de resorte, que filtra bien la yerba y deja la infusión sin residuos. Cómoda y fácil de limpiar.;Acero inoxidable;Largo 15,5 cm;;media
 659;Bombilla Pico de Loro Acero inoxidable;Mate y bombillas;;;;;;;;;;
 654;Bombilla Autolimpiante inoxidable;Mate y bombillas;;;;;;;;;;
 658;Bombilla Plana Ancha Metalizada;Mate y bombillas;;;;;;;;;;
@@ -166,7 +166,7 @@
 255;Mate inoxidable Térmico;Mate y bombillas;;;;;;;;;;
 256;Mate Madera Cerámica;Mate y bombillas;;;;;;;;;;
 591;Despolvillador de Yerba;Mate y bombillas;;;;;;;;;;
-555;Cepillo Limpia Bombilla;Mate y bombillas;;;;;;Cepillo para limpiar bombillas y sorbetes por dentro, con mango que facilita llegar a todos los rincones.;Las publicaciones dicen aluminio;16,5 cm de largo;;media
+555;Cepillo Limpia Bombilla;Mate y bombillas;;;;Cepillo para limpiar bombillas y sorbetes por dentro, con mango que facilita llegar a todos los rincones.;;Cepillo para limpiar bombillas y sorbetes por dentro, con mango que facilita llegar a todos los rincones.;Las publicaciones dicen aluminio;16,5 cm de largo;;media
 550;Filtro Para Bombillas;Mate y bombillas;;;;;;Filtro de repuesto para bombillas de mate.;Las publicaciones dicen plástico resistente;;;baja
 556;Sacayerba;Mate y bombillas;;;;;;;;;;
 508;Sacafuentes Articulado;Accesorios de cocina;;;;;;;;;;
