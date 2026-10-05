@@ -6,11 +6,13 @@
  * Levanta mayorista.html por HTTP local (el fetch de productos/fichas.json no
  * anda sobre file://) con Supabase falso y verifica:
  *   1. el artículo con ficha cargada (505) lleva el botón; el que no (999X), no
- *   2. el botón es un LINK a productos/articulo/505.html (página propia, con URL)
- *      y no abre ningún popup
+ *   2. el botón tiene href a productos/articulo/505.html (abrirlo en otra
+ *      pestaña da la página pública) y no hay popup
  *   3. con fichas.json caído la card sale igual, sin botón y sin error
- *   4. mayorista.html#agregar=505 agrega UNA caja del 505 por addFirstBox
- *      (con origen 'catalogo') y borra el hash para que recargar no repita
+ *   4. mayorista.html#agregar=505 (lo usa la ficha pública) agrega UNA caja del
+ *      505 por addFirstBox (origen 'catalogo'), deja al cliente parado en la
+ *      ficha adentro del catálogo (#ficha=505) y saca el #agregar para que
+ *      recargar no vuelva a sumar
  *
  * Correr:  node tests/ficha-tecnica-btn.cjs
  */
@@ -106,7 +108,6 @@ async function mostrarCatalogo(page) {
   if (btn) {
     if (btn.tag !== "A" || btn.href !== "productos/articulo/505.html")
       fallas.push(`2: el botón no es un link a la página del artículo (${btn.tag} ${btn.href})`);
-    if (btn.onclick) fallas.push("2: el botón todavía tiene onclick (¿popup?)");
   }
   if (await a.page.$("#fichaTecModal")) fallas.push("2: quedó el popup de ficha técnica en el DOM");
   await a.ctx.close();
@@ -123,7 +124,8 @@ async function mostrarCatalogo(page) {
   const ag = await a.page.evaluate(() => ({ ag: window.__agregado, hash: location.hash }));
   if (ag.ag && (ag.ag[0] !== "p-1" || ag.ag[1] !== "catalogo"))
     fallas.push(`4: agregó otra cosa (${JSON.stringify(ag.ag)})`);
-  if (ag.hash) fallas.push(`4: el hash quedó en la URL (${ag.hash}): recargar volvería a agregar`);
+  if (/agregar/.test(ag.hash)) fallas.push(`4: el #agregar quedó en la URL (${ag.hash}): recargar volvería a sumar`);
+  if (ag.hash !== "#ficha=505") fallas.push(`4: no quedó parado en la ficha del 505 (${ag.hash})`);
   await a.ctx.close(); srv.close();
 
   // 3

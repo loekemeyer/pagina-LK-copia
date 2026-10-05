@@ -1576,12 +1576,19 @@ las aprueben. No muestran precios.
   botón deshabilitado). Sin sesión queda el link de WhatsApp. ⚠ El precio de un vendedor que en mayorista tiene un
   cliente elegido NO se replica acá (muestra lista). Chequeo: `tests/ficha-articulo.cjs`.
 - **Botón «Ficha técnica» en la card del catálogo mayorista (05/10/2026, Thomas)**: `productos/fichas.json`
-  (`{fichas: {cod: {n}}}`) lista los artículos activos con algún dato en `fichas-manual.csv`; `script.js`
-  (`loadFichasTec` / `fichaTecBtnHtml`) dibuja en esas cards un **link a `productos/articulo/<cod>.html`** (página
-  propia con URL, para compartir, citar e indexar; el popup se probó y se descartó el mismo día). La vuelta es
-  **`mayorista.html#agregar=<cod>`** (`procesarAgregarDesdeFicha`): espera catálogo, sesión y perfil, agrega UNA caja
-  por `addFirstBox` (con todos sus guards) y borra el hash. Si el JSON no carga, la card sale sin botón (no se cachea
-  el fallo). Chequeo: `tests/ficha-tecnica-btn.cjs`.
+  (`{fichas: {cod: {n}}}`) lista los artículos activos con algún dato en `fichas-manual.csv`; sólo esas cards llevan
+  el botón (`fichaTecBtnHtml`). **La ficha se abre ADENTRO de `mayorista.html`** (Thomas: *"el header no tiene que
+  cambiar… si quiero volver atrás no tengo que perder nada de lo cargado"*): `abrirFichaEnCatalogo` trae
+  `productos/articulo/<cod>.html`, toma su `.art-ficha` (misma fuente, sin duplicar contenido; los href relativos se
+  resuelven contra la página pública) y la muestra en la sección **`#fichaArticulo`**, con el header, la sesión y el
+  carrito de siempre. La zona de compra la pinta `_fichaCompraHtml` con la **misma lógica que la card** (precio,
+  sin stock, vendedor sin cliente, iniciar sesión) y suma con `addFirstBox` / `changeQty`. URL
+  `mayorista.html#ficha=<cod>` con entrada de historial (`state.n` = fichas apiladas): «atrás» vuelve a la ficha
+  anterior o al catálogo en el mismo scroll; un relacionado se abre en la misma sección. El `href` del botón sigue
+  siendo la página pública (ctrl/clic medio la abre en otra pestaña). Desde la ficha pública, «Agregar al pedido»
+  manda a `mayorista.html#agregar=<cod>` (`procesarAgregarDesdeFicha`): abre la ficha en el catálogo, suma UNA caja
+  y saca el `#agregar`. Estilos de la ficha en **`css/ficha.css`** (los cargan la página pública y mayorista; todo
+  `.art-*`, variables `--art-*`). Chequeos: `tests/ficha-tecnica-btn.cjs`, `tests/ficha-en-catalogo.cjs`.
 - **El hook `pre-commit` recorre hasta `maxdepth 3`** desde el 04/10/2026: las fichas viven en el nivel 3
   y con 2 quedaban con el `?v=` viejo. El `V` del generador ahora se lee de `version.js`.
 - **La home lleva `@graph` Organization + WebSite con `@id`** (`https://loekemeyer.com/#organizacion`), que

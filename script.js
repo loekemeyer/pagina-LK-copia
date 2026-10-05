@@ -2149,7 +2149,7 @@ function showSection(id) {
       } catch (e) {}
     } else if (id === "productos") {
       // Limpiar el hash si volvimos a productos via UI normal
-      if (location.hash === "#perfil") {
+      if (location.hash === "#perfil" || /^#ficha=/.test(location.hash)) {
         try {
           history.replaceState({ lkSection: "productos" }, "", " ");
         } catch (e) {}
@@ -17520,9 +17520,19 @@ window.addEventListener("popstate", function (e) {
     if (sec === "perfil") {
       // Re-entró a perfil (forward del navegador) — re-mostrar
       if (typeof showSection === "function") showSection("perfil");
+    } else if (sec === "ficha" && st.cod) {
+      // Atrás/adelante entre fichas de artículo (sección #fichaArticulo)
+      if (typeof abrirFichaEnCatalogo === "function")
+        abrirFichaEnCatalogo(st.cod, null, { desdeHistorial: true });
     } else {
-      // Cualquier otro caso (back desde perfil, state null) → productos
+      // Cualquier otro caso (back desde perfil o desde una ficha, state null) → productos
       if (typeof showSection === "function") showSection("productos");
+      // Volviendo de una ficha: el catálogo queda donde estaba el scroll.
+      if (window.__fichaVolverY != null) {
+        var y = window.__fichaVolverY;
+        window.__fichaVolverY = null;
+        requestAnimationFrame(function () { window.scrollTo(0, y); });
+      }
     }
   } finally {
     setTimeout(function () { window.__lkBackNav = false; }, 50);
@@ -17944,8 +17954,214 @@ function fichaTecDe(cod) {
 function fichaTecBtnHtml(p) {
   const cod = String((p && p.cod) || "").trim();
   if (!fichaTecDe(cod)) return "";
-  return `<a class="ft-btn" href="productos/articulo/${encodeURIComponent(cod)}.html" aria-label="Ver ficha técnica del ${_ftEsc(cod)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>Ficha técnica</a>`;
+  return `<a class="ft-btn" href="productos/articulo/${encodeURIComponent(cod)}.html" onclick="return abrirFichaEnCatalogo('${_ftEsc(cod)}', event)" aria-label="Ver ficha técnica del ${_ftEsc(cod)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>Ficha técnica</a>`;
 }
+
+/* Ficha del artículo ADENTRO del catálogo (Thomas, 05/10/2026): "el header no
+   tiene que cambiar y no se tiene que perder nada de lo cargado". La card no
+   navega a la página pública: trae productos/articulo/<cod>.html, toma su
+   .art-ficha (mismo HTML, misma fuente, estilos en css/ficha.css) y la muestra
+   en la sección #fichaArticulo. El header, la sesión y el carrito son los de
+   siempre, «Agregar al pedido» usa addFirstBox/changeQty, y la URL queda
+   mayorista.html#ficha=<cod> con su entrada de historial: «atrás» vuelve al
+   catálogo en el mismo lugar del scroll. Ctrl/clic medio abre la página
+   pública en otra pestaña (el href sigue siendo el de la ficha pública). */
+const _fichaHtmlCache = new Map();
+let _fichaCodActual = null;
+
+function _fichaUrl(cod) {
+  return "productos/articulo/" + encodeURIComponent(String(cod).trim()) + ".html";
+}
+
+async function _fichaTraer(cod) {
+  if (_fichaHtmlCache.has(cod)) return _fichaHtmlCache.get(cod);
+  const v = typeof APP_VERSION !== "undefined" ? APP_VERSION : "";
+  const r = await fetch(_fichaUrl(cod) + "?v=" + encodeURIComponent(v));
+  if (!r.ok) throw new Error("ficha " + cod + ": HTTP " + r.status);
+  const doc = new DOMParser().parseFromString(await r.text(), "text/html");
+  const art = doc.querySelector(".art-ficha");
+  if (!art) throw new Error("ficha " + cod + ": sin .art-ficha");
+  // Los href relativos de la página pública (../../, ../) se resuelven contra
+  // SU url, no contra mayorista.html.
+  const base = new URL(_fichaUrl(cod), location.href);
+  art.querySelectorAll("[href]").forEach((a) => {
+    const h = a.getAttribute("href") || "";
+    if (/^(https?:|mailto:|tel:|#|javascript:)/i.test(h)) return;
+    try {
+      a.setAttribute("href", new URL(h, base).href);
+    } catch (e) {}
+  });
+  const html = art.outerHTML;
+  _fichaHtmlCache.set(cod, html);
+  return html;
+}
+
+// Zona de compra de la ficha: la MISMA lógica que la card del catálogo.
+function _fichaCompraHtml(p) {
+  if (!p) return "";
+  const pid = _ftEsc(p.id);
+  const logged = !!currentSession;
+  const badge = String(p.badge_status || "").trim().toUpperCase();
+  if (badge === "SIN STOCK") return '<button class="add-btn disabled" disabled>Sin stock</button>';
+  if (badge === "PROXIMAMENTE" || badge === "PRÓXIMAMENTE")
+    return '<button class="add-btn disabled" disabled>Próximamente</button>';
+  if (!logged)
+    return '<button class="add-btn add-login-btn" onclick="openLogin()">Iniciar sesión para ver precios</button>';
+  const vendorBrowse =
+    typeof isVendorProfileBrowseMode === "function" && isVendorProfileBrowseMode();
+  if (vendorBrowse)
+    return '<button class="add-btn add-vendor-browse" onclick="cerrarFichaCatalogo(); scrollToCustomerSelector()">Elegir razón social</button>';
+  let precio = "";
+  try {
+    const soloLista = typeof isListPriceOnlyClient === "function" && isListPriceOnlyClient();
+    const monto = soloLista
+      ? Number(p.list_price || 0)
+      : unitYourPrice(p.list_price) * (1 - WEB_ORDER_DISCOUNT) * (1 - 0.25);
+    if (monto > 0)
+      precio = `<span class="art-precio">${soloLista ? "Precio Lista" : "Tu Precio Contado"}: <strong>$${formatMoney(monto)}</strong> + IVA</span>`;
+  } catch (e) {}
+  const item = cart.find((i) => String(i.productId) === String(p.id));
+  const qty = item ? Number(item.qtyCajas || 0) : 0;
+  if (qty > 0) {
+    return `<span class="art-en-pedido">En tu pedido: <strong>${qty}</strong> ${qty === 1 ? "caja" : "cajas"}</span>
+      <span class="art-qty"><button type="button" class="art-qty-btn" onclick="fichaCambiarCajas('${pid}',-1)" aria-label="Una caja menos">−</button><button type="button" class="art-qty-btn" onclick="fichaCambiarCajas('${pid}',1)" aria-label="Una caja más">+</button></span>${precio}`;
+  }
+  return `<button class="add-btn art-agregar-cat" onclick="fichaAgregar('${pid}')">Agregar al pedido</button>${precio}`;
+}
+
+function _fichaPintarCompra() {
+  const caja = document.querySelector("#fichaArticuloBody #artCompra");
+  if (!caja || !_fichaCodActual) return;
+  const p = (Array.isArray(products) ? products : []).find(
+    (x) => String(x.cod || "").trim() === _fichaCodActual,
+  );
+  // Un artículo que el catálogo no tiene cargado (inactivo, otra línea) queda
+  // con lo que trae la página pública (link de WhatsApp).
+  if (!p) return;
+  caja.innerHTML = _fichaCompraHtml(p);
+}
+
+function fichaAgregar(pid) {
+  addFirstBox(pid, "catalogo");
+  _fichaPintarCompra();
+}
+window.fichaAgregar = fichaAgregar;
+
+function fichaCambiarCajas(pid, delta) {
+  if (typeof changeQty === "function") changeQty(pid, delta);
+  _fichaPintarCompra();
+}
+window.fichaCambiarCajas = fichaCambiarCajas;
+
+async function abrirFichaEnCatalogo(cod, ev, opts) {
+  // Ctrl/Cmd/Shift o clic medio: que el navegador abra la página pública.
+  if (ev && (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button === 1)) return true;
+  if (ev && ev.preventDefault) ev.preventDefault();
+  opts = opts || {};
+  cod = String(cod || "").trim();
+  if (!cod) return false;
+  const cont = document.getElementById("fichaArticuloBody");
+  if (!cont) {
+    location.href = _fichaUrl(cod);
+    return false;
+  }
+  let html;
+  try {
+    html = await _fichaTraer(cod);
+  } catch (e) {
+    console.warn("[ficha] no se pudo traer, se abre la página pública", e);
+    location.href = _fichaUrl(cod);
+    return false;
+  }
+  const yaEnFicha = !!_fichaCodActual && document.getElementById("fichaArticulo").classList.contains("active");
+  if (!yaEnFicha && !opts.desdeHistorial) window.__fichaVolverY = window.scrollY || 0;
+  if (!opts.desdeHistorial) {
+    try {
+      // n = cuántas fichas hay apiladas arriba del catálogo en el historial:
+      // «volver al catálogo» retrocede exactamente esas (history.go(-n)).
+      const prev = history.state && history.state.lkSection === "ficha" ? Number(history.state.n) || 0 : 0;
+      if (opts.reemplazar) {
+        history.replaceState({ lkSection: "ficha", cod: cod, n: prev }, "", "#ficha=" + encodeURIComponent(cod));
+      } else {
+        history.pushState({ lkSection: "ficha", cod: cod, n: prev + 1 }, "", "#ficha=" + encodeURIComponent(cod));
+      }
+    } catch (e) {}
+  }
+  cont.innerHTML = html;
+  _fichaCodActual = cod;
+  // La columna de la foto queda fija debajo del header de mayorista.
+  const header = document.querySelector(".header");
+  const alto = header ? Math.round(header.getBoundingClientRect().height) : 70;
+  cont.style.setProperty("--art-top", alto + 16 + "px");
+  showSection("fichaArticulo");
+  _fichaPintarCompra();
+  try {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  } catch (e) {
+    window.scrollTo(0, 0);
+  }
+  return false;
+}
+window.abrirFichaEnCatalogo = abrirFichaEnCatalogo;
+
+function cerrarFichaCatalogo() {
+  const st = history.state || {};
+  const n = st.lkSection === "ficha" ? Number(st.n) || 0 : 0;
+  if (n > 0) {
+    history.go(-n); // el popstate vuelve al catálogo y restaura el scroll
+    return;
+  }
+  try {
+    history.replaceState({ lkSection: "productos" }, "", location.pathname + location.search);
+  } catch (e) {}
+  showSection("productos");
+}
+window.cerrarFichaCatalogo = cerrarFichaCatalogo;
+
+// Clics adentro de la ficha: otro artículo → se abre acá mismo; el catálogo
+// público (breadcrumb, "ver los artículos de la línea") → vuelve al catálogo de
+// mayorista; "dónde comprar" sale en otra pestaña. El resto, normal.
+document.addEventListener("click", (e) => {
+  const a = e.target && e.target.closest ? e.target.closest("#fichaArticuloBody a[href]") : null;
+  if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return;
+  let u;
+  try {
+    u = new URL(a.href, location.href);
+  } catch (err) {
+    return;
+  }
+  if (u.origin !== location.origin) return;
+  const m = /\/productos\/articulo\/([^/]+)\.html$/.exec(u.pathname);
+  if (m) {
+    e.preventDefault();
+    abrirFichaEnCatalogo(decodeURIComponent(m[1]));
+    return;
+  }
+  if (/\/productos\/donde-comprar\.html$/.test(u.pathname)) {
+    a.target = "_blank";
+    return;
+  }
+  if (/\/productos\//.test(u.pathname)) {
+    e.preventDefault();
+    cerrarFichaCatalogo();
+  }
+});
+
+// mayorista.html#ficha=<cod> (recarga, link compartido): se abre la ficha
+// apenas el catálogo está cargado.
+function _fichaDesdeHashInicial() {
+  const m = /^#ficha=([^&]+)$/.exec(location.hash || "");
+  if (!m) return;
+  const cod = decodeURIComponent(m[1]).trim();
+  const t0 = Date.now();
+  const tick = () => {
+    const listo = Array.isArray(products) && products.length > 0;
+    if (!listo && Date.now() - t0 < 15000) return setTimeout(tick, 250);
+    abrirFichaEnCatalogo(cod, null, { reemplazar: true });
+  };
+  tick();
+}
+document.addEventListener("DOMContentLoaded", _fichaDesdeHashInicial);
 
 /* «Agregar al pedido» desde la ficha pública: la página del artículo manda a
    mayorista.html#agregar=<cod>. Se espera a que estén el catálogo y la sesión
@@ -17971,9 +18187,12 @@ function procesarAgregarDesdeFicha() {
     if (esperar) return setTimeout(tick, 250);
     const p = products.find((x) => String(x.cod || "").trim() === cod);
     if (!p) return;
-    const card = document.getElementById("card-" + p.id);
-    if (card && card.scrollIntoView) card.scrollIntoView({ block: "center" });
-    addFirstBox(p.id, "catalogo");
+    // Queda parado en la ficha (adentro del catálogo, con el header de
+    // siempre) y con la caja ya sumada al pedido que tenía.
+    abrirFichaEnCatalogo(cod, null, { reemplazar: true }).then(() => {
+      addFirstBox(p.id, "catalogo");
+      _fichaPintarCompra();
+    });
   };
   tick();
 }

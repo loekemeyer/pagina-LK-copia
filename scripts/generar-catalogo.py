@@ -133,6 +133,7 @@ def head(titulo, descripcion, canonical, pref, extra_jsonld=None, og_image=None,
     <link rel="icon" type="image/png" href="{pref}img/favicon.jpg" />
     <link rel="stylesheet" href="{pref}css/styles.index.css?v={V}" />
     <link rel="stylesheet" href="{pref}css/productos.css?v={V}" />
+    <link rel="stylesheet" href="{pref}css/ficha.css?v={V}" />
     <link rel="stylesheet" href="{pref}css/publico.css?v={V}" />
     {jsonld}
   </head>"""
