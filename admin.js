@@ -129,7 +129,8 @@ function _otpHide(id) {
 }
 async function _otpLogoutAndRedirect() {
   try {
-    await sb.auth.signOut();
+    // 05/10: el usuario admin puede ser COMPARTIDO: cerrar sólo esta sesión, no la de todos.
+    await sb.auth.signOut({ scope: "local" });
   } catch (e) {}
   location.href = "/mayorista";
 }
@@ -415,6 +416,8 @@ function _authLoginMotivo(em) {
     return "Supabase rechazó el PIN por «contraseña filtrada»: hace falta un PIN nuevo de 8 números (los de 6 no pasan nunca)";
   if (em === "no_autorizado") return "tu usuario no tiene permiso para crear logins";
   if (em === "sin_sesion") return "no hay sesión de admin: volvé a entrar al panel";
+  if (em === "invalid_token")
+    return "tu sesión del panel se cerró (alguien entró con el mismo usuario desde otro lado): cerrá el panel y volvé a entrar";
   if (em === "red") return "error de red, probá de nuevo";
   return em;
 }
@@ -1687,7 +1690,7 @@ async function _repairTestPin(cuit, pin) {
       if (msg.indexOf("rate") !== -1 || msg.indexOf("too many") !== -1 || res.error.status === 429) return "rate";
       return "fail";
     }
-    try { await tmpClient.auth.signOut(); } catch (_) {}
+    try { await tmpClient.auth.signOut({ scope: "local" }); } catch (_) {}
     return "ok";
   } catch (e) {
     var m = (e && e.message ? e.message : "").toLowerCase();
@@ -1878,7 +1881,7 @@ async function tryLoginWithStoredPin(tmpClient, email, pin) {
       return "fail";
     }
     try {
-      await tmpClient.auth.signOut();
+      await tmpClient.auth.signOut({ scope: "local" });
     } catch (_) {}
     return "ok";
   } catch (e) {
