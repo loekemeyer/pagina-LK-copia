@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23530" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23530" />
+    <link rel="stylesheet" href="css/styles.css?v=23531" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23531" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -2336,8 +2336,11 @@
         <button type="button" class="fotos-popup-close" aria-label="Cerrar" onclick="cerrarProdPreview()">&times;</button>
         <div class="pp-imgwrap">
           <img id="ppImg" src="" alt="" />
+          <!-- Video del producto: sin src hasta que se toca "Ver video" (no baja nada al abrir) -->
+          <video id="ppVideo" class="pp-video" controls playsinline preload="none" style="display: none"></video>
           <button type="button" class="pp-arrow prev" id="ppPrev" aria-label="Foto anterior" onclick="ppStep(-1, event)">&#8249;</button>
           <button type="button" class="pp-arrow next" id="ppNext" aria-label="Foto siguiente" onclick="ppStep(1, event)">&#8250;</button>
+          <button type="button" class="pp-video-btn" id="ppVideoBtn" style="display: none" onclick="ppToggleVideo(event)"></button>
         </div>
         <div class="pp-name" id="ppName"></div>
         <div class="pp-cod" id="ppCod"></div>
@@ -2384,14 +2387,14 @@
     <!-- La versión ya se muestra en el footer; se quitó el badge flotante. -->
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23530"></script>
-    <script src="script.js?v=23530"></script>
+    <script src="./version.js?v=23531"></script>
+    <script src="script.js?v=23531"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23530"></script>
+    <script src="analisis-venta-cliente.js?v=23531"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23530"></script>
-    <script src="admin-excel-krikos.js?v=23530"></script>
-    <script src="vendor-import-excel.js?v=23530"></script>
+    <script src="scotapi-shim.js?v=23531"></script>
+    <script src="admin-excel-krikos.js?v=23531"></script>
+    <script src="vendor-import-excel.js?v=23531"></script>
   </body>
 </html>

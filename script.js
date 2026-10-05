@@ -605,6 +605,7 @@ async function loadProductVideoManifest(force) {
   if (_productVideoLoading && !force) return _productVideoLoading;
   _productVideoLoading = (async () => {
     const map = new Map();
+    let fallo = false;
     try {
       const pageSize = 1000;
       let offset = 0;
@@ -628,7 +629,10 @@ async function loadProductVideoManifest(force) {
             }),
           },
         );
-        if (!resp.ok) break;
+        if (!resp.ok) {
+          fallo = true;
+          break;
+        }
         const rows = await resp.json();
         if (!Array.isArray(rows) || rows.length === 0) break;
         rows.forEach((r) => {
@@ -647,6 +651,13 @@ async function loadProductVideoManifest(force) {
       }
     } catch (e) {
       // Silencioso: sin manifest la galería queda vacía.
+      fallo = true;
+    }
+    // Una lectura ROTA no es "no hay videos": no se cachea, así el próximo
+    // popup (o la próxima vez que se abra la galería) vuelve a preguntar.
+    if (fallo && map.size === 0) {
+      _productVideoLoading = null;
+      return map;
     }
     PRODUCT_VIDEO_MAP = map;
     return map;
@@ -17603,6 +17614,8 @@ function openProdPreview(pid) {
       this.src = "img/no-image.jpg";
     };
   }
+  // Si quedó un video del producto anterior, se corta antes de mostrar éste.
+  ppVideoReset();
   const hayNav = m._ppImgs.length > 1;
   const prevB = document.getElementById("ppPrev");
   const nextB = document.getElementById("ppNext");
@@ -17672,12 +17685,102 @@ function openProdPreview(pid) {
   m.classList.remove("hidden");
   m.classList.add("open");
   m.setAttribute("aria-hidden", "false");
+  // Después de abrir: con la lista de videos ya cargada el botón aparece en el acto.
+  ppSyncVideoBtn(p);
 }
 window.openProdPreview = openProdPreview;
+
+/* Botón "Ver video" del popup de producto (05/10/2026). Aparece arriba a la
+   derecha de la foto SÓLO si el producto tiene video en el bucket
+   products-videos ({cod}.mp4, la misma lista que "Contenido para tus redes").
+   El video NO se baja al abrir el popup: recién al tocar el botón se le pone el
+   src (cuota de transferencia de Supabase, ver tests/redes-sin-autoplay.cjs). */
+const PP_VIDEO_BTN_VER =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Ver video';
+const PP_VIDEO_BTN_FOTOS =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z"/></svg>Ver fotos';
+
+function ppSyncVideoBtn(p) {
+  const m = document.getElementById("prodPreviewModal");
+  const btn = document.getElementById("ppVideoBtn");
+  if (!m || !btn) return;
+  btn.style.display = "none";
+  const cod = String((p && p.cod) || "");
+  m._ppVideoCod = cod;
+  if (!cod) return;
+  const mostrar = () => {
+    // Mientras bajaba la lista se pudo cerrar el popup o abrir otro producto.
+    if (m._ppVideoCod !== cod || !m.classList.contains("open")) return;
+    btn.style.display = videoUrlDeCod(cod) ? "" : "none";
+  };
+  if (PRODUCT_VIDEO_MAP) return mostrar();
+  loadProductVideoManifest().then(mostrar, () => {});
+}
+
+// Vuelve a las fotos: corta el video y le saca el src para que no siga bajando.
+function ppVideoReset() {
+  const v = document.getElementById("ppVideo");
+  if (v) {
+    try {
+      v.pause();
+    } catch (e) {}
+    if (v.getAttribute("src")) {
+      v.removeAttribute("src");
+      try {
+        v.load();
+      } catch (e) {}
+    }
+    v.style.display = "none";
+  }
+  const img = document.getElementById("ppImg");
+  if (img) img.style.display = "";
+  const m = document.getElementById("prodPreviewModal");
+  const hayNav = !!(m && Array.isArray(m._ppImgs) && m._ppImgs.length > 1);
+  ["ppPrev", "ppNext"].forEach((id) => {
+    const b = document.getElementById(id);
+    if (b) b.style.display = hayNav ? "" : "none";
+  });
+  const btn = document.getElementById("ppVideoBtn");
+  if (btn) {
+    btn.innerHTML = PP_VIDEO_BTN_VER;
+    btn.classList.remove("on");
+    btn.setAttribute("aria-label", "Ver video del producto");
+  }
+}
+
+function ppToggleVideo(ev) {
+  if (ev) ev.stopPropagation();
+  const m = document.getElementById("prodPreviewModal");
+  const v = document.getElementById("ppVideo");
+  const btn = document.getElementById("ppVideoBtn");
+  if (!m || !v || !btn) return;
+  if (v.style.display !== "none") {
+    ppVideoReset();
+    return;
+  }
+  const url = videoUrlDeCod(m._ppVideoCod);
+  if (!url) return;
+  const img = document.getElementById("ppImg");
+  if (img) img.style.display = "none";
+  ["ppPrev", "ppNext"].forEach((id) => {
+    const b = document.getElementById(id);
+    if (b) b.style.display = "none";
+  });
+  v.src = url;
+  v.style.display = "block";
+  btn.innerHTML = PP_VIDEO_BTN_FOTOS;
+  btn.classList.add("on");
+  btn.setAttribute("aria-label", "Volver a las fotos");
+  // Lo pidió el cliente con un toque: puede arrancar con sonido.
+  const pr = v.play();
+  if (pr && typeof pr.catch === "function") pr.catch(() => {});
+}
+window.ppToggleVideo = ppToggleVideo;
 
 function cerrarProdPreview() {
   const m = document.getElementById("prodPreviewModal");
   if (!m) return;
+  ppVideoReset();
   m.classList.remove("open");
   m.classList.add("hidden");
   m.setAttribute("aria-hidden", "true");
