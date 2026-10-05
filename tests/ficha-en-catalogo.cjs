@@ -141,7 +141,7 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
         getComputedStyle(document.querySelector("#fichaArticulo .art-foto img")).display !== "none" };
   });
   if (r7.extra.length !== 1 || !/505-2\.webp/.test(r7.extra[0] || "")) fallas.push(`7: debajo de la foto no está la 2ª (${JSON.stringify(r7.extra)})`);
-  if (!/\/img\/coto_logo\.png$/.test(r7.logo) || !r7.logo.startsWith(location0)) fallas.push(`7: el logo del comercio no apunta a img/ del sitio (${r7.logo})`);
+  if (!/\/img\/coto_logo_ficha\.png$/.test(r7.logo) || !r7.logo.startsWith(location0)) fallas.push(`7: el logo del comercio no apunta a img/ del sitio (${r7.logo})`);
   if (r7.mt < r7.hb - 1) fallas.push(`7: el popup tapa el header (popup ${r7.mt}px, header hasta ${r7.hb}px)`);
   if (r7.txt0 !== "Ver video") fallas.push(`7: el botón dice «${r7.txt0}»`);
   if (r7.srcAntes) fallas.push("7: el video se cargó sin tocar el botón");

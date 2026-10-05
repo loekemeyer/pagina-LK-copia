@@ -501,12 +501,12 @@ def seccion(titulo, cuerpo, id_=""):
 # en la ficha: la sección lleva sólo logos (Thomas, 05/10/2026). Para sumar uno,
 # se agrega el archivo a img/ y la línea acá.
 LOGOS_COMERCIO = {
-    "jumbo": "jumbo_logo.png",
+    "jumbo": "jumbo_logo_ficha.png",
     "disco": "disco_logo.png",
     "vea": "vea_logo.png",
-    "coto": "coto_logo.png",
+    "coto": "coto_logo_ficha.png",
     "carrefour": "carrefour_logo.png",
-    "laanonima": "laanonima_logo.png",
+    "laanonima": "laanonima_logo_ficha.png",
     "masonline": "changomas_logo.png",
 }
 
