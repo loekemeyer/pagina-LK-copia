@@ -2258,6 +2258,11 @@
         // asi una hoja de 2 columnas con encabezado en la fila 1 —aunque tenga
         // start_row = 0, como DIARCO— igual se detecta.
         var codCol = cfg.codCol, priceCol = cfg.priceCol;
+        // Fila donde arrancan los datos: la de cfg, o la siguiente al encabezado
+        // si el encabezado se encontró antes. Con hoja_start_row fijo, cuando la
+        // hoja tiene el encabezado más arriba de lo configurado se perdían las
+        // primeras filas (Cencosud 05/10/2026: 031, 123, 224, 248, 280, 315).
+        var dataStart = cfg.dataStartRow;
         var scanHasta = Math.max(cfg.dataStartRow, 2);
         for (var hh = 0; hh < scanHasta; hh++) {
           var hrow = rows[hh] || [];
@@ -2275,11 +2280,11 @@
                  /^lista\s+\d/.test(hv) ||
                  (hv.indexOf("precio") === 0 && hv.indexOf("costo") < 0))) pC = cc;
           }
-          if (cC >= 0 && pC >= 0) { codCol = cC; priceCol = pC; break; }
+          if (cC >= 0 && pC >= 0) { codCol = cC; priceCol = pC; dataStart = Math.min(dataStart, hh + 1); break; }
         }
 
         var seen = {};
-        for (var i = cfg.dataStartRow; i < rows.length; i++) {
+        for (var i = dataStart; i < rows.length; i++) {
           var row = rows[i] || [];
           var cod = row[codCol], price = row[priceCol];
           var cs = String(cod || "").trim().toLowerCase();
