@@ -400,3 +400,10 @@
   background: #111;
   color: #fff;
 }
+
+/* Vista de ficha dentro de mayorista.html: fondo blanco (Thomas, 05/10/2026).
+   El gris #f5f5f5 del body viene de analisis-venta-cliente.css; showSection
+   pone body.section-ficha sólo mientras se ve #fichaArticulo. */
+body.section-ficha {
+  background: #ffffff;
+}

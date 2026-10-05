@@ -2168,6 +2168,7 @@ function showSection(id) {
   document.body.classList.toggle("section-carrito", id === "carrito");
   // Idem en perfil: el buscador del catálogo no tiene sentido ahí
   document.body.classList.toggle("section-perfil", id === "perfil");
+  document.body.classList.toggle("section-ficha", id === "fichaArticulo");
 
   // Refrescar lista del módulo "no llevás" cada vez que se abre el carrito
   if (id === "carrito") {
