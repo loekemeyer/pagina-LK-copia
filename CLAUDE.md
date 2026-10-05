@@ -1381,6 +1381,9 @@ Documentos de planificación y replicación, NO ejecutables:
   | **`www.loekemeyer.com`** (CPanel — IIS / panel SolidCP) | **los clientes — es producción** | **a mano por SolidCP** (`/publicar-sitio` arma el `.zip`; `scripts\deploy-iis.ps1` si hay FTP) |
   | **`pagina-lk-copia.vercel.app`** (Vercel) | prueba / revisión | solo, con cada push a `main` |
 
+  ✅ **GitHub Pages VOLVIÓ a servir el repo** (medido el 05/10/2026: repo público, `has_pages = true`, el build
+  "pages build and deployment" sale en verde con cada push a `main`, la 2.3.542 a 1 min del push):
+  `https://loekemeyer.github.io/pagina-LK-copia/`. Thomas lo mira ahí. Lo de abajo queda como historia.
   ⚠ **GitHub Pages YA NO SIRVE ESTE REPO** (medido el 02/10/2026): el repo pasó a **privado**,
   `has_pages = false` y `loekemeyer.github.io/pagina-LK-copia/` da **404**; el último build de
   Pages fue la 2.3.468 (23/09). La copia de prueba es **Vercel**, que el 02/10 ya servía la
