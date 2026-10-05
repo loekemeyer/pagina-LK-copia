@@ -15,6 +15,8 @@
  *      mismo scroll y con el carrito intacto
  *   5. sin sesión, la ficha ofrece «Iniciar sesión», no «Agregar al pedido»
  *
+ *   6. es un popup blanco encima del catálogo; la X y Escape lo cierran
+ *
  * Correr:  node tests/ficha-en-catalogo.cjs
  */
 const path = require("path");
@@ -92,19 +94,25 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
   const y0 = await page.evaluate(() => window.scrollY);
   const url0 = page.url();
   await page.click("#card-p-1 .ft-btn");
-  await page.waitForSelector("#fichaArticulo.active .art-ficha", { timeout: 8000 }).catch(() => fallas.push("1: la ficha no se abrió adentro del catálogo"));
+  await page.waitForSelector("#fichaArticulo:not([hidden]) .art-ficha", { timeout: 8000 }).catch(() => fallas.push("1: la ficha no se abrió adentro del catálogo"));
   const r1 = await page.evaluate(() => ({
     path: location.pathname, hash: location.hash,
     header: !!document.querySelector(".header") && getComputedStyle(document.querySelector(".header")).display !== "none",
     h1: (document.querySelector("#fichaArticulo .art-datos h1") || {}).textContent,
     prodVisible: document.getElementById("productos").classList.contains("active"),
+    y: window.scrollY,
+    fondoBlanco: getComputedStyle(document.getElementById("fichaModalCaja")).backgroundColor,
+    fixed: getComputedStyle(document.getElementById("fichaArticulo")).position,
     compra: (document.querySelector("#fichaArticulo #artCompra") || {}).textContent,
   }));
   if (!/mayorista\.html$/.test(r1.path)) fallas.push(`1: salió de mayorista.html (${r1.path})`);
   if (r1.hash !== "#ficha=505") fallas.push(`1: la URL no quedó en #ficha=505 (${r1.hash})`);
   if (!r1.header) fallas.push("1: desapareció el header de mayorista");
   if (!r1.h1) fallas.push("1: la ficha no trae el título");
-  if (r1.prodVisible) fallas.push("1: el catálogo sigue visible debajo de la ficha");
+  if (!r1.prodVisible) fallas.push("1: el catálogo dejó de estar activo debajo del popup");
+  if (r1.fixed !== "fixed") fallas.push(`1: la ficha no es un popup (position ${r1.fixed})`);
+  if (r1.fondoBlanco !== "rgb(255, 255, 255)") fallas.push(`1: el popup no es blanco (${r1.fondoBlanco})`);
+  if (Math.abs(r1.y - y0) > 5) fallas.push(`1: abrir el popup movió el catálogo (${y0} → ${r1.y})`);
   if (!/iniciar sesi/i.test(r1.compra || "")) fallas.push(`5: sin sesión la ficha no ofrece iniciar sesión (${r1.compra})`);
 
   // 2 — con sesión
@@ -145,8 +153,8 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
   await page.goBack();
   await page.waitForFunction(() => location.hash === "#ficha=505", null, { timeout: 5000 }).catch(() => fallas.push("4: «atrás» no volvió a la ficha del 505"));
   await page.goBack();
-  await page.waitForFunction(() => document.getElementById("productos").classList.contains("active"), null, { timeout: 5000 })
-    .catch(() => fallas.push("4: el segundo «atrás» no volvió al catálogo"));
+  await page.waitForFunction(() => document.getElementById("fichaArticulo").hidden && document.getElementById("productos").classList.contains("active"), null, { timeout: 5000 })
+    .catch(() => fallas.push("4: el segundo «atrás» no cerró el popup"));
   await page.waitForTimeout(200);
   const r4 = await page.evaluate(() => ({
     y: window.scrollY, hash: location.hash, path: location.pathname,
@@ -156,6 +164,18 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
   if (Math.abs(r4.y - y0) > 5) fallas.push(`4: el catálogo no volvió al mismo scroll (${y0} → ${r4.y})`);
   if (r4.cart !== "p-1x2,p-2x3") fallas.push(`4: al volver se perdió algo del carrito (${r4.cart})`);
   if (r4.hash) fallas.push(`4: quedó el hash ${r4.hash}`);
+  // 6 — la X y Escape cierran el popup sin salir de mayorista
+  await page.click("#card-p-1 .ft-btn");
+  await page.waitForSelector("#fichaArticulo:not([hidden])", { timeout: 8000 }).catch(() => fallas.push("6: no reabrió"));
+  await page.click("#fichaArticulo .ficha-modal-x");
+  await page.waitForFunction(() => document.getElementById("fichaArticulo").hidden && !location.hash, null, { timeout: 5000 })
+    .catch(() => fallas.push("6: la X no cerró el popup"));
+  await page.click("#card-p-1 .ft-btn");
+  await page.waitForSelector("#fichaArticulo:not([hidden])", { timeout: 8000 }).catch(() => {});
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => document.getElementById("fichaArticulo").hidden, null, { timeout: 5000 })
+    .catch(() => fallas.push("6: Escape no cerró el popup"));
+  if (!/mayorista\.html$/.test(new URL(page.url()).pathname)) fallas.push("6: cerrar salió de mayorista.html");
   if (errores.length) fallas.push("errores de página: " + errores.join(" / "));
 
   await browser.close(); srv.close();

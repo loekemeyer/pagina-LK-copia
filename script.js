@@ -2133,6 +2133,7 @@ window.closeMobileUserMenu = closeMobileUserMenu;
  * SECTIONS
  ***********************/
 function showSection(id) {
+  if (typeof _fichaOcultar === "function") _fichaOcultar();
   if (id === "carrito" && !currentSession) {
     openLogin();
     return;
@@ -2168,7 +2169,6 @@ function showSection(id) {
   document.body.classList.toggle("section-carrito", id === "carrito");
   // Idem en perfil: el buscador del catálogo no tiene sentido ahí
   document.body.classList.toggle("section-perfil", id === "perfil");
-  document.body.classList.toggle("section-ficha", id === "fichaArticulo");
 
   // Refrescar lista del módulo "no llevás" cada vez que se abre el carrito
   if (id === "carrito") {
@@ -17522,18 +17522,16 @@ window.addEventListener("popstate", function (e) {
       // Re-entró a perfil (forward del navegador) — re-mostrar
       if (typeof showSection === "function") showSection("perfil");
     } else if (sec === "ficha" && st.cod) {
-      // Atrás/adelante entre fichas de artículo (sección #fichaArticulo)
+      // Atrás/adelante entre fichas de artículo (popup #fichaArticulo)
       if (typeof abrirFichaEnCatalogo === "function")
         abrirFichaEnCatalogo(st.cod, null, { desdeHistorial: true });
+    } else if (typeof _fichaAbierta === "function" && _fichaAbierta()) {
+      // Atrás con el popup de la ficha abierto: se cierra y el catálogo queda
+      // como estaba debajo (mismo scroll, mismo carrito).
+      _fichaOcultar();
     } else {
-      // Cualquier otro caso (back desde perfil o desde una ficha, state null) → productos
+      // Cualquier otro caso (back desde perfil, state null) → productos
       if (typeof showSection === "function") showSection("productos");
-      // Volviendo de una ficha: el catálogo queda donde estaba el scroll.
-      if (window.__fichaVolverY != null) {
-        var y = window.__fichaVolverY;
-        window.__fichaVolverY = null;
-        requestAnimationFrame(function () { window.scrollTo(0, y); });
-      }
     }
   } finally {
     setTimeout(function () { window.__lkBackNav = false; }, 50);
@@ -17962,10 +17960,10 @@ function fichaTecBtnHtml(p) {
    tiene que cambiar y no se tiene que perder nada de lo cargado". La card no
    navega a la página pública: trae productos/articulo/<cod>.html, toma su
    .art-ficha (mismo HTML, misma fuente, estilos en css/ficha.css) y la muestra
-   en la sección #fichaArticulo. El header, la sesión y el carrito son los de
-   siempre, «Agregar al pedido» usa addFirstBox/changeQty, y la URL queda
+   en el popup #fichaArticulo, encima del catálogo (Thomas, 05/10/2026: "visualmente
+   me sirve más así"). El header, la sesión y el carrito son los de siempre, «Agregar al pedido» usa addFirstBox/changeQty, y la URL queda
    mayorista.html#ficha=<cod> con su entrada de historial: «atrás» vuelve al
-   catálogo en el mismo lugar del scroll. Ctrl/clic medio abre la página
+   catálogo tal como estaba (el popup se cierra). Ctrl/clic medio abre la página
    pública en otra pestaña (el href sigue siendo el de la ficha pública). */
 const _fichaHtmlCache = new Map();
 let _fichaCodActual = null;
@@ -18074,8 +18072,6 @@ async function abrirFichaEnCatalogo(cod, ev, opts) {
     location.href = _fichaUrl(cod);
     return false;
   }
-  const yaEnFicha = !!_fichaCodActual && document.getElementById("fichaArticulo").classList.contains("active");
-  if (!yaEnFicha && !opts.desdeHistorial) window.__fichaVolverY = window.scrollY || 0;
   if (!opts.desdeHistorial) {
     try {
       // n = cuántas fichas hay apiladas arriba del catálogo en el historial:
@@ -18090,32 +18086,44 @@ async function abrirFichaEnCatalogo(cod, ev, opts) {
   }
   cont.innerHTML = html;
   _fichaCodActual = cod;
-  // La columna de la foto queda fija debajo del header de mayorista.
-  const header = document.querySelector(".header");
-  const alto = header ? Math.round(header.getBoundingClientRect().height) : 70;
-  cont.style.setProperty("--art-top", alto + 16 + "px");
-  showSection("fichaArticulo");
+  // Popup encima del catálogo: la página de abajo no se mueve (ni scroll ni
+  // carrito). La foto queda fija arriba dentro de la caja que scrollea.
+  const modal = document.getElementById("fichaArticulo");
+  const caja = document.getElementById("fichaModalCaja");
+  cont.style.setProperty("--art-top", "16px");
+  modal.hidden = false;
+  document.body.classList.add("ficha-abierta");
   _fichaPintarCompra();
-  try {
-    window.scrollTo({ top: 0, behavior: "auto" });
-  } catch (e) {
-    window.scrollTo(0, 0);
-  }
+  if (caja) caja.scrollTop = 0;
   return false;
 }
 window.abrirFichaEnCatalogo = abrirFichaEnCatalogo;
+
+function _fichaAbierta() {
+  const m = document.getElementById("fichaArticulo");
+  return !!m && !m.hidden;
+}
+
+// Sólo esconde el popup (no toca el historial).
+function _fichaOcultar() {
+  const m = document.getElementById("fichaArticulo");
+  if (!m || m.hidden) return;
+  m.hidden = true;
+  document.body.classList.remove("ficha-abierta");
+  _fichaCodActual = null;
+}
 
 function cerrarFichaCatalogo() {
   const st = history.state || {};
   const n = st.lkSection === "ficha" ? Number(st.n) || 0 : 0;
   if (n > 0) {
-    history.go(-n); // el popstate vuelve al catálogo y restaura el scroll
+    history.go(-n); // el popstate cierra el popup
     return;
   }
   try {
     history.replaceState({ lkSection: "productos" }, "", location.pathname + location.search);
   } catch (e) {}
-  showSection("productos");
+  _fichaOcultar();
 }
 window.cerrarFichaCatalogo = cerrarFichaCatalogo;
 
@@ -18163,6 +18171,9 @@ function _fichaDesdeHashInicial() {
   tick();
 }
 document.addEventListener("DOMContentLoaded", _fichaDesdeHashInicial);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && _fichaAbierta()) cerrarFichaCatalogo();
+});
 
 /* «Agregar al pedido» desde la ficha pública: la página del artículo manda a
    mayorista.html#agregar=<cod>. Se espera a que estén el catálogo y la sesión

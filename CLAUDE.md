@@ -1580,11 +1580,14 @@ las aprueben. No muestran precios.
   el botón (`fichaTecBtnHtml`). **La ficha se abre ADENTRO de `mayorista.html`** (Thomas: *"el header no tiene que
   cambiar… si quiero volver atrás no tengo que perder nada de lo cargado"*): `abrirFichaEnCatalogo` trae
   `productos/articulo/<cod>.html`, toma su `.art-ficha` (misma fuente, sin duplicar contenido; los href relativos se
-  resuelven contra la página pública) y la muestra en la sección **`#fichaArticulo`**, con el header, la sesión y el
-  carrito de siempre. La zona de compra la pinta `_fichaCompraHtml` con la **misma lógica que la card** (precio,
+  resuelven contra la página pública) y la muestra en el **popup `#fichaArticulo`** (Thomas, 05/10: *"visualmente me
+  sirve más así"*), encima del catálogo, que no se mueve: header, sesión, carrito y scroll quedan como estaban. Cierra
+  con la X, Escape, clic en el fondo o «atrás»; en el celular ocupa toda la pantalla.
+  ⚠ **La página pública NO se oculta**: es la que leen Google y la IA. Mostrarle al buscador una página y al usuario
+  otra (o redirigir al humano al popup y dejar al bot en la página) es *cloaking* y Google lo penaliza. La zona de compra la pinta `_fichaCompraHtml` con la **misma lógica que la card** (precio,
   sin stock, vendedor sin cliente, iniciar sesión) y suma con `addFirstBox` / `changeQty`. URL
   `mayorista.html#ficha=<cod>` con entrada de historial (`state.n` = fichas apiladas): «atrás» vuelve a la ficha
-  anterior o al catálogo en el mismo scroll; un relacionado se abre en la misma sección. El `href` del botón sigue
+  anterior o cierra el popup; un relacionado se abre en el mismo popup. El `href` del botón sigue
   siendo la página pública (ctrl/clic medio la abre en otra pestaña). Desde la ficha pública, «Agregar al pedido»
   manda a `mayorista.html#agregar=<cod>` (`procesarAgregarDesdeFicha`): abre la ficha en el catálogo, suma UNA caja
   y saca el `#agregar`. Estilos de la ficha en **`css/ficha.css`** (los cargan la página pública y mayorista; todo
