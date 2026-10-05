@@ -18052,6 +18052,127 @@ function fichaCambiarCajas(pid, delta) {
 }
 window.fichaCambiarCajas = fichaCambiarCajas;
 
+// Fotos y video de la ficha en el popup (Thomas, 05/10/2026): debajo de la foto
+// principal van las otras fotos del producto (las mismas de la card), y si el
+// código tiene video aparece «Ver video» arriba de la foto, igual que en el
+// popup de producto: el video baja recién al tocarlo y reemplaza a la foto.
+function _fichaSinQuery(u) {
+  return String(u || "").split("?")[0];
+}
+
+function _fichaPintarMedia(cod) {
+  const fig = document.querySelector("#fichaArticuloBody .art-foto");
+  if (!fig) return;
+  const p = (Array.isArray(products) ? products : []).find(
+    (x) => String(x.cod || "").trim() === cod,
+  );
+  const imgPrin = fig.querySelector("img");
+  if (p && imgPrin) {
+    let urls = [];
+    try {
+      urls = productImgUrls(p) || [];
+    } catch (e) {
+      urls = [];
+    }
+    const yaEsta = _fichaSinQuery(imgPrin.getAttribute("src"));
+    const otras = urls.filter((u) => _fichaSinQuery(u) !== yaEsta);
+    if (otras.length) {
+      const alt = imgPrin.getAttribute("alt") || "";
+      const extra = document.createElement("div");
+      extra.className = "art-fotos-extra";
+      extra.innerHTML = otras
+        .map(
+          (u) =>
+            `<img src="${_ftEsc(u)}" alt="${_ftEsc(alt)}" width="400" height="400" loading="lazy" onerror="this.remove()">`,
+        )
+        .join("");
+      fig.insertAdjacentElement("afterend", extra);
+      extra.querySelectorAll("img").forEach((im) => im.addEventListener("load", _fichaAjustarSticky));
+    }
+  }
+  _fichaAjustarSticky();
+  const mostrar = () => {
+    if (_fichaCodActual !== cod || fig.querySelector(".pp-video-btn")) return;
+    if (!videoUrlDeCod(cod)) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pp-video-btn art-video-btn";
+    btn.innerHTML = PP_VIDEO_BTN_VER;
+    btn.setAttribute("aria-label", "Ver video del producto");
+    btn.onclick = (e) => fichaToggleVideo(e);
+    fig.appendChild(btn);
+  };
+  if (PRODUCT_VIDEO_MAP) mostrar();
+  else loadProductVideoManifest().then(mostrar, () => {});
+}
+
+// La columna de la foto es sticky. Con la 2ª foto puede quedar más alta que la
+// caja del popup y entonces su parte de abajo no se vería nunca: en ese caso el
+// top pasa a negativo y la columna se pega por abajo (se ven las dos fotos al
+// bajar, y la de arriba vuelve al subir).
+function _fichaAjustarSticky() {
+  const caja = document.getElementById("fichaModalCaja");
+  const cont = document.getElementById("fichaArticuloBody");
+  const izq = cont && cont.querySelector(".art-izq");
+  if (!caja || !izq) return;
+  const sobra = caja.clientHeight - izq.offsetHeight - 16;
+  cont.style.setProperty("--art-top", Math.min(16, sobra) + "px");
+}
+window.addEventListener("resize", () => {
+  if (typeof _fichaAbierta === "function" && _fichaAbierta()) _fichaAjustarSticky();
+});
+
+function _fichaVideoCortar() {
+  const fig = document.querySelector("#fichaArticuloBody .art-foto");
+  if (!fig) return;
+  const v = fig.querySelector("video");
+  if (v) {
+    try {
+      v.pause();
+    } catch (e) {}
+    v.removeAttribute("src");
+    try {
+      v.load();
+    } catch (e) {}
+    v.remove();
+  }
+  const img = fig.querySelector("img");
+  if (img) img.style.display = "";
+  const btn = fig.querySelector(".pp-video-btn");
+  if (btn) {
+    btn.innerHTML = PP_VIDEO_BTN_VER;
+    btn.classList.remove("on");
+    btn.setAttribute("aria-label", "Ver video del producto");
+  }
+}
+
+function fichaToggleVideo(ev) {
+  if (ev) ev.stopPropagation();
+  const fig = document.querySelector("#fichaArticuloBody .art-foto");
+  if (!fig) return;
+  if (fig.querySelector("video")) return _fichaVideoCortar();
+  const url = videoUrlDeCod(_fichaCodActual);
+  if (!url) return;
+  const v = document.createElement("video");
+  v.className = "art-video";
+  v.controls = true;
+  v.playsInline = true;
+  v.preload = "none";
+  v.src = url;
+  const img = fig.querySelector("img");
+  if (img) img.style.display = "none";
+  fig.insertBefore(v, fig.firstChild);
+  const btn = fig.querySelector(".pp-video-btn");
+  if (btn) {
+    btn.innerHTML = PP_VIDEO_BTN_FOTOS;
+    btn.classList.add("on");
+    btn.setAttribute("aria-label", "Volver a las fotos");
+  }
+  const pr = v.play();
+  if (pr && typeof pr.catch === "function") pr.catch(() => {});
+}
+window.fichaToggleVideo = fichaToggleVideo;
+
 async function abrirFichaEnCatalogo(cod, ev, opts) {
   // Ctrl/Cmd/Shift o clic medio: que el navegador abra la página pública.
   if (ev && (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button === 1)) return true;
@@ -18084,6 +18205,7 @@ async function abrirFichaEnCatalogo(cod, ev, opts) {
       }
     } catch (e) {}
   }
+  _fichaVideoCortar();
   cont.innerHTML = html;
   _fichaCodActual = cod;
   // Popup encima del catálogo: la página de abajo no se mueve (ni scroll ni
@@ -18091,7 +18213,12 @@ async function abrirFichaEnCatalogo(cod, ev, opts) {
   const modal = document.getElementById("fichaArticulo");
   const caja = document.getElementById("fichaModalCaja");
   cont.style.setProperty("--art-top", "16px");
+  // El popup arranca debajo del header: el header queda a la vista y usable.
+  const header = document.querySelector(".header");
+  const bajoHeader = header ? Math.max(0, Math.round(header.getBoundingClientRect().bottom)) : 0;
+  modal.style.setProperty("--ficha-top", bajoHeader + "px");
   modal.hidden = false;
+  _fichaPintarMedia(cod);
   document.body.classList.add("ficha-abierta");
   _fichaPintarCompra();
   if (caja) caja.scrollTop = 0;
@@ -18108,6 +18235,7 @@ function _fichaAbierta() {
 function _fichaOcultar() {
   const m = document.getElementById("fichaArticulo");
   if (!m || m.hidden) return;
+  _fichaVideoCortar();
   m.hidden = true;
   document.body.classList.remove("ficha-abierta");
   _fichaCodActual = null;

@@ -15,6 +15,7 @@
  *      mismo scroll y con el carrito intacto
  *   5. sin sesión, la ficha ofrece «Iniciar sesión», no «Agregar al pedido»
  *
+ *   7. debajo de la foto va la 2ª; «Ver video» cambia foto↔video; el header queda a la vista
  *   6. es un popup blanco encima del catálogo; la X y Escape lo cierran
  *
  * Correr:  node tests/ficha-en-catalogo.cjs
@@ -32,7 +33,7 @@ catch (_e) {
 const RAIZ = path.join(__dirname, "..");
 const PRODS = [
   { id: "p-1", cod: "505", category: "Peladores", subcategory: null, ranking: 1,
-    orden_catalogo: 1, description: "Pelador de prueba", uxb: 12, list_price: 1000, images: ["505.webp"], badge_status: null },
+    orden_catalogo: 1, description: "Pelador de prueba", uxb: 12, list_price: 1000, images: ["505.webp", "505-2.webp"], badge_status: null },
   { id: "p-2", cod: "999X", category: "Peladores", subcategory: null, ranking: 2,
     orden_catalogo: 2, description: "Otro artículo", uxb: 12, list_price: 500, images: ["999X.webp"], badge_status: null },
 ];
@@ -89,6 +90,8 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
   });
   await page.waitForSelector("#card-p-1 .ft-btn", { timeout: 8000 }).catch(() => fallas.push("0: no aparece el botón Ficha técnica del 505"));
 
+  // Lista de videos simulada: el 505 tiene video (el archivo no se baja hasta tocar).
+  await page.evaluate(() => { PRODUCT_VIDEO_MAP = new Map([["505", "505.mp4"]]); });
   // 1
   await page.evaluate(() => window.scrollTo(0, 300));
   const y0 = await page.evaluate(() => window.scrollY);
@@ -113,6 +116,35 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
   if (r1.fixed !== "fixed") fallas.push(`1: la ficha no es un popup (position ${r1.fixed})`);
   if (r1.fondoBlanco !== "rgb(255, 255, 255)") fallas.push(`1: el popup no es blanco (${r1.fondoBlanco})`);
   if (Math.abs(r1.y - y0) > 5) fallas.push(`1: abrir el popup movió el catálogo (${y0} → ${r1.y})`);
+
+  // 7 — 2ª foto debajo, «Ver video» y el header sin tapar
+  await page.waitForSelector("#fichaArticulo .art-video-btn", { timeout: 5000 }).catch(() => fallas.push("7: no aparece «Ver video»"));
+  const r7 = await page.evaluate(async () => {
+    const extra = [...document.querySelectorAll("#fichaArticulo .art-fotos-extra img")].map((i) => i.getAttribute("src"));
+    const hb = document.querySelector(".header").getBoundingClientRect().bottom;
+    const mt = document.getElementById("fichaArticulo").getBoundingClientRect().top;
+    const btn = document.querySelector("#fichaArticulo .art-video-btn");
+    const txt0 = btn ? btn.textContent.trim() : null;
+    const srcAntes = !!document.querySelector("#fichaArticulo video");
+    if (btn) btn.click();
+    await new Promise((r) => setTimeout(r, 100));
+    const v = document.querySelector("#fichaArticulo .art-foto video");
+    const vsrc = v ? v.getAttribute("src") : null;
+    const fotoOculta = getComputedStyle(document.querySelector("#fichaArticulo .art-foto img")).display === "none";
+    const txt1 = btn ? btn.textContent.trim() : null;
+    if (btn) btn.click();
+    await new Promise((r) => setTimeout(r, 100));
+    return { extra, hb, mt, txt0, srcAntes, vsrc, fotoOculta, txt1,
+      vuelve: !document.querySelector("#fichaArticulo video") &&
+        getComputedStyle(document.querySelector("#fichaArticulo .art-foto img")).display !== "none" };
+  });
+  if (r7.extra.length !== 1 || !/505-2\.webp/.test(r7.extra[0] || "")) fallas.push(`7: debajo de la foto no está la 2ª (${JSON.stringify(r7.extra)})`);
+  if (r7.mt < r7.hb - 1) fallas.push(`7: el popup tapa el header (popup ${r7.mt}px, header hasta ${r7.hb}px)`);
+  if (r7.txt0 !== "Ver video") fallas.push(`7: el botón dice «${r7.txt0}»`);
+  if (r7.srcAntes) fallas.push("7: el video se cargó sin tocar el botón");
+  if (!/505\.mp4/.test(r7.vsrc || "") || !r7.fotoOculta) fallas.push(`7: «Ver video» no reemplazó la foto por el video (${r7.vsrc})`);
+  if (r7.txt1 !== "Ver fotos") fallas.push(`7: con el video el botón dice «${r7.txt1}»`);
+  if (!r7.vuelve) fallas.push("7: «Ver fotos» no volvió a la foto");
   if (!/iniciar sesi/i.test(r1.compra || "")) fallas.push(`5: sin sesión la ficha no ofrece iniciar sesión (${r1.compra})`);
 
   // 2 — con sesión

@@ -1582,7 +1582,12 @@ las aprueben. No muestran precios.
   `productos/articulo/<cod>.html`, toma su `.art-ficha` (misma fuente, sin duplicar contenido; los href relativos se
   resuelven contra la página pública) y la muestra en el **popup `#fichaArticulo`** (Thomas, 05/10: *"visualmente me
   sirve más así"*), encima del catálogo, que no se mueve: header, sesión, carrito y scroll quedan como estaban. Cierra
-  con la X, Escape, clic en el fondo o «atrás»; en el celular ocupa toda la pantalla.
+  con la X, Escape, clic en el fondo o «atrás»; en el celular ocupa toda la pantalla. **Arranca debajo del header**
+  (`--ficha-top` = borde inferior del header al abrir), así el header queda a la vista. **Sólo en el popup**
+  (`_fichaPintarMedia`): debajo de la foto van las otras fotos del producto (`productImgUrls`, las mismas de la card)
+  y, si el código tiene video en `products-videos`, la pastilla «Ver video» de `openProdPreview` (el video baja recién
+  al tocarla, reemplaza a la foto y se corta al cerrar). Con la 2ª foto la columna sticky puede quedar más alta que la
+  caja: `_fichaAjustarSticky` le pone `top` negativo para que se pegue por abajo y se vean las dos.
   ⚠ **La página pública NO se oculta**: es la que leen Google y la IA. Mostrarle al buscador una página y al usuario
   otra (o redirigir al humano al popup y dejar al bot en la página) es *cloaking* y Google lo penaliza. La zona de compra la pinta `_fichaCompraHtml` con la **misma lógica que la card** (precio,
   sin stock, vendedor sin cliente, iniciar sesión) y suma con `addFirstBox` / `changeQty`. URL
