@@ -90,6 +90,7 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
   });
   await page.waitForSelector("#card-p-1 .ft-btn", { timeout: 8000 }).catch(() => fallas.push("0: no aparece el botón Ficha técnica del 505"));
 
+  const location0 = `http://127.0.0.1:${port}/`;
   // Lista de videos simulada: el 505 tiene video (el archivo no se baja hasta tocar).
   await page.evaluate(() => { PRODUCT_VIDEO_MAP = new Map([["505", "505.mp4"]]); });
   // 1
@@ -120,6 +121,7 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
   // 7 — 2ª foto debajo, «Ver video» y el header sin tapar
   await page.waitForSelector("#fichaArticulo .art-video-btn", { timeout: 5000 }).catch(() => fallas.push("7: no aparece «Ver video»"));
   const r7 = await page.evaluate(async () => {
+    const logo = (document.querySelector("#fichaArticulo .art-logos img") || {}).src || "";
     const extra = [...document.querySelectorAll("#fichaArticulo .art-fotos-extra img")].map((i) => i.getAttribute("src"));
     const hb = document.querySelector(".header").getBoundingClientRect().bottom;
     const mt = document.getElementById("fichaArticulo").getBoundingClientRect().top;
@@ -134,11 +136,12 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
     const txt1 = btn ? btn.textContent.trim() : null;
     if (btn) btn.click();
     await new Promise((r) => setTimeout(r, 100));
-    return { extra, hb, mt, txt0, srcAntes, vsrc, fotoOculta, txt1,
+    return { logo, extra, hb, mt, txt0, srcAntes, vsrc, fotoOculta, txt1,
       vuelve: !document.querySelector("#fichaArticulo video") &&
         getComputedStyle(document.querySelector("#fichaArticulo .art-foto img")).display !== "none" };
   });
   if (r7.extra.length !== 1 || !/505-2\.webp/.test(r7.extra[0] || "")) fallas.push(`7: debajo de la foto no está la 2ª (${JSON.stringify(r7.extra)})`);
+  if (!/\/img\/coto_logo\.png$/.test(r7.logo) || !r7.logo.startsWith(location0)) fallas.push(`7: el logo del comercio no apunta a img/ del sitio (${r7.logo})`);
   if (r7.mt < r7.hb - 1) fallas.push(`7: el popup tapa el header (popup ${r7.mt}px, header hasta ${r7.hb}px)`);
   if (r7.txt0 !== "Ver video") fallas.push(`7: el botón dice «${r7.txt0}»`);
   if (r7.srcAntes) fallas.push("7: el video se cargó sin tocar el botón");

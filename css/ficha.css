@@ -362,6 +362,24 @@
   }
 }
 
+/* «Comercios que trabajan este artículo»: sólo logos (05/10/2026). */
+.art-logos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px 28px;
+}
+.art-logos img {
+  display: block;
+  height: 44px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+}
+
 /* ---------- La ficha adentro del catálogo (mayorista.html #fichaArticulo) ---------- */
 .ficha-cat {
   max-width: 1180px;

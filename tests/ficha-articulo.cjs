@@ -100,12 +100,21 @@ async function abrir(browser, port, escenario, ancho = 1400) {
     cod: (document.querySelector(".art-cabecera .art-cod") || {}).textContent,
     h1: (document.querySelector(".art-datos h1") || {}).textContent,
     tablas: document.querySelectorAll(".art-tablas .art-tabla").length,
+    tablaTxt: (document.querySelector(".art-tablas") || {}).textContent || "",
+    donde: !!document.getElementById("donde-comprar") || /Dónde lo puedo comprar/.test(document.body.textContent),
+    logos: document.querySelectorAll(".art-logos li a img").length,
+    logosTxt: [...document.querySelectorAll(".art-logos li")].map((li) => li.textContent.trim()).join(""),
     secs: [...document.querySelectorAll("details.art-sec")].map((d) => d.open),
     izq: !!document.querySelector(".art-izq .prod-breadcrumb") && !!document.querySelector(".art-izq .art-foto"),
   }));
   if (g.cod !== "COD 505") fallas.push(`G: falta la pastilla COD 505 (${g.cod})`);
   if (!g.h1) fallas.push("G: falta el h1");
-  if (g.tablas !== 2) fallas.push(`G: la tabla no está en dos columnas (${g.tablas})`);
+  // 05/10/2026 (Thomas): la tabla ya no repite código, línea, marca ni unidades por caja;
+  // sin «¿Dónde lo puedo comprar?»; los comercios van sólo como logos.
+  if (/Código:|Línea:|Marca:|Unidades por caja:/.test(g.tablaTxt)) fallas.push(`G: la tabla repite datos que ya están a la vista (${g.tablaTxt.trim()})`);
+  if (!/Apto lavavajillas:\s*No/.test(g.tablaTxt)) fallas.push(`G: el 505 perdió «Apto lavavajillas: No» (${g.tablaTxt.trim()})`);
+  if (g.donde) fallas.push("G: sigue la sección «¿Dónde lo puedo comprar?»");
+  if (!g.logos || g.logosTxt) fallas.push(`G: «Comercios» no son sólo logos (${g.logos} logos, texto «${g.logosTxt}»)`);
   if (!g.secs.length || g.secs.some((o) => !o)) fallas.push("G: las secciones no están abiertas por defecto (no se indexarían)");
   if (!g.izq) fallas.push("G: breadcrumb y foto no están en la columna izquierda");
 
@@ -113,9 +122,11 @@ async function abrir(browser, port, escenario, ancho = 1400) {
   const f = await x.page.evaluate(async () => {
     const izq = document.querySelector(".art-izq");
     scrollTo(0, 0); await new Promise((r) => setTimeout(r, 50));
-    scrollTo(0, 600); await new Promise((r) => setTimeout(r, 80));
+    // Primero hasta donde la columna ya se pegó; después 150 px más (sin llegar al final del artículo).
+    const y0 = izq.getBoundingClientRect().top + scrollY - 84 + 20;
+    scrollTo(0, y0); await new Promise((r) => setTimeout(r, 80));
     const y1 = izq.getBoundingClientRect().top;
-    scrollTo(0, 900); await new Promise((r) => setTimeout(r, 80));
+    scrollTo(0, y0 + 150); await new Promise((r) => setTimeout(r, 80));
     const y2 = izq.getBoundingClientRect().top;
     return { y1, y2, pos: getComputedStyle(izq).position };
   });

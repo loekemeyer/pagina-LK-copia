@@ -1569,9 +1569,12 @@ las aprueben. No muestran precios.
   están activos. Las páginas de línea suman `ItemList` apuntando a las fichas, y `catalogo-vivo.js` sólo
   linkea a ficha los códigos que ya la tienen (un código nuevo sin regenerar daría 404).
 - **Diseño de la ficha de artículo (Thomas, 05/10/2026)**: columna izquierda **fija (sticky)** con breadcrumb +
-  foto; a la derecha h1, pastilla roja `COD 505` + destacado (★), descripción, datos en **dos columnas**
-  (`Código/Línea/Sublínea/Marca` · `Material/Apto lavavajillas/Unidades por caja`), zona de compra, y secciones
-  `<details open>` (Cuidado y lavado, ¿Dónde lo puedo comprar?, Comercios, Sobre la línea, Otros artículos):
+  foto; a la derecha h1, pastilla roja `COD 505` + destacado (★), descripción, datos (**sólo `Material` y `Apto
+  lavavajillas`**, y sólo si están en el CSV: código, línea, sublínea, marca y unidades por caja se sacaron porque
+  repetían la pastilla, el breadcrumb y la descripción), zona de compra, y secciones
+  `<details open>` (Cuidado y lavado, Comercios —**sólo logos**, `LOGOS_COMERCIO` del generador: un comercio sin logo
+  en `img/` no se muestra; hoy faltan Disco, Vea y Carrefour—, Sobre la línea, Otros artículos; **«¿Dónde lo puedo
+  comprar?» se sacó** el 05/10):
   abiertas por defecto para que se lean e indexen sin JS. **La compra la pinta `js/ficha-compra.js` SÓLO con
   sesión iniciada** (misma sesión de Supabase que mayorista, mismo dominio): «Agregar al pedido» lleva a
   `mayorista.html#agregar=<cod>` y al lado el precio de la card (cliente → contado `lista×(1−dto_vol)×(1−web)×0,75`;
@@ -1579,8 +1582,8 @@ las aprueben. No muestran precios.
   botón deshabilitado). Sin sesión queda el link de WhatsApp. ⚠ El precio de un vendedor que en mayorista tiene un
   cliente elegido NO se replica acá (muestra lista). Chequeo: `tests/ficha-articulo.cjs`.
 - **Botón «Ficha técnica» en la card del catálogo mayorista (05/10/2026, Thomas)**: `productos/fichas.json`
-  (`{fichas: {cod: {n}}}`) lista los artículos activos con algún dato en `fichas-manual.csv`; sólo esas cards llevan
-  el botón (`fichaTecBtnHtml`). **La ficha se abre ADENTRO de `mayorista.html`** (Thomas: *"el header no tiene que
+  (`{fichas: {cod: {n}}}`) lista **todos** los artículos activos (Thomas: *"todos los productos tengan su ficha
+  técnica"*); un código nuevo sin regenerar no lleva botón (`fichaTecBtnHtml`). **La ficha se abre ADENTRO de `mayorista.html`** (Thomas: *"el header no tiene que
   cambiar… si quiero volver atrás no tengo que perder nada de lo cargado"*): `abrirFichaEnCatalogo` trae
   `productos/articulo/<cod>.html`, toma su `.art-ficha` (misma fuente, sin duplicar contenido; los href relativos se
   resuelven contra la página pública) y la muestra en el **popup `#fichaArticulo`** (Thomas, 05/10: *"visualmente me

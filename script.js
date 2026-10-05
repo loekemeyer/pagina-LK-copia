@@ -17983,12 +17983,20 @@ async function _fichaTraer(cod) {
   // Los href relativos de la página pública (../../, ../) se resuelven contra
   // SU url, no contra mayorista.html.
   const base = new URL(_fichaUrl(cod), location.href);
-  art.querySelectorAll("[href]").forEach((a) => {
-    const h = a.getAttribute("href") || "";
-    if (/^(https?:|mailto:|tel:|#|javascript:)/i.test(h)) return;
-    try {
-      a.setAttribute("href", new URL(h, base).href);
-    } catch (e) {}
+  // Lo mismo con los src (logos de comercios, foto de reemplazo) y con el
+  // onerror que apunta a ../../img/no-image.jpg.
+  ["href", "src"].forEach((attr) => {
+    art.querySelectorAll("[" + attr + "]").forEach((a) => {
+      const h = a.getAttribute(attr) || "";
+      if (/^(https?:|mailto:|tel:|#|javascript:|data:)/i.test(h)) return;
+      try {
+        a.setAttribute(attr, new URL(h, base).href);
+      } catch (e) {}
+    });
+  });
+  const noImg = new URL("img/no-image.jpg", location.href).href;
+  art.querySelectorAll("[onerror]").forEach((el) => {
+    el.setAttribute("onerror", el.getAttribute("onerror").replace(/(\.\.\/)+img\/no-image\.jpg/g, noImg));
   });
   const html = art.outerHTML;
   _fichaHtmlCache.set(cod, html);

@@ -489,13 +489,6 @@ def lavavajillas(v):
     return ""
 
 
-def url_ml(p, donde):
-    """Búsqueda de Mercado Libre por nombre + marca. Es una BÚSQUEDA y no una
-    publicación puntual: las publicaciones cambian de vendedor y de URL."""
-    q = slugify(f"{p['nombre']} loekemeyer")
-    return (donde.get("mercadolibre") or "https://listado.mercadolibre.com.ar/{q}").replace("{q}", q)
-
-
 def seccion(titulo, cuerpo, id_=""):
     """Bloque desplegable de la ficha. <details open>: se lee y se indexa entero
     sin JavaScript, y quien quiera lo pliega."""
@@ -504,24 +497,28 @@ def seccion(titulo, cuerpo, id_=""):
             f'<div class="art-sec-cuerpo">{cuerpo}</div></details>')
 
 
-def secciones_donde(p, donde, pref_donde):
+# Logos de los comercios (img/ del sitio). Un comercio sin logo NO se muestra
+# en la ficha: la sección lleva sólo logos (Thomas, 05/10/2026). Para sumar uno,
+# se agrega el archivo a img/ y la línea acá.
+LOGOS_COMERCIO = {
+    "jumbo": "jumbo_logo.png",
+    "coto": "coto_logo.png",
+    "laanonima": "laanonima_logo.png",
+    "masonline": "changomas_logo.png",
+}
+
+
+def secciones_donde(p, donde, pref):
+    """«Comercios que trabajan este artículo»: sólo los logos, cada uno con link a
+    la tienda del comercio. Sin texto, sin Mercado Libre (se sacó «¿Dónde lo
+    puedo comprar?» el 05/10/2026)."""
     ids = donde.get("articulos", {}).get(p["cod"], [])
     por_id = {c["id"]: c for c in donde.get("comercios", [])}
-    items = "".join(
-        f'<li><a href="{esc(por_id[i]["url"])}" target="_blank" rel="noopener nofollow">{esc(por_id[i]["nombre"])}</a>'
-        f'<span class="art-donde-alc">{esc(por_id[i].get("alcance", ""))}</span></li>'
-        for i in ids if i in por_id)
-    donde_html = seccion(
-        "¿Dónde lo puedo comprar?",
-        "<p>Loekemeyer vende sólo por mayor a comercios. Para comprar una unidad, buscalo en Mercado Libre "
-        "o en los supermercados y bazares que venden nuestros productos al público.</p>"
-        f'<p><a class="art-ml" href="{esc(url_ml(p, donde))}" target="_blank" rel="noopener nofollow">Buscar en Mercado Libre ↗</a></p>',
-        "donde-comprar")
-    nota = (f'<p class="art-donde-nota">La disponibilidad y el precio dependen de cada comercio.</p>'
-            f'<p><a class="art-ml" href="{pref_donde}">Ver todos los lugares de compra</a></p>')
-    comercios = seccion("Comercios que trabajan este artículo",
-                        f'<ul class="art-donde-lista">{items}</ul>{nota}') if items else ""
-    return donde_html + comercios
+    logos = "".join(
+        f'<li><a href="{esc(por_id[i]["url"])}" target="_blank" rel="noopener nofollow" title="{esc(por_id[i]["nombre"])}">'
+        f'<img src="{pref}img/{LOGOS_COMERCIO[i]}" alt="{esc(por_id[i]["nombre"])}" loading="lazy" /></a></li>'
+        for i in ids if i in por_id and i in LOGOS_COMERCIO)
+    return seccion("Comercios que trabajan este artículo", f'<ul class="art-logos">{logos}</ul>') if logos else ""
 
 
 def texto_cuidado(lav, lavado):
@@ -548,14 +545,12 @@ def pagina_articulo(p, cat, manual=None, donde=None):
     desc = frase_art(p, cat, man)
     meta_desc = (f"{p['nombre']} Loekemeyer, código {cod}, línea {cat['nombre']}. "
                  + (man["destacado"].rstrip(".") + ". " if man.get("destacado") else "")
-                 + "Marca argentina de utensilios de cocina desde 1950. Dónde comprarlo.")
+                 + "Marca argentina de utensilios de cocina desde 1950.")
     mat = man.get("material", "")
     lav = lavavajillas(man.get("apto_lavavajillas"))
     lavado = man.get("instrucciones_lavado", "")
     foto = img_url(p)
     props = []
-    if p.get("uxb"):
-        props.append({"@type": "PropertyValue", "name": "Unidades por caja", "value": p["uxb"]})
     if lav:
         props.append({"@type": "PropertyValue", "name": "Apto lavavajillas", "value": lav})
     prod_ld = {
@@ -585,23 +580,16 @@ def pagina_articulo(p, cat, manual=None, donde=None):
             {"@type": "ListItem", "position": 4, "name": p["nombre"], "item": canonical}]},
     ]}
     badge = '<span class="prod-nuevo">NUEVO</span>' if p.get("badge") == "NUEVO" else ""
-    # Datos en dos columnas (diseño de Thomas, 05/10/2026): identidad a la
-    # izquierda, uso y embalaje a la derecha. Material y lavavajillas sólo si
-    # están en fichas-manual.csv.
-    col_izq = [("Código", esc(cod)),
-               ("Línea", f'<a href="../{cat["slug"]}.html">{esc(cat["nombre"])}</a>')]
-    if p.get("subcategoria"):
-        col_izq.append(("Sublínea", esc(p["subcategoria"])))
-    col_izq.append(("Marca", "Loekemeyer"))
-    col_der = []
+    # Datos: sólo lo que NO está ya a la vista (Thomas, 05/10/2026: código, línea,
+    # marca y unidades por caja repetían la pastilla COD, el breadcrumb y la
+    # descripción). Material y lavavajillas, y sólo si están en fichas-manual.csv.
+    col = []
     if mat:
-        col_der.append(("Material", esc(mat)))
+        col.append(("Material", esc(mat)))
     if lav:
-        col_der.append(("Apto lavavajillas", lav))
-    col_der.append(("Unidades por caja", esc(p["uxb"]) if p.get("uxb") else "Consultar"))
-    dl = "".join(
-        '<dl class="art-tabla">' + "".join(f"<div><dt>{k}:</dt> <dd>{v}</dd></div>" for k, v in col) + "</dl>"
-        for col in (col_izq, col_der) if col)
+        col.append(("Apto lavavajillas", lav))
+    dl = ('<dl class="art-tabla">' + "".join(f"<div><dt>{k}:</dt> <dd>{v}</dd></div>" for k, v in col) + "</dl>"
+          ) if col else ""
     destacado = (f'<span class="art-destacado"><span aria-hidden="true">★</span> {esc(man["destacado"])}</span>'
                  if man.get("destacado") else "")
     txt_cuidado = texto_cuidado(lav, lavado)
@@ -638,13 +626,13 @@ def pagina_articulo(p, cat, manual=None, donde=None):
             <h1>{esc(p['nombre'])}</h1>
             <p class="art-cabecera"><span class="art-cod">COD {esc(cod)}</span>{badge}{destacado}</p>
             <p class="art-desc">{esc(desc)}</p>
-            <div class="art-tablas">{dl}</div>
+            {'<div class="art-tablas">' + dl + '</div>' if dl else ''}
             <div class="art-compra" id="artCompra" data-cod="{esc(cod)}">
               <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(cod)}">Soy comercio: consultar por WhatsApp</a>
             </div>
             <hr class="art-sep" />
             {cuidado}
-            {secciones_donde(p, donde, "../" + PAG_DONDE)}
+            {secciones_donde(p, donde, pref)}
             {seccion("Sobre la línea " + esc(cat["nombre"]), f'<p>{esc(bajada(cat))}</p><p><a href="../{cat["slug"]}.html">Ver los {len(cat["productos"])} artículos de {esc(cat["nombre"])}</a> · <a href="../index.html">Todo el catálogo</a></p>')}
             {seccion("Otros artículos de " + esc(cat["nombre"]), f'<ul class="art-rel-grid">{rel}</ul>') if rel else ''}
           </div>
@@ -773,18 +761,14 @@ def slugify(s):
 
 
 def escribir_fichas_json(cats, manual):
-    """productos/fichas.json: los artículos activos con algún dato cargado a mano
-    en fichas-manual.csv (nunca las columnas propuesta_ml*). El catálogo
-    mayorista (script.js) sólo dibuja el botón «Ficha técnica» —que lleva a
-    productos/articulo/<cod>.html— en los códigos que figuran acá."""
-    campos = ("descripcion", "material", "apto_lavavajillas", "instrucciones_lavado", "destacado")
+    """productos/fichas.json: TODOS los artículos activos (Thomas, 05/10/2026:
+    "todos los productos tengan su ficha técnica"). El catálogo mayorista
+    (script.js) dibuja el botón «Ficha técnica» en los códigos que figuran acá;
+    un código nuevo sin regenerar no lo lleva (su página todavía no existe)."""
     fichas = {}
     for c in cats:
         for prod in c["productos"]:
-            cod = str(prod["cod"])
-            m = manual.get(cod) or {}
-            if any((m.get(k) or "").strip() for k in campos):
-                fichas[cod] = {"n": prod["nombre"]}
+            fichas[str(prod["cod"])] = {"n": prod["nombre"]}
     with open(os.path.join(RAIZ, SALIDA, "fichas.json"), "w", encoding="utf-8") as fh:
         json.dump({"fichas": fichas}, fh, ensure_ascii=False, sort_keys=True, indent=0)
         fh.write("\n")
