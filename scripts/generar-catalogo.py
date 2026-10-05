@@ -513,6 +513,19 @@ def bloque_donde(p, donde, pref_donde):
         </section>"""
 
 
+def texto_cuidado(lav, lavado):
+    """La frase de «Cuidado y lavado». La usan la ficha pública y el popup del
+    catálogo mayorista (fichas.json), así dicen exactamente lo mismo."""
+    txt = []
+    if lav == "Sí":
+        txt.append("Se puede lavar en lavavajillas.")
+    elif lav == "No":
+        txt.append("No es apto para lavavajillas.")
+    if lavado:
+        txt.append(lavado.rstrip(".") + ".")
+    return " ".join(txt)
+
+
 def pagina_articulo(p, cat, manual=None, donde=None):
     pref = "../../"
     cod = p["cod"]
@@ -573,16 +586,9 @@ def pagina_articulo(p, cat, manual=None, donde=None):
     filas.append(("Marca", "Loekemeyer"))
     dl = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in filas)
     destacado = f'<p class="art-destacado">{esc(man["destacado"])}</p>' if man.get("destacado") else ""
-    cuidado = ""
-    if lav or lavado:
-        txt = []
-        if lav == "Sí":
-            txt.append("Se puede lavar en lavavajillas.")
-        elif lav == "No":
-            txt.append("No es apto para lavavajillas.")
-        if lavado:
-            txt.append(lavado.rstrip(".") + ".")
-        cuidado = f'<section class="art-cuidado"><h2>Cuidado y lavado</h2><p>{esc(" ".join(txt))}</p></section>'
+    txt_cuidado = texto_cuidado(lav, lavado)
+    cuidado = (f'<section class="art-cuidado"><h2>Cuidado y lavado</h2><p>{esc(txt_cuidado)}</p></section>'
+               if txt_cuidado else "")
     # Relacionados: los vecinos de la misma línea (misma subcategoría primero).
     vec = [q for q in cat["productos"] if q["cod"] != cod]
     vec.sort(key=lambda q: 0 if q.get("subcategoria") == p.get("subcategoria") else 1)
@@ -744,29 +750,52 @@ def slugify(s):
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
 
 
-def escribir_fichas_json(cats, manual):
-    """productos/fichas.json: SOLO los artículos activos con algún dato cargado a
-    mano en fichas-manual.csv. Lo lee el catálogo mayorista (script.js) para
-    mostrar el botón «Ficha técnica» y su popup. Un código que no figura acá no
-    lleva botón. Mismas reglas que la ficha pública: celda vacía = no se publica,
-    las columnas propuesta_ml* nunca salen."""
-    fichas = {}
+def escribir_fichas_json(cats, manual, donde):
+    """productos/fichas.json para el popup «Ficha técnica» del catálogo mayorista
+    (script.js). Entran SOLO los artículos activos con algún dato cargado a mano
+    en fichas-manual.csv: un código que no figura acá no lleva botón. Cada uno
+    trae lo mismo que su ficha pública (descripción completa, tabla, cuidado,
+    dónde comprar, texto de la línea), así el popup no necesita abrir otra
+    página. Celda vacía = no se publica; las columnas propuesta_ml* nunca salen."""
+    fichas, lineas = {}, {}
+    por_id = {c["id"]: c for c in donde.get("comercios", [])}
+    usados = set()
     for c in cats:
         for prod in c["productos"]:
             cod = str(prod["cod"])
             m = manual.get(cod) or {}
+            lv = lavavajillas(m.get("apto_lavavajillas"))
             f = {k: v for k, v in (
                 ("d", m.get("descripcion", "")),
                 ("m", m.get("material", "")),
-                ("lv", lavavajillas(m.get("apto_lavavajillas"))),
+                ("lv", lv),
                 ("lav", m.get("instrucciones_lavado", "")),
                 ("dst", m.get("destacado", "")),
             ) if v}
-            if f:
-                f["n"] = prod["nombre"]
-                fichas[cod] = f
+            if not f:
+                continue
+            ids = [i for i in donde.get("articulos", {}).get(prod["cod"], []) if i in por_id]
+            usados.update(ids)
+            f.update({k: v for k, v in (
+                ("n", prod["nombre"]),
+                ("dt", frase_art(prod, c, m)),
+                ("lin", c["nombre"]),
+                ("sub", prod.get("subcategoria") or ""),
+                ("ux", prod.get("uxb") or ""),
+                ("cu", texto_cuidado(lv, m.get("instrucciones_lavado", ""))),
+                ("ml", url_ml(prod, donde)),
+                ("dc", ids),
+            ) if v})
+            lineas[c["nombre"]] = bajada(c)
+            fichas[cod] = f
+    salida = {
+        "fichas": fichas,
+        "lineas": lineas,
+        "comercios": {i: {"n": por_id[i]["nombre"], "u": por_id[i]["url"], "a": por_id[i].get("alcance", "")}
+                      for i in sorted(usados)},
+    }
     with open(os.path.join(RAIZ, SALIDA, "fichas.json"), "w", encoding="utf-8") as fh:
-        json.dump(fichas, fh, ensure_ascii=False, sort_keys=True, indent=0)
+        json.dump(salida, fh, ensure_ascii=False, sort_keys=True, indent=0)
         fh.write("\n")
     return len(fichas)
 
@@ -807,7 +836,7 @@ def main():
             os.remove(os.path.join(dart, viejo))
     n_map = escribir_sitemap(cats, datos.get("generado") or None)
     escribir_llms(cats, datos["total"])
-    n_fichas = escribir_fichas_json(cats, manual)
+    n_fichas = escribir_fichas_json(cats, manual, donde)
     print(f"fichas.json: {n_fichas} artículos con ficha técnica cargada")
     print(f"{len(cats) + 1} páginas en {out}/ + {len(vivos)} fichas en {out}/{SUB_ART}/ "
           f"({datos['total']} artículos) · sitemap {n_map} URLs · NOINDEX={NOINDEX}")

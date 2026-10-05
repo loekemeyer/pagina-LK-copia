@@ -6,12 +6,16 @@
  * Levanta mayorista.html por HTTP local (el fetch de productos/fichas.json no
  * anda sobre file://) con Supabase falso y verifica:
  *   1. el artículo con ficha cargada (505) lleva el botón; el que no (999X), no
- *   2. tocar el botón abre el popup con nombre, destacado, lavavajillas y el
- *      link a la ficha pública — y NO abre el popup de foto de la card
+ *   2. tocar el botón abre el popup con la ficha COMPLETA (nombre, destacado,
+ *      tabla con lavavajillas, dónde comprar, la línea) sin link a otra página,
+ *      y NO abre el popup de foto de la card
  *   3. Escape lo cierra
  *   4. el popup sólo muestra lo que está en fichas.json: sin la fila Material
  *      si el 505 no tiene material cargado
  *   5. con fichas.json caído la card sale igual, sin botón y sin error
+ *   6. «Agregar al pedido» SÓLO con sesión: sin sesión no hay botón de compra
+ *      en el popup; con sesión aparece y llama a addFirstBox del producto
+ *   7. la foto queda fija mientras la ficha scrollea (en pantalla de compu)
  *
  * Correr:  node tests/ficha-tecnica-btn.cjs
  */
@@ -26,7 +30,7 @@ catch (_e) {
 }
 
 const RAIZ = path.join(__dirname, "..");
-const FICHAS = JSON.parse(fs.readFileSync(path.join(RAIZ, "productos", "fichas.json"), "utf8"));
+const FICHAS = JSON.parse(fs.readFileSync(path.join(RAIZ, "productos", "fichas.json"), "utf8")).fichas || {};
 const PRODS = [
   { id: "p-1", cod: "505", category: "Peladores", subcategory: null, ranking: 1,
     orden_catalogo: 1, description: "Pelador de prueba", uxb: 12, images: ["505.webp"], badge_status: null },
@@ -100,13 +104,17 @@ async function abrir(browser, port) {
     const r = await page.evaluate(() => {
       const m = document.getElementById("fichaTecModal");
       const pp = document.getElementById("prodPreviewModal");
+      const q = (sel) => (m ? m.querySelector(sel) : null);
       return {
         abierto: !!m && m.classList.contains("open") && getComputedStyle(m).display !== "none",
-        titulo: m && (m.querySelector(".ft-titulo") || {}).textContent,
-        dst: m && !!m.querySelector(".ft-dst"),
-        filas: m ? [...m.querySelectorAll(".ft-tabla th")].map((t) => t.textContent) : [],
-        lv: m ? [...m.querySelectorAll(".ft-tabla tr")].map((t) => t.textContent).join("|") : "",
-        link: m && (m.querySelector(".ft-link") || {}).getAttribute && m.querySelector(".ft-link").getAttribute("href"),
+        titulo: (q(".ft-titulo") || {}).textContent,
+        dst: !!q(".ft-dst"),
+        filas: m ? [...m.querySelectorAll(".ft-tabla dt")].map((t) => t.textContent) : [],
+        tabla: (q(".ft-tabla") || {}).textContent || "",
+        texto: m ? m.textContent : "",
+        linkInterno: m ? [...m.querySelectorAll("a")].some((a) => /articulo\/|donde-comprar/.test(a.getAttribute("href") || "")) : null,
+        ml: !!q(".ft-ml"),
+        compra: !!q(".ft-acciones .add-btn"),
         fotoAbierta: !!pp && pp.classList.contains("open"),
       };
     });
@@ -114,14 +122,53 @@ async function abrir(browser, port) {
     if (!r.abierto) fallas.push("2: tocar el botón no abre el popup");
     if (r.titulo !== f.n) fallas.push(`2: el popup no muestra el nombre (${r.titulo})`);
     if (!!f.dst !== r.dst) fallas.push("2: el destacado no coincide con fichas.json");
-    if (f.lv && !r.lv.includes("Apto lavavajillas" + f.lv)) fallas.push("2: falta la fila Apto lavavajillas");
-    if (r.link !== "productos/articulo/505.html") fallas.push(`2: el link a la ficha está mal (${r.link})`);
+    if (f.lv && !r.tabla.includes("Apto lavavajillas" + f.lv)) fallas.push("2: falta la fila Apto lavavajillas");
+    if (f.lin && !r.tabla.includes("Línea" + f.lin)) fallas.push("2: falta la fila Línea");
+    if (!r.texto.includes("Dónde comprar") || !r.ml) fallas.push("2: falta el bloque Dónde comprar / Mercado Libre");
+    if (f.lin && !r.texto.includes("Sobre la línea")) fallas.push("2: falta el texto de la línea");
+    if (r.linkInterno) fallas.push("2: el popup linkea a otra página del sitio (no tiene que abrir una página nueva)");
     if (r.fotoAbierta) fallas.push("2: el botón también abrió el popup de la foto");
     if (!f.m && r.filas.includes("Material")) fallas.push("4: muestra Material sin que esté cargado");
+    if (r.compra) fallas.push("6: SIN sesión el popup muestra un botón de compra");
+
+    // 7. foto fija: se scrollea la card y la foto no se mueve
+    const st = await page.evaluate(() => {
+      const card = document.querySelector("#fichaTecModal .ft-card");
+      const foto = document.querySelector("#fichaTecModal .ft-foto");
+      const y0 = foto.getBoundingClientRect().top;
+      card.scrollTop = card.scrollHeight;
+      const y1 = foto.getBoundingClientRect().top;
+      const scrolleo = card.scrollTop > 0;
+      card.scrollTop = 0;
+      return { y0, y1, scrolleo };
+    });
+    if (st.scrolleo && Math.abs(st.y1 - st.y0) > 30)
+      fallas.push(`7: la foto se movió al scrollear la ficha (${st.y0.toFixed(0)} → ${st.y1.toFixed(0)})`);
     await page.screenshot({ path: process.env.FT_SHOT || "/dev/null" }).catch(() => {});
     await page.keyboard.press("Escape");
     const cerrado = await page.evaluate(() => !document.getElementById("fichaTecModal").classList.contains("open"));
     if (!cerrado) fallas.push("3: Escape no cierra el popup");
+
+    // 6. con sesión: aparece «Agregar al pedido» y apunta al producto
+    const conSesion = await page.evaluate(() => {
+      currentSession = { user: { id: "u-test" } };
+      let llamado = null;
+      const orig = window.addFirstBox;
+      window.addFirstBox = (pid, origen) => { llamado = [pid, origen]; };
+      window.abrirFichaTec("505");
+      const b = document.querySelector("#fichaTecModal .ft-acciones .add-btn");
+      const txt = b ? b.textContent.trim() : null;
+      if (b) b.click();
+      const abierto = document.getElementById("fichaTecModal").classList.contains("open");
+      window.addFirstBox = orig;
+      currentSession = null;
+      return { txt, llamado, abierto };
+    });
+    if (conSesion.txt !== "Agregar al pedido") fallas.push(`6: CON sesión no aparece «Agregar al pedido» (${conSesion.txt})`);
+    else {
+      if (!conSesion.llamado || conSesion.llamado[0] !== "p-1") fallas.push("6: el botón no agrega el producto correcto");
+      if (conSesion.abierto) fallas.push("6: después de agregar el popup sigue abierto");
+    }
   }
   await ctx.close(); srv.close();
 

@@ -17040,23 +17040,53 @@ body.is-vendor-user #carrito .exp-btn { padding: 2px 8px; font-size: 11.5px; }
   padding: 16px; background: rgba(0, 0, 0, 0.55);
 }
 .ft-modal.open { display: flex; }
+body.ft-abierto { overflow: hidden; }
+/* La card es la que scrollea: la foto queda fija (sticky) a la izquierda y
+   la columna de datos baja, igual que la ficha pública del artículo. */
 .ft-card {
-  position: relative; width: 100%; max-width: 440px; max-height: 90vh; overflow: auto;
-  padding: 22px 20px 18px; border-radius: 14px; background: #fff; color: #222;
-  text-align: center; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  position: relative; width: 100%; max-width: 920px; max-height: 88vh; overflow: auto;
+  border-radius: 14px; background: #fff; color: #222; text-align: left;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
 }
 .ft-close {
-  position: absolute; top: 6px; right: 10px;
-  border: none; background: none; font-size: 26px; line-height: 1; color: #666; cursor: pointer;
+  position: sticky; top: 6px; float: right; z-index: 2; margin: 6px 10px 0 0;
+  border: none; background: #fff; border-radius: 50%; width: 34px; height: 34px;
+  font-size: 26px; line-height: 1; color: #555; cursor: pointer;
 }
+.ft-cuerpo {
+  display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: 28px; align-items: start; padding: 24px 26px 26px;
+}
+.ft-foto { margin: 0; position: sticky; top: 0; aspect-ratio: 1 / 1; }
+.ft-foto img { width: 100%; height: 100%; object-fit: contain; }
 .ft-cod { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #b00020; }
-.ft-titulo { margin: 4px 0 8px; font-size: 19px; line-height: 1.25; }
+.ft-titulo { margin: 4px 0 10px; font-size: 22px; line-height: 1.25; }
 .ft-dst {
-  display: inline-block; margin-bottom: 8px; padding: 3px 8px;
+  display: inline-block; margin-bottom: 10px; padding: 3px 8px;
   border-radius: 4px; background: #ffe9a8; font-size: 13px; font-weight: 700;
 }
-.ft-desc { margin: 0 0 10px; font-size: 15px; line-height: 1.45; }
-.ft-tabla { margin: 0 auto 12px; border-collapse: collapse; font-size: 14px; }
-.ft-tabla th, .ft-tabla td { padding: 3px 8px; border: 1px solid #ddd; text-align: center; }
-.ft-tabla th { font-weight: 700; }
-.ft-link { font-size: 14px; font-weight: 600; color: #b00020; }
+.ft-desc { margin: 0 0 14px; font-size: 15px; line-height: 1.5; }
+.ft-tabla {
+  display: grid; grid-template-columns: max-content max-content;
+  column-gap: 16px; row-gap: 5px; margin: 0 0 14px; font-size: 14px;
+}
+.ft-tabla dt { color: #666; font-weight: 700; }
+.ft-tabla dd { margin: 0; }
+.ft-precio { margin: 0 0 8px; }
+.ft-acciones { margin: 0 0 18px; }
+.ft-acciones:empty { display: none; }
+.ft-acciones .add-btn { width: auto; min-width: 220px; }
+.ft-sec { margin: 0 0 18px; }
+.ft-sec h4 { margin: 0 0 6px; font-size: 16px; }
+.ft-sec p { margin: 0 0 8px; font-size: 14px; line-height: 1.5; }
+.ft-ml { font-weight: 800; color: #b00020; }
+.ft-sub { font-weight: 700; }
+.ft-com { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.ft-com li { display: flex; flex-direction: column; font-size: 14px; }
+.ft-com a { font-weight: 700; text-decoration: underline; }
+.ft-com span { font-size: 12px; color: #777; }
+@media (max-width: 700px) {
+  .ft-cuerpo { grid-template-columns: 1fr; gap: 14px; padding: 16px; }
+  .ft-foto { position: static; max-width: 240px; margin: 0 auto; }
+  .ft-acciones .add-btn { width: 100%; }
+}

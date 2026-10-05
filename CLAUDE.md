@@ -1566,12 +1566,15 @@ las aprueben. No muestran precios.
   están activos. Las páginas de línea suman `ItemList` apuntando a las fichas, y `catalogo-vivo.js` sólo
   linkea a ficha los códigos que ya la tienen (un código nuevo sin regenerar daría 404).
 - **Botón «Ficha técnica» en la card del catálogo mayorista (05/10/2026, Thomas)**: el generador escribe
-  `productos/fichas.json` con SOLO los artículos activos que tienen algún dato en `fichas-manual.csv`
-  (descripción, material, lavavajillas, lavado, destacado; nunca las `propuesta_ml*`). `script.js`
-  (`loadFichasTec` / `fichaTecBtnHtml` / `abrirFichaTec`) lo baja una vez y dibuja el botón debajo de la
-  descripción; el popup muestra lo cargado y linkea a `productos/articulo/<cod>.html`. **Para que un artículo
-  tenga botón se completa el CSV y se corre el generador**: no hay nada que tocar en `script.js`. Si el JSON
-  no carga, la card sale igual sin botón (no se cachea el fallo). Chequeo: `tests/ficha-tecnica-btn.cjs`.
+  `productos/fichas.json` (`{fichas, lineas, comercios}`) con SOLO los artículos activos que tienen algún
+  dato en `fichas-manual.csv` (nunca las `propuesta_ml*`), y para cada uno lo mismo que su ficha pública:
+  descripción completa, tabla, cuidado (`texto_cuidado`, compartido con la página), dónde comprar y el texto
+  de la línea. `script.js` (`loadFichasTec` / `fichaTecBtnHtml` / `abrirFichaTec`) dibuja el botón debajo de
+  la descripción y abre la ficha COMPLETA en un popup —foto fija a la izquierda, datos que scrollean— **sin
+  abrir otra página** (no linkea a `productos/`). **«Agregar al pedido» aparece SÓLO con sesión**
+  (`_ftAccionesHtml`, misma lógica que la card: sin stock / razón social / agregar); sin sesión no hay botón
+  de compra. **Para que un artículo tenga botón se completa el CSV y se corre el generador.** Si el JSON no
+  carga, la card sale igual sin botón (no se cachea el fallo). Chequeo: `tests/ficha-tecnica-btn.cjs`.
 - **El hook `pre-commit` recorre hasta `maxdepth 3`** desde el 04/10/2026: las fichas viven en el nivel 3
   y con 2 quedaban con el `?v=` viejo. El `V` del generador ahora se lee de `version.js`.
 - **La home lleva `@graph` Organization + WebSite con `@id`** (`https://loekemeyer.com/#organizacion`), que
