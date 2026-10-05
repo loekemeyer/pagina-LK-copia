@@ -786,7 +786,10 @@ function crRender() {
       const fav = _crFavs.has(cod);
       const nombre = String(p.description || "").replace(/"/g, "&quot;");
       const media = vUrl
-        ? `<video class="cr-video" controls autoplay muted loop playsinline preload="metadata"${
+        ? // Sin autoplay y con preload="none" (05/10/2026): con autoplay, abrir la
+          // pantalla bajaba TODOS los videos completos (150 MB en un minuto, medido
+          // en los logs de Storage). Ahora cada video baja recién al tocar play.
+          `<video class="cr-video" controls loop playsinline preload="none"${
             thumb ? ` poster="${thumb}"` : ""
           } src="${vUrl}"></video>`
         : `<div class="cr-novideo">${
