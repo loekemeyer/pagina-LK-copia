@@ -2223,6 +2223,8 @@
         });
       }
 
+      // Filas que la config de inicio (hoja_start_row) salteaba y se recuperaron.
+      var filasRecuperadas = [];
       targets.forEach(function (t) {
         var sheetName = t.sheetName;
         var cfg = t.cfg;
@@ -2281,6 +2283,15 @@
                  (hv.indexOf("precio") === 0 && hv.indexOf("costo") < 0))) pC = cc;
           }
           if (cC >= 0 && pC >= 0) { codCol = cC; priceCol = pC; dataStart = Math.min(dataStart, hh + 1); break; }
+        }
+        // Aunque no se encuentre el encabezado (otro rótulo, hoja sin títulos):
+        // toda fila PEGADA arriba del inicio con código y precio numérico es dato,
+        // no encabezado. Se recupera y se avisa en la revisión, así ninguna hoja
+        // pierde sus primeras filas por una config de inicio vieja.
+        while (dataStart > 0 && scotEsFilaDato(rows[dataStart - 1], codCol, priceCol)) dataStart--;
+        if (dataStart < cfg.dataStartRow) {
+          filasRecuperadas.push({ hoja: sheetName, n: cfg.dataStartRow - dataStart,
+                                  desde: dataStart + 1, hasta: cfg.dataStartRow });
         }
 
         var seen = {};
@@ -2441,7 +2452,7 @@
 
       var htmlRev =
         '<h2 style="margin:0 0 4px;font-size:18px">Revisar cambios de precio</h2>' +
-        resumen + cambiosHtml + faltantesHtml;
+        resumen + scotRecuperadasHtml(filasRecuperadas) + cambiosHtml + faltantesHtml;
       var ok = await scotModal(htmlRev, {
         okText: faltantes.length ? "Confirmar (conservar los de abajo)" : "Confirmar carga",
         cancelText: "Cancelar",
@@ -4428,3 +4439,30 @@
     getLokeProductsCache: function () { return allLokeProductsCache || []; },
   };
 })();
+
+// ¿Esta fila de una lista de súper es un DATO (código + precio) y no un encabezado?
+// La usa la carga de listas para recuperar filas que la config de inicio salteaba.
+function scotEsFilaDato(row, codCol, priceCol) {
+  if (!row) return false;
+  var cod = row[codCol], price = row[priceCol];
+  if (cod === "" || cod == null) return false;
+  if (typeof price !== "number" || !(price > 0)) return false;
+  var cs = String(cod).trim();
+  if (!/[0-9]/.test(cs) || cs.length > 15) return false;          // un código lleva algún dígito
+  if (/^(cod|codigo|código|cod anonima)$/i.test(cs)) return false;
+  return /^[0-9A-Za-z][0-9A-Za-z.\- ]*$/.test(cs);
+}
+
+// Aviso para la revisión: qué hoja tenía filas que antes se perdían.
+function scotRecuperadasHtml(lista) {
+  if (!lista || !lista.length) return "";
+  var li = lista.map(function (r) {
+    return "<li><b>" + String(r.hoja).replace(/</g, "&lt;") + "</b>: " + r.n +
+      (r.n === 1 ? " fila" : " filas") + " (" + (r.desde === r.hasta ? "fila " + r.desde :
+      "filas " + r.desde + " a " + r.hasta) + ") que antes se salteaban</li>";
+  }).join("");
+  return '<div style="background:#fff4d6;border:1px solid #f0c36d;border-radius:6px;' +
+    'padding:6px 10px;margin:4px 0 8px;font-size:12.5px">⚠ Se recuperaron filas del ' +
+    "principio de la hoja (la config de inicio estaba más abajo):<ul style=\"margin:4px 0 0 18px;padding:0\">" +
+    li + "</ul></div>";
+}
