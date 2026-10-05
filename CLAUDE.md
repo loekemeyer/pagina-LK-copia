@@ -1381,9 +1381,11 @@ Documentos de planificación y replicación, NO ejecutables:
   | **`www.loekemeyer.com`** (CPanel — IIS / panel SolidCP) | **los clientes — es producción** | **a mano por SolidCP** (`/publicar-sitio` arma el `.zip`; `scripts\deploy-iis.ps1` si hay FTP) |
   | **`pagina-lk-copia.vercel.app`** (Vercel) | prueba / revisión | solo, con cada push a `main` |
 
-  ✅ **GitHub Pages VOLVIÓ a servir el repo** (medido el 05/10/2026: repo público, `has_pages = true`, el build
-  "pages build and deployment" sale en verde con cada push a `main`, la 2.3.542 a 1 min del push):
-  `https://loekemeyer.github.io/pagina-LK-copia/`. Thomas lo mira ahí. Lo de abajo queda como historia.
+  ⚠⚠ **Fichas técnicas en BORRADOR, fuera de `main` (Thomas, 05/10/2026: *"no subas nada a main todavía, solo en
+  github"*).** Lo de las fichas de artículo (popup en el catálogo, ficha sin datos repetidos, logos de comercios,
+  v2.3.534–2.3.543) se revirtió de `main` y vive en el branch **`claude/loekemeyer-seo-semantic-bqkuqs`**. Thomas
+  lo mira en GitHub Pages, así que Pages tiene que publicar ESE branch (Settings → Pages → Branch). Hasta que él
+  diga, **no mergear ese branch a `main`** ni volver a subir fichas a `main`.
   ⚠ **GitHub Pages YA NO SIRVE ESTE REPO** (medido el 02/10/2026): el repo pasó a **privado**,
   `has_pages = false` y `loekemeyer.github.io/pagina-LK-copia/` da **404**; el último build de
   Pages fue la 2.3.468 (23/09). La copia de prueba es **Vercel**, que el 02/10 ya servía la
@@ -1568,41 +1570,13 @@ las aprueben. No muestran precios.
   sesión** (proxy): hay que probarlos una vez a mano. El generador borra las fichas de códigos que ya no
   están activos. Las páginas de línea suman `ItemList` apuntando a las fichas, y `catalogo-vivo.js` sólo
   linkea a ficha los códigos que ya la tienen (un código nuevo sin regenerar daría 404).
-- **Diseño de la ficha de artículo (Thomas, 05/10/2026)**: columna izquierda **fija (sticky)** con breadcrumb +
-  foto; a la derecha h1, pastilla roja `COD 505` + destacado (★), descripción, datos (**sólo `Material` y `Apto
-  lavavajillas`**, y sólo si están en el CSV: código, línea, sublínea, marca y unidades por caja se sacaron porque
-  repetían la pastilla, el breadcrumb y la descripción), zona de compra, y secciones
-  `<details open>` (Cuidado y lavado, Comercios —**sólo logos**, `LOGOS_COMERCIO` del generador: un comercio sin logo
-  en `img/` no se muestra; hoy faltan Disco, Vea y Carrefour—, Sobre la línea, Otros artículos; **«¿Dónde lo puedo
-  comprar?» se sacó** el 05/10):
-  abiertas por defecto para que se lean e indexen sin JS. **La compra la pinta `js/ficha-compra.js` SÓLO con
-  sesión iniciada** (misma sesión de Supabase que mayorista, mismo dominio): «Agregar al pedido» lleva a
-  `mayorista.html#agregar=<cod>` y al lado el precio de la card (cliente → contado `lista×(1−dto_vol)×(1−web)×0,75`;
-  admin, cod 5000 y vendedores 100XX/cod 1 → Precio Lista; modo presupuesto → sin precio; SIN STOCK/PRÓXIMAMENTE →
-  botón deshabilitado). Sin sesión queda el link de WhatsApp. ⚠ El precio de un vendedor que en mayorista tiene un
-  cliente elegido NO se replica acá (muestra lista). Chequeo: `tests/ficha-articulo.cjs`.
-- **Botón «Ficha técnica» en la card del catálogo mayorista (05/10/2026, Thomas)**: `productos/fichas.json`
-  (`{fichas: {cod: {n}}}`) lista **todos** los artículos activos (Thomas: *"todos los productos tengan su ficha
-  técnica"*); un código nuevo sin regenerar no lleva botón (`fichaTecBtnHtml`). **La ficha se abre ADENTRO de `mayorista.html`** (Thomas: *"el header no tiene que
-  cambiar… si quiero volver atrás no tengo que perder nada de lo cargado"*): `abrirFichaEnCatalogo` trae
-  `productos/articulo/<cod>.html`, toma su `.art-ficha` (misma fuente, sin duplicar contenido; los href relativos se
-  resuelven contra la página pública) y la muestra en el **popup `#fichaArticulo`** (Thomas, 05/10: *"visualmente me
-  sirve más así"*), encima del catálogo, que no se mueve: header, sesión, carrito y scroll quedan como estaban. Cierra
-  con la X, Escape, clic en el fondo o «atrás»; en el celular ocupa toda la pantalla. **Arranca debajo del header**
-  (`--ficha-top` = borde inferior del header al abrir), así el header queda a la vista. **Sólo en el popup**
-  (`_fichaPintarMedia`): debajo de la foto van las otras fotos del producto (`productImgUrls`, las mismas de la card)
-  y, si el código tiene video en `products-videos`, la pastilla «Ver video» de `openProdPreview` (el video baja recién
-  al tocarla, reemplaza a la foto y se corta al cerrar). Con la 2ª foto la columna sticky puede quedar más alta que la
-  caja: `_fichaAjustarSticky` le pone `top` negativo para que se pegue por abajo y se vean las dos.
-  ⚠ **La página pública NO se oculta**: es la que leen Google y la IA. Mostrarle al buscador una página y al usuario
-  otra (o redirigir al humano al popup y dejar al bot en la página) es *cloaking* y Google lo penaliza. La zona de compra la pinta `_fichaCompraHtml` con la **misma lógica que la card** (precio,
-  sin stock, vendedor sin cliente, iniciar sesión) y suma con `addFirstBox` / `changeQty`. URL
-  `mayorista.html#ficha=<cod>` con entrada de historial (`state.n` = fichas apiladas): «atrás» vuelve a la ficha
-  anterior o cierra el popup; un relacionado se abre en el mismo popup. El `href` del botón sigue
-  siendo la página pública (ctrl/clic medio la abre en otra pestaña). Desde la ficha pública, «Agregar al pedido»
-  manda a `mayorista.html#agregar=<cod>` (`procesarAgregarDesdeFicha`): abre la ficha en el catálogo, suma UNA caja
-  y saca el `#agregar`. Estilos de la ficha en **`css/ficha.css`** (los cargan la página pública y mayorista; todo
-  `.art-*`, variables `--art-*`). Chequeos: `tests/ficha-tecnica-btn.cjs`, `tests/ficha-en-catalogo.cjs`.
+- **Botón «Ficha técnica» en la card del catálogo mayorista (05/10/2026, Thomas)**: el generador escribe
+  `productos/fichas.json` con SOLO los artículos activos que tienen algún dato en `fichas-manual.csv`
+  (descripción, material, lavavajillas, lavado, destacado; nunca las `propuesta_ml*`). `script.js`
+  (`loadFichasTec` / `fichaTecBtnHtml` / `abrirFichaTec`) lo baja una vez y dibuja el botón debajo de la
+  descripción; el popup muestra lo cargado y linkea a `productos/articulo/<cod>.html`. **Para que un artículo
+  tenga botón se completa el CSV y se corre el generador**: no hay nada que tocar en `script.js`. Si el JSON
+  no carga, la card sale igual sin botón (no se cachea el fallo). Chequeo: `tests/ficha-tecnica-btn.cjs`.
 - **El hook `pre-commit` recorre hasta `maxdepth 3`** desde el 04/10/2026: las fichas viven en el nivel 3
   y con 2 quedaban con el `?v=` viejo. El `V` del generador ahora se lee de `version.js`.
 - **La home lleva `@graph` Organization + WebSite con `@id`** (`https://loekemeyer.com/#organizacion`), que
