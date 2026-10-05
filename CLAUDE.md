@@ -1786,8 +1786,13 @@ LK el 2444 es **Relca**. Ese lote **duplica** el historial de Chef. Hoy: `ventas
 no cambió (228.731 cajas). **D6 (05/10): las 525 líneas del lote pasaron a `empresa = 'lk_copia_cencosud'`** (no se
 borraron), así ningún lector que filtra `empresa='lk'` las ve: Ranking Inactivos, dashboard, ficha, agrupar,
 agenda del gerente. Volver atrás: `update sales_lines set empresa='lk' where import_batch='jumbo_2026_02_20';`.
-⚠ El dashboard de ventas todavía NO suma lo que Chef le factura a Cencosud con artículos LK (lee
-`sales_lines` lk a secas). `sql/cencosud_venta_lk_top20.sql`.
+**El dashboard de ventas (D8/D10, 05/10) también la suma como LK**: las tres `gv_dashboard_*` leen la vista
+**`ventas_dash_lineas`**, que pasa a `empresa='lk'` con código **`CH 2444`** (no choca con Relca) lo que Chef le
+factura a un súper con `usa_productos_chef=false` en artículos de LK, valorizado con **su lista**
+(`precios_super.precio`, código sin L/E/ceros) ÷ `pdf_ratio` (1,19 = −16 % de bonificación, verificado contra las
+facturas de ISIS). Lo que la lista no tiene (031, 123, 224, 248, 280, 315) sale de **`super_precio_isis`** (precio
+por unidad parseado de ISIS Chef, cargado a mano el 05/10: **no se refresca solo**). Cencosud 12 m: $329 M neto.
+`sql/cencosud_venta_lk_top20.sql`, `sql/dashboard_cencosud_lista.sql`.
 
 ### ⚠⚠ Desde el 02/10/2026 los crons 29/30/31 mandan el formato NUEVO (`rep_ger_*`, Luis)
 
