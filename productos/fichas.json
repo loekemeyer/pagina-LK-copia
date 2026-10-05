@@ -1,128 +1,601 @@
 {
+"fichas": {
 "026": {
-"d": "Colador chico de malla fina, útil para tamizar ingredientes secos, colar pequeñas cantidades o lavar frutas chicas.",
 "n": "Colador Ø 8cm"
 },
 "027": {
-"d": "Colador chico para colar pequeñas cantidades: hierbas, especias o una taza de té.",
 "n": "Colador Ø 10cm"
 },
 "031": {
-"d": "Filtro de tela para preparar café de filtro tradicional; su boca se adapta a la mayoría de las tazas y cafeteras. Reutilizable: se lava y se vuelve a usar.",
 "n": "Filtro De Café 10cm"
 },
+"034": {
+"n": "Filtro De Café Gastro 14cm"
+},
+"035E": {
+"n": "Cernidor de Harina"
+},
+"056E": {
+"n": "Llavero Destapacorona Económico"
+},
+"057": {
+"n": "Destapa Corona x1 Cromado"
+},
+"058": {
+"n": "Cierra Bolsa x2"
+},
+"059": {
+"n": "Cuchillo de Untar Plástico x2"
+},
 "066": {
-"d": "Abrelatas tipo mariposa, compacto y fácil de manejar, que abre latas y botellas sin esfuerzo con un agarre firme.",
 "n": "Abrelatas Super Mariposa"
 },
+"070": {
+"n": "Set Tapers 0.8 L / 1.5 L / 3 L"
+},
+"071": {
+"n": "Bowl Multi Uso 330ml"
+},
+"207": {
+"n": "Ñoquera Madera mango Redondo"
+},
+"208": {
+"n": "Cucharita 13cm Azucarera Madera"
+},
+"220": {
+"n": "Cuchara Madera 40 Cm"
+},
+"221": {
+"n": "Cuchara Madera 45 Cm"
+},
+"222": {
+"n": "Bate Bife Madera"
+},
+"223": {
+"n": "Cuchara Madera 25 Cm"
+},
 "224": {
-"d": "Cuchara de madera larga, que llega al fondo de ollas y sartenes. Sirve para revolver sopas, guisos y salsas y para servir, y no raya las superficies antiadherentes.",
 "n": "Cuchara Madera 30 Cm"
 },
+"225": {
+"n": "Cuchara Madera 35 Cm"
+},
+"229": {
+"n": "Ñoquera Madera"
+},
+"231": {
+"n": "Palo de Amasar 30cm"
+},
+"232": {
+"n": "Palo de Amasar 40cm"
+},
+"233": {
+"n": "Palo de Amasar 50cm"
+},
+"234": {
+"n": "Palo de Amasar Frances 40 cm"
+},
+"246": {
+"n": "Prensa Matambre"
+},
 "248": {
-"d": "Cuchara de nylon reforzada, de mango largo, para mezclar y servir. No raya los recipientes antiadherentes.",
 "n": "Cuchara Nylon Reforzada 33 Cm"
 },
+"255": {
+"n": "Mate inoxidable Térmico"
+},
+"256": {
+"n": "Mate Madera Cerámica"
+},
+"260E": {
+"n": "Infusor de Te"
+},
 "280": {
-"d": "Manga repostera reutilizable con 4 picos intercambiables para distintas decoraciones.",
 "n": "Manga Repostera + 4 Boquillas"
 },
+"299": {
+"n": "Muñeco Silicona Antiderrame"
+},
+"311": {
+"n": "Cuchillo De Torta acero inoxidable"
+},
+"312": {
+"n": "Pala De Torta Acero inoxidable"
+},
 "315": {
-"d": "Pisapapas para hacer puré de forma rápida y sencilla.",
 "n": "Pisa Papas Acero inoxidable"
 },
+"321": {
+"n": "Rallador Cilíndrico 21cm"
+},
+"323E": {
+"n": "Rallador Mini"
+},
 "325": {
-"d": "Espátula repostera flexible, apta para recipientes antiadherentes; ideal para tortas y postres.",
 "n": "Espatula Repostera plástico 1 Pza"
 },
+"326": {
+"n": "Corta Torta Plástica 3 Usos"
+},
+"328E": {
+"n": "Rallador Plano 3 Usos acero inoxidable"
+},
+"332": {
+"n": "Espatula Calada acero inoxidable"
+},
+"335": {
+"n": "Cuchara Calada acero inoxidable"
+},
+"337": {
+"n": "Pinche acero inoxidable"
+},
+"338": {
+"n": "Espatula Lisa acero inoxidable"
+},
+"355": {
+"n": "Pisa Papas Nylon con mango"
+},
+"360E": {
+"n": "Rallador 4 Lados A/L mango plástico"
+},
+"361E": {
+"n": "Rallador 4 lados acero inoxidable"
+},
+"363E": {
+"n": "Rallador Gourmet Grano Fino"
+},
+"366E": {
+"n": "Rallador Cónico acero inoxidable"
+},
+"367E": {
+"n": "Rallador Hexagonal"
+},
+"368E": {
+"n": "Rallador Hexagonal inoxidable 25cm"
+},
+"390": {
+"n": "Cuchara Calada Nylon 1 Pza"
+},
+"391": {
+"n": "Cuchara Fideos Nylon 1 Pza"
+},
+"392": {
+"n": "Cucharon Nylon 1 Pza"
+},
+"393": {
+"n": "Espátula Calada Nylon 1 Pza"
+},
+"394": {
+"n": "Espátula Lisa Nylon 1 Pza"
+},
+"395": {
+"n": "Descorazonador De Manzana"
+},
+"396": {
+"n": "Enrulador de Manteca"
+},
+"404E": {
+"n": "Afila Cuchillos Premium"
+},
+"437E": {
+"n": "Colador Ø 16cm"
+},
 "438E": {
-"d": "Colador grande para colar y tamizar.",
 "n": "Colador Ø 20cm"
 },
+"439E": {
+"n": "Colador Pasta"
+},
+"440E": {
+"n": "Colador Extensible 25x34/57cm"
+},
+"441": {
+"n": "Colador de Pasta Plástico"
+},
+"498": {
+"n": "Llavero Destapador Pie Cromado"
+},
+"499": {
+"n": "Llavero Destapador Pie Color"
+},
+"500": {
+"n": "Abrelata Uña Pie Color"
+},
 "501": {
-"d": "Abrelatas a manija para abrir latas de forma rápida y sencilla, con destapador de botellas incorporado.",
 "n": "Abrelatas A Manija"
 },
 "502": {
-"d": "Abrelatas tipo mariposa que abre todo tipo de latas; también sirve para destapar botellas.",
 "n": "Abrelatas Mariposa Cromado"
 },
+"503E": {
+"n": "Abrelatas Doble Engranaje"
+},
 "504": {
-"d": "Afilador de cuchillos de ruedas para cuchillos de filo liso, de cocina y de mesa. Se apoya el cuchillo en las ruedas del centro y se tira hacia atrás, siempre en dirección a la base. No sirve para cuchillos de filo serrucho ni de cerámica.",
 "n": "Afila Cuchillos"
 },
 "505": {
-"d": "Pelapapas vertical para pelar papas y verduras, con mango de agarre cómodo.",
-"dst": "El pelapapas más vendido de Mercado Libre Argentina (octubre 2026)",
-"lv": "No",
 "n": "Pelador mango Plástico"
 },
 "506": {
-"d": "Abrelatas tipo uña de doble uso: abre latas y trae destapador de botellas incorporado.",
 "n": "Abrelatas Uña Rojo"
 },
+"507": {
+"n": "Rompenueces"
+},
+"508": {
+"n": "Sacafuentes Articulado"
+},
+"509": {
+"n": "Pala Batidora"
+},
+"510": {
+"n": "Abrelata Uña Cromado"
+},
+"511": {
+"n": "Abrelatas Uña 3 En 1"
+},
 "512": {
-"d": "Abrelatas tipo mariposa con capuchón rojo y destapador incorporado.",
 "n": "Abrelatas Mariposa Capuchon Rojo"
 },
 "513": {
-"d": "Pelapapas con mango metálico de agarre firme, para pelar papas y verduras con un corte limpio.",
 "n": "Pelador mango Metálico"
 },
+"514E": {
+"n": "Llavero Destapacorona Suelto"
+},
+"515": {
+"n": "Batidor Resorte"
+},
+"516": {
+"n": "Destapa Corona x1 Cromado Suelto"
+},
+"517": {
+"n": "Pinza Acero inoxidable 25cm"
+},
+"518": {
+"n": "Sacafuente Pizzero"
+},
+"519": {
+"n": "Cuchillo Untar mango Madera x2"
+},
 "520": {
-"d": "Sacacorchos tipo mozo de doble palanca: saca el corcho en dos tiempos, con menos fuerza y sin movimientos bruscos sobre la botella. Plegable, combina sacacorchos, destapador y cortacápsulas.",
 "n": "Sacacorcho Tipo Mozo Cromado"
 },
 "521": {
-"d": "Sacacorchos combinado con destapador incorporado.",
 "n": "Sacacorcho Combinado Cromado"
 },
+"522E": {
+"n": "Sacacorcho Doble Aleta Premium"
+},
 "523": {
-"d": "Sacacorchos de doble aleta: al girar la espiral en el corcho las aletas suben, y al bajarlas hacen palanca para sacarlo.",
 "n": "Sacacorcho Doble Aleta"
 },
 "525E": {
-"d": "Sacacorchos simple con mango de agarre anatómico.",
 "n": "Sacacorcho Cabo De Madera"
 },
 "529E": {
-"d": "Sacacorchos tipo mozo de doble impulso: el sistema de dos tiempos saca el corcho sin esfuerzo. Trae cortacápsulas.",
 "n": "Sac. Doble Impulso Acero"
 },
 "530": {
-"d": "Sacacorchos tipo mozo de dos tiempos, plegable, con sacacorchos, destapador y cortacápsulas. En colores.",
 "n": "Sacacorcho Tipo Mozo Color"
 },
+"531": {
+"n": "Sacacorcho Combinado Color"
+},
+"532": {
+"n": "Cuchara De Helado"
+},
+"534": {
+"n": "Cepillo Lavavajilla"
+},
+"535": {
+"n": "Cepillo Limpia Vaso y Mamadera"
+},
+"536E": {
+"n": "Sacacorcho Full Black"
+},
+"537": {
+"n": "Pela y Pica ajo"
+},
+"538E": {
+"n": "Sacacorcho Azul"
+},
+"539E": {
+"n": "Sacacorcho Negro"
+},
+"540E": {
+"n": "Sacacorcho Premium"
+},
+"541E": {
+"n": "Prensa Ajo"
+},
+"542": {
+"n": "Ahueca Papas"
+},
+"543": {
+"n": "Ahueca Frutas"
+},
 "544": {
-"d": "Batidor tipo pera para mezclar y batir ingredientes en la cocina y en repostería.",
 "n": "Batidor Pera Alambre"
 },
 "546": {
-"d": "Cortador de quesos blandos de alambre: corta con precisión y, a diferencia de un cuchillo, no necesita afilarse.",
 "n": "Corta Queso Blandos Mango Loeke"
 },
+"547": {
+"n": "Corta Torta"
+},
+"550": {
+"n": "Filtro Para Bombillas"
+},
+"551": {
+"n": "Cuchillo De Untar mango plástico x2"
+},
 "555": {
-"d": "Cepillo para limpiar bombillas y sorbetes por dentro, con mango que facilita llegar a todos los rincones.",
 "n": "Cepillo Limpia Bombilla"
 },
+"556": {
+"n": "Sacayerba"
+},
+"557": {
+"n": "Bombilla Resorte Chata"
+},
 "558": {
-"d": "Bombilla de mate tradicional de resorte, que filtra la yerba y deja la infusión sin residuos.",
 "n": "Bombilla Resorte Tradicional"
 },
+"559": {
+"n": "Corta Ravioles con Mango Loeke"
+},
+"560": {
+"n": "Pinza Corta Alambre 21cm"
+},
+"562": {
+"n": "Corta Pizza 6cm mango Loeke"
+},
+"564": {
+"n": "Corta Pizza 8cm mango Madera"
+},
+"566E": {
+"n": "Aceitera 100 ml"
+},
+"567": {
+"n": "Corta Palta"
+},
+"569": {
+"n": "Pelanaranjas x 1 Display"
+},
+"570": {
+"n": "Pala De Canelones"
+},
+"573": {
+"n": "Bombilla Colores Metalizados"
+},
+"574E": {
+"n": "Corta Queso Blandos Mango Alambre"
+},
+"575": {
+"n": "Tapón De Vino/Cerveza x1 Negro"
+},
+"577": {
+"n": "Tapón De Vino/Cerveza x1 Prem"
+},
+"579": {
+"n": "Tapón De Vino/Cerveza x1 Color"
+},
+"580": {
+"n": "Batidor Mini"
+},
+"581": {
+"n": "Sacacorcho Mango Ergonómico"
+},
+"582E": {
+"n": "Salero 90 ml"
+},
+"583E": {
+"n": "Especiero Tapa Bamboo"
+},
+"584E": {
+"n": "Aceitera 400 ml"
+},
 "585E": {
-"d": "Sacacorchos de doble aleta: se gira la espiral en el corcho, suben las aletas y al bajarlas sale el corcho.",
 "n": "Sacacorcho Doble Aleta Fundicion"
 },
 "586": {
-"d": "Pelapapas vertical con mango ergonómico, pensado para un agarre cómodo y seguro que cansa menos la mano al pelar papas y verduras.",
 "n": "Pelapapas mango Ergonomico"
 },
 "587": {
-"d": "Pelador con hoja de corte láser y mango ergonómico, para pelar papas y verduras con buen filo.",
 "n": "Pelador Metálico Corte Laser"
 },
+"589E": {
+"n": "Pelador mango Acrílico"
+},
+"590E": {
+"n": "Pincel Silicona 11 g"
+},
+"590ES": {
+"n": "Pincel Silicona 11 g Suelto"
+},
+"591": {
+"n": "Despolvillador de Yerba"
+},
+"594": {
+"n": "Pinza De Fideos mango Plástico 25cm"
+},
+"595": {
+"n": "Pinza De Fiambre mango Plástico 23cm"
+},
+"596": {
+"n": "Pinza De Ensalada mango Plástico 23cm"
+},
+"598E": {
+"n": "Pelador Negro Dentado"
+},
+"599E": {
+"n": "Pelador Madera Multifunción"
+},
+"601E": {
+"n": "Pinza Acero 30 cm"
+},
+"606E": {
+"n": "Pinza 30 cm acero inoxidable con  Silic"
+},
+"607E": {
+"n": "Pinza Hielo 15 cm"
+},
+"654": {
+"n": "Bombilla Autolimpiante inoxidable"
+},
+"658": {
+"n": "Bombilla Plana Ancha Metalizada"
+},
+"659": {
+"n": "Bombilla Pico de Loro Acero inoxidable"
+},
+"809E": {
+"n": "Corta Pizza mango Ergonomico 6cm"
+},
+"810E": {
+"n": "Corta Queso acero inoxidable (Semiduro)"
+},
+"811E": {
+"n": "Corta Pizza mango Ergonomico Ø 9cm"
+},
+"812E": {
+"n": "Corta Huevo Marco Plástico"
+},
 "816E": {
-"d": "Pelador en V horizontal con mango ergonómico, para pelar papas, verduras y frutas de forma rápida y segura.",
 "n": "Pelador V Con mango Ergonómico"
+},
+"817E": {
+"n": "Rallador C/mango Ergonómico"
+},
+"819E": {
+"n": "Sacacorcho \"Fish\" 14cm"
+},
+"823": {
+"n": "Exprimidor De Cítricos"
+},
+"870E": {
+"n": "Mandolina 3 Grosores"
+},
+"931E": {
+"n": "Espátula Lisa Nylon mango Mad"
+},
+"932E": {
+"n": "Cuchara Nylon mango Madera"
+},
+"933E": {
+"n": "Cucharon Nylon mango Madera"
+},
+"934E": {
+"n": "Cuchara Fideos Nylon mango Mad"
+},
+"935E": {
+"n": "Espátula Calada Nylon mango Madera"
+},
+"936E": {
+"n": "Espumadera Nylon mango Madera"
+},
+"937E": {
+"n": "Batidor Pera Nylon mango Madera"
+},
+"941E": {
+"n": "Espátula Lisa acero inoxidable"
+},
+"942E": {
+"n": "Cuchara acero inoxidable"
+},
+"943E": {
+"n": "Cucharon acero inoxidable"
+},
+"944E": {
+"n": "Cuchara Fideos acero inoxidable"
+},
+"945E": {
+"n": "Espátula Calada acero inoxidable"
+},
+"946E": {
+"n": "Cuchara Calada acero inoxidable"
+},
+"948E": {
+"n": "Espumadera acero inoxidable"
+},
+"951E": {
+"n": "Espátula Lisa Silicona mango Bambú"
+},
+"952E": {
+"n": "Cuchara Silicona mango Bambú"
+},
+"953E": {
+"n": "Cucharón Silicona mango Bambú"
+},
+"954E": {
+"n": "Pinza Fideos Silicona mango Bambú"
+},
+"955E": {
+"n": "Espátula Silicona mango Bambú"
+},
+"956E": {
+"n": "Cuchara Calada Silicona mango Bambú"
+},
+"957E": {
+"n": "Batidor Pera Silicona mango Bambú"
+},
+"958E": {
+"n": "Pincel Silicona mango Bambú"
+},
+"960E": {
+"n": "Pincel Silicona 52 g"
+},
+"969E": {
+"n": "Batidor Silicona"
+},
+"970E": {
+"n": "Cuchara Silicona"
+},
+"971E": {
+"n": "Espátula Silicona"
+},
+"980E": {
+"n": "Tenedor Ensalada Linea Premium"
+},
+"981E": {
+"n": "Espátula Lisa Linea Premium"
+},
+"982E": {
+"n": "Cuchara Linea Premium"
+},
+"983E": {
+"n": "Cucharón Linea Premium"
+},
+"984E": {
+"n": "Cuchara Fideos Linea Premium"
+},
+"985E": {
+"n": "Espatula Calada Linea Premium"
+},
+"988E": {
+"n": "Espumadera Linea Premium"
+},
+"989E": {
+"n": "Rallador de Limón mango Acacia"
+},
+"990E": {
+"n": "Corta Ravioles mango Acacia"
+},
+"992E": {
+"n": "Batidor Pera mango Acacia"
+},
+"993E": {
+"n": "Pelador V mango Acacia"
+},
+"996E": {
+"n": "Corta Pizza 9cm mango Acacia"
+},
+"997E": {
+"n": "Rallador 3 En 1 mango Acacia"
+},
+"998E": {
+"n": "Abrelatas Doble Engranaje mango Acacia"
+}
 }
 }

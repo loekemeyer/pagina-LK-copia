@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 /**
  * tests/ficha-tecnica-btn.cjs — botón «Ficha técnica» de la card del catálogo
- * mayorista y su popup (05/10/2026, Thomas).
+ * mayorista (05/10/2026, Thomas) y la vuelta desde la ficha con #agregar=<cod>.
  *
  * Levanta mayorista.html por HTTP local (el fetch de productos/fichas.json no
  * anda sobre file://) con Supabase falso y verifica:
  *   1. el artículo con ficha cargada (505) lleva el botón; el que no (999X), no
- *   2. tocar el botón abre el popup con nombre, destacado, lavavajillas y el
- *      link a la ficha pública — y NO abre el popup de foto de la card
- *   3. Escape lo cierra
- *   4. el popup sólo muestra lo que está en fichas.json: sin la fila Material
- *      si el 505 no tiene material cargado
- *   5. con fichas.json caído la card sale igual, sin botón y sin error
+ *   2. el botón tiene href a productos/articulo/505.html (abrirlo en otra
+ *      pestaña da la página pública) y no hay popup
+ *   3. con fichas.json caído la card sale igual, sin botón y sin error
+ *   4. mayorista.html#agregar=505 (lo usa la ficha pública) agrega UNA caja del
+ *      505 por addFirstBox (origen 'catalogo'), deja al cliente parado en la
+ *      ficha adentro del catálogo (#ficha=505) y saca el #agregar para que
+ *      recargar no vuelva a sumar
  *
  * Correr:  node tests/ficha-tecnica-btn.cjs
  */
@@ -26,7 +27,7 @@ catch (_e) {
 }
 
 const RAIZ = path.join(__dirname, "..");
-const FICHAS = JSON.parse(fs.readFileSync(path.join(RAIZ, "productos", "fichas.json"), "utf8"));
+const FICHAS = JSON.parse(fs.readFileSync(path.join(RAIZ, "productos", "fichas.json"), "utf8")).fichas || {};
 const PRODS = [
   { id: "p-1", cod: "505", category: "Peladores", subcategory: null, ranking: 1,
     orden_catalogo: 1, description: "Pelador de prueba", uxb: 12, images: ["505.webp"], badge_status: null },
@@ -47,7 +48,7 @@ function servidor(fichasCaido) {
   });
 }
 
-async function abrir(browser, port) {
+async function abrir(browser, port, hash = "") {
   const ctx = await browser.newContext({ viewport: { width: 1300, height: 900 } });
   const FOTO = path.join(RAIZ, "img", "no-image.jpg");
   await ctx.route("**/*", (r) => {
@@ -70,8 +71,12 @@ async function abrir(browser, port) {
       auth: { getSession: () => Promise.resolve({ data: { session: null } }), onAuthStateChange: () => {} },
       storage: { from: () => ({ getPublicUrl: () => ({ data: { publicUrl: "" } }) }) } }) };
   }, PRODS);
-  await page.goto(`http://127.0.0.1:${port}/mayorista.html`);
+  await page.goto(`http://127.0.0.1:${port}/mayorista.html${hash}`);
   await page.waitForFunction(() => typeof window.renderProducts === "function", null, { timeout: 15000 });
+  return { ctx, page, errores };
+}
+
+async function mostrarCatalogo(page) {
   await page.evaluate(async () => {
     const cont = document.getElementById("productsContainer");
     const sec = cont && cont.closest(".section");
@@ -80,7 +85,6 @@ async function abrir(browser, port) {
     await window.loadProductsFromDB();
     window.renderProducts();
   });
-  return { ctx, page, errores };
 }
 
 (async () => {
@@ -89,48 +93,49 @@ async function abrir(browser, port) {
   if (FICHAS["999X"]) fallas.push("0: el código de prueba 999X no puede tener ficha");
   const browser = await chromium.launch();
 
+  // 1-2
   const srv = servidor(false); await new Promise((r) => srv.listen(0, "127.0.0.1", r));
-  const { ctx, page } = await abrir(browser, srv.address().port);
-  await page.waitForSelector("#card-p-1 .ft-btn", { timeout: 8000 })
+  const port = srv.address().port;
+  let a = await abrir(browser, port);
+  await mostrarCatalogo(a.page);
+  await a.page.waitForSelector("#card-p-1 .ft-btn", { timeout: 8000 })
     .catch(() => fallas.push("1: el 505 (con ficha cargada) no muestra el botón Ficha técnica"));
-  if (await page.$("#card-p-2 .ft-btn")) fallas.push("1: un artículo SIN ficha muestra el botón");
-
-  if (await page.$("#card-p-1 .ft-btn")) {
-    await page.click("#card-p-1 .ft-btn");
-    const r = await page.evaluate(() => {
-      const m = document.getElementById("fichaTecModal");
-      const pp = document.getElementById("prodPreviewModal");
-      return {
-        abierto: !!m && m.classList.contains("open") && getComputedStyle(m).display !== "none",
-        titulo: m && (m.querySelector(".ft-titulo") || {}).textContent,
-        dst: m && !!m.querySelector(".ft-dst"),
-        filas: m ? [...m.querySelectorAll(".ft-tabla th")].map((t) => t.textContent) : [],
-        lv: m ? [...m.querySelectorAll(".ft-tabla tr")].map((t) => t.textContent).join("|") : "",
-        link: m && (m.querySelector(".ft-link") || {}).getAttribute && m.querySelector(".ft-link").getAttribute("href"),
-        fotoAbierta: !!pp && pp.classList.contains("open"),
-      };
-    });
-    const f = FICHAS["505"] || {};
-    if (!r.abierto) fallas.push("2: tocar el botón no abre el popup");
-    if (r.titulo !== f.n) fallas.push(`2: el popup no muestra el nombre (${r.titulo})`);
-    if (!!f.dst !== r.dst) fallas.push("2: el destacado no coincide con fichas.json");
-    if (f.lv && !r.lv.includes("Apto lavavajillas" + f.lv)) fallas.push("2: falta la fila Apto lavavajillas");
-    if (r.link !== "productos/articulo/505.html") fallas.push(`2: el link a la ficha está mal (${r.link})`);
-    if (r.fotoAbierta) fallas.push("2: el botón también abrió el popup de la foto");
-    if (!f.m && r.filas.includes("Material")) fallas.push("4: muestra Material sin que esté cargado");
-    await page.screenshot({ path: process.env.FT_SHOT || "/dev/null" }).catch(() => {});
-    await page.keyboard.press("Escape");
-    const cerrado = await page.evaluate(() => !document.getElementById("fichaTecModal").classList.contains("open"));
-    if (!cerrado) fallas.push("3: Escape no cierra el popup");
+  if (await a.page.$("#card-p-2 .ft-btn")) fallas.push("1: un artículo SIN ficha muestra el botón");
+  const btn = await a.page.evaluate(() => {
+    const b = document.querySelector("#card-p-1 .ft-btn");
+    return b ? { tag: b.tagName, href: b.getAttribute("href"), onclick: b.getAttribute("onclick") } : null;
+  });
+  if (btn) {
+    if (btn.tag !== "A" || btn.href !== "productos/articulo/505.html")
+      fallas.push(`2: el botón no es un link a la página del artículo (${btn.tag} ${btn.href})`);
   }
-  await ctx.close(); srv.close();
+  if (await a.page.$("#fichaTecModal")) fallas.push("2: quedó el popup de ficha técnica en el DOM");
+  await a.ctx.close();
 
+  // 4. #agregar=505
+  a = await abrir(browser, port, "#agregar=505");
+  await a.page.evaluate(() => {
+    window.__agregado = null;
+    window.addFirstBox = (pid, origen) => { window.__agregado = [pid, origen]; };
+  });
+  await mostrarCatalogo(a.page);
+  await a.page.waitForFunction(() => !!window.__agregado, null, { timeout: 9000 })
+    .catch(() => fallas.push("4: #agregar=505 no llamó a addFirstBox"));
+  const ag = await a.page.evaluate(() => ({ ag: window.__agregado, hash: location.hash }));
+  if (ag.ag && (ag.ag[0] !== "p-1" || ag.ag[1] !== "catalogo"))
+    fallas.push(`4: agregó otra cosa (${JSON.stringify(ag.ag)})`);
+  if (/agregar/.test(ag.hash)) fallas.push(`4: el #agregar quedó en la URL (${ag.hash}): recargar volvería a sumar`);
+  if (ag.hash !== "#ficha=505") fallas.push(`4: no quedó parado en la ficha del 505 (${ag.hash})`);
+  await a.ctx.close(); srv.close();
+
+  // 3
   const srv2 = servidor(true); await new Promise((r) => srv2.listen(0, "127.0.0.1", r));
   const b = await abrir(browser, srv2.address().port);
-  await b.page.waitForSelector("#card-p-1", { timeout: 8000 }).catch(() => fallas.push("5: con fichas.json caído no se dibuja la card"));
+  await mostrarCatalogo(b.page);
+  await b.page.waitForSelector("#card-p-1", { timeout: 8000 }).catch(() => fallas.push("3: con fichas.json caído no se dibuja la card"));
   await b.page.waitForTimeout(500);
-  if (await b.page.$(".ft-btn")) fallas.push("5: con fichas.json caído aparece un botón");
-  if (b.errores.length) fallas.push("5: errores de página con fichas.json caído: " + b.errores.join(" / "));
+  if (await b.page.$(".ft-btn")) fallas.push("3: con fichas.json caído aparece un botón");
+  if (b.errores.length) fallas.push("3: errores de página con fichas.json caído: " + b.errores.join(" / "));
   await b.ctx.close(); srv2.close();
 
   await browser.close();

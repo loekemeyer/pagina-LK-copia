@@ -1,0 +1,519 @@
+/* ================================================================
+   ficha.css — ficha de artículo (Thomas, 05/10/2026)
+   La usan DOS lugares con el mismo HTML:
+     · productos/articulo/<cod>.html (página pública, con URL indexable)
+     · mayorista.html, sección #fichaArticulo: la misma ficha adentro del
+       catálogo, con el header y el carrito de siempre (script.js la trae de
+       la página pública y la inserta).
+   Por eso todo va con prefijo .art-* y las variables son propias: no puede
+   depender de :root de styles.index.css ni pisar nada de styles.css.
+   ================================================================ */
+/* En :root y con nombre propio: los usa también productos/donde-comprar.html
+   (.art-donde, .art-linea), que está fuera de .art-ficha. */
+:root {
+  --art-accent: #8b1e1e;
+  --art-muted: #666;
+}
+
+.art-ficha .prod-breadcrumb {
+  font-size: 13px;
+  color: var(--art-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.art-ficha .prod-breadcrumb a {
+  color: var(--art-muted);
+  text-decoration: none;
+}
+
+.art-ficha .prod-breadcrumb a:hover {
+  color: var(--art-accent);
+}
+
+.art-ficha .prod-breadcrumb [aria-current="page"] {
+  color: #111;
+  font-weight: 700;
+}
+
+.art-ficha .prod-cod {
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  color: var(--art-accent);
+  margin: 0;
+}
+
+.art-ficha .prod-nuevo {
+  color: #1c1c1c;
+  background: #ffe9a8;
+  padding: 1px 6px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.art-ficha .prod-cta {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--art-muted);
+}
+
+.art-ficha .prod-cta:hover {
+  color: var(--art-accent);
+}
+
+.pub-wrap.art-wrap {
+  max-width: 1180px;
+}
+
+/* Diseño de Thomas (05/10/2026): a la izquierda breadcrumb + foto, FIJOS
+   (sticky) mientras la columna de datos scrollea a la derecha. */
+.art-ficha {
+  display: grid;
+  grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+  gap: 56px;
+  align-items: start;
+  margin: 18px 0 46px;
+}
+
+.art-izq {
+  position: sticky;
+  top: var(--art-top, 84px);
+}
+
+.art-izq .prod-breadcrumb {
+  margin: 0 0 22px;
+}
+
+.art-foto {
+  margin: 0;
+  aspect-ratio: 1 / 1;
+  max-width: 420px;
+}
+
+.art-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.art-datos h1 {
+  margin: 0 0 14px;
+  font-size: clamp(30px, 3.4vw, 46px);
+  line-height: 1.1;
+}
+
+.art-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 0 0 18px;
+}
+
+.art-cod {
+  background: var(--art-accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 7px 18px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.art-destacado {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.art-desc {
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 68ch;
+  margin: 0 0 20px;
+}
+
+.art-tablas {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  column-gap: 72px;
+  row-gap: 6px;
+  align-items: start;
+  margin: 0 0 26px;
+}
+
+.art-tabla {
+  margin: 0;
+  display: grid;
+  align-content: start;
+  row-gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.art-tabla dt,
+.art-tabla dd {
+  display: inline;
+  margin: 0;
+}
+
+.art-tabla a {
+  color: inherit;
+}
+
+.art-compra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 26px;
+  margin: 0;
+}
+
+.art-agregar {
+  display: inline-block;
+  background: #111;
+  color: #fff;
+  font-weight: 800;
+  font-size: 17px;
+  padding: 14px 64px;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+  text-decoration: none;
+}
+
+.art-agregar:hover {
+  background: #000;
+}
+
+.art-agregar--off {
+  background: #9a9a9a;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.art-precio {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.art-sep {
+  border: 0;
+  border-top: 1px solid #222;
+  margin: 30px 0 24px;
+}
+
+/* Secciones desplegables: <details open>, se leen e indexan sin JS. */
+.art-sec {
+  margin: 0 0 22px;
+}
+
+.art-sec summary {
+  list-style: none;
+  cursor: pointer;
+  display: block;
+}
+
+.art-sec summary::-webkit-details-marker {
+  display: none;
+}
+
+.art-sec summary::after {
+  content: "▼";
+  font-size: 11px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.art-sec[open] summary::after {
+  content: "▲";
+}
+
+.art-sec h2 {
+  display: inline;
+  margin: 0;
+  font-size: 22px;
+}
+
+.art-sec-cuerpo {
+  padding-top: 10px;
+}
+
+.art-sec-cuerpo p,
+.art-linea p,
+.art-donde p {
+  max-width: 70ch;
+  line-height: 1.6;
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.art-ml {
+  font-weight: 700;
+  color: var(--art-accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.art-linea,
+.art-donde {
+  margin-bottom: 40px;
+}
+
+.art-donde-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, max-content));
+  gap: 10px 28px;
+}
+
+.art-donde-lista li {
+  display: flex;
+  flex-direction: column;
+}
+
+.art-donde-lista a {
+  font-weight: 800;
+  font-size: 16px;
+  color: inherit;
+}
+
+.art-donde-alc {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.art-donde-nota {
+  font-size: 14px;
+  color: var(--art-muted);
+}
+
+.art-donde-lineas {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+.art-donde-lineas a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.art-rel-grid {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 170px));
+  gap: 22px 26px;
+}
+
+.art-rel-grid a {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: inherit;
+}
+
+.art-rel-grid img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+}
+
+.art-rel-nombre {
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+@media (max-width: 860px) {
+  .art-ficha {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .art-izq {
+    position: static;
+  }
+
+  .art-foto {
+    max-width: 320px;
+    margin: 0 auto;
+  }
+
+  .art-tablas {
+    grid-template-columns: 1fr;
+  }
+
+  .art-agregar {
+    padding: 14px 40px;
+  }
+
+  .art-rel-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* «Comercios que trabajan este artículo»: sólo logos (05/10/2026). */
+.art-logos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px 28px;
+}
+.art-logos img {
+  display: block;
+  height: 44px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+}
+
+/* ---------- La ficha adentro del catálogo (mayorista.html #fichaArticulo) ---------- */
+.ficha-cat {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 10px 20px 48px;
+}
+
+.ficha-cat .art-compra .add-btn {
+  width: auto;
+  min-width: 240px;
+  margin: 0;
+}
+
+.art-en-pedido {
+  font-size: 15px;
+}
+
+.art-qty {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.art-qty-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid #222;
+  background: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.art-qty-btn:hover {
+  background: #111;
+  color: #fff;
+}
+
+/* Popup de la ficha en mayorista.html (Thomas, 05/10/2026). El catálogo queda
+   debajo sin moverse; la caja blanca scrollea por dentro y la foto queda fija
+   (sticky) arriba de esa caja. En el celular ocupa toda la pantalla. */
+body.ficha-abierta {
+  overflow: hidden;
+}
+.ficha-modal {
+  position: fixed;
+  inset: 0;
+  top: var(--ficha-top, 0px);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.ficha-modal[hidden] {
+  display: none;
+}
+.ficha-modal-fondo {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+.ficha-modal-caja {
+  position: relative;
+  width: min(1180px, 100%);
+  max-height: calc(100vh - var(--ficha-top, 0px) - 32px);
+  max-height: calc(100dvh - var(--ficha-top, 0px) - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.ficha-modal-caja .ficha-cat {
+  padding: 28px 28px 36px;
+}
+.ficha-modal-x {
+  position: sticky;
+  top: 10px;
+  float: right;
+  z-index: 2;
+  margin: 10px 10px 0 0;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: #f0f0f0;
+  color: #222;
+  font-size: 26px;
+  line-height: 40px;
+  cursor: pointer;
+}
+.ficha-modal-x:hover {
+  background: #222;
+  color: #fff;
+}
+/* Fotos de abajo y video de la ficha (sólo en el popup: los pinta script.js). */
+.ficha-modal .art-foto {
+  position: relative;
+}
+.art-fotos-extra {
+  display: grid;
+  gap: 12px;
+  max-width: 420px;
+  margin-top: 12px;
+}
+.art-fotos-extra img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  object-fit: contain;
+}
+.art-foto .art-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+@media (max-width: 860px) {
+  .art-fotos-extra {
+    max-width: 320px;
+    margin: 12px auto 0;
+  }
+  .ficha-modal {
+    padding: 0;
+    align-items: stretch;
+  }
+  .ficha-modal-caja {
+    max-height: none;
+    height: 100%;
+    border-radius: 0;
+  }
+  .ficha-modal-caja .ficha-cat {
+    padding: 8px 16px 32px;
+  }
+}
