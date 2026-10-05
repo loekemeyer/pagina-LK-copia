@@ -1,0 +1,31 @@
+﻿puesto;empresa;cod_cliente;razon_social;clasificacion;evidencia;en_donde_comprar
+1;chef;2444;Cencosud S.A.;Minorista con web;Jumbo, Disco y Vea (jumbo.com.ar, disco.com.ar, vea.com.ar): venden Loekemeyer online;si
+2;lk;801;Coto C.I.C.S.A.;Minorista con web;Coto Digital: vende Loekemeyer online;si
+3;lk;771;S.A. Imp y Exp de la Patagonia;Minorista con web;La Anónima: supermercado online vende Loekemeyer;si
+4;lk;1651;Inc S.A.;Minorista con web;Carrefour: vende Loekemeyer online;si
+5;lk;2533;Osa Distribuidora;Mayorista;Indicado por la empresa: no vende al por menor;no
+6;lk;288;Torres y Liva;Mayorista;"Distribuidora mayorista; la web pide login para ver precios";no
+7;lk;4080;Distribuidora GM;Mayorista;Distribuidora de artículos de limpieza (Luján);no
+8;lk;862;Muller y Muller;Mayorista;Bazar mayorista (Entre Ríos, Corrientes, Misiones, Santa Fe);no
+9;lk;2444;Relca S.R.L.;Minorista sin web;"Supermercado en Concepción del Uruguay; no se encontró tienda online";no
+10;lk;85;Horcada (Bazar Noblex);Mayorista y minorista;Bazar Noblex, Rosario (bazarnoblex.com): mayorista y minorista, gastronomía;a confirmar
+11;lk;4073;Totalmix S.R.L.;Minorista sin web;"Comercio minorista (Santiago del Estero, Tucumán, Concordia); sin web encontrada";no
+12;lk;1587;Linea Ge S.A.;Mayorista;Mayorista de bazar, gastronomía y limpieza (Villa Crespo);no
+13;lk;4188;Orfali Alfredo Luciano;Sin datos;No se encontró en la web;no
+14;lk;1840;Bazar y Cia S.A.;A confirmar;"Hay un 'Bazar & Cía' minorista en Trelew (bazarycia.com); no se pudo confirmar que sea el mismo";a confirmar
+15;lk;2305;Sauer Ignacio Jose;Sin datos;No se encontró en la web;no
+16;lk;2128;Bio Lim S.A.;Mayorista;Su tienda online (biolimsa.com) vende sólo por mayor;no
+17;lk;448;M. Sanchez y Cia;Mayorista;Mayorista de artículos de limpieza y bazar;no
+18;lk;1573;Messina Hnos S.A.;Mayorista;Fabricante y distribuidor mayorista de limpieza (Sina);no
+19;chef;2686;Dorinka S.R.L.;Minorista con web;ChangoMás / Más Online (masonline.com.ar): vende Loekemeyer online;si
+20;lk;1945;Nexxo S.R.L.;A confirmar;"Bazar en Córdoba (Av. Rancagua 4660); no se pudo confirmar si vende al público";no
+21;lk;1643;Spillare Miriam Edith;Sin datos;No se encontró en la web;no
+22;lk;1615;Yuriti S.A.;Minorista sin web;"Bazar minorista en Córdoba; sin tienda online encontrada";no
+23;lk;45;Distribuidora Cuyana S.A.;Mayorista y minorista;Bazar mayorista de Mendoza con 9 sucursales (Grupo Cuyana, distribuidoracuyana.com);a confirmar
+24;lk;738;CMG Distrib. de Tegerina;Mayorista;Bazar por mayor (Rosario);no
+25;lk;1725;Celestino Spahn S.A.;Venta por catálogo;Celestina Bazar: vende a revendedoras registradas, no al público directo;no
+26;lk;3960;Mega Ventas S.R.L.;Mayorista y minorista;"Bazar y librería en Salta y Jujuy, mayorista y minorista; sin tienda online";no
+27;lk;652;B.R. 2000 S.R.L.;Minorista sin web;"Comercio minorista de artículos para el hogar, 9 sucursales en CABA; sin web encontrada";no
+28;lk;140;Enrique Reyes S.A.;Mayorista;"Reyes Mayorista (Córdoba); tiene la cadena minorista Ferniplast";a confirmar
+29;lk;3862;Jauregui Evelyn Maria Soledad;Sin datos;No se encontró en la web;no
+30;lk;4197;Urriza Mariela;Mayorista y minorista;Probablemente Bazar Mafersa (Quilmes, bazarmafersa.com.ar, tiene página de marca Loekemeyer);a confirmar

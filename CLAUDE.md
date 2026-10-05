@@ -1528,11 +1528,25 @@ las aprueben. No muestran precios.
   (hoy sólo-admin): quitarle el guard y la meta `robots` y sumarla a mano a `escribir_sitemap`.
 - **Fichas por artículo (04/10/2026, SEO semántico)**: `productos/articulo/<cod>.html`, una por artículo
   activo (199). URL armada **sólo con el código** a propósito: el nombre se corrige y el código no. Llevan
-  `Product` + `BreadcrumbList` en JSON-LD (`sku`, `brand`, `category`, `image`; `material` **sólo** si
-  `products.subcategory` es un material — hoy únicamente Utensilios). **Sin `offers`, reviews ni ratings**:
-  no hay precio público y no se inventa. La base no tiene descripción, medidas, uso ni cuidados
-  (`products.description` es el nombre), así que el texto de la ficha se arma con lo que hay y **no dice
-  que la empresa fabricó el artículo** (hay importados). El generador borra las fichas de códigos que ya no
+  `Product` + `BreadcrumbList` en JSON-LD (`sku`, `brand`, `category`, `image`). **Sin `offers`, reviews ni
+  ratings**: no hay precio público y no se inventa. **Material, apto lavavajillas, lavado, descripción propia y
+  "destacado" salen SÓLO de `scripts/fichas-manual.csv`** (`;`, se abre en Excel), que completa la empresa
+  (05/10/2026: *"no inventes que un artículo es de acero inoxidable si yo no te lo dije"*): ni la subcategoría
+  ni el nombre se usan para deducir material. Celda vacía = no se publica. Las columnas `propuesta_ml*` son
+  lo que dicen las publicaciones de Mercado Libre: **no se publican**, son borrador para que alguien las
+  revise y las pase a `descripcion`. La frase de marca ("marca argentina… desde 1950… cuarta generación")
+  rota entre 3 versiones según el código para no repetir la misma oración en 199 páginas, y **no dice que
+  la empresa fabricó el artículo** (hay importados).
+- **Dónde comprar (consumidor final, 05/10/2026)**: Loekemeyer no vende al público, así que cada ficha tiene
+  un bloque "¿Dónde comprar?" con búsqueda en Mercado Libre y los supermercados que compraron ESE artículo
+  en los últimos 12 meses, más la página `productos/donde-comprar.html`. Los datos están en
+  `scripts/donde-comprar.json` (7 comercios con tienda online verificada: Jumbo, Disco, Vea, Coto, Carrefour,
+  La Anónima, Más Online). El criterio de quién entra está en `scripts/clientes-minoristas.csv`: los top 30
+  clientes por compra a 12 meses, cada uno buscado en la web y clasificado; **mayoristas no entran** (OSA
+  2533 lo marcó la empresa; Torres y Liva, Muller, Bio Lim, M. Sánchez, Messina, CMG, Linea Ge, etc. por
+  evidencia). La lista por artículo sale de `sales_lines` y **no se refresca sola**: se rehace con el MCP.
+  Los links de búsqueda de los súper son el formato VTEX/Endeca estándar y **no se pudieron abrir desde la
+  sesión** (proxy): hay que probarlos una vez a mano. El generador borra las fichas de códigos que ya no
   están activos. Las páginas de línea suman `ItemList` apuntando a las fichas, y `catalogo-vivo.js` sólo
   linkea a ficha los códigos que ya la tienen (un código nuevo sin regenerar daría 404).
 - **El hook `pre-commit` recorre hasta `maxdepth 3`** desde el 04/10/2026: las fichas viven en el nivel 3

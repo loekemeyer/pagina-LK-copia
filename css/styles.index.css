@@ -1266,3 +1266,10 @@ footer {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* Link para el consumidor final: Loekemeyer no vende al público, así que la
+   home le dice dónde sí (productos/donde-comprar.html). */
+.catalogo-donde a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

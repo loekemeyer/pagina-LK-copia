@@ -64,16 +64,13 @@ NOINDEX = True
 # la URL no se mueve. productos/articulo/<cod>.html
 SUB_ART = "articulo"
 
-# El único dato de MATERIAL que hay en la base es la subcategoría de Utensilios
-# (products.subcategory). No se deduce de ningún otro lado: si no está acá, la
-# ficha no declara material.
-MATERIAL_SUB = {
-    "Inoxidable": "Acero inoxidable",
-    "Silicona": "Silicona",
-    "Madera": "Madera",
-    "Nylon": "Nylon",
-    "Nylon Premium": "Nylon",
-}
+# MATERIAL, LAVAVAJILLAS, LAVADO, DESCRIPCIÓN y DESTACADO salen SOLO de
+# scripts/fichas-manual.csv, que completa la empresa a mano (04/10/2026: "no
+# inventes que un artículo es de acero inoxidable si yo no te lo dije"). Ni la
+# subcategoría ni el nombre se usan para deducir material.
+MANUAL = os.path.join(RAIZ, "scripts", "fichas-manual.csv")
+DONDE = os.path.join(RAIZ, "scripts", "donde-comprar.json")
+PAG_DONDE = "donde-comprar.html"
 
 MARCA = {"@type": "Brand", "name": "Loekemeyer"}
 ORG_ID = DOMINIO + "/#organizacion"
@@ -153,6 +150,7 @@ def topbar(pref, activo):
         </a>
         <nav class="prod-topbar-nav" aria-label="Secciones">
           {a(pref + SALIDA + "/index.html", "Productos", "productos")}
+          {a(pref + SALIDA + "/" + PAG_DONDE, "Dónde comprar", "donde")}
           <a class="prod-topbar-cta" href="{pref}mayorista.html">Pedido mayorista</a>
         </nav>
       </div>
@@ -433,32 +431,109 @@ def pagina_index(cats, total):
     </main>{footer(pref)}"""
 
 
-def frase_art(p, cat):
-    """El texto de la ficha sale SOLO de los datos: nombre, código, línea,
-    material (si la base lo tiene) y unidades por caja. No se inventan medidas,
-    usos ni características: la base no las tiene (products guarda el nombre
-    en `description` y nada más). Ojo: no dice que la empresa FABRICÓ este
-    artículo —hay importados (sufijo E) y el texto público no lo distingue—,
-    dice qué es la empresa."""
-    partes = [f"{p['nombre']} (código {p['cod']}) es un artículo de la línea {cat['nombre']} de Loekemeyer."]
-    mat = MATERIAL_SUB.get(p.get("subcategoria") or "")
-    if mat:
-        partes.append(f"Material: {mat.lower()}.")
-    if p.get("uxb"):
-        partes.append(f"Se vende por mayor en caja cerrada de {p['uxb']} unidades.")
-    partes.append("Loekemeyer Hnos S.R.L. es una empresa argentina de utensilios de cocina, fabricantes desde 1950.")
+# La frase de marca rota entre tres versiones (elegida por el código, así es
+# estable entre corridas): 199 páginas con la misma oración son contenido
+# duplicado para un buscador. Las tres dicen lo mismo y sólo lo verificado:
+# marca argentina, desde 1950, cuarta generación.
+FRASES_MARCA = [
+    "Loekemeyer es una marca argentina de utensilios de cocina con trayectoria desde 1950; hoy la cuarta generación de la familia sigue al frente.",
+    "Detrás está Loekemeyer, marca argentina de utensilios de cocina que acompaña a las cocinas del país desde 1950 y hoy conduce la cuarta generación de la familia.",
+    "Es un producto Loekemeyer, la marca argentina de utensilios de cocina que nació en 1950 y que hoy, en su cuarta generación, sigue en manos de la misma familia.",
+]
+
+
+def frase_marca(cod):
+    return FRASES_MARCA[sum(ord(ch) for ch in str(cod)) % len(FRASES_MARCA)]
+
+
+def frase_art(p, cat, man=None):
+    """Descripción de la ficha: nombre, código, línea y la frase de marca. La
+    descripción propia sólo si está en fichas-manual.csv.
+    No dice que la empresa FABRICÓ el artículo: hay importados."""
+    man = man or {}
+    partes = [f"{p['nombre']} Loekemeyer, código {p['cod']}, de la línea {cat['nombre']}."]
+    if man.get("descripcion"):
+        partes.append(man["descripcion"].rstrip(".") + ".")
+    # El destacado NO va acá: ya sale en su recuadro arriba del texto, y en el
+    # JSON-LD la description lo repetiría dos veces.
+    partes.append(frase_marca(p["cod"]))
     return " ".join(partes)
 
 
-def pagina_articulo(p, cat):
+def cargar_manual():
+    """fichas-manual.csv (separador ';', lo abre Excel). Columnas: cod, nombre,
+    linea, material, apto_lavavajillas (Sí/No), instrucciones_lavado,
+    descripcion, destacado. Celda vacía = no se publica nada de ese dato."""
+    import csv
+    if not os.path.exists(MANUAL):
+        return {}
+    with open(MANUAL, encoding="utf-8-sig", newline="") as f:
+        return {r["cod"].strip(): {k: (v or "").strip() for k, v in r.items()}
+                for r in csv.DictReader(f, delimiter=";") if r.get("cod")}
+
+
+def cargar_donde():
+    if not os.path.exists(DONDE):
+        return {"comercios": [], "articulos": {}, "mercadolibre": ""}
+    with open(DONDE, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def lavavajillas(v):
+    v = (v or "").strip().lower()
+    if v in ("si", "sí", "s", "true", "1", "apto"):
+        return "Sí"
+    if v in ("no", "n", "false", "0", "no apto"):
+        return "No"
+    return ""
+
+
+def url_ml(p, donde):
+    """Búsqueda de Mercado Libre por nombre + marca. Es una BÚSQUEDA y no una
+    publicación puntual: las publicaciones cambian de vendedor y de URL."""
+    q = slugify(f"{p['nombre']} loekemeyer")
+    return (donde.get("mercadolibre") or "https://listado.mercadolibre.com.ar/{q}").replace("{q}", q)
+
+
+def bloque_donde(p, donde, pref_donde):
+    ids = donde.get("articulos", {}).get(p["cod"], [])
+    por_id = {c["id"]: c for c in donde.get("comercios", [])}
+    items = "".join(
+        f'<li><a href="{esc(por_id[i]["url"])}" target="_blank" rel="noopener nofollow">{esc(por_id[i]["nombre"])}</a>'
+        f'<span class="art-donde-alc">{esc(por_id[i].get("alcance", ""))}</span></li>'
+        for i in ids if i in por_id)
+    lista_c = f'<p class="art-donde-sub">Comercios que trabajan este artículo:</p><ul class="art-donde-lista">{items}</ul>' if items else ""
+    return f"""
+        <section class="art-donde" id="donde-comprar">
+          <h2>¿Dónde comprar el {esc(p['nombre'])}?</h2>
+          <p>Loekemeyer vende sólo por mayor a comercios. Para comprar una unidad, buscalo en Mercado Libre o en los supermercados y bazares que venden nuestros productos al público.</p>
+          <p><a class="art-ml" href="{esc(url_ml(p, donde))}" target="_blank" rel="noopener nofollow">Buscar en Mercado Libre →</a></p>
+          {lista_c}
+          <p class="art-donde-nota">La disponibilidad y el precio dependen de cada comercio. <a href="{pref_donde}">Ver todos los lugares de compra</a>.</p>
+        </section>"""
+
+
+def pagina_articulo(p, cat, manual=None, donde=None):
     pref = "../../"
     cod = p["cod"]
+    man = (manual or {}).get(str(cod), {})
+    donde = donde or {}
     canonical = f"{DOMINIO}/{SALIDA}/{url_art(cod)}"
     url_linea = f"{DOMINIO}/{SALIDA}/{cat['slug']}.html"
     titulo = f"{p['nombre']} · Código {cod} · Loekemeyer"
-    desc = frase_art(p, cat)
-    mat = MATERIAL_SUB.get(p.get("subcategoria") or "")
+    desc = frase_art(p, cat, man)
+    meta_desc = (f"{p['nombre']} Loekemeyer, código {cod}, línea {cat['nombre']}. "
+                 + (man["destacado"].rstrip(".") + ". " if man.get("destacado") else "")
+                 + "Marca argentina de utensilios de cocina desde 1950. Dónde comprarlo.")
+    mat = man.get("material", "")
+    lav = lavavajillas(man.get("apto_lavavajillas"))
+    lavado = man.get("instrucciones_lavado", "")
     foto = img_url(p)
+    props = []
+    if p.get("uxb"):
+        props.append({"@type": "PropertyValue", "name": "Unidades por caja", "value": p["uxb"]})
+    if lav:
+        props.append({"@type": "PropertyValue", "name": "Apto lavavajillas", "value": lav})
     prod_ld = {
         "@type": "Product",
         "@id": canonical + "#producto",
@@ -472,10 +547,11 @@ def pagina_articulo(p, cat):
     }
     if mat:
         prod_ld["material"] = mat
-    if p.get("uxb"):
-        prod_ld["additionalProperty"] = [{"@type": "PropertyValue", "name": "Unidades por caja", "value": p["uxb"]}]
+    if props:
+        prod_ld["additionalProperty"] = props
     # Sin "offers": la web pública no tiene precio y no se inventa. Sin
-    # reviews ni ratings por la misma razón.
+    # reviews ni ratings por la misma razón (los de Mercado Libre no son
+    # nuestros y Google no acepta reseñas de terceros marcadas como propias).
     jsonld = {"@context": "https://schema.org", "@graph": [
         prod_ld,
         {"@type": "BreadcrumbList", "itemListElement": [
@@ -488,10 +564,25 @@ def pagina_articulo(p, cat):
     filas = [("Código", esc(cod)),
              ("Línea", f'<a href="../{cat["slug"]}.html">{esc(cat["nombre"])}</a>')]
     if p.get("subcategoria"):
-        filas.append(("Material" if mat else "Tipo", esc(mat or p["subcategoria"])))
+        filas.append(("Sublínea", esc(p["subcategoria"])))
+    if mat:
+        filas.append(("Material", esc(mat)))
+    if lav:
+        filas.append(("Apto lavavajillas", lav))
     filas.append(("Unidades por caja", esc(p["uxb"]) if p.get("uxb") else "Consultar"))
     filas.append(("Marca", "Loekemeyer"))
     dl = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in filas)
+    destacado = f'<p class="art-destacado">{esc(man["destacado"])}</p>' if man.get("destacado") else ""
+    cuidado = ""
+    if lav or lavado:
+        txt = []
+        if lav == "Sí":
+            txt.append("Se puede lavar en lavavajillas.")
+        elif lav == "No":
+            txt.append("No es apto para lavavajillas.")
+        if lavado:
+            txt.append(lavado.rstrip(".") + ".")
+        cuidado = f'<section class="art-cuidado"><h2>Cuidado y lavado</h2><p>{esc(" ".join(txt))}</p></section>'
     # Relacionados: los vecinos de la misma línea (misma subcategoría primero).
     vec = [q for q in cat["productos"] if q["cod"] != cod]
     vec.sort(key=lambda q: 0 if q.get("subcategoria") == p.get("subcategoria") else 1)
@@ -500,8 +591,8 @@ def pagina_articulo(p, cat):
         f'width="400" height="400" loading="lazy" onerror="this.onerror=null;this.src=\'{pref}img/no-image.jpg\'" />'
         f'<span class="prod-cod">{esc(q["cod"])}</span><span class="art-rel-nombre">{esc(q["nombre"])}</span></a></li>'
         for q in vec[:6])
-    texto = f"Hola Loekemeyer, quiero consultar por el artículo {cod} {p['nombre']}."
-    return head(titulo, desc, canonical, pref, jsonld, og_image=foto, og_type="product") + f"""
+    texto = f"Hola Loekemeyer, tengo un comercio y quiero consultar por el artículo {cod} {p['nombre']}."
+    return head(titulo, meta_desc, canonical, pref, jsonld, og_image=foto, og_type="product") + f"""
   <body class="prod-page">{topbar(pref, "productos")}
     <main class="prod-main">
       <div class="pub-wrap">
@@ -515,17 +606,79 @@ def pagina_articulo(p, cat):
           <div class="art-datos">
             <p class="prod-cod">CÓDIGO {esc(cod)}{badge}</p>
             <h1>{esc(p['nombre'])}</h1>
+            {destacado}
             <p class="art-desc">{esc(desc)}</p>
             <dl class="art-tabla">{dl}</dl>
-            <a class="prod-cta art-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(cod)}">Consultar disponibilidad por WhatsApp →</a>
+            <p class="art-acciones"><a class="prod-cta art-cta" href="#donde-comprar">¿Dónde comprarlo? ↓</a>
+            <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(cod)}">Soy comercio: consultar por WhatsApp</a></p>
           </div>
         </article>
+        {cuidado}
+        {bloque_donde(p, donde, "../" + PAG_DONDE)}
         <section class="art-linea">
           <h2>Sobre la línea {esc(cat['nombre'])}</h2>
           <p>{esc(bajada(cat))}</p>
           <p><a href="../{cat['slug']}.html">Ver los {len(cat['productos'])} artículos de {esc(cat['nombre'])}</a> · <a href="../index.html">Todo el catálogo</a></p>
         </section>
         {f'<section class="art-rel"><h2>Otros artículos de {esc(cat["nombre"])}</h2><ul class="art-rel-grid">{rel}</ul></section>' if rel else ''}
+      </div>
+    </main>{footer(pref)}"""
+
+
+def pagina_donde(cats, donde):
+    """Página para el consumidor final: Loekemeyer no vende al público, así que
+    en vez de un callejón sin salida le decimos dónde sí."""
+    pref = "../"
+    canonical = f"{DOMINIO}/{SALIDA}/{PAG_DONDE}"
+    titulo = "Dónde comprar productos Loekemeyer · Supermercados y Mercado Libre"
+    desc = ("Loekemeyer vende por mayor a comercios. Para comprar una unidad: Mercado Libre, Jumbo, Disco, Vea, Coto, "
+            "Carrefour, La Anónima y ChangoMás, entre otros supermercados y bazares de todo el país.")
+    comercios = donde.get("comercios", [])
+    cuenta = {}
+    for ids in donde.get("articulos", {}).values():
+        for i in ids:
+            cuenta[i] = cuenta.get(i, 0) + 1
+    filas = "".join(
+        f'<li><a href="{esc(c["url"])}" target="_blank" rel="noopener nofollow"><b>{esc(c["nombre"])}</b></a>'
+        f'<span class="art-donde-alc">{esc(c.get("alcance", ""))}</span></li>' for c in comercios)
+    lineas = "".join(f'<li><a href="{c["slug"]}.html">{esc(c["nombre"])}</a></li>' for c in cats)
+    jsonld = {"@context": "https://schema.org", "@type": "WebPage", "name": "Dónde comprar productos Loekemeyer",
+              "url": canonical, "description": desc, "inLanguage": "es-AR",
+              "isPartOf": {"@id": WEB_ID}, "publisher": {"@id": ORG_ID},
+              "breadcrumb": {"@type": "BreadcrumbList", "itemListElement": [
+                  {"@type": "ListItem", "position": 1, "name": "Inicio", "item": DOMINIO + "/"},
+                  {"@type": "ListItem", "position": 2, "name": "Productos", "item": f"{DOMINIO}/{SALIDA}/"},
+                  {"@type": "ListItem", "position": 3, "name": "Dónde comprar", "item": canonical}]}}
+    return head(titulo, desc, canonical, pref, jsonld) + f"""
+  <body class="prod-page">{topbar(pref, "donde")}
+    <main class="prod-main">
+      <div class="pub-wrap">
+        <nav class="prod-breadcrumb" aria-label="Ubicación">
+          <a href="{pref}index.html">Inicio</a> › <a href="index.html">Productos</a> › <span aria-current="page">Dónde comprar</span>
+        </nav>
+        <div class="prod-head">
+          <p class="pub-kicker">Para tu casa</p>
+          <h1>Dónde comprar productos Loekemeyer</h1>
+          <p class="prod-intro">Loekemeyer es una marca argentina de utensilios de cocina con trayectoria desde 1950. Vendemos sólo por mayor, a supermercados, bazares y distribuidores; si buscás una unidad para tu casa, la encontrás en estos lugares. En la ficha de cada artículo figura qué comercios lo trabajan.</p>
+        </div>
+        <section class="art-donde">
+          <h2>Mercado Libre</h2>
+          <p><a class="art-ml" href="https://listado.mercadolibre.com.ar/loekemeyer" target="_blank" rel="noopener nofollow">Ver productos Loekemeyer en Mercado Libre →</a></p>
+          <h2>Supermercados</h2>
+          <ul class="art-donde-lista">{filas}</ul>
+          <p class="art-donde-nota">La disponibilidad y el precio dependen de cada comercio.</p>
+        </section>
+        <section class="art-linea">
+          <h2>Buscá por línea de producto</h2>
+          <ul class="art-donde-lineas">{lineas}</ul>
+        </section>
+        <div class="prod-cta-block">
+          <h2>¿Tenés un comercio?</h2>
+          <p>Escribinos por WhatsApp: te damos de alta y accedés a la lista de precios y al pedido online.</p>
+          <div class="catalogo-actions">
+            <a class="btn-catalogo" href="{wa_url('Hola Loekemeyer, tengo un comercio y quiero comprar por mayor.')}" target="_blank" rel="noopener">Comprar por mayor por WhatsApp</a>
+          </div>
+        </div>
       </div>
     </main>{footer(pref)}"""
 
@@ -540,6 +693,7 @@ def escribir_sitemap(cats, generado):
     urls = [(DOMINIO + "/", "1.0", None), (DOMINIO + "/mayorista", "0.8", None)]
     if not NOINDEX:
         urls.append((f"{DOMINIO}/{SALIDA}/", "0.9", generado))
+        urls.append((f"{DOMINIO}/{SALIDA}/{PAG_DONDE}", "0.8", generado))
         urls += [(f"{DOMINIO}/{SALIDA}/{c['slug']}.html", "0.8", generado) for c in cats]
         urls += [(f"{DOMINIO}/{SALIDA}/{url_art(p['cod'])}", "0.6", generado) for c in cats for p in c["productos"]]
     cuerpo = "".join(f"  <url>\n    <loc>{u}</loc>\n" + (f"    <lastmod>{lm}</lastmod>\n" if lm else "")
@@ -565,6 +719,7 @@ def escribir_llms(cats, total):
 - Rubro: diseño, fabricación y comercialización de utensilios y accesorios de cocina
 - Catálogo: {total} artículos en {len(cats)} líneas ({lineas})
 - Venta: mayorista, por caja cerrada. Los precios se ven con usuario en la web mayorista.
+- Para consumidores: los productos se compran en Mercado Libre y en supermercados como Jumbo, Disco, Vea, Coto, Carrefour, La Anónima y ChangoMás.
 - Contacto comercial: ventas@loekemeyer.com · +54 9 11 3118 1021
 - Instagram: https://www.instagram.com/loekemeyer
 
@@ -576,6 +731,7 @@ def escribir_llms(cats, total):
 """
     if not NOINDEX:
         txt += f"\n## Catálogo\n\n- [Todos los productos]({DOMINIO}/{SALIDA}/)\n"
+        txt += f"- [Dónde comprar]({DOMINIO}/{SALIDA}/{PAG_DONDE}): Mercado Libre y supermercados que venden Loekemeyer al público\n"
         txt += "".join(f"- [{c['nombre']}]({DOMINIO}/{SALIDA}/{c['slug']}.html): {c['intro'].strip()}\n" for c in cats)
     with open(os.path.join(RAIZ, "llms.txt"), "w", encoding="utf-8") as f:
         f.write(txt)
@@ -606,6 +762,10 @@ def main():
             f.write(pagina_categoria(c, cats))
     # Fichas: se borran las de artículos que ya no están (un código dado de
     # baja no puede quedar con su página viva y huérfana).
+    manual = cargar_manual()
+    donde = cargar_donde()
+    with open(os.path.join(out, PAG_DONDE), "w", encoding="utf-8") as f:
+        f.write(pagina_donde(cats, donde))
     dart = os.path.join(out, SUB_ART)
     os.makedirs(dart, exist_ok=True)
     vivos = set()
@@ -614,7 +774,7 @@ def main():
             nombre = str(prod["cod"]) + ".html"
             vivos.add(nombre)
             with open(os.path.join(dart, nombre), "w", encoding="utf-8") as f:
-                f.write(pagina_articulo(prod, c))
+                f.write(pagina_articulo(prod, c, manual, donde))
     for viejo in os.listdir(dart):
         if viejo.endswith(".html") and viejo not in vivos:
             os.remove(os.path.join(dart, viejo))

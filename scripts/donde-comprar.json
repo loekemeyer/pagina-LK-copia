@@ -1,0 +1,425 @@
+{
+ "generado": "2026-10-04",
+ "criterio": "Comercio minorista con tienda online verificada (vende Loekemeyer al público). Un artículo lista al comercio si el cliente lo compró en los últimos 12 meses (sales_lines, cajas > 0). Más Online va sólo en la página general: Dorinka compra con códigos de Chef y no se puede mapear artículo por artículo sin adivinar.",
+ "mercadolibre": "https://listado.mercadolibre.com.ar/{q}",
+ "comercios": [
+  {
+   "id": "jumbo",
+   "nombre": "Jumbo",
+   "grupo": "Cencosud",
+   "cliente": "chef:2444",
+   "url": "https://www.jumbo.com.ar/loekemeyer?_q=loekemeyer&map=ft",
+   "alcance": "Tienda online y sucursales en todo el país"
+  },
+  {
+   "id": "disco",
+   "nombre": "Disco",
+   "grupo": "Cencosud",
+   "cliente": "chef:2444",
+   "url": "https://www.disco.com.ar/loekemeyer?_q=loekemeyer&map=ft",
+   "alcance": "Tienda online y sucursales"
+  },
+  {
+   "id": "vea",
+   "nombre": "Vea",
+   "grupo": "Cencosud",
+   "cliente": "chef:2444",
+   "url": "https://www.vea.com.ar/loekemeyer?_q=loekemeyer&map=ft",
+   "alcance": "Tienda online y sucursales"
+  },
+  {
+   "id": "coto",
+   "nombre": "Coto",
+   "grupo": "Coto",
+   "cliente": "lk:801",
+   "url": "https://www.cotodigital3.com.ar/sitios/cdigi/browse?Ntt=loekemeyer",
+   "alcance": "Coto Digital y sucursales"
+  },
+  {
+   "id": "carrefour",
+   "nombre": "Carrefour",
+   "grupo": "Carrefour",
+   "cliente": "lk:1651",
+   "url": "https://www.carrefour.com.ar/loekemeyer?_q=loekemeyer&map=ft",
+   "alcance": "Tienda online y sucursales en todo el país"
+  },
+  {
+   "id": "laanonima",
+   "nombre": "La Anónima",
+   "grupo": "La Anónima",
+   "cliente": "lk:771",
+   "url": "https://supermercado.laanonimaonline.com/",
+   "alcance": "Supermercado online y sucursales en la Patagonia y el interior"
+  },
+  {
+   "id": "masonline",
+   "nombre": "Más Online (ChangoMás)",
+   "grupo": "ChangoMás",
+   "cliente": "chef:2686",
+   "url": "https://www.masonline.com.ar/loekemeyer?_q=loekemeyer&map=ft",
+   "alcance": "Tienda online y sucursales ChangoMás",
+   "sin_detalle_por_articulo": true
+  }
+ ],
+ "articulos": {
+  "026": [
+   "coto",
+   "laanonima"
+  ],
+  "031": [
+   "jumbo",
+   "disco",
+   "vea",
+   "coto",
+   "laanonima"
+  ],
+  "066": [
+   "jumbo",
+   "disco",
+   "vea",
+   "coto"
+  ],
+  "207": [
+   "coto"
+  ],
+  "222": [
+   "coto"
+  ],
+  "224": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "225": [
+   "coto",
+   "laanonima"
+  ],
+  "229": [
+   "carrefour"
+  ],
+  "248": [
+   "jumbo",
+   "disco",
+   "vea",
+   "carrefour",
+   "laanonima"
+  ],
+  "280": [
+   "jumbo",
+   "disco",
+   "vea",
+   "coto",
+   "laanonima"
+  ],
+  "315": [
+   "jumbo",
+   "disco",
+   "vea",
+   "laanonima"
+  ],
+  "321": [
+   "carrefour"
+  ],
+  "325": [
+   "carrefour"
+  ],
+  "404E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "500": [
+   "carrefour"
+  ],
+  "501": [
+   "jumbo",
+   "disco",
+   "vea",
+   "carrefour"
+  ],
+  "502": [
+   "coto"
+  ],
+  "504": [
+   "jumbo",
+   "disco",
+   "vea",
+   "coto",
+   "carrefour",
+   "laanonima"
+  ],
+  "505": [
+   "coto"
+  ],
+  "506": [
+   "coto",
+   "laanonima"
+  ],
+  "507": [
+   "coto",
+   "carrefour"
+  ],
+  "513": [
+   "jumbo",
+   "disco",
+   "vea",
+   "coto",
+   "carrefour",
+   "laanonima"
+  ],
+  "515": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "520": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "521": [
+   "carrefour"
+  ],
+  "522E": [
+   "jumbo",
+   "disco",
+   "vea",
+   "laanonima"
+  ],
+  "523": [
+   "jumbo",
+   "disco",
+   "vea",
+   "laanonima"
+  ],
+  "529E": [
+   "coto",
+   "laanonima"
+  ],
+  "530": [
+   "coto"
+  ],
+  "532": [
+   "carrefour"
+  ],
+  "536E": [
+   "laanonima"
+  ],
+  "539E": [
+   "coto"
+  ],
+  "540E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "541E": [
+   "laanonima"
+  ],
+  "544": [
+   "jumbo",
+   "disco",
+   "vea",
+   "coto",
+   "carrefour",
+   "laanonima"
+  ],
+  "546": [
+   "jumbo",
+   "disco",
+   "vea",
+   "carrefour",
+   "laanonima"
+  ],
+  "550": [
+   "laanonima"
+  ],
+  "551": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "557": [
+   "coto"
+  ],
+  "558": [
+   "coto",
+   "laanonima"
+  ],
+  "562": [
+   "coto"
+  ],
+  "564": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "574E": [
+   "coto"
+  ],
+  "575": [
+   "carrefour"
+  ],
+  "577": [
+   "laanonima"
+  ],
+  "582E": [
+   "coto"
+  ],
+  "583E": [
+   "coto"
+  ],
+  "585E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "586": [
+   "carrefour",
+   "laanonima"
+  ],
+  "587": [
+   "laanonima"
+  ],
+  "591": [
+   "coto"
+  ],
+  "594": [
+   "carrefour"
+  ],
+  "598E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "601E": [
+   "laanonima"
+  ],
+  "658": [
+   "laanonima"
+  ],
+  "811E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "812E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "816E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "819E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "870E": [
+   "coto"
+  ],
+  "931E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "932E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "933E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "934E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "935E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "936E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "937E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "951E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "952E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "953E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "955E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "957E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "958E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "960E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "969E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "970E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "971E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "981E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "982E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ],
+  "983E": [
+   "jumbo",
+   "disco",
+   "vea"
+  ]
+ }
+}

@@ -502,6 +502,85 @@
   font-size: 15px;
 }
 
+.art-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 0;
+}
+
+/* Dato que vende y que da la empresa (fichas-manual.csv), p. ej. el 505 más
+   vendido de Mercado Libre. Marca amarilla como "NUEVO", no un cartel. */
+.art-destacado {
+  display: inline-block;
+  background: #ffe9a8;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 4px;
+  margin: 0 0 12px;
+}
+
+.art-cuidado,
+.art-donde {
+  margin-bottom: 40px;
+}
+
+.art-cuidado p,
+.art-donde p {
+  max-width: 70ch;
+  line-height: 1.55;
+}
+
+.art-ml {
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.art-donde-sub {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.art-donde-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, max-content));
+  gap: 8px 28px;
+}
+
+.art-donde-lista li {
+  display: flex;
+  flex-direction: column;
+}
+
+.art-donde-lista a {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.art-donde-alc,
+.art-donde-nota {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.art-donde-lineas {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+.art-donde-lineas a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .art-linea,
 .art-rel {
   margin-bottom: 40px;
