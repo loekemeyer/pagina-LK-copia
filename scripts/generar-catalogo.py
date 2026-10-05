@@ -502,7 +502,10 @@ def seccion(titulo, cuerpo, id_=""):
 # se agrega el archivo a img/ y la línea acá.
 LOGOS_COMERCIO = {
     "jumbo": "jumbo_logo.png",
+    "disco": "disco_logo.png",
+    "vea": "vea_logo.png",
     "coto": "coto_logo.png",
+    "carrefour": "carrefour_logo.png",
     "laanonima": "laanonima_logo.png",
     "masonline": "changomas_logo.png",
 }

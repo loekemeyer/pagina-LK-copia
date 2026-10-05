@@ -1573,7 +1573,7 @@ las aprueben. No muestran precios.
   lavavajillas`**, y sólo si están en el CSV: código, línea, sublínea, marca y unidades por caja se sacaron porque
   repetían la pastilla, el breadcrumb y la descripción), zona de compra, y secciones
   `<details open>` (Cuidado y lavado, Comercios —**sólo logos**, `LOGOS_COMERCIO` del generador: un comercio sin logo
-  en `img/` no se muestra; hoy faltan Disco, Vea y Carrefour—, Sobre la línea, Otros artículos; **«¿Dónde lo puedo
+  en `img/` no se muestra; Disco, Vea y Carrefour los pasó Thomas el 05/10—, Sobre la línea, Otros artículos; **«¿Dónde lo puedo
   comprar?» se sacó** el 05/10):
   abiertas por defecto para que se lean e indexen sin JS. **La compra la pinta `js/ficha-compra.js` SÓLO con
   sesión iniciada** (misma sesión de Supabase que mayorista, mismo dominio): «Agregar al pedido» lleva a
