@@ -23,6 +23,6 @@
 //   header  x-krikos-secret: <KRIKOS_INGEST_SECRET>
 // =============================================================================
 
-import { handler } from "https://esm.sh/gh/loekemeyer/Gestion-Virgilio@a55e1d0b18066ce6b7371ee4af9298156217d994/admin/krikos-auto-import.js";
+import { handler } from "https://esm.sh/gh/loekemeyer/Gestion-Virgilio@96e1f237c23a4a508744c31cd1e94ffe91d6acd5/admin/krikos-auto-import.js";
 
 Deno.serve(handler);

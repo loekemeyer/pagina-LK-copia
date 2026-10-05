@@ -49,6 +49,18 @@
 //   KRIKOS_IMAP_USER       default ventas@loekemeyer.com
 //   KRIKOS_SENDER          default noreply@planexware.com
 //   KRIKOS_MAILBOXES       carpetas a mirar, separadas por coma; default "INBOX"
+//
+// SEGUNDA CASILLA, ventas@chefsrl.com (Luis, 05/10/2026): ahí llegan las OC de Cencosud y
+// Dorinka, que factura Chef. Se lee igual (sólo lectura, CRAM-MD5) y se recorren TODAS las
+// carpetas salvo papelera, enviados y borradores, porque las OC de Cencosud cayeron en SPAM:
+// una OC encontrada en una carpeta de spam entra igual a la bandeja y avisa por Telegram al
+// grupo de Gestión. Sus filas llevan `mail_uid` con el prefijo "chef:". Sin la clave se
+// saltea sin romper la casilla de LK.
+//   KRIKOS_CHEF_IMAP_PASS  password de ventas@chefsrl.com (sin esto, la casilla no se lee)
+//   KRIKOS_CHEF_IMAP_HOST  default mail.chefsrl.com
+//   KRIKOS_CHEF_IMAP_USER  default ventas@chefsrl.com
+//   KRIKOS_CHEF_DESDE      no lee mails anteriores a esa fecha (AAAA-MM-DD); default 2026-09-28
+//                          (lo anterior ya se cargó a mano)
 // =============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
@@ -61,6 +73,14 @@ const IMAP_PORT = Number(Deno.env.get("KRIKOS_IMAP_PORT") ?? "143");
 const IMAP_TLS = (Deno.env.get("KRIKOS_IMAP_TLS") ?? "false") === "true";
 const IMAP_USER = Deno.env.get("KRIKOS_IMAP_USER") ?? "ventas@loekemeyer.com";
 const SENDER = Deno.env.get("KRIKOS_SENDER") ?? "noreply@planexware.com";
+const CHEF_IMAP_HOST = Deno.env.get("KRIKOS_CHEF_IMAP_HOST") ?? "mail.chefsrl.com";
+const CHEF_IMAP_USER = Deno.env.get("KRIKOS_CHEF_IMAP_USER") ?? "ventas@chefsrl.com";
+const CHEF_DESDE_DEFAULT = "2026-09-28";
+// Grupo de Telegram de Gestión (el mismo de gv_watch_gestion_tick).
+const TG_CHAT_GESTION = "-1004379879565";
+// En la casilla de Chef se miran todas las carpetas menos éstas.
+const CARPETA_NO_MIRAR = /(trash|deleted|papelera|eliminad|drafts|borrador|\bsent\b|enviad|outbox|bandeja de salida)/i;
+const CARPETA_SPAM = /(spam|junk|no deseado|bulk|correo basura)/i;
 const BUCKET = "krikos-oc";
 // Carpetas a mirar, separadas por coma. Default sólo INBOX. Hace falta porque en
 // la casilla real los mails de Krikos ENTRAN a la bandeja de entrada y después
@@ -108,8 +128,18 @@ function quoteMailbox(s: string): string {
 /** Clave de deduplicación por mail. Se le antepone la carpeta salvo en INBOX,
  *  para no cambiar el formato de lo ya guardado: dos carpetas pueden repetir el
  *  UIDVALIDITY y ahí un mail distinto pasaría por "ya procesado". */
-function uidKey(mailbox: string, uidvalidity: string, uid: number): string {
+function uidKey(mailbox: string, uidvalidity: string, uid: number, cuenta: Cuenta = "lk"): string {
+  if (cuenta === "chef") return `chef:${mailbox}:${uidvalidity}:${uid}`;
   return mailbox === "INBOX" ? `${uidvalidity}:${uid}` : `${mailbox}:${uidvalidity}:${uid}`;
+}
+
+type Cuenta = "lk" | "chef";
+
+/** Fecha desde la que se lee la casilla de Chef (lo anterior ya se cargó a mano). */
+async function chefDesde(): Promise<Date> {
+  const raw = (await getSecret("KRIKOS_CHEF_DESDE")) || CHEF_DESDE_DEFAULT;
+  const d = new Date(raw + "T00:00:00-03:00");
+  return isNaN(d.getTime()) ? new Date(CHEF_DESDE_DEFAULT + "T00:00:00-03:00") : d;
 }
 
 function json(o: unknown, status = 200) {
@@ -441,21 +471,22 @@ function internalDateToIso(s: string): string | null {
 }
 
 // ── Acciones ──────────────────────────────────────────────────────────────────
-async function openMailbox(mailbox = "INBOX"): Promise<{ imap: Imap; auth: string; exists: number; uidvalidity: string }> {
-  const pass = await getSecret("KRIKOS_IMAP_PASS");
-  if (!pass) throw new Error("KRIKOS_IMAP_PASS no configurado (ni env ni Vault)");
-  const imap = await Imap.connect(IMAP_HOST, IMAP_PORT, IMAP_TLS);
+async function openMailbox(mailbox = "INBOX", cuenta: Cuenta = "lk"): Promise<{ imap: Imap; auth: string; exists: number; uidvalidity: string }> {
+  const passName = cuenta === "chef" ? "KRIKOS_CHEF_IMAP_PASS" : "KRIKOS_IMAP_PASS";
+  const pass = await getSecret(passName);
+  if (!pass) throw new Error(passName + " no configurado (ni env ni Vault)");
+  const imap = await Imap.connect(cuenta === "chef" ? CHEF_IMAP_HOST : IMAP_HOST, IMAP_PORT, IMAP_TLS);
   await imap.capability();
-  const auth = await imap.login(IMAP_USER, pass);
+  const auth = await imap.login(cuenta === "chef" ? CHEF_IMAP_USER : IMAP_USER, pass);
   const { exists, uidvalidity } = await imap.examine(mailbox);
   return { imap, auth, exists, uidvalidity };
 }
 
 /** Qué carpetas tiene la casilla y cuántos mails de Krikos hay en cada una.
  *  Sirve para saber a dónde archivan los mails sin tener que abrir el correo. */
-async function actionListFolders(days: number) {
+async function actionListFolders(days: number, cuenta: Cuenta = "lk") {
   const started = Date.now();
-  const { imap, auth } = await openMailbox();
+  const { imap, auth } = await openMailbox("INBOX", cuenta);
   try {
     const since = new Date(Date.now() - days * 86400000);
     const criteria = `FROM "${SENDER}" SINCE ${imapDate(since)}`;
@@ -464,17 +495,34 @@ async function actionListFolders(days: number) {
       try {
         const { exists, uidvalidity } = await imap.examine(mb);
         const uids = await imap.uidSearch(criteria);
-        folders.push({ carpeta: mb, mails: exists, uidvalidity, krikos: uids.length });
+        folders.push({ carpeta: mb, mails: exists, uidvalidity, krikos: uids.length,
+          ...(cuenta === "chef" ? { se_mira: !CARPETA_NO_MIRAR.test(mb), spam: CARPETA_SPAM.test(mb) } : {}) });
       } catch (e) {
         folders.push({ carpeta: mb, error: e instanceof Error ? e.message : String(e) });
       }
     }
-    return { ok: true, auth, days, configuradas: await mailboxes(), folders, ms: Date.now() - started };
+    return { ok: true, cuenta, auth, days, configuradas: cuenta === "chef" ? "todas menos papelera/enviados/borradores" : await mailboxes(), folders, ms: Date.now() - started };
   } finally { await imap.logout(); }
 }
 
-async function actionTestImap() {
+async function actionTestImap(cuenta: Cuenta = "lk") {
   const started = Date.now();
+  if (cuenta === "chef") {
+    const { imap, auth } = await openMailbox("INBOX", "chef");
+    try {
+      const mbs = (await imap.list()).filter((m) => !CARPETA_NO_MIRAR.test(m));
+      const since = new Date(Date.now() - 30 * 86400000);
+      const criteria = `FROM "${SENDER}" SINCE ${imapDate(since)}`;
+      const porCarpeta: Record<string, number> = {};
+      let total = 0;
+      for (const mb of mbs) {
+        await imap.examine(mb);
+        const n = (await imap.uidSearch(criteria)).length;
+        porCarpeta[mb] = n; total += n;
+      }
+      return { ok: true, cuenta, host: CHEF_IMAP_HOST, user: CHEF_IMAP_USER, auth, carpetas: mbs, krikos_ultimos_30d: total, krikos_por_carpeta: porCarpeta, ms: Date.now() - started };
+    } finally { await imap.logout(); }
+  }
   const mbs = await mailboxes();
   const { imap, auth, exists, uidvalidity } = await openMailbox(mbs[0]);
   try {
@@ -508,23 +556,60 @@ async function fetchPdf(link: string): Promise<Uint8Array> {
   return buf;
 }
 
+type SyncSummary = {
+  ok: boolean; auth: string; days: number; dry_run: boolean; carpetas: string[];
+  encontrados: number; ya_procesados: number; nuevos: number; insertados: number; errores: number;
+  ignorados: number; spam: number; chef: string; detalle: unknown[]; ms: number;
+};
+
 async function actionSync(days: number, dryRun: boolean) {
   const started = Date.now();
-  const mbs = await mailboxes();
-  const { imap, auth } = await openMailbox(mbs[0]);
-  const summary = { ok: true, auth, days, dry_run: dryRun, carpetas: mbs, encontrados: 0, ya_procesados: 0, nuevos: 0, insertados: 0, errores: 0, ignorados: 0, detalle: [] as unknown[], ms: 0 };
+  const summary: SyncSummary = { ok: true, auth: "", days, dry_run: dryRun, carpetas: [], encontrados: 0, ya_procesados: 0, nuevos: 0, insertados: 0, errores: 0, ignorados: 0, spam: 0, chef: "", detalle: [], ms: 0 };
   try {
-    const since = new Date(Date.now() - days * 86400000);
+    // 1) ventas@loekemeyer.com: como siempre. Si falla, falla la corrida (igual que antes).
+    await syncCuenta("lk", days, dryRun, summary);
+    // 2) ventas@chefsrl.com: sin la clave se saltea, y si falla NO tira abajo lo de LK.
+    if (!(await getSecret("KRIKOS_CHEF_IMAP_PASS"))) {
+      summary.chef = "sin clave (KRIKOS_CHEF_IMAP_PASS): no se lee";
+    } else {
+      try {
+        await syncCuenta("chef", days, dryRun, summary);
+        summary.chef = "ok";
+      } catch (e) {
+        summary.chef = "error: " + (e instanceof Error ? e.message : String(e));
+        summary.errores++;
+      }
+    }
+    return summary;
+  } finally {
+    summary.ms = Date.now() - started;
+  }
+}
+
+async function syncCuenta(cuenta: Cuenta, days: number, dryRun: boolean, summary: SyncSummary) {
+  const mbsLk = cuenta === "lk" ? await mailboxes() : [];
+  const { imap, auth } = await openMailbox(cuenta === "lk" ? mbsLk[0] : "INBOX", cuenta);
+  if (cuenta === "lk") summary.auth = auth;
+  try {
+    let since = new Date(Date.now() - days * 86400000);
+    let mbs = mbsLk;
+    if (cuenta === "chef") {
+      const desde = await chefDesde();
+      if (desde > since) since = desde;
+      mbs = (await imap.list()).filter((m) => !CARPETA_NO_MIRAR.test(m));
+    }
+    for (const mb of mbs) summary.carpetas.push(cuenta === "chef" ? "chef:" + mb : mb);
     // Una vuelta por carpeta: los mails entran a INBOX y después los archivan, así
     // que mirando una sola se pierde la mitad. El doc_id evita duplicar la OC que
     // aparezca en las dos.
     for (const mb of mbs) {
+    const esSpam = cuenta === "chef" && CARPETA_SPAM.test(mb);
     const { uidvalidity } = await imap.examine(mb);
     const uids = await imap.uidSearch(`FROM "${SENDER}" SINCE ${imapDate(since)}`);
     summary.encontrados += uids.length;
     if (!uids.length) continue;
 
-    const keys = uids.map((u) => uidKey(mb, uidvalidity, u));
+    const keys = uids.map((u) => uidKey(mb, uidvalidity, u, cuenta));
     // PostgREST manda el `in()` en la QUERY STRING, así que la URL crece con cada UID. Con
     // `days` grande (el máximo es 365) una carpeta con cientos de mails armaba una URL de
     // decenas de miles de caracteres y el request moría antes de llegar: la sincronización
@@ -536,13 +621,13 @@ async function actionSync(days: number, dryRun: boolean) {
       if (kErr) throw new Error("lectura bandeja: " + kErr.message);
       for (const r of known ?? []) knownSet.add(String(r.mail_uid));
     }
-    const pending = uids.filter((u) => !knownSet.has(uidKey(mb, uidvalidity, u)));
+    const pending = uids.filter((u) => !knownSet.has(uidKey(mb, uidvalidity, u, cuenta)));
     summary.ya_procesados += uids.length - pending.length;
     summary.nuevos += pending.length;
 
     for (const uid of pending) {
-      const mail_uid = uidKey(mb, uidvalidity, uid);
-      const det: Record<string, unknown> = { carpeta: mb, uid };
+      const mail_uid = uidKey(mb, uidvalidity, uid, cuenta);
+      const det: Record<string, unknown> = { cuenta, carpeta: mb, uid };
       try {
         const { raw, internalDate } = await imap.uidFetchRaw(uid);
         const rawStr = new TextDecoder("latin1").decode(raw);
@@ -567,6 +652,7 @@ async function actionSync(days: number, dryRun: boolean) {
               error_msg: esOc ? "mail sin link de documento Krikos"
                               : "mail de servicio de Krikos360, no es una OC",
             });
+            if (esOc && esSpam) await avisarSpam(mb, subject, null, mail_uid);
           }
           if (esOc) summary.errores++; else summary.ignorados++;
           continue;
@@ -582,7 +668,7 @@ async function actionSync(days: number, dryRun: boolean) {
             continue;
           }
         }
-        if (dryRun) { det.dry = true; continue; }
+        if (dryRun) { det.dry = true; if (esSpam) det.spam = true; continue; }
 
         let storage_path: string | null = null, pdf_bytes: number | null = null;
         let estado = "pendiente", error_msg: string | null = null;
@@ -608,6 +694,7 @@ async function actionSync(days: number, dryRun: boolean) {
         if (ins.error) throw new Error("insert: " + ins.error.message);
         if (estado === "error") summary.errores++; else summary.insertados++;
         det.estado = estado; if (error_msg) det.error = error_msg;
+        if (esSpam) { det.spam = true; summary.spam++; await avisarSpam(mb, subject, oc, mail_uid); }
       } catch (e) {
         det.error = e instanceof Error ? e.message : String(e);
         summary.errores++;
@@ -616,11 +703,23 @@ async function actionSync(days: number, dryRun: boolean) {
       }
     }
     }
-    return summary;
   } finally {
-    summary.ms = Date.now() - started;
     await imap.logout();
   }
+}
+
+/** Una OC de Krikos que cayó en SPAM en ventas@chefsrl.com: entra igual a la bandeja, y se avisa
+ *  al grupo de Gestión para que la marquen como «no es spam» (una vez por mail). */
+async function avisarSpam(carpeta: string, subject: string, oc: OcInfo | null, mail_uid: string) {
+  const txt = "⚠ Llegó a la carpeta «" + carpeta + "» de ventas@chefsrl.com una OC de Krikos" +
+    (oc ? " (" + (oc.cadena ?? "") + (oc.nro_documento ? ", OC " + oc.nro_documento : "") +
+          (oc.sucursal ? ", " + oc.sucursal : "") + ")" : "") +
+    ". Ya entró a la bandeja igual. Para que no se repita: marcarla como «no es spam» y agregar " +
+    "noreply@planexware.com a los remitentes seguros. Asunto: " + subject;
+  try {
+    const { error } = await sb.rpc("tg_enqueue", { p_text: txt, p_dedup: "krikos-spam-" + mail_uid, p_chat: TG_CHAT_GESTION });
+    if (error) console.warn("aviso spam:", error.message);
+  } catch (e) { console.warn("aviso spam:", e); }
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -630,15 +729,16 @@ Deno.serve(async (req) => {
   if (!secret) return json({ ok: false, error: "KRIKOS_INGEST_SECRET no configurado (ni env ni Vault)" }, 503);
   if ((req.headers.get("x-krikos-secret") ?? "") !== secret) return json({ ok: false, error: "forbidden" }, 403);
 
-  let body: { action?: string; days?: number; dry_run?: boolean } = {};
+  let body: { action?: string; days?: number; dry_run?: boolean; cuenta?: string } = {};
   try { body = await req.json(); } catch { return json({ ok: false, error: "bad json" }, 400); }
   const action = String(body.action ?? "sync");
   try {
     if (action === "status") return json(await actionStatus());
-    if (action === "test_imap") return json(await actionTestImap());
+    const cuenta: Cuenta = body.cuenta === "chef" ? "chef" : "lk";
+    if (action === "test_imap") return json(await actionTestImap(cuenta));
     if (action === "list_folders") {
       const days = Math.min(365, Math.max(1, Number(body.days ?? 30)));
-      return json(await actionListFolders(days));
+      return json(await actionListFolders(days, cuenta));
     }
     if (action === "sync") {
       const days = Math.min(365, Math.max(1, Number(body.days ?? 30)));
