@@ -507,7 +507,7 @@ LOGOS_COMERCIO = {
     "coto": "coto_logo_ficha.png",
     "carrefour": "carrefour_logo.png",
     "laanonima": "laanonima_logo_ficha.png",
-    "masonline": "changomas_logo.png",
+    "masonline": "masonline_logo_ficha.png",
 }
 
 

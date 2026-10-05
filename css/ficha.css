@@ -378,6 +378,17 @@
   width: auto;
   max-width: 170px;
   object-fit: contain;
+  /* gris como el carrusel de clientes de la home; negro + leve zoom al pasar el mouse */
+  opacity: 0.5;
+  filter: grayscale(100%);
+  transition:
+    transform 0.22s ease,
+    opacity 0.22s ease;
+}
+.art-logos a:hover img,
+.art-logos a:focus-visible img {
+  opacity: 1;
+  transform: scale(1.08);
 }
 
 /* ---------- La ficha adentro del catálogo (mayorista.html #fichaArticulo) ---------- */

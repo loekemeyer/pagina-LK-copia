@@ -1573,7 +1573,7 @@ las aprueben. No muestran precios.
   lavavajillas`**, y sólo si están en el CSV: código, línea, sublínea, marca y unidades por caja se sacaron porque
   repetían la pastilla, el breadcrumb y la descripción), zona de compra, y secciones
   `<details open>` (Cuidado y lavado, Comercios —**sólo logos**, `LOGOS_COMERCIO` del generador: un comercio sin logo
-  en `img/` no se muestra; Disco, Vea y Carrefour los pasó Thomas el 05/10; Coto, Jumbo y La Anónima van como `*_logo_ficha.png` porque los `*_logo.png` los usan la home y historia—, Sobre la línea, Otros artículos; **«¿Dónde lo puedo
+  en `img/` no se muestra; Disco, Vea y Carrefour los pasó Thomas el 05/10; Coto, Jumbo, La Anónima y Más Online van como `*_logo_ficha.png` porque los `*_logo.png` los usan la home y historia; en gris (opacity .5) y negro + zoom 1,08 al pasar el mouse—, Sobre la línea, Otros artículos; **«¿Dónde lo puedo
   comprar?» se sacó** el 05/10):
   abiertas por defecto para que se lean e indexen sin JS. **La compra la pinta `js/ficha-compra.js` SÓLO con
   sesión iniciada** (misma sesión de Supabase que mayorista, mismo dominio): «Agregar al pedido» lleva a
