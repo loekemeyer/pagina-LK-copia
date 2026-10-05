@@ -450,21 +450,33 @@
   color: inherit;
 }
 
-.art-ficha {
-  display: grid;
-  grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
-  gap: 40px;
-  align-items: start;
-  margin: 10px 0 46px;
+.pub-wrap.art-wrap {
+  max-width: 1180px;
 }
 
-/* Foto FIJA a la izquierda mientras la columna de datos scrollea (Thomas,
-   05/10/2026). top = alto de la .prod-topbar (sticky, ~64 px) + aire. */
+/* Diseño de Thomas (05/10/2026): a la izquierda breadcrumb + foto, FIJOS
+   (sticky) mientras la columna de datos scrollea a la derecha. */
+.art-ficha {
+  display: grid;
+  grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+  gap: 56px;
+  align-items: start;
+  margin: 18px 0 46px;
+}
+
+.art-izq {
+  position: sticky;
+  top: 84px;
+}
+
+.art-izq .prod-breadcrumb {
+  margin: 0 0 22px;
+}
+
 .art-foto {
   margin: 0;
   aspect-ratio: 1 / 1;
-  position: sticky;
-  top: 84px;
+  max-width: 420px;
 }
 
 .art-foto img {
@@ -474,80 +486,165 @@
 }
 
 .art-datos h1 {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
+  font-size: clamp(30px, 3.4vw, 46px);
+  line-height: 1.1;
 }
 
-.art-desc {
-  font-size: 16px;
-  line-height: 1.55;
-  max-width: 62ch;
+.art-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
   margin: 0 0 18px;
 }
 
-.art-tabla {
-  display: grid;
-  grid-template-columns: max-content max-content;
-  column-gap: 18px;
-  row-gap: 6px;
-  margin: 0 0 22px;
-  font-size: 14px;
+.art-cod {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 7px 18px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
 }
 
-.art-tabla dt {
-  color: var(--muted);
+.art-destacado {
   font-weight: 700;
-}
-
-.art-tabla dd {
-  margin: 0;
-}
-
-.art-cta {
   font-size: 15px;
 }
 
-.art-acciones {
+.art-desc {
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 68ch;
+  margin: 0 0 20px;
+}
+
+.art-tablas {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  column-gap: 72px;
+  row-gap: 6px;
+  align-items: start;
+  margin: 0 0 26px;
+}
+
+.art-tabla {
+  margin: 0;
+  display: grid;
+  align-content: start;
+  row-gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.art-tabla dt,
+.art-tabla dd {
+  display: inline;
+  margin: 0;
+}
+
+.art-tabla a {
+  color: inherit;
+}
+
+.art-compra {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 22px;
-  margin: 0 0 36px;
+  align-items: center;
+  gap: 12px 26px;
+  margin: 0;
 }
 
-/* Dato que vende y que da la empresa (fichas-manual.csv), p. ej. el 505 más
-   vendido de Mercado Libre. Marca amarilla como "NUEVO", no un cartel. */
-.art-destacado {
+.art-agregar {
   display: inline-block;
-  background: #ffe9a8;
-  font-size: 13.5px;
+  background: #111;
+  color: #fff;
+  font-weight: 800;
+  font-size: 17px;
+  padding: 14px 64px;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+  text-decoration: none;
+}
+
+.art-agregar:hover {
+  background: #000;
+}
+
+.art-agregar--off {
+  background: #9a9a9a;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.art-precio {
+  font-size: 15px;
   font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 4px;
-  margin: 0 0 12px;
 }
 
-.art-cuidado,
-.art-donde {
-  margin-bottom: 36px;
+.art-sep {
+  border: 0;
+  border-top: 1px solid #222;
+  margin: 30px 0 24px;
 }
 
-.art-datos h2 {
-  margin-top: 0;
+/* Secciones desplegables: <details open>, se leen e indexan sin JS. */
+.art-sec {
+  margin: 0 0 22px;
 }
 
-.art-cuidado p,
+.art-sec summary {
+  list-style: none;
+  cursor: pointer;
+  display: block;
+}
+
+.art-sec summary::-webkit-details-marker {
+  display: none;
+}
+
+.art-sec summary::after {
+  content: "▼";
+  font-size: 11px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.art-sec[open] summary::after {
+  content: "▲";
+}
+
+.art-sec h2 {
+  display: inline;
+  margin: 0;
+  font-size: 22px;
+}
+
+.art-sec-cuerpo {
+  padding-top: 10px;
+}
+
+.art-sec-cuerpo p,
+.art-linea p,
 .art-donde p {
   max-width: 70ch;
-  line-height: 1.55;
+  line-height: 1.6;
+  margin: 0 0 10px;
+  font-size: 15px;
 }
 
 .art-ml {
-  font-weight: 800;
+  font-weight: 700;
   color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
-.art-donde-sub {
-  font-weight: 700;
-  margin-bottom: 6px;
+.art-linea,
+.art-donde {
+  margin-bottom: 40px;
 }
 
 .art-donde-lista {
@@ -556,7 +653,7 @@
   margin: 0 0 14px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, max-content));
-  gap: 8px 28px;
+  gap: 10px 28px;
 }
 
 .art-donde-lista li {
@@ -565,14 +662,18 @@
 }
 
 .art-donde-lista a {
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-weight: 800;
+  font-size: 16px;
+  color: inherit;
 }
 
-.art-donde-alc,
+.art-donde-alc {
+  font-weight: 700;
+  font-size: 14px;
+}
+
 .art-donde-nota {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
 }
 
@@ -589,23 +690,13 @@
   text-underline-offset: 3px;
 }
 
-.art-linea,
-.art-rel {
-  margin-bottom: 40px;
-}
-
-.art-linea p {
-  max-width: 70ch;
-  line-height: 1.55;
-}
-
 .art-rel-grid {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 6px 0 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 170px));
+  gap: 22px 26px;
 }
 
 .art-rel-grid a {
@@ -627,15 +718,30 @@
   line-height: 1.3;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 860px) {
   .art-ficha {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 18px;
+  }
+
+  .art-izq {
+    position: static;
   }
 
   .art-foto {
     max-width: 320px;
     margin: 0 auto;
-    position: static;
+  }
+
+  .art-tablas {
+    grid-template-columns: 1fr;
+  }
+
+  .art-agregar {
+    padding: 14px 40px;
+  }
+
+  .art-rel-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

@@ -17899,15 +17899,12 @@ window.ppToggleVideo = ppToggleVideo;
 
 /* Botón «Ficha técnica» de la card del catálogo (05/10/2026, Thomas).
    Aparece SÓLO en los artículos con algún dato cargado a mano en
-   scripts/fichas-manual.csv (descripción, material, apto lavavajillas, lavado,
-   destacado). La lista la exporta scripts/generar-catalogo.py a
-   productos/fichas.json, con lo mismo que la ficha pública de cada artículo;
-   un código que no está ahí no lleva botón. El popup muestra esa ficha
-   COMPLETA (foto fija a la izquierda, datos que scrollean a la derecha) sin
-   abrir otra página, y suma «Agregar al pedido» SÓLO con sesión iniciada.
-   No se deduce ni se completa nada acá: se muestra lo cargado, tal cual. */
+   scripts/fichas-manual.csv. La lista la exporta scripts/generar-catalogo.py a
+   productos/fichas.json. El botón lleva a la página propia del artículo
+   (productos/articulo/<cod>.html), que es la que tiene URL para compartir,
+   citar e indexar; ahí, con sesión iniciada, «Agregar al pedido» vuelve acá
+   con #agregar=<cod> (ver procesarAgregarDesdeFicha). */
 let FICHAS_TEC = null;
-let FICHAS_TEC_EXTRA = { lineas: {}, comercios: {} };
 let _fichasTecPromise = null;
 
 function loadFichasTec() {
@@ -17920,10 +17917,6 @@ function loadFichasTec() {
     .then((j) => {
       const ok = j && typeof j === "object";
       FICHAS_TEC = ok && j.fichas && typeof j.fichas === "object" ? j.fichas : {};
-      FICHAS_TEC_EXTRA = {
-        lineas: (ok && j.lineas) || {},
-        comercios: (ok && j.comercios) || {},
-      };
       return FICHAS_TEC;
     })
     .catch(() => {
@@ -17951,135 +17944,41 @@ function fichaTecDe(cod) {
 function fichaTecBtnHtml(p) {
   const cod = String((p && p.cod) || "").trim();
   if (!fichaTecDe(cod)) return "";
-  return `<button class="ft-btn" type="button" onclick="abrirFichaTec('${_ftEsc(cod)}',event)" aria-label="Ver ficha técnica del ${_ftEsc(cod)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>Ficha técnica</button>`;
+  return `<a class="ft-btn" href="productos/articulo/${encodeURIComponent(cod)}.html" aria-label="Ver ficha técnica del ${_ftEsc(cod)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>Ficha técnica</a>`;
 }
 
-// Botón de compra del popup. Sin sesión NO se dibuja nada (pedido de Thomas):
-// la ficha es información, el login se ofrece en la card. Con sesión, misma
-// lógica que la card y el popup de foto (sin stock / razón social / agregar).
-function _ftAccionesHtml(p) {
-  if (!p || !currentSession) return "";
-  const pid = _ftEsc(p.id);
-  const badge = String(p.badge_status || "").trim().toUpperCase();
-  if (badge === "SIN STOCK") return '<button class="add-btn disabled" disabled>Sin stock</button>';
-  if (badge === "PROXIMAMENTE" || badge === "PRÓXIMAMENTE")
-    return '<button class="add-btn disabled" disabled>Próximamente</button>';
-  const vendorBrowse =
-    typeof isVendorProfileBrowseMode === "function" && isVendorProfileBrowseMode();
-  if (vendorBrowse)
-    return '<button class="add-btn add-vendor-browse" onclick="cerrarFichaTec(); scrollToCustomerSelector()">Elegir razón social</button>';
-  return `<button class="add-btn" onclick="addFirstBox('${pid}','catalogo'); cerrarFichaTec();">Agregar al pedido</button>`;
-}
-
-function _ftPrecioHtml(p) {
-  if (!p || !currentSession) return "";
+/* «Agregar al pedido» desde la ficha pública: la página del artículo manda a
+   mayorista.html#agregar=<cod>. Se espera a que estén el catálogo y la sesión
+   (y el perfil, para saber si es un vendedor sin cliente elegido) y se agrega
+   UNA caja por addFirstBox, con todos sus guards (sin sesión → login, sin
+   stock → no, vendedor sin cliente → selector). El hash se borra al usarlo
+   para que recargar la página no vuelva a agregar. */
+function procesarAgregarDesdeFicha() {
+  const m = /^#agregar=([^&]+)$/.exec(location.hash || "");
+  if (!m) return;
+  const cod = decodeURIComponent(m[1]).trim();
   try {
-    const vendorBrowse =
-      typeof isVendorProfileBrowseMode === "function" && isVendorProfileBrowseMode();
-    const soloLista =
-      (typeof isListPriceOnlyClient === "function" && isListPriceOnlyClient()) || vendorBrowse;
-    const monto = soloLista
-      ? Number(p.list_price || 0)
-      : unitYourPrice(p.list_price) * (1 - WEB_ORDER_DISCOUNT) * (1 - 0.25);
-    if (!monto) return "";
-    return `<div class="card-price-line ft-precio">${soloLista ? "Precio Lista" : "Tu Precio Contado"}: <strong>$${formatMoney(monto)}</strong><span class="card-iva">+ IVA</span></div>`;
-  } catch (e) {
-    return "";
-  }
-}
-
-function abrirFichaTec(cod, ev) {
-  if (ev) {
-    ev.stopPropagation();
-    ev.preventDefault();
-  }
-  const f = fichaTecDe(cod);
-  if (!f) return;
-  const p = (Array.isArray(products) ? products : []).find(
-    (x) => String(x.cod || "").trim() === String(cod).trim(),
-  );
-  let m = document.getElementById("fichaTecModal");
-  if (!m) {
-    m = document.createElement("div");
-    m.id = "fichaTecModal";
-    m.className = "ft-modal";
-    m.setAttribute("role", "dialog");
-    m.setAttribute("aria-modal", "true");
-    m.setAttribute("aria-labelledby", "ftTitulo");
-    m.addEventListener("click", (e) => {
-      if (e.target === m) cerrarFichaTec();
-    });
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && m.classList.contains("open")) cerrarFichaTec();
-    });
-    document.body.appendChild(m);
-  }
-  let foto = "img/no-image.jpg";
-  try {
-    const urls = p ? productImgUrls(p) : [];
-    if (Array.isArray(urls) && urls.length) foto = urls[0];
+    history.replaceState(null, "", location.pathname + location.search);
   } catch (e) {}
-  const filas = [
-    ["Código", codDisplay(cod)],
-    ["Línea", f.lin],
-    ["Sublínea", f.sub],
-    ["Material", f.m],
-    ["Apto lavavajillas", f.lv],
-    ["Unidades por caja", f.ux],
-    ["Marca", "Loekemeyer"],
-  ]
-    .filter((x) => x[1] !== undefined && x[1] !== null && x[1] !== "")
-    .map((x) => `<dt>${x[0]}</dt><dd>${_ftEsc(x[1])}</dd>`)
-    .join("");
-  const com = (Array.isArray(f.dc) ? f.dc : [])
-    .map((i) => FICHAS_TEC_EXTRA.comercios[i])
-    .filter(Boolean)
-    .map(
-      (c) =>
-        `<li><a href="${_ftEsc(c.u)}" target="_blank" rel="noopener nofollow">${_ftEsc(c.n)}</a><span>${_ftEsc(c.a)}</span></li>`,
-    )
-    .join("");
-  const bajada = f.lin ? FICHAS_TEC_EXTRA.lineas[f.lin] : "";
-  const nombre = f.n || (p && p.description) || "";
-  m.innerHTML = `
-    <div class="ft-card">
-      <button class="ft-close" type="button" onclick="cerrarFichaTec()" aria-label="Cerrar">×</button>
-      <div class="ft-cuerpo">
-        <figure class="ft-foto">
-          <img src="${_ftEsc(foto)}" alt="${_ftEsc(nombre)}" width="400" height="400" onerror="this.onerror=null;this.src='img/no-image.jpg'">
-        </figure>
-        <div class="ft-datos">
-          <div class="ft-cod">Código ${_ftEsc(codDisplay(cod))}</div>
-          <h3 id="ftTitulo" class="ft-titulo">${_ftEsc(nombre)}</h3>
-          ${f.dst ? `<div class="ft-dst">${_ftEsc(f.dst)}</div>` : ""}
-          ${f.dt || f.d ? `<p class="ft-desc">${_ftEsc(f.dt || f.d)}</p>` : ""}
-          <dl class="ft-tabla">${filas}</dl>
-          ${_ftPrecioHtml(p)}
-          <div class="ft-acciones">${_ftAccionesHtml(p)}</div>
-          ${f.cu ? `<section class="ft-sec"><h4>Cuidado y lavado</h4><p>${_ftEsc(f.cu)}</p></section>` : ""}
-          <section class="ft-sec">
-            <h4>¿Dónde comprar el ${_ftEsc(nombre)}?</h4>
-            <p>Loekemeyer vende sólo por mayor a comercios. Para comprar una unidad, buscalo en Mercado Libre o en los supermercados y bazares que venden nuestros productos al público.</p>
-            ${f.ml ? `<p><a class="ft-ml" href="${_ftEsc(f.ml)}" target="_blank" rel="noopener nofollow">Buscar en Mercado Libre →</a></p>` : ""}
-            ${com ? `<p class="ft-sub">Comercios que trabajan este artículo:</p><ul class="ft-com">${com}</ul>` : ""}
-          </section>
-          ${bajada ? `<section class="ft-sec"><h4>Sobre la línea ${_ftEsc(f.lin)}</h4><p>${_ftEsc(bajada)}</p></section>` : ""}
-        </div>
-      </div>
-    </div>`;
-  m.classList.add("open");
-  document.body.classList.add("ft-abierto");
-  const btn = m.querySelector(".ft-close");
-  if (btn) btn.focus();
+  const t0 = Date.now();
+  const tick = () => {
+    const ms = Date.now() - t0;
+    const listo = Array.isArray(products) && products.length > 0;
+    if (!listo) return ms < 15000 ? setTimeout(tick, 250) : undefined;
+    // Con sesión se espera el perfil; sin sesión se le da unos segundos a que
+    // se restaure la sesión guardada antes de mandar al login.
+    const esperar = currentSession ? !customerProfile && ms < 12000 : ms < 4000;
+    if (esperar) return setTimeout(tick, 250);
+    const p = products.find((x) => String(x.cod || "").trim() === cod);
+    if (!p) return;
+    const card = document.getElementById("card-" + p.id);
+    if (card && card.scrollIntoView) card.scrollIntoView({ block: "center" });
+    addFirstBox(p.id, "catalogo");
+  };
+  tick();
 }
-window.abrirFichaTec = abrirFichaTec;
-
-function cerrarFichaTec() {
-  const m = document.getElementById("fichaTecModal");
-  if (m) m.classList.remove("open");
-  document.body.classList.remove("ft-abierto");
-}
-window.cerrarFichaTec = cerrarFichaTec;
+window.procesarAgregarDesdeFicha = procesarAgregarDesdeFicha;
+document.addEventListener("DOMContentLoaded", procesarAgregarDesdeFicha);
 
 // Se pide una vez al cargar. Si el catálogo ya se dibujó sin la lista, se
 // redibuja una sola vez para que aparezcan los botones.

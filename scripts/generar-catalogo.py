@@ -157,7 +157,7 @@ def topbar(pref, activo):
     </header>"""
 
 
-def footer(pref):
+def footer(pref, extra=""):
     return f"""
     <footer class="main-footer">
       <div class="container footer-grid">
@@ -207,7 +207,7 @@ def footer(pref):
     <script src="{pref}version.js?v={V}"></script>
     <script src="{pref}script.index.js?v={V}"></script>
     <script src="{pref}js/conversiones.js?v={V}"></script>
-    <script src="{pref}js/catalogo-vivo.js?v={V}" defer></script>
+    <script src="{pref}js/catalogo-vivo.js?v={V}" defer></script>{extra}
   </body>
 </html>
 """
@@ -495,22 +495,32 @@ def url_ml(p, donde):
     return (donde.get("mercadolibre") or "https://listado.mercadolibre.com.ar/{q}").replace("{q}", q)
 
 
-def bloque_donde(p, donde, pref_donde):
+def seccion(titulo, cuerpo, id_=""):
+    """Bloque desplegable de la ficha. <details open>: se lee y se indexa entero
+    sin JavaScript, y quien quiera lo pliega."""
+    ida = f' id="{id_}"' if id_ else ""
+    return (f'<details class="art-sec" open{ida}><summary><h2>{titulo}</h2></summary>'
+            f'<div class="art-sec-cuerpo">{cuerpo}</div></details>')
+
+
+def secciones_donde(p, donde, pref_donde):
     ids = donde.get("articulos", {}).get(p["cod"], [])
     por_id = {c["id"]: c for c in donde.get("comercios", [])}
     items = "".join(
         f'<li><a href="{esc(por_id[i]["url"])}" target="_blank" rel="noopener nofollow">{esc(por_id[i]["nombre"])}</a>'
         f'<span class="art-donde-alc">{esc(por_id[i].get("alcance", ""))}</span></li>'
         for i in ids if i in por_id)
-    lista_c = f'<p class="art-donde-sub">Comercios que trabajan este artículo:</p><ul class="art-donde-lista">{items}</ul>' if items else ""
-    return f"""
-        <section class="art-donde" id="donde-comprar">
-          <h2>¿Dónde comprar el {esc(p['nombre'])}?</h2>
-          <p>Loekemeyer vende sólo por mayor a comercios. Para comprar una unidad, buscalo en Mercado Libre o en los supermercados y bazares que venden nuestros productos al público.</p>
-          <p><a class="art-ml" href="{esc(url_ml(p, donde))}" target="_blank" rel="noopener nofollow">Buscar en Mercado Libre →</a></p>
-          {lista_c}
-          <p class="art-donde-nota">La disponibilidad y el precio dependen de cada comercio. <a href="{pref_donde}">Ver todos los lugares de compra</a>.</p>
-        </section>"""
+    donde_html = seccion(
+        "¿Dónde lo puedo comprar?",
+        "<p>Loekemeyer vende sólo por mayor a comercios. Para comprar una unidad, buscalo en Mercado Libre "
+        "o en los supermercados y bazares que venden nuestros productos al público.</p>"
+        f'<p><a class="art-ml" href="{esc(url_ml(p, donde))}" target="_blank" rel="noopener nofollow">Buscar en Mercado Libre ↗</a></p>',
+        "donde-comprar")
+    nota = (f'<p class="art-donde-nota">La disponibilidad y el precio dependen de cada comercio.</p>'
+            f'<p><a class="art-ml" href="{pref_donde}">Ver todos los lugares de compra</a></p>')
+    comercios = seccion("Comercios que trabajan este artículo",
+                        f'<ul class="art-donde-lista">{items}</ul>{nota}') if items else ""
+    return donde_html + comercios
 
 
 def texto_cuidado(lav, lavado):
@@ -574,21 +584,27 @@ def pagina_articulo(p, cat, manual=None, donde=None):
             {"@type": "ListItem", "position": 4, "name": p["nombre"], "item": canonical}]},
     ]}
     badge = '<span class="prod-nuevo">NUEVO</span>' if p.get("badge") == "NUEVO" else ""
-    filas = [("Código", esc(cod)),
-             ("Línea", f'<a href="../{cat["slug"]}.html">{esc(cat["nombre"])}</a>')]
+    # Datos en dos columnas (diseño de Thomas, 05/10/2026): identidad a la
+    # izquierda, uso y embalaje a la derecha. Material y lavavajillas sólo si
+    # están en fichas-manual.csv.
+    col_izq = [("Código", esc(cod)),
+               ("Línea", f'<a href="../{cat["slug"]}.html">{esc(cat["nombre"])}</a>')]
     if p.get("subcategoria"):
-        filas.append(("Sublínea", esc(p["subcategoria"])))
+        col_izq.append(("Sublínea", esc(p["subcategoria"])))
+    col_izq.append(("Marca", "Loekemeyer"))
+    col_der = []
     if mat:
-        filas.append(("Material", esc(mat)))
+        col_der.append(("Material", esc(mat)))
     if lav:
-        filas.append(("Apto lavavajillas", lav))
-    filas.append(("Unidades por caja", esc(p["uxb"]) if p.get("uxb") else "Consultar"))
-    filas.append(("Marca", "Loekemeyer"))
-    dl = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in filas)
-    destacado = f'<p class="art-destacado">{esc(man["destacado"])}</p>' if man.get("destacado") else ""
+        col_der.append(("Apto lavavajillas", lav))
+    col_der.append(("Unidades por caja", esc(p["uxb"]) if p.get("uxb") else "Consultar"))
+    dl = "".join(
+        '<dl class="art-tabla">' + "".join(f"<div><dt>{k}:</dt> <dd>{v}</dd></div>" for k, v in col) + "</dl>"
+        for col in (col_izq, col_der) if col)
+    destacado = (f'<span class="art-destacado"><span aria-hidden="true">★</span> {esc(man["destacado"])}</span>'
+                 if man.get("destacado") else "")
     txt_cuidado = texto_cuidado(lav, lavado)
-    cuidado = (f'<section class="art-cuidado"><h2>Cuidado y lavado</h2><p>{esc(txt_cuidado)}</p></section>'
-               if txt_cuidado else "")
+    cuidado = seccion("Cuidado y lavado", f"<p>{esc(txt_cuidado)}</p>") if txt_cuidado else ""
     # Relacionados: los vecinos de la misma línea (misma subcategoría primero).
     vec = [q for q in cat["productos"] if q["cod"] != cod]
     vec.sort(key=lambda q: 0 if q.get("subcategoria") == p.get("subcategoria") else 1)
@@ -598,37 +614,42 @@ def pagina_articulo(p, cat, manual=None, donde=None):
         f'<span class="prod-cod">{esc(q["cod"])}</span><span class="art-rel-nombre">{esc(q["nombre"])}</span></a></li>'
         for q in vec[:6])
     texto = f"Hola Loekemeyer, tengo un comercio y quiero consultar por el artículo {cod} {p['nombre']}."
+    # «Agregar al pedido» + precio: los pinta js/ficha-compra.js SÓLO si hay una
+    # sesión iniciada en el sitio (la misma de mayorista). Sin sesión queda el
+    # link de WhatsApp para el comercio, igual que antes.
+    scripts_compra = (
+        '\n    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.0"></script>'
+        f'\n    <script src="{pref}js/ficha-compra.js?v={V}" defer></script>')
     return head(titulo, meta_desc, canonical, pref, jsonld, og_image=foto, og_type="product") + f"""
   <body class="prod-page">{topbar(pref, "productos")}
     <main class="prod-main">
-      <div class="pub-wrap">
-        <nav class="prod-breadcrumb" aria-label="Ubicación">
-          <a href="{pref}index.html">Inicio</a> › <a href="../index.html">Productos</a> › <a href="../{cat['slug']}.html">{esc(cat['nombre'])}</a> › <span aria-current="page">{esc(p['nombre'])}</span>
-        </nav>
+      <div class="pub-wrap art-wrap">
         <article class="art-ficha">
-          <figure class="art-foto">
-            <img src="{foto}" alt="{esc(p['nombre'])} Loekemeyer, código {esc(cod)}" width="400" height="400" fetchpriority="high" onerror="this.onerror=null;this.src='{pref}img/no-image.jpg'" />
-          </figure>
+          <aside class="art-izq">
+            <nav class="prod-breadcrumb" aria-label="Ubicación">
+              <a href="{pref}index.html">Inicio</a> › <a href="../index.html">Productos</a> › <a href="../{cat['slug']}.html">{esc(cat['nombre'])}</a> › <span aria-current="page">{esc(p['nombre'])}</span>
+            </nav>
+            <figure class="art-foto">
+              <img src="{foto}" alt="{esc(p['nombre'])} Loekemeyer, código {esc(cod)}" width="400" height="400" fetchpriority="high" onerror="this.onerror=null;this.src='{pref}img/no-image.jpg'" />
+            </figure>
+          </aside>
           <div class="art-datos">
-            <p class="prod-cod">CÓDIGO {esc(cod)}{badge}</p>
             <h1>{esc(p['nombre'])}</h1>
-            {destacado}
+            <p class="art-cabecera"><span class="art-cod">COD {esc(cod)}</span>{badge}{destacado}</p>
             <p class="art-desc">{esc(desc)}</p>
-            <dl class="art-tabla">{dl}</dl>
-            <p class="art-acciones"><a class="prod-cta art-cta" href="#donde-comprar">¿Dónde comprarlo? ↓</a>
-            <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(cod)}">Soy comercio: consultar por WhatsApp</a></p>
+            <div class="art-tablas">{dl}</div>
+            <div class="art-compra" id="artCompra" data-cod="{esc(cod)}">
+              <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(cod)}">Soy comercio: consultar por WhatsApp</a>
+            </div>
+            <hr class="art-sep" />
             {cuidado}
-            {bloque_donde(p, donde, "../" + PAG_DONDE)}
-            <section class="art-linea">
-              <h2>Sobre la línea {esc(cat['nombre'])}</h2>
-              <p>{esc(bajada(cat))}</p>
-              <p><a href="../{cat['slug']}.html">Ver los {len(cat['productos'])} artículos de {esc(cat['nombre'])}</a> · <a href="../index.html">Todo el catálogo</a></p>
-            </section>
-            {f'<section class="art-rel"><h2>Otros artículos de {esc(cat["nombre"])}</h2><ul class="art-rel-grid">{rel}</ul></section>' if rel else ''}
+            {secciones_donde(p, donde, "../" + PAG_DONDE)}
+            {seccion("Sobre la línea " + esc(cat["nombre"]), f'<p>{esc(bajada(cat))}</p><p><a href="../{cat["slug"]}.html">Ver los {len(cat["productos"])} artículos de {esc(cat["nombre"])}</a> · <a href="../index.html">Todo el catálogo</a></p>')}
+            {seccion("Otros artículos de " + esc(cat["nombre"]), f'<ul class="art-rel-grid">{rel}</ul>') if rel else ''}
           </div>
         </article>
       </div>
-    </main>{footer(pref)}"""
+    </main>{footer(pref, scripts_compra)}"""
 
 
 def pagina_donde(cats, donde):
@@ -750,52 +771,21 @@ def slugify(s):
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
 
 
-def escribir_fichas_json(cats, manual, donde):
-    """productos/fichas.json para el popup «Ficha técnica» del catálogo mayorista
-    (script.js). Entran SOLO los artículos activos con algún dato cargado a mano
-    en fichas-manual.csv: un código que no figura acá no lleva botón. Cada uno
-    trae lo mismo que su ficha pública (descripción completa, tabla, cuidado,
-    dónde comprar, texto de la línea), así el popup no necesita abrir otra
-    página. Celda vacía = no se publica; las columnas propuesta_ml* nunca salen."""
-    fichas, lineas = {}, {}
-    por_id = {c["id"]: c for c in donde.get("comercios", [])}
-    usados = set()
+def escribir_fichas_json(cats, manual):
+    """productos/fichas.json: los artículos activos con algún dato cargado a mano
+    en fichas-manual.csv (nunca las columnas propuesta_ml*). El catálogo
+    mayorista (script.js) sólo dibuja el botón «Ficha técnica» —que lleva a
+    productos/articulo/<cod>.html— en los códigos que figuran acá."""
+    campos = ("descripcion", "material", "apto_lavavajillas", "instrucciones_lavado", "destacado")
+    fichas = {}
     for c in cats:
         for prod in c["productos"]:
             cod = str(prod["cod"])
             m = manual.get(cod) or {}
-            lv = lavavajillas(m.get("apto_lavavajillas"))
-            f = {k: v for k, v in (
-                ("d", m.get("descripcion", "")),
-                ("m", m.get("material", "")),
-                ("lv", lv),
-                ("lav", m.get("instrucciones_lavado", "")),
-                ("dst", m.get("destacado", "")),
-            ) if v}
-            if not f:
-                continue
-            ids = [i for i in donde.get("articulos", {}).get(prod["cod"], []) if i in por_id]
-            usados.update(ids)
-            f.update({k: v for k, v in (
-                ("n", prod["nombre"]),
-                ("dt", frase_art(prod, c, m)),
-                ("lin", c["nombre"]),
-                ("sub", prod.get("subcategoria") or ""),
-                ("ux", prod.get("uxb") or ""),
-                ("cu", texto_cuidado(lv, m.get("instrucciones_lavado", ""))),
-                ("ml", url_ml(prod, donde)),
-                ("dc", ids),
-            ) if v})
-            lineas[c["nombre"]] = bajada(c)
-            fichas[cod] = f
-    salida = {
-        "fichas": fichas,
-        "lineas": lineas,
-        "comercios": {i: {"n": por_id[i]["nombre"], "u": por_id[i]["url"], "a": por_id[i].get("alcance", "")}
-                      for i in sorted(usados)},
-    }
+            if any((m.get(k) or "").strip() for k in campos):
+                fichas[cod] = {"n": prod["nombre"]}
     with open(os.path.join(RAIZ, SALIDA, "fichas.json"), "w", encoding="utf-8") as fh:
-        json.dump(salida, fh, ensure_ascii=False, sort_keys=True, indent=0)
+        json.dump({"fichas": fichas}, fh, ensure_ascii=False, sort_keys=True, indent=0)
         fh.write("\n")
     return len(fichas)
 
@@ -836,7 +826,7 @@ def main():
             os.remove(os.path.join(dart, viejo))
     n_map = escribir_sitemap(cats, datos.get("generado") or None)
     escribir_llms(cats, datos["total"])
-    n_fichas = escribir_fichas_json(cats, manual, donde)
+    n_fichas = escribir_fichas_json(cats, manual)
     print(f"fichas.json: {n_fichas} artículos con ficha técnica cargada")
     print(f"{len(cats) + 1} páginas en {out}/ + {len(vivos)} fichas en {out}/{SUB_ART}/ "
           f"({datos['total']} artículos) · sitemap {n_map} URLs · NOINDEX={NOINDEX}")
