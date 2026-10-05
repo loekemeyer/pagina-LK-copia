@@ -458,9 +458,13 @@
   margin: 10px 0 46px;
 }
 
+/* Foto FIJA a la izquierda mientras la columna de datos scrollea (Thomas,
+   05/10/2026). top = alto de la .prod-topbar (sticky, ~64 px) + aire. */
 .art-foto {
   margin: 0;
   aspect-ratio: 1 / 1;
+  position: sticky;
+  top: 84px;
 }
 
 .art-foto img {
@@ -506,7 +510,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px 22px;
-  margin: 0;
+  margin: 0 0 36px;
 }
 
 /* Dato que vende y que da la empresa (fichas-manual.csv), p. ej. el 505 más
@@ -523,7 +527,11 @@
 
 .art-cuidado,
 .art-donde {
-  margin-bottom: 40px;
+  margin-bottom: 36px;
+}
+
+.art-datos h2 {
+  margin-top: 0;
 }
 
 .art-cuidado p,
@@ -596,7 +604,7 @@
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -628,9 +636,6 @@
   .art-foto {
     max-width: 320px;
     margin: 0 auto;
-  }
-
-  .art-rel-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    position: static;
   }
 }

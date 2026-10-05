@@ -611,16 +611,16 @@ def pagina_articulo(p, cat, manual=None, donde=None):
             <dl class="art-tabla">{dl}</dl>
             <p class="art-acciones"><a class="prod-cta art-cta" href="#donde-comprar">¿Dónde comprarlo? ↓</a>
             <a class="prod-cta" href="{wa_url(texto)}" target="_blank" rel="noopener" data-cod="{esc(cod)}">Soy comercio: consultar por WhatsApp</a></p>
+            {cuidado}
+            {bloque_donde(p, donde, "../" + PAG_DONDE)}
+            <section class="art-linea">
+              <h2>Sobre la línea {esc(cat['nombre'])}</h2>
+              <p>{esc(bajada(cat))}</p>
+              <p><a href="../{cat['slug']}.html">Ver los {len(cat['productos'])} artículos de {esc(cat['nombre'])}</a> · <a href="../index.html">Todo el catálogo</a></p>
+            </section>
+            {f'<section class="art-rel"><h2>Otros artículos de {esc(cat["nombre"])}</h2><ul class="art-rel-grid">{rel}</ul></section>' if rel else ''}
           </div>
         </article>
-        {cuidado}
-        {bloque_donde(p, donde, "../" + PAG_DONDE)}
-        <section class="art-linea">
-          <h2>Sobre la línea {esc(cat['nombre'])}</h2>
-          <p>{esc(bajada(cat))}</p>
-          <p><a href="../{cat['slug']}.html">Ver los {len(cat['productos'])} artículos de {esc(cat['nombre'])}</a> · <a href="../index.html">Todo el catálogo</a></p>
-        </section>
-        {f'<section class="art-rel"><h2>Otros artículos de {esc(cat["nombre"])}</h2><ul class="art-rel-grid">{rel}</ul></section>' if rel else ''}
       </div>
     </main>{footer(pref)}"""
 
