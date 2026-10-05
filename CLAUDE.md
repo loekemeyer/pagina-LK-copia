@@ -1351,6 +1351,16 @@ Documentos de planificación y replicación, NO ejecutables:
   y con `preload="none"`**: el video (~15 MB promedio) baja recién al tocar el botón, y cerrar el popup o volver
   a «Ver fotos» le saca el src. Una lista del bucket que falla **no se cachea** como "no hay videos". La × del
   popup dejó de ser blanca sobre blanco. Chequeo: `tests/popup-ver-video.cjs`. Chef no tiene videos (no aplica).
+- **Preview de 3 s en «Contenido para tus redes»** (05/10/2026, v2.3.532): cada video de la grilla se reproduce
+  MUDO los primeros 3 s al entrar en pantalla (IntersectionObserver, 250 ms de demora), UNA vez por apertura, y al
+  terminar se le saca el src (`crPreviewIniciar` / `crPreviewCortar`). Tocarlo lo suelta: sigue entero y con sonido.
+  Con «ahorro de datos» no hay preview. **Sin el atributo `autoplay`** (con él baja el archivo entero en loop).
+  ⚠⚠ **El corte a los 3 s casi no ahorra transferencia**: medido en Chromium con un video de 7 Mbps, a ~10 Mbps
+  por video bajó 6,2 MB cada uno y a ~50 Mbps el archivo ENTERO — Chrome lee ~10 s por delante mientras reproduce.
+  Con los 7 videos (9-21 MB, 5-9,5 Mbps) son **~40-90 MB por apertura** según la conexión. Lo barato son clips de
+  preview propios (3 s, ~0,4 MB cada uno): pendiente de decisión. Y se arregló la grilla: con la tarjeta más baja
+  que el contenido (celular, o 9+ videos en PC) las filas se aplastaban y tapaban código, nombre y «Descargar»
+  (`grid-auto-rows: max-content`). Chequeo: `tests/redes-preview-3s.cjs` (A-H).
 - **El buscador es UNIÓN: código/descripción + categoría o subcategoría entera cuyo nombre coincida** (30/09/2026, `searchMatchProduct`, lo usan el catálogo y la línea Loke). "vidrio" no está en ninguna descripción de la categoría Vidrio (0 de 4) y no daba nada; "madera" suma la categoría Madera (15) y Utensilios › Madera (7, sólo 1 lo dice). El orden no cambia: el render agrupa igual. **"Vaciar carrito"** (`vaciarCarrito`, con `confirm`) no se dibuja en modo edición: ahí vacía "Cancelar edición". Chequeo: `tests/buscador-categoria.cjs`.
 
 ## Common operations

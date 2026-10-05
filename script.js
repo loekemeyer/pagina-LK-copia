@@ -703,6 +703,8 @@ async function abrirContenidoRedes() {
   const hint = document.getElementById("crAdminHint");
   if (hint) hint.hidden = !isAdmin;
   const grid = document.getElementById("crGrid");
+  crPreviewDesarmar();
+  _crPrevHechos = new Set(); // el preview se ve una vez por apertura
   if (grid) grid.innerHTML = '<div class="cr-loading">Cargando…</div>';
   await Promise.all([loadProductVideoManifest(), crCargarFavoritos()]);
   crRender();
@@ -715,7 +717,9 @@ function cerrarContenidoRedes() {
   m.classList.remove("open");
   m.classList.add("hidden");
   m.setAttribute("aria-hidden", "true");
-  // Frena cualquier video que haya quedado reproduciéndose.
+  // Corta los previews en curso (les saca el src: deja de bajar) y frena
+  // cualquier video que haya quedado reproduciéndose.
+  crPreviewDesarmar();
   m.querySelectorAll("video").forEach((v) => {
     try { v.pause(); } catch (e) {}
   });
@@ -738,6 +742,9 @@ window.crSetFiltro = crSetFiltro;
 function crRender() {
   const grid = document.getElementById("crGrid");
   if (!grid) return;
+  // Antes de reemplazar la grilla: un <video> que se saca del DOM a mitad del
+  // preview sigue bajando hasta que lo junta el GC.
+  crPreviewDesarmar();
   const q = (document.getElementById("crBuscar")?.value || "")
     .trim()
     .toLowerCase();
@@ -797,9 +804,10 @@ function crRender() {
       const fav = _crFavs.has(cod);
       const nombre = String(p.description || "").replace(/"/g, "&quot;");
       const media = vUrl
-        ? // Sin autoplay y con preload="none" (05/10/2026): con autoplay, abrir la
-          // pantalla bajaba TODOS los videos completos (150 MB en un minuto, medido
-          // en los logs de Storage). Ahora cada video baja recién al tocar play.
+        ? // Sin el atributo autoplay y con preload="none" (05/10/2026): con autoplay,
+          // abrir la pantalla bajaba TODOS los videos completos (150 MB en un minuto,
+          // medido en los logs de Storage). El preview de 3 s lo maneja
+          // crPreviewIniciar, que corta la descarga al terminar.
           `<video class="cr-video" controls loop playsinline preload="none"${
             thumb ? ` poster="${thumb}"` : ""
           } src="${vUrl}"></video>`
@@ -832,8 +840,119 @@ function crRender() {
         </div>`;
     })
     .join("");
+  crPreviewArmar(grid);
 }
 window.crRender = crRender;
+
+// ── Preview de 3 s (05/10/2026) ──────────────────────────────────────────────
+// Cada video de la grilla se reproduce MUDO los primeros CR_PREVIEW_S segundos
+// cuando entra en pantalla, UNA vez por apertura. Al terminar se le saca el src
+// para cortar la descarga: los videos pesan 9-21 MB (5-9,5 Mbps, medido) y la
+// transferencia de Supabase es compartida con Gestión, así que 3 s son ~2-3,5 MB
+// por video en vez del archivo entero. Si la persona lo toca, el preview se
+// suelta y el video sigue normal, entero y con sonido.
+const CR_PREVIEW_S = 3;
+const CR_PREVIEW_TOPE_MS = 10000; // red lenta: a los 10 s se corta aunque no haya llegado a los 3 s
+const CR_PREVIEW_DEMORA_MS = 250; // pasar scrolleando no dispara la descarga
+let _crPrevObs = null;
+let _crPrevHechos = new Set();
+
+function crPreviewArmar(grid) {
+  if (!grid || typeof IntersectionObserver !== "function") return;
+  // Ahorro de datos prendido en el celular: sin preview.
+  if (navigator.connection && navigator.connection.saveData) return;
+  const vids = grid.querySelectorAll("video.cr-video");
+  if (!vids.length) return;
+  _crPrevObs = new IntersectionObserver(
+    (ents) => {
+      ents.forEach((e) => {
+        const v = e.target;
+        if (e.isIntersecting) {
+          clearTimeout(v._crPrevEspera);
+          v._crPrevEspera = setTimeout(() => crPreviewIniciar(v), CR_PREVIEW_DEMORA_MS);
+        } else {
+          clearTimeout(v._crPrevEspera);
+          if (v._crPrev) crPreviewCortar(v);
+        }
+      });
+    },
+    { threshold: 0.6 },
+  );
+  vids.forEach((v) => _crPrevObs.observe(v));
+}
+
+function crPreviewDesarmar() {
+  if (_crPrevObs) {
+    try { _crPrevObs.disconnect(); } catch (e) {}
+    _crPrevObs = null;
+  }
+  document.querySelectorAll("#crGrid video.cr-video").forEach((v) => {
+    clearTimeout(v._crPrevEspera);
+    if (v._crPrev) crPreviewCortar(v);
+  });
+}
+
+function crPreviewIniciar(v) {
+  if (!v || !v.isConnected || v._crPrev || !v.paused || !v.getAttribute("src")) return;
+  const cod = (v.closest(".cr-item") && v.closest(".cr-item").getAttribute("data-cod")) || "";
+  if (!cod || _crPrevHechos.has(cod)) return;
+  _crPrevHechos.add(cod);
+  const st = {};
+  v._crPrev = st;
+  v.muted = true;
+  v.setAttribute("muted", "");
+  st.fin = () => {
+    if (v.currentTime >= CR_PREVIEW_S - 0.15) crPreviewCortar(v);
+  };
+  // La persona lo tocó (play, pausa, volumen, adelantar): deja de ser preview.
+  st.toma = (ev) => {
+    if (ev.type === "volumechange" && v.muted) return;
+    crPreviewSoltar(v);
+    if (ev.type === "pointerdown") v.muted = false;
+  };
+  st.pausa = () => crPreviewCortar(v);
+  v.addEventListener("timeupdate", st.fin);
+  v.addEventListener("pointerdown", st.toma);
+  v.addEventListener("volumechange", st.toma);
+  v.addEventListener("seeking", st.toma);
+  v.addEventListener("pause", st.pausa);
+  st.tope = setTimeout(() => crPreviewCortar(v), CR_PREVIEW_TOPE_MS);
+  try {
+    const p = v.play();
+    if (p && typeof p.catch === "function") p.catch(() => crPreviewCortar(v));
+  } catch (e) {
+    crPreviewCortar(v);
+  }
+}
+
+// Saca el modo preview sin tocar la reproducción (la persona tomó el control).
+function crPreviewSoltar(v) {
+  const st = v && v._crPrev;
+  if (!st) return;
+  v._crPrev = null;
+  clearTimeout(st.tope);
+  v.removeEventListener("timeupdate", st.fin);
+  v.removeEventListener("pointerdown", st.toma);
+  v.removeEventListener("volumechange", st.toma);
+  v.removeEventListener("seeking", st.toma);
+  v.removeEventListener("pause", st.pausa);
+  v.removeAttribute("muted");
+}
+
+// Termina el preview: pausa y le saca el src para que deje de bajar. Se le
+// vuelve a poner enseguida, con preload="none" no baja nada hasta el play.
+function crPreviewCortar(v) {
+  if (!v || !v._crPrev) return;
+  crPreviewSoltar(v);
+  try { v.pause(); } catch (e) {}
+  const src = v.getAttribute("src");
+  if (src) {
+    v.removeAttribute("src");
+    try { v.load(); } catch (e) {}
+    v.setAttribute("src", src);
+  }
+  v.muted = false;
+}
 
 // Marca/desmarca favorito (persiste por usuario en Supabase).
 async function crToggleFav(cod, btn) {

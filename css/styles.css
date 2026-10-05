@@ -15474,6 +15474,13 @@ body { top: 0 !important; }
 .cr-card .cr-grid {
   overflow-y: auto;
   flex: 1 1 auto;
+  /* Filas al alto de su contenido (05/10/2026): con `auto` y la tarjeta más baja
+     que la grilla (celular con 3+ filas, o PC con 9+ videos) el navegador
+     achicaba las filas en vez de scrollear —`.cr-item` tiene overflow:hidden, o
+     sea mínimo 0— y cada tarjeta tapaba el código, el nombre y «Descargar» de la
+     de arriba. */
+  grid-auto-rows: max-content;
+  align-content: start;
   -webkit-overflow-scrolling: touch;
 }
 .cr-header {
@@ -15563,6 +15570,7 @@ body { top: 0 !important; }
   position: relative;
   background: #111;
   aspect-ratio: 1 / 1;
+  flex-shrink: 0;
 }
 .cr-video {
   width: 100%;

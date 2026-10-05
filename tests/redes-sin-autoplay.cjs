@@ -6,6 +6,10 @@
 // transferencia mensual de Supabase que la organizacion comparte con Gestion.
 // Ahora cada video baja recien cuando el cliente toca play.
 //
+// El preview de 3 s (05/10/2026) NO usa el atributo autoplay: lo arranca
+// crPreviewIniciar por JS y le saca el src al terminar. Lo prueba
+// tests/redes-preview-3s.cjs. Este candado sigue: el atributo no vuelve.
+//
 // Candado estatico sobre script.js: el <video class="cr-video"> tiene que ir
 // SIN autoplay y con preload="none". Se corre sin comentarios para que el
 // comentario que explica el cambio no cuente como codigo.

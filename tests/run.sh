@@ -39,6 +39,7 @@ _correr presupuesto.cjs
 _correr perfil-sin-columna.cjs
 _correr carrito-animacion.cjs
 _correr redes-sin-autoplay.cjs
+_correr redes-preview-3s.cjs
 _correr popup-ver-video.cjs
 _correr buscador-categoria.cjs
 _correr ficha-hoja.cjs
