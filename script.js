@@ -8822,6 +8822,10 @@ function updateCart() {
   // por ZONA de la sucursal elegida (RPC get_fecha_estimada_entrega).
   _syncEntregaEstimada();
 
+  // Botón "Cargar orden de compra (PDF)": sólo para clientes con formato de OC
+  // en oc-pdf.js (Torres y Liva). Vive en otro archivo, de ahí el typeof.
+  if (typeof window.ocPdfSyncBtn === "function") window.ocPdfSyncBtn();
+
   // Modo cliente-expo o escala activa: dto por escala según subtotal.
   _expoSyncDto();
   _expoUpdateChip();
