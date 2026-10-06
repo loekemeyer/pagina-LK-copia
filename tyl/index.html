@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23b00020'/%3E%3Cpath d='M28 36l22-12 22 12-22 12z' fill='white' opacity='.95'/%3E%3Cpath d='M28 36v28l22 12V48z' fill='white' opacity='.7'/%3E%3Cpath d='M72 36v28L50 76V48z' fill='white' opacity='.5'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="../osa/css/styles.css?v=23553" />
+  <link rel="stylesheet" href="../osa/css/styles.css?v=23554" />
 </head>
 <body>
   <div class="app" id="app">
@@ -51,6 +51,11 @@
         <a class="nav__item" data-view="ventas" href="#/ventas">
           <svg class="ic" viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 18zm10 0a2 2 0 1 0 .001 4.001A2 2 0 0 0 17 18zM6.2 4l.94 2H20a1 1 0 0 1 .96 1.27l-2.4 8.3A2 2 0 0 1 16.64 17H8.53a2 2 0 0 1-1.94-1.5L4.27 6.5 3.6 4H6.2z"/></svg>
           <span>Ventas</span>
+        </a>
+        <!-- Orden de compra en PDF (06/10/2026): sólo Torres y Liva (cfg.ocPdf). -->
+        <a class="nav__item" data-view="oc" href="#/oc">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm7 1.5V9h5.5L13 3.5zM8 13v2h8v-2H8zm0 4v2h5v-2H8z"/></svg>
+          <span>Orden de compra</span>
         </a>
         <a class="nav__item" data-view="cargas" href="#/cargas">
           <svg class="ic" viewBox="0 0 24 24"><path d="M7 2v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm12 7v10H5V9h14zM7 11v2h2v-2H7zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2z"/></svg>
@@ -119,12 +124,18 @@
       seedInicial: false,
       // El catálogo de TyL se siembra server-side (su surtido de compras 18m),
       // no desde el catálogo de OSA.
-      clientSeed: false
+      clientSeed: false,
+      // Carga del pedido desde la OC en PDF (oc-pdf.js, formato 'tyl').
+      ocPdf: 'tyl',
+      // Su ÚNICA sucursal de entrega. Sin esto el módulo usaba las de OSA y el
+      // pedido salía para Villa Lugano.
+      sucursales: [{ val: 'Rivadavia 3663- Mar Del Plata', lbl: 'Mar del Plata' }]
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.0"></script>
-  <script src="../version.js?v=23553"></script>
-  <script src="../osa/js/store.js?v=23553"></script>
-  <script src="../osa/js/app.js?v=23553"></script>
+  <script src="../version.js?v=23554"></script>
+  <script src="../osa/js/store.js?v=23554"></script>
+  <script src="../oc-pdf.js?v=23554"></script>
+  <script src="../osa/js/app.js?v=23554"></script>
 </body>
 </html>

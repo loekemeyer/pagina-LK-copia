@@ -72,12 +72,16 @@ const p4 = prods(); p4.find((p) => p.cod === "555").uxb = 24;
 const r4 = O.armar(oc, p4);
 chk(r4.filas.find((f) => f.l.codOc === "555").problemas.some((x) => /caja cerrada/.test(x)), "unidades que no son caja cerrada se marcan");
 
-console.log("D. está enganchado a la página");
-const html = fs.readFileSync(path.join(raiz, "mayorista.html"), "utf8");
-const js = fs.readFileSync(path.join(raiz, "script.js"), "utf8");
-chk(/id="ocPdfBtn"[\s\S]*?hidden/.test(html) && /id="ocPdfInput"/.test(html), "botón e input en el carrito");
-chk(/id="modalOcPdf"/.test(html) && /<script src="oc-pdf\.js\?v=/.test(html), "modal y script");
-chk(/ocPdfSyncBtn\(\)/.test(js), "updateCart muestra/oculta el botón");
+console.log("D. vive en el módulo de Torres y Liva, NO en la página general");
+const tyl = fs.readFileSync(path.join(raiz, "tyl", "index.html"), "utf8");
+const app = fs.readFileSync(path.join(raiz, "osa", "js", "app.js"), "utf8");
+const may = fs.readFileSync(path.join(raiz, "mayorista.html"), "utf8");
+chk(/data-view="oc"/.test(tyl) && /ocPdf:\s*'tyl'/.test(tyl) && /<script src="\.\.\/oc-pdf\.js\?v=/.test(tyl), "tyl/index.html: pestaña, config y script");
+chk(/Rivadavia 3663- Mar Del Plata/.test(tyl), "tyl/index.html: su sucursal (no las de OSA)");
+chk(/if \(CFG\.ocPdf\) VIEWS\.oc/.test(app) && /oc: renderOc/.test(app), "app.js: la vista sólo existe con cfg.ocPdf");
+chk(!/oc-pdf\.js|ocPdf/.test(may), "mayorista.html no la carga (decisión del 06/10/2026)");
+const osa = fs.readFileSync(path.join(raiz, "osa", "index.html"), "utf8");
+chk(!/data-view="oc"|ocPdf/.test(osa), "OSA no la ve");
 
 if (fallas.length) { console.log("\n" + fallas.length + " FALLA(S)"); process.exit(1); }
 console.log("\ntodo ok");

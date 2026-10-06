@@ -1,15 +1,16 @@
 // oc-pdf.js — el cliente carga su pedido subiendo la ORDEN DE COMPRA en PDF.
 //
-// Pedido del 06/10/2026: Torres y Liva (cod 288) armaba el carrito a mano
-// copiando su OC. Ahora sube el PDF desde el carrito ("Cargar orden de compra"),
-// la página lo lee, arma el carrito y CONTROLA QUE EL TOTAL DE LA OC COINCIDA
-// con el de nuestro programa.
+// Pedido del 06/10/2026: Torres y Liva (cod 288) armaba el pedido a mano en la
+// página copiando su OC. Ahora la sube en SU módulo (tyl/, pestaña "Orden de
+// compra"): este archivo lee el PDF, arma los renglones y CONTROLA QUE EL TOTAL
+// DE LA OC COINCIDA con el de nuestro programa. La pantalla y el envío viven en
+// osa/js/app.js (renderOc), no en el carrito general de mayorista.html.
 //
 // ⚠ QUÉ SE COMPARA. La OC de Torres y Liva viene en UNIDADES y a NUESTRO PRECIO
 //   DE LISTA por unidad, sin IVA (verificado con la OC 9575: los 26 renglones con
 //   PU = products.list_price exacto). O sea que el total de la OC se compara con
-//   el carrito A PRECIO DE LISTA, no con el "Pedido · Total" de arriba, que ya
-//   lleva el dto. de volumen, el 2% web y el del medio de pago. Comparar contra
+//   el pedido A PRECIO DE LISTA, no con el importe final, que ya lleva el dto.
+//   de volumen, el 2% web y el del medio de pago. Comparar contra
 //   ese número daría "no coincide" siempre.
 //
 // ⚠ EL CÓDIGO DE LA OC NO SIEMPRE ES EL NUESTRO. En la 9575: "66" es nuestro 066,
@@ -29,7 +30,6 @@
 
   var PDFJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
   var PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-  var SOURCE = "oc_pdf";
 
   var FORMATOS = [
     {
@@ -177,39 +177,8 @@
     return FORMATOS.find(function (f) { return f.detecta.test(texto); }) || null;
   }
 
-  var api = { numAR: numAR, parseTyl: parseTyl, resolverCodigo: resolverCodigo, armar: armar, formatoPorTexto: formatoPorTexto, FORMATOS: FORMATOS };
-  if (typeof module !== "undefined" && module.exports) module.exports = api;
-  if (typeof window === "undefined") return;
-  window.OcPdf = api;
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // UI (mayorista.html)
-  // ════════════════════════════════════════════════════════════════════════════
-  function $id(id) { return document.getElementById(id); }
-  function plata(n) {
-    return "$ " + Number(n || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  function esc(s) {
-    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
-    });
-  }
-
-  function formatoDelCliente() {
-    var cp = window.customerProfile || (typeof customerProfile !== "undefined" ? customerProfile : null);
-    if (!cp) return null;
-    var cod = String(cp.cod_cliente || "").trim();
-    var cuit = String(cp.cuit || "").replace(/\D/g, "");
-    return FORMATOS.find(function (f) { return f.cods.indexOf(cod) >= 0 || f.cuits.indexOf(cuit) >= 0; }) || null;
-  }
-
-  function ocPdfSyncBtn() {
-    var btn = $id("ocPdfBtn");
-    if (!btn) return;
-    var f = formatoDelCliente();
-    btn.hidden = !f;
-  }
-
+  // ── Navegador: pdf.js bajo demanda + renglones con el mismo agrupado por Y
+  //    que admin-supercot.js (extractPdfText) ─────────────────────────────────
   function cargarPdfJs() {
     if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
     return new Promise(function (ok, mal) {
@@ -225,7 +194,6 @@
     });
   }
 
-  // Mismo agrupado por renglón que admin-supercot.js (extractPdfText).
   async function lineasDelPdf(file) {
     var lib = await cargarPdfJs();
     var pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
@@ -248,120 +216,22 @@
     return out;
   }
 
-  function ocPdfAbrir() {
-    if (typeof editingOrderId !== "undefined" && editingOrderId) {
-      alert("Estás editando un pedido. Terminá o cancelá la edición antes de cargar una orden de compra.");
-      return;
-    }
-    var inp = $id("ocPdfInput");
-    if (inp) { inp.value = ""; inp.click(); }
+  // Lee el PDF y devuelve { fmt, res } con el control de total ya hecho.
+  // prods = productos activos con id, cod, uxb, list_price, badge_status.
+  async function leerOc(file, prods, formatoId) {
+    var lineas = await lineasDelPdf(file);
+    var fmt = formatoPorTexto(lineas.join("\n"));
+    if (!fmt) throw new Error("No reconocemos el formato de esta orden de compra.");
+    if (formatoId && fmt.id !== formatoId) throw new Error("Esta orden de compra es de " + fmt.nombre + ", no de tu cuenta.");
+    var oc = fmt.parse(lineas);
+    if (!oc.lineas.length) throw new Error("No encontramos artículos en la orden de compra.");
+    return { fmt: fmt, res: armar(oc, prods) };
   }
 
-  async function ocPdfArchivo(input) {
-    var file = input && input.files && input.files[0];
-    if (!file) return;
-    var btn = $id("ocPdfBtn");
-    var txtBtn = btn ? btn.textContent : "";
-    if (btn) { btn.disabled = true; btn.textContent = "Leyendo la orden…"; }
-    try {
-      var fCli = formatoDelCliente();
-      var lineas = await lineasDelPdf(file);
-      var fmt = formatoPorTexto(lineas.join("\n"));
-      if (!fmt) throw new Error("No reconocemos el formato de esta orden de compra.");
-      if (fCli && fmt.id !== fCli.id) throw new Error("Esta orden de compra es de " + fmt.nombre + ", no de tu cuenta.");
-      var oc = fmt.parse(lineas);
-      if (!oc.lineas.length) throw new Error("No encontramos artículos en la orden de compra.");
-
-      var prods = [].concat(typeof products !== "undefined" ? products : [], typeof lokeProducts !== "undefined" ? lokeProducts : []);
-      var res = armar(oc, prods);
-      var cargar = res.filas.filter(function (f) { return f.prod && f.cajas > 0; });
-      if (!cargar.length) throw new Error("Ninguno de los artículos de la orden se puede pedir hoy.");
-
-      if (cart.length && !confirm("Tu carrito ya tiene " + cart.length + " artículo(s). ¿Reemplazarlo por la orden de compra Nº " + (oc.nro || "") + "?")) return;
-
-      cart.splice(0, cart.length);
-      cargar.forEach(function (f) {
-        var pid = f.prod.id;
-        var ya = cart.find(function (c) { return String(c.productId) === String(pid); });
-        if (ya) ya.qtyCajas += f.cajas;
-        else cart.push({ productId: pid, qtyCajas: f.cajas, source: SOURCE });
-        if (typeof logCartAddEvent === "function") logCartAddEvent(pid, SOURCE);
-      });
-
-      // Nº de OC a observaciones (si no había nada escrito): viaja con el pedido.
-      var obs = $id("obsPedidoInput");
-      if (obs && !String(obs.value || "").trim()) {
-        obs.value = "OC " + fmt.nombre + " Nº " + (oc.nro || "?") + (oc.entrega ? " · entrega pedida " + oc.entrega : "");
-        if (typeof _obsSyncBtn === "function") _obsSyncBtn();
-      }
-
-      if (typeof saveCartToLS === "function") saveCartToLS();
-      if (typeof updateCart === "function") updateCart();
-      if (typeof renderProducts === "function") renderProducts();
-      if (typeof refreshSubmitEnabled === "function") refreshSubmitEnabled();
-      if (typeof showSection === "function") showSection("carrito");
-      mostrarInforme(fmt, res);
-    } catch (e) {
-      alert(e && e.message ? e.message : "No se pudo leer la orden de compra.");
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = txtBtn; }
-    }
-  }
-
-  function mostrarInforme(fmt, res) {
-    var oc = res.oc;
-    var t = typeof calcTotals === "function" ? calcTotals() : null;
-    var filas = res.filas.slice().sort(function (a, b) {
-      return (b.problemas.length ? 1 : 0) - (a.problemas.length ? 1 : 0) || a.orden - b.orden;
-    });
-    var conProblema = res.filas.filter(function (f) { return f.problemas.length; }).length;
-
-    var aviso = res.coincide
-      ? '<div class="ocpdf-ok">✓ El total de la OC coincide con nuestro programa: <b>' + plata(res.totalOc) + "</b> sin IVA, a precio de lista.</div>"
-      : '<div class="ocpdf-mal">✗ El total NO coincide. OC: <b>' + plata(res.totalOc) + "</b> · nuestro programa: <b>" + plata(res.totalNuestro) +
-        "</b> · diferencia <b>" + plata(res.diferencia) + "</b>. Revisá los renglones marcados antes de confirmar.</div>";
-
-    var extra = [];
-    if (Math.abs(res.sumaRenglones - res.totalOc) >= 1) extra.push("La suma de los renglones de la OC (" + plata(res.sumaRenglones) + ") no da el TOTAL GENERAL impreso.");
-    if (oc.noLeidas.length) extra.push(oc.noLeidas.length + " renglón(es) de la OC no se pudieron leer: " + oc.noLeidas.map(esc).join(" · "));
-
-    var cuerpo = filas.map(function (f) {
-      var l = f.l;
-      var cod = esc(l.codOc) + (f.nota ? '<div class="ocpdf-nota">' + esc(f.nota) + "</div>" : "");
-      var est = f.problemas.length ? '<span class="ocpdf-x">' + f.problemas.map(esc).join("<br>") + "</span>" : '<span class="ocpdf-v">✓</span>';
-      return "<tr" + (f.problemas.length ? ' class="ocpdf-fila-mal"' : "") + "><td>" + cod + '</td><td class="ocpdf-desc">' + esc(l.desc) +
-        "</td><td>" + l.unidades.toLocaleString("es-AR") + "</td><td>" + (f.cajas || "—") + "</td><td>" + plata(l.pu) +
-        "</td><td>" + (f.puNuestro == null ? "—" : plata(f.puNuestro)) + "</td><td>" + plata(l.total) + "</td><td>" + est + "</td></tr>";
-    }).join("");
-
-    var html =
-      '<div class="ocpdf-cab">OC Nº <b>' + esc(oc.nro || "—") + "</b> · " + esc(fmt.nombre) +
-      (oc.emision ? " · emitida " + esc(oc.emision) : "") + (oc.entrega ? " · entrega pedida " + esc(oc.entrega) : "") + "</div>" +
-      aviso +
-      (extra.length ? '<div class="ocpdf-mal">' + extra.join("<br>") + "</div>" : "") +
-      '<div class="ocpdf-tabla-wrap"><table class="ocpdf-tabla"><thead><tr>' +
-      "<th>Cód<br>OC</th><th>Descripción</th><th>Unid.</th><th>Cajas</th><th>PU OC</th><th>PU<br>nuestro</th><th>Total OC</th><th>" +
-      (conProblema ? conProblema + " a revisar" : "Estado") + "</th></tr></thead><tbody>" + cuerpo +
-      '</tbody><tfoot><tr><td colspan="6">Total OC (s/IVA) · nuestro programa a lista</td><td>' + plata(res.totalOc) + "</td><td>" + plata(res.totalNuestro) + "</td></tr></tfoot></table></div>" +
-      (t ? '<p class="ocpdf-pie">Tu pedido en la página: <b>' + plata(t.finalTotal) + " + IVA</b>, con tus descuentos. La OC va a precio de lista; por eso los dos números son distintos.</p>" : "") +
-      '<button type="button" class="modal-submit" onclick="ocPdfCerrar()">Ver el carrito</button>';
-
-    var m = $id("modalOcPdf");
-    if (!m) return;
-    $id("ocPdfBody").innerHTML = html;
-    m.classList.add("open");
-    m.setAttribute("aria-hidden", "false");
-  }
-
-  function ocPdfCerrar() {
-    var m = $id("modalOcPdf");
-    if (!m) return;
-    m.classList.remove("open");
-    m.setAttribute("aria-hidden", "true");
-  }
-
-  window.ocPdfSyncBtn = ocPdfSyncBtn;
-  window.ocPdfAbrir = ocPdfAbrir;
-  window.ocPdfArchivo = ocPdfArchivo;
-  window.ocPdfCerrar = ocPdfCerrar;
+  var api = { numAR: numAR, parseTyl: parseTyl, resolverCodigo: resolverCodigo, armar: armar, formatoPorTexto: formatoPorTexto, FORMATOS: FORMATOS };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  if (typeof window === "undefined") return;
+  api.lineasDelPdf = lineasDelPdf;
+  api.leerOc = leerOc;
+  window.OcPdf = api;
 })();

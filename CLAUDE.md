@@ -1330,6 +1330,24 @@ El modo expo permite onboarding de clientes nuevos en ferias comerciales. Archiv
 
 `vendor-import-excel.js` + `scotapi-shim.js` — importación de Excels Megashops para uso de vendedores en `mayorista.html`. Explota un Excel grupal (Poy/Megashop/Primer Precio) en N pedidos por sucursal. `scotapi-shim.js` es un shim liviano de `window.scotApi` para reusar el loader de Excel fuera del admin.
 
+## Orden de compra en PDF — Torres y Liva (06/10/2026)
+
+Torres y Liva (cod **288**) sube su OC en PDF en **SU módulo** (`tyl/index.html` → pestaña **Orden de
+compra**), **no en el carrito de `mayorista.html`** (decisión del 06/10/2026: *"esto quiero que esté en su
+módulo, no en el mío"*). `oc-pdf.js` lee el PDF (pdf.js bajo demanda), pasa unidades a cajas y controla el
+total; la pantalla y el envío son `renderOc` / `ocEnviar` en `osa/js/app.js` (sólo con `__formatoCfg.ocPdf`),
+que manda por el mismo `confirmarEnvioLoeke` del módulo (Contado 25%, vend 7) con el Nº de OC en
+`observaciones`.
+
+- ⚠ **La OC viene en UNIDADES y a nuestro PRECIO DE LISTA sin IVA** (OC 9575: 26 de 26 renglones con PU =
+  `list_price`). El control compara a lista; el importe del pedido (con dto. 16%, web 2% y contado 25%) se
+  muestra aparte.
+- ⚠ **El código de la OC no siempre es el nuestro** (`66`=066, `395D`=395, `525`=525E): gana el candidato con
+  el mismo precio.
+- ⚠ **El módulo usaba las sucursales de OSA para todos** (Villa Lugano): ahora cada cliente trae las suyas en
+  `__formatoCfg.sucursales`; la de TyL es `Rivadavia 3663- Mar Del Plata`.
+- Chequeo: `tests/oc-pdf-tyl.cjs` (fixture `tests/fixtures/oc-tyl-9575.*`).
+
 ## Directorio docs/
 
 Documentos de planificación y replicación, NO ejecutables:

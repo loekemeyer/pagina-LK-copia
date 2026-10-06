@@ -8,8 +8,8 @@
       name="description"
       content="Catálogo mayorista de Loekemeyer Hnos S.R.L.. Fabricantes de utensilios de cocina y hogar desde 1950. Consultá precios y hacé tu pedido online."
     />
-    <link rel="stylesheet" href="css/styles.css?v=23553" />
-    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23553" />
+    <link rel="stylesheet" href="css/styles.css?v=23554" />
+    <link rel="stylesheet" href="css/analisis-venta-cliente.css?v=23554" />
     <link rel="icon" type="image/jpeg" href="img/favicon.jpg" />
     <link rel="icon" href="img/favicon.png" />
     <link rel="shortcut icon" href="img/favicon.png" />
@@ -1437,18 +1437,6 @@
         </div>
         <!-- Derecha: solo Guardar pedido sin enviar -->
         <div class="order-actions-top">
-          <!-- Cargar el pedido desde la OC en PDF (Torres y Liva, 06/10/2026).
-               Sólo se ve para los clientes con formato en oc-pdf.js. -->
-          <button
-            id="ocPdfBtn"
-            class="back back-outline save-draft-btn"
-            type="button"
-            onclick="ocPdfAbrir()"
-            hidden
-          >
-            Cargar orden de compra (PDF)
-          </button>
-          <input id="ocPdfInput" type="file" accept="application/pdf,.pdf" hidden onchange="ocPdfArchivo(this)" />
           <button
             id="saveDraftBtn"
             class="back back-outline save-draft-btn"
@@ -1885,17 +1873,6 @@
           <div class="ship-hint">Se envía junto con el pedido.</div>
           <button type="button" class="modal-submit" onclick="cerrarModalObs()">Listo</button>
         </div>
-      </div>
-    </div>
-
-    <!-- Informe de la OC en PDF: lo arma mostrarInforme() de oc-pdf.js -->
-    <div class="modal" id="modalOcPdf" aria-hidden="true">
-      <div class="modal-content ocpdf-modal">
-        <div class="modal-header">
-          <h3>Orden de compra cargada</h3>
-          <button class="modal-close" type="button" onclick="ocPdfCerrar()">✕</button>
-        </div>
-        <div class="modal-body" id="ocPdfBody"></div>
       </div>
     </div>
 
@@ -2410,15 +2387,14 @@
     <!-- La versión ya se muestra en el footer; se quitó el badge flotante. -->
 
     <!-- Tu JS -->
-    <script src="./version.js?v=23553"></script>
-    <script src="script.js?v=23553"></script>
+    <script src="./version.js?v=23554"></script>
+    <script src="script.js?v=23554"></script>
     <!-- Análisis Venta Cliente embebido en #perfil (modo customer view) -->
-    <script src="analisis-venta-cliente.js?v=23553"></script>
+    <script src="analisis-venta-cliente.js?v=23554"></script>
     <!-- Módulo "Importar Excels Megashops" (vendedor 10006): reusa el loader del
          admin (ExcelKrikosCore) + shim de scotApi para el catálogo. -->
-    <script src="scotapi-shim.js?v=23553"></script>
-    <script src="admin-excel-krikos.js?v=23553"></script>
-    <script src="vendor-import-excel.js?v=23553"></script>
-    <script src="oc-pdf.js?v=23553"></script>
+    <script src="scotapi-shim.js?v=23554"></script>
+    <script src="admin-excel-krikos.js?v=23554"></script>
+    <script src="vendor-import-excel.js?v=23554"></script>
   </body>
 </html>

@@ -27,11 +27,20 @@
   var OSA_PAGO_TEXT = 'Pago Contado: 25% Dto';
   var OSA_PAGO_CODE = 8;
   var OSA_PAGO_DISCOUNT = 0.25;
-  var LK_SUCURSALES = [
+  var CFG = window.__formatoCfg || {};
+  // Sucursales de entrega: las de OSA por defecto; otro cliente trae las suyas en
+  // __formatoCfg.sucursales (Torres y Liva, 06/10/2026: antes salía con las de OSA).
+  var LK_SUCURSALES = CFG.sucursales || [
     { val: 'Zuviria 5352- Villa Lugano', lbl: 'Villa Lugano' }, // default
     { val: 'Puente del Inca 2450 - Ezeiza', lbl: 'Ezeiza' },
     { val: 'Retira', lbl: 'Retira' }
   ];
+  // La guardada en meta vale sólo si es una de ESTE cliente (store.js arranca con
+  // la de OSA para todos).
+  function sucursalLK() {
+    var m = S.getMeta().sucursalLK;
+    return LK_SUCURSALES.some(function (x) { return x.val === m; }) ? m : LK_SUCURSALES[0].val;
+  }
 
   /* ---------- Estado de UI ---------- */
   var ui = {
@@ -56,6 +65,7 @@
     cargas:      { title: 'Control de cargas', sub: 'Ventas de OSA por quincena: cargadas y pendientes' },
     config:      { title: 'Configuración', sub: 'Datos, respaldo y preferencias' }
   };
+  if (CFG.ocPdf) VIEWS.oc = { title: 'Orden de compra', sub: 'Subí el PDF de tu orden de compra: armamos el pedido y controlamos el total' };
 
   /* ---------- Atajos DOM ---------- */
   var $ = function (s, ctx) { return (ctx || document).querySelector(s); };
@@ -280,13 +290,14 @@
     else if (ui.view === 'puntopedido') actions = btn('guardar-punto', 'primary', iconSave(), 'Guardar');
     else if (ui.view === 'ventas') actions = btn('importar-ventas', 'primary', iconUpload(), 'Importar informe');
     else if (ui.view === 'cargas') actions = btn('importar-ventas', 'primary', iconUpload(), 'Importar informe');
+    else if (ui.view === 'oc') actions = btn('oc-subir', 'primary', iconUpload(), ui.oc ? 'Subir otra OC' : 'Subir orden de compra (PDF)');
     $('#topbarActions').innerHTML = actions;
     renderUnitToggle();
     medirTopbar();
 
     var fn = ({
       stocks: renderStocks, movimientos: renderMovimientos, puntopedido: renderPunto,
-      entregas: renderEntregas, ventas: renderVentas, cargas: renderControl, config: renderConfig
+      entregas: renderEntregas, ventas: renderVentas, cargas: renderControl, config: renderConfig, oc: renderOc
     })[ui.view];
     viewEl.innerHTML = fn ? fn() : '';
     if (afterRender[ui.view]) afterRender[ui.view]();
@@ -359,7 +370,7 @@
     });
     var totalPedir = qSum(sug.map(function (x) { return { cajas: x.sugerido, art: x.articulo }; }));
     var uCap = unidadVista() === 'unidades' ? 'Unidades' : 'Cajas';
-    var sucActual = S.getMeta().sucursalLK || LK_SUCURSALES[0].val;
+    var sucActual = sucursalLK();
 
     var html = bannerRecordatorio();
     html += '<div class="sucbar"><span class="sucbar__lbl">Sucursal de entrega</span><div class="sucbar__btns">' +
@@ -713,6 +724,128 @@
       if (vacio) vacio.style.display = visibles ? 'none' : '';
     });
   };
+
+
+  /* ============================================================
+     ORDEN DE COMPRA EN PDF (Torres y Liva, 06/10/2026)
+     El cliente sube la OC; oc-pdf.js la lee y arma los renglones, acá se
+     muestra el CONTROL DE TOTAL (OC vs nuestro programa, a precio de lista) y
+     se envía como cualquier pedido del módulo (confirmarEnvioLoeke).
+     ============================================================ */
+  ui.oc = null; // { fmt, res, archivo, enviado }
+
+  function plataOc(n) {
+    return '$ ' + Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function ocSubir() {
+    var inp = document.getElementById('ocInput');
+    if (!inp) {
+      inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'application/pdf,.pdf'; inp.id = 'ocInput'; inp.hidden = true;
+      inp.addEventListener('change', function () { if (inp.files && inp.files[0]) ocLeer(inp.files[0]); });
+      document.body.appendChild(inp);
+    }
+    inp.value = '';
+    inp.click();
+  }
+
+  async function ocLeer(file) {
+    if (!window.OcPdf || !window.OcPdf.leerOc) { toast('No se cargó el lector de órdenes de compra. Recargá la página.', 'danger'); return; }
+    if (!sb) { toast('No se pudo cargar Supabase. Recargá la página.', 'danger'); return; }
+    toast('Leyendo la orden de compra…', 'info');
+    try {
+      var r = await sb.from('products').select('id,cod,uxb,list_price,badge_status,description').eq('active', true);
+      if (r.error) throw new Error('No se pudo leer el catálogo: ' + r.error.message);
+      var out = await window.OcPdf.leerOc(file, r.data || [], CFG.ocPdf);
+      ui.oc = { fmt: out.fmt, res: out.res, archivo: file.name, enviado: null };
+      if (ui.view !== 'oc') setView('oc'); else render();
+    } catch (e) {
+      toast(e && e.message ? e.message : 'No se pudo leer la orden de compra.', 'danger');
+    }
+  }
+
+  // Importe que va a tener el pedido: lista × (1 − dto vol) × (1 − web) × (1 − 25% contado),
+  // la misma cuenta que confirmarEnvioLoeke.
+  async function ocImporteFinal(totalLista) {
+    try {
+      var sess = (await sb.auth.getSession()).data.session;
+      if (!sess) return null;
+      var prof = (await sb.from('customers').select('dto_vol').eq('auth_user_id', sess.user.id).maybeSingle()).data;
+      var web = await osaWebDiscount();
+      return totalLista * (1 - Number((prof && prof.dto_vol) || 0)) * (1 - web) * (1 - OSA_PAGO_DISCOUNT);
+    } catch (e) { return null; }
+  }
+
+  function renderOc() {
+    var o = ui.oc;
+    if (!o) {
+      return '<div class="card"><div class="card__body"><div class="empty">' +
+        '<div class="empty__ic">' + iconUpload() + '</div>' +
+        '<h3>Cargá tu orden de compra</h3>' +
+        '<p>Subí el PDF tal como lo emite tu sistema. Armamos el pedido (unidades → cajas) y te mostramos si el total coincide con el nuestro antes de enviarlo.</p>' +
+        '<div class="row" style="justify-content:center;">' + btn('oc-subir', 'primary', iconUpload(), 'Subir orden de compra (PDF)') + '</div>' +
+        '</div></div></div>';
+    }
+    var res = o.res, oc = res.oc;
+    var filas = res.filas.slice().sort(function (a, b) {
+      return (b.problemas.length ? 1 : 0) - (a.problemas.length ? 1 : 0) || a.orden - b.orden;
+    });
+    var nMal = res.filas.filter(function (f) { return f.problemas.length; }).length;
+    var aviso = res.coincide
+      ? '<div class="ocv-ok">✓ El total de la OC coincide con nuestro programa: <b>' + plataOc(res.totalOc) + '</b> sin IVA, a precio de lista.</div>'
+      : '<div class="ocv-mal">✗ El total NO coincide. OC <b>' + plataOc(res.totalOc) + '</b> · nuestro programa <b>' + plataOc(res.totalNuestro) +
+        '</b> · diferencia <b>' + plataOc(res.diferencia) + '</b>. Revisá los renglones marcados.</div>';
+    var extra = [];
+    if (Math.abs(res.sumaRenglones - res.totalOc) >= 1) extra.push('La suma de los renglones (' + plataOc(res.sumaRenglones) + ') no da el TOTAL GENERAL impreso.');
+    if (oc.noLeidas.length) extra.push(oc.noLeidas.length + ' renglón(es) no se pudieron leer: ' + oc.noLeidas.map(esc).join(' · '));
+
+    var cuerpo = filas.map(function (f) {
+      var l = f.l;
+      var est = f.problemas.length ? '<span class="ocv-x">' + f.problemas.map(esc).join('<br>') + '</span>' : '<span class="ocv-v">✓</span>';
+      return '<tr' + (f.problemas.length ? ' class="ocv-fila-mal"' : '') + '><td>' + esc(l.codOc) +
+        (f.nota ? '<div class="ocv-nota">' + esc(f.nota) + '</div>' : '') + '</td><td class="ocv-desc">' + esc(l.desc) +
+        '</td><td>' + l.unidades.toLocaleString('es-AR') + '</td><td>' + (f.cajas || '—') + '</td><td>' + plataOc(l.pu) +
+        '</td><td>' + (f.puNuestro == null ? '—' : plataOc(f.puNuestro)) + '</td><td>' + plataOc(l.total) + '</td><td>' + est + '</td></tr>';
+    }).join('');
+
+    var enviar = o.enviado
+      ? '<span class="badge badge--ok">Enviada · pedido N° ' + esc(String(o.enviado)) + '</span>'
+      : btn('oc-enviar', res.coincide ? 'primary' : 'ghost', iconSend(), res.coincide ? 'Enviar a Loekemeyer' : 'Enviar igual a Loekemeyer');
+
+    return '<div class="card"><div class="card__body">' +
+      '<div class="ocv-cab">OC Nº <b>' + esc(oc.nro || '—') + '</b> · ' + esc(o.fmt.nombre) +
+      (oc.emision ? ' · emitida ' + esc(oc.emision) : '') + (oc.entrega ? ' · entrega pedida ' + esc(oc.entrega) : '') +
+      ' · <span class="hint">' + esc(o.archivo) + '</span></div>' +
+      aviso + (extra.length ? '<div class="ocv-mal">' + extra.join('<br>') + '</div>' : '') +
+      '<div class="ocv-wrap"><table class="ocv-tabla"><thead><tr><th>Cód<br>OC</th><th>Descripción</th><th>Unid.</th><th>Cajas</th>' +
+      '<th>PU OC<br>s/IVA</th><th>PU<br>nuestro</th><th>Total OC</th><th>' + (nMal ? nMal + ' a revisar' : 'Estado') + '</th></tr></thead>' +
+      '<tbody>' + cuerpo + '</tbody><tfoot><tr><td colspan="6">Total OC (s/IVA) · nuestro programa a lista</td><td>' + plataOc(res.totalOc) +
+      '</td><td>' + plataOc(res.totalNuestro) + '</td></tr></tfoot></table></div>' +
+      '<div class="ocv-pie"><span>Importe del pedido con tus descuentos (contado 25%): <b id="ocFinal">…</b> + IVA</span>' +
+      '<span>Entrega: <b>' + esc(sucursalLK()) + '</b></span>' + enviar + '</div>' +
+      '</div></div>';
+  }
+  afterRender.oc = function () {
+    var o = ui.oc, el = document.getElementById('ocFinal');
+    if (!o || !el) return;
+    ocImporteFinal(o.res.totalNuestro).then(function (v) { if (el.isConnected) el.textContent = v == null ? '—' : plataOc(v); });
+  };
+
+  function ocEnviar() {
+    var o = ui.oc;
+    if (!o || o.enviado || o.enviando) return;
+    var res = o.res;
+    var items = res.filas.filter(function (f) { return f.prod && f.cajas > 0; }).map(function (f) {
+      return { cod: f.prod.cod, nombre: f.prod.description || f.l.desc, uxc: Number(f.prod.uxb), cajas: f.cajas };
+    });
+    if (!items.length) { toast('Ninguno de los artículos de la orden se puede pedir hoy.', 'warn'); return; }
+    if (!res.coincide && !confirm('El total de la OC no coincide con nuestro programa (diferencia ' + plataOc(res.diferencia) + '). ¿Enviar igual?')) return;
+    var pedido = pedidoDesdeItems(items);
+    pedido.obs = 'OC ' + o.fmt.nombre + ' Nº ' + (res.oc.nro || '?') + (res.oc.entrega ? ' · entrega pedida ' + res.oc.entrega : '');
+    o.enviando = true; // doble clic: el pedido sale una sola vez
+    confirmarEnvioLoeke(pedido).finally(function () { o.enviando = false; });
+  }
 
   /* ============================================================
      MÓDULO 6 · CONTROL DE CARGAS (ventas por quincena)
@@ -1308,7 +1441,7 @@
     return {
       fecha: iso[2] + '/' + iso[1] + '/' + iso[0],
       cliente: LK_CLIENTE, vend: LK_VEND,
-      sucursal: m.sucursalLK || LK_SUCURSALES[0].val,
+      sucursal: sucursalLK(),
       items: lim,
       totalCajas: lim.reduce(function (s, it) { return s + it.cajas; }, 0),
       totalUnidades: lim.reduce(function (s, it) { return s + it.unidades; }, 0)
@@ -1335,7 +1468,7 @@
     var totIni = items.reduce(function (s, it) { return s + it.cajas; }, 0);
     var body = '<div class="pedlist">' + rows + '</div>' +
       '<div class="pedtot">Total: <strong id="pedTotal">' + totIni + '</strong> cajas</div>' +
-      '<div class="hint">Ajustá las cajas con − / + (o tocá la <strong>✕</strong> para sacar el artículo). Las unidades se calculan solas. Sucursal: <strong>' + esc(S.getMeta().sucursalLK || LK_SUCURSALES[0].val) + '</strong>.</div>' +
+      '<div class="hint">Ajustá las cajas con − / + (o tocá la <strong>✕</strong> para sacar el artículo). Las unidades se calculan solas. Sucursal: <strong>' + esc(sucursalLK()) + '</strong>.</div>' +
       '<div class="form-actions"><button type="button" class="btn btn--ghost" data-close>Cancelar</button>' +
       '<button type="button" class="btn btn--primary" id="pedConfirm">Confirmar y enviar</button></div>';
     openModal('Revisar pedido a Loekemeyer', body);
@@ -1439,7 +1572,7 @@
       var lcStatus = (creditLimit != null && (debt + finalTotal) > creditLimit) ? 'X' : 'OK';
       var dStatus = debt > 0 ? 'X' : 'OK';
       var ppStatus = prof.payment_term == null ? 'Null' : String(Number(prof.payment_term));
-      var suc = pedido.sucursal || (S.getMeta().sucursalLK || LK_SUCURSALES[0].val);
+      var suc = pedido.sucursal || (sucursalLK());
 
       var sheetsPayload = {
         order_number: String(orderId).trim(),
@@ -1448,6 +1581,7 @@
         condicion_pago: OSA_PAGO_TEXT,
         condicion_pago_code: OSA_PAGO_CODE,
         sucursal_entrega: suc,
+        observaciones: String(pedido.obs || '').trim(),
         cliente_nuevo: '',
         is_promo: false,
         extra_discount: 0,
@@ -1484,8 +1618,9 @@
       osaSendEntregasSheet(sess.access_token, entregasPayload);
 
       toast('Pedido N° ' + orderId + ' enviado (' + rpcItems.length + ' artículos)', 'ok');
+      if (pedido.obs && ui.oc) ui.oc.enviado = orderId; // OC ya enviada: no se manda dos veces
       if (S.marcarPedidoEnviado) S.marcarPedidoEnviado(S.hoyISO()); // suprime el recordatorio de esta quincena
-      if (ui.view === 'stocks') render();
+      if (ui.view === 'stocks' || ui.view === 'oc') render();
 
       // Ofrecer imprimir el comprobante — solo con los items que realmente
       // se enviaron (excluye los que no maparon a producto del catálogo).
@@ -1774,6 +1909,8 @@
     }
     else if (act === 'set-sucursal') { S.setMeta({ sucursalLK: t.getAttribute('data-suc') }); render(); }
     else if (act === 'demo') cargarDemo();
+    else if (act === 'oc-subir') ocSubir();
+    else if (act === 'oc-enviar') ocEnviar();
   });
 
   /* ---------- Init ---------- */

@@ -496,3 +496,21 @@ svg { display: block; }
   .print-only { display: block !important; }
 }
 .print-only { display: none; }
+
+/* ── Orden de compra en PDF (Torres y Liva, 06/10/2026 · renderOc) ──────────
+   Tabla al ancho del dato, centrada, sin cebra ni relleno (regla de Luis). */
+.ocv-cab { text-align: center; font-size: 14px; margin-bottom: 10px; }
+.ocv-ok, .ocv-mal { text-align: center; font-size: 14px; padding: 8px 12px; border-radius: 8px; margin: 0 auto 10px; max-width: 900px; }
+.ocv-ok { background: var(--ok-bg); color: #06794f; border: 1.5px solid #06794f; }
+.ocv-mal { background: var(--danger-bg); color: #b42318; border: 1.5px solid #b42318; }
+.ocv-wrap { overflow-x: auto; }
+.ocv-tabla { width: auto; margin: 0 auto; border-collapse: collapse; font-size: 13px; }
+.ocv-tabla th, .ocv-tabla td { border: 1px solid var(--line); padding: 3px 7px; text-align: center; white-space: nowrap; }
+.ocv-tabla th { font-size: 12px; line-height: 1.15; color: var(--muted); }
+.ocv-tabla td.ocv-desc { white-space: normal; max-width: 340px; }
+.ocv-tabla tfoot td { font-weight: 700; }
+.ocv-fila-mal td { color: #b42318; }
+.ocv-nota { font-size: 11px; color: var(--muted); }
+.ocv-v { color: #06794f; font-weight: 700; }
+.ocv-x { font-size: 12px; white-space: normal; }
+.ocv-pie { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; justify-content: center; margin-top: 14px; font-size: 14px; }
