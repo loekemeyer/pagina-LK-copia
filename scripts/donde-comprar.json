@@ -1,6 +1,6 @@
 {
  "generado": "2026-10-04",
- "criterio": "Comercio minorista con tienda online verificada (vende Loekemeyer al público). Un artículo lista al comercio si el cliente lo compró en los últimos 12 meses (sales_lines, cajas > 0). Más Online (Dorinka, Chef 2686) sólo en los artículos de Loekemeyer que compra con código L (12 meses al 05/10/2026: 439EL → 439E). Sus 809E y 438E sin L son artículos del catálogo de Chef (el 809E de Chef es otro producto) y no se cuentan.",
+ "criterio": "Comercio minorista con tienda online verificada (vende Loekemeyer al público). Un artículo lista al comercio si el cliente lo compró en los últimos 12 meses (sales_lines, cajas > 0). Más Online va sólo en la página general: Dorinka compra con códigos de Chef y no se puede mapear artículo por artículo sin adivinar.",
  "mercadolibre": "https://listado.mercadolibre.com.ar/{q}",
  "comercios": [
   {
@@ -57,7 +57,8 @@
    "grupo": "ChangoMás",
    "cliente": "chef:2686",
    "url": "https://www.masonline.com.ar/loekemeyer?_q=loekemeyer&map=ft",
-   "alcance": "Tienda online y sucursales ChangoMás"
+   "alcance": "Tienda online y sucursales ChangoMás",
+   "sin_detalle_por_articulo": true
   }
  ],
  "articulos": {
@@ -419,9 +420,6 @@
    "jumbo",
    "disco",
    "vea"
-  ],
-  "439E": [
-   "masonline"
   ]
  }
 }

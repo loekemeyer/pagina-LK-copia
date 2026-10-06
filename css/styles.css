@@ -17022,15 +17022,3 @@ body.is-vendor-user #carrito .exp-btn { padding: 2px 8px; font-size: 11.5px; }
 .vrep-link { border: none; background: none; color: #d00000; text-decoration: underline; cursor: pointer; padding: 0; }
 .vrep-ok { width: 100%; }
 .vrep-ok[disabled] { opacity: 0.45; cursor: not-allowed; }
-
-/* Botón «Ficha técnica» de la card (05/10/2026): link a la página del artículo. Sólo aparece en
-   los artículos con datos cargados en scripts/fichas-manual.csv. */
-.ft-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
-  margin: 2px auto 4px; padding: 3px 10px;
-  border: 1px solid #ccc; border-radius: 999px; background: #fff;
-  color: #333; font-size: 12px; font-weight: 600; line-height: 1.3;
-  cursor: pointer; text-decoration: none; width: fit-content;
-}
-.ft-btn svg { width: 14px; height: 14px; fill: currentColor; }
-.ft-btn:hover, .ft-btn:focus-visible { border-color: #111; color: #111; }

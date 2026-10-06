@@ -1581,6 +1581,7 @@ las aprueben. No muestran precios.
   admin, cod 5000 y vendedores 100XX/cod 1 → Precio Lista; modo presupuesto → sin precio; SIN STOCK/PRÓXIMAMENTE →
   botón deshabilitado). Sin sesión queda el link de WhatsApp. ⚠ El precio de un vendedor que en mayorista tiene un
   cliente elegido NO se replica acá (muestra lista). Chequeo: `tests/ficha-articulo.cjs`.
+- ⚠ **06/10/2026 (Thomas): las fichas técnicas NO están en `main`.** *"Esto de las fichas técnicas es, primero, para ver cómo quedaría"*: se volvió `main` al estado de la v2.3.532 en todo lo de fichas (botón, popup, diseño nuevo, logos, `css/ficha.css`, `js/ficha-compra.js`, `productos/fichas.json` y sus tests). **El trabajo completo vive en el branch `claude/loekemeyer-seo-semantic-bqkuqs` (commit `943fd64`, v2.3.550)**: para retomarlo se trae de ahí, no se rehace. Lo que sigue describe ese branch.
 - **Botón «Ficha técnica» en la card del catálogo mayorista (05/10/2026, Thomas)**: `productos/fichas.json`
   (`{fichas: {cod: {n}}}`) lista **todos** los artículos activos (Thomas: *"todos los productos tengan su ficha
   técnica"*); un código nuevo sin regenerar no lleva botón (`fichaTecBtnHtml`). **La ficha se abre ADENTRO de `mayorista.html`** (Thomas: *"el header no tiene que
