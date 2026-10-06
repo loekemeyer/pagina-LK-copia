@@ -49,6 +49,7 @@ _correr ficha-hoja.cjs
 _correr fc-acuerdo-desglose.cjs
 _correr est-madre-unica.cjs
 _correr lista-super-jumbo.cjs
+_correr lista-super-sin-encabezado.cjs
 _correr cencosud-cliente-chef.cjs
 _correr alta-sin-login-frena.cjs
 _correr reparar-auth-cuit-compartido.cjs

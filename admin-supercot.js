@@ -2225,6 +2225,8 @@
 
       // Filas que la config de inicio (hoja_start_row) salteaba y se recuperaron.
       var filasRecuperadas = [];
+      // Hojas cuyas columnas se detectaron solas (formato distinto al configurado).
+      var columnasAuto = [];
       targets.forEach(function (t) {
         var sheetName = t.sheetName;
         var cfg = t.cfg;
@@ -2265,6 +2267,7 @@
         // hoja tiene el encabezado más arriba de lo configurado se perdían las
         // primeras filas (Cencosud 05/10/2026: 031, 123, 224, 248, 280, 315).
         var dataStart = cfg.dataStartRow;
+        var headerOk = false;
         var scanHasta = Math.max(cfg.dataStartRow, 2);
         for (var hh = 0; hh < scanHasta; hh++) {
           var hrow = rows[hh] || [];
@@ -2282,7 +2285,19 @@
                  /^lista\s+\d/.test(hv) ||
                  (hv.indexOf("precio") === 0 && hv.indexOf("costo") < 0))) pC = cc;
           }
-          if (cC >= 0 && pC >= 0) { codCol = cC; priceCol = pC; dataStart = Math.min(dataStart, hh + 1); break; }
+          if (cC >= 0 && pC >= 0) { codCol = cC; priceCol = pC; dataStart = Math.min(dataStart, hh + 1); headerOk = true; break; }
+        }
+        // Sin encabezado y con las columnas configuradas vacías: la lista viene en
+        // OTRO formato (06/10/2026, Luis: La Anónima y Toledo llegan en 2 columnas
+        // —código y precio— desde la fila 1, sin títulos, y la config espera las
+        // columnas del Excel de costos desde la fila 8). Se detectan solas.
+        if (!headerOk) {
+          var det = scotDetectarColumnas(rows, codCol, priceCol, dataStart);
+          if (det) {
+            columnasAuto.push({ hoja: sheetName, cod: det.codCol, precio: det.priceCol,
+                                desde: det.dataStart + 1, n: det.n });
+            codCol = det.codCol; priceCol = det.priceCol; dataStart = det.dataStart;
+          }
         }
         // Aunque no se encuentre el encabezado (otro rótulo, hoja sin títulos):
         // toda fila PEGADA arriba del inicio con código y precio numérico es dato,
@@ -2452,7 +2467,7 @@
 
       var htmlRev =
         '<h2 style="margin:0 0 4px;font-size:18px">Revisar cambios de precio</h2>' +
-        resumen + scotRecuperadasHtml(filasRecuperadas) + cambiosHtml + faltantesHtml;
+        resumen + scotColumnasAutoHtml(columnasAuto) + scotRecuperadasHtml(filasRecuperadas) + cambiosHtml + faltantesHtml;
       var ok = await scotModal(htmlRev, {
         okText: faltantes.length ? "Confirmar (conservar los de abajo)" : "Confirmar carga",
         cancelText: "Cancelar",
@@ -4465,4 +4480,46 @@ function scotRecuperadasHtml(lista) {
     'padding:6px 10px;margin:4px 0 8px;font-size:12.5px">⚠ Se recuperaron filas del ' +
     "principio de la hoja (la config de inicio estaba más abajo):<ul style=\"margin:4px 0 0 18px;padding:0\">" +
     li + "</ul></div>";
+}
+
+// ¿En qué columnas viene la lista si no tiene encabezado y las configuradas no
+// traen nada? (06/10/2026: La Anónima y Toledo llegan en 2 columnas —código y
+// precio— desde la fila 1, y la config espera el Excel de costos.) Si las
+// columnas configuradas YA traen datos devuelve null: no se toca lo que anda.
+// Si no, elige el par (código, precio) con más filas de dato (mínimo 3; empate:
+// las columnas de más a la izquierda) y arranca en su primera fila de dato.
+function scotDetectarColumnas(rows, codCol, priceCol, dataStart) {
+  rows = rows || [];
+  for (var i = dataStart; i < rows.length; i++) {
+    if (scotEsFilaDato(rows[i], codCol, priceCol)) return null;
+  }
+  var maxCol = 0;
+  rows.forEach(function (r) { if (r && r.length > maxCol) maxCol = r.length; });
+  maxCol = Math.min(maxCol, 15);
+  var mejor = null;
+  for (var c = 0; c < maxCol; c++) {
+    for (var p = c + 1; p < maxCol; p++) {
+      var n = 0, desde = -1;
+      for (var j = 0; j < rows.length; j++) {
+        if (scotEsFilaDato(rows[j], c, p)) { n++; if (desde < 0) desde = j; }
+      }
+      if (n >= 3 && (!mejor || n > mejor.n)) mejor = { codCol: c, priceCol: p, dataStart: desde, n: n };
+    }
+  }
+  return mejor;
+}
+
+// Aviso para la revisión: la hoja vino en otro formato y las columnas se detectaron solas.
+function scotColumnasAutoHtml(lista) {
+  if (!lista || !lista.length) return "";
+  var letra = function (n) { return String.fromCharCode(65 + n); };
+  var li = lista.map(function (r) {
+    return "<li><b>" + String(r.hoja).replace(/</g, "&lt;") + "</b>: código en la columna " +
+      letra(r.cod) + ", precio en la " + letra(r.precio) + ", desde la fila " + r.desde +
+      " (" + r.n + " artículos)</li>";
+  }).join("");
+  return '<div style="background:#e8f2ff;border:1px solid #9cc2f0;border-radius:6px;' +
+    'padding:6px 10px;margin:4px 0 8px;font-size:12.5px">ℹ El archivo no tiene el formato ' +
+    "del Excel de costos; se leyó así (revisá que los precios de abajo sean los de la lista):" +
+    '<ul style="margin:4px 0 0 18px;padding:0">' + li + "</ul></div>";
 }
