@@ -188,7 +188,9 @@ llave **`app_settings.wa_envio_automatico`** del proyecto LK (`0` nada · `prueb
 > Hasta un pedido EXPLÍCITO de Thomas o Luis. Comunicarle mal un dato de esa magnitud a un cliente es inaceptable.
 
 - `MOSTRAR_DEUDA_CLIENTE = false` en `script.js` (25/09) **y** `get_mi_deuda()` de LK **sin `EXECUTE`** para `anon`/`authenticated` (07/10). Rollback sólo con el pedido: `grant execute on function public.get_mi_deuda() to authenticated;`
-- ⚠ En **Chef** `get_mi_deuda()` sigue ejecutable por el cliente logueado (la página no la llama): falta revocarla en ese proyecto.
+- En **Chef** `get_mi_deuda()` también está revocada (la corrió Luis el 07/10; verificado `false`).
+- **El navegador no baja `debt` ni `credit_limit`** (07/10, v2.3.556): la leyenda D / LC / PP del pedido la calcula la base (trigger `aa_orders_leyenda_servidor` en `orders`) y `sheets-proxy` v74 la toma de ahí para el Sheet. `sql/leyenda_servidor.sql`, `tests/deuda-no-baja.cjs`.
+- ⚠ **Igual el cliente PUEDE leer su deuda pidiéndola por REST**: la policy `customers_select_own` le deja leer toda su fila, y `orders_select_own` la ficha de sus pedidos (que trae `deuda`). Sacarlo del front no lo cierra; está como decisión pendiente.
 - La precisión se valida en **modo sombra** en Gestión Virgilio (`sql/gv_cc_sombra_v2789.sql`, cron `gv-cc-sombra`): cada Excel de deuda se compara contra lo estimado desde el anterior. Con 20 días hábiles seguidos sin diferencia abre una tarea en el Planify de Luis. **Esa tarea no prende nada.**
 
 ## Modos
@@ -708,6 +710,19 @@ temporal aleatorio en el user con `admin.updateUserById` y devuelve para
 - Product images are served via Supabase public storage: `{SUPABASE_URL}/storage/v1/object/public/products-images/{cod}.webp`. The `BASE_IMG`/`IMG_PARAMS` pair is redeclared in `script.js`, `historial.js`, `sugerencias.js` and `admin.js`; keep them in sync. **Do not use** `/storage/v1/render/image/public/` — the image-transformations feature is disabled on this Supabase tenant (returns 403 "FeatureNotEnabled"). Photos are stored pre-rendered at 400x400 WebP, so `IMG_PARAMS` is an empty string.
 - `app_settings.web_order_discount` is read at load time as the web-order discount (fallback `0.02`).
 - **Los módulos de estadística valorizan en NETO, no a precio de lista.** `get_ranking_inactivos` y `get_ranking_inactivos_export` hacen `boxes * products.uxb * products.list_price * (1 - customers.dto_vol) * (1 - app_settings.web_order_discount)`. **`list_price` es el precio POR UNIDAD, no por caja**, así que el `uxb` NO es opcional: sin él el monto sale dividido por las unidades por caja (promedio 12,1, rango 1 a 100). Es el mismo cálculo que hace el carrito en `script.js` (`listUnit * (uxb * cajas)`) — la misma cadena multiplicativa que arma un pedido real en `script.js` (`listUnit * (1 - dtoVol) * (1 - webDiscountRate) * (1 - extraRate)`). El descuento por medio de pago queda afuera: depende de cómo se pagó cada pedido y `sales_lines` no lo guarda. Las dos RPC tienen que usar el MISMO factor: una alimenta la tabla en pantalla y la otra el Excel descargable del mismo módulo, así que si divergen muestran números distintos para el mismo cliente.
+
+## 🟥 REGLA (Luis, 07/10/2026): el proyecto de CHEF NO se conecta al connector — su SQL lo corre Luis
+
+> **No pedir más que se conecte el proyecto de Chef (`nkhzocgdpwtgrmwleihr`) al connector de Supabase: no se puede.**
+> Todo SQL que haya que correr en Chef **se le pasa a Luis en el chat**, completo y listo para pegar en el SQL
+> editor de Chef, y él lo corre. Después se le pide el resultado del `select` de verificación.
+
+- Vale para leer también: si hace falta la definición viva de algo de Chef, se le pasa el
+  `select pg_get_functiondef(...)` y él pega el resultado.
+- Lo que sí llega desde LK por FDW (`chef_ext.*`, `chef_*_cache`) se lee igual desde el proyecto de LK.
+- En Gestión Virgilio es la **única excepción** a «EL SQL LO CORRE LA SESIÓN»: ahí la sesión no tiene acceso.
+- Edge Functions de Chef (`smooth-handler`, `crear-cliente-auth`…): igual, el código se le pasa a Luis para
+  que lo pegue en el dashboard de Chef.
 
 ## ⚠ REGLA (Thomas, 2026-09-23, v2.3.471): el EXPRESO lo elige el cliente, y NUNCA le frena el pedido
 

@@ -2709,7 +2709,7 @@ async function refreshAuthState(sessionOverride) {
   syncAdminCheckoutUI();
 
   const { data: custRow, error: custErr } = await _customerSelect(
-    "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit,escala_activa",
+    "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,payment_term,escala_activa",
     (q) => q.eq("auth_user_id", currentSession.user.id),
   );
 
@@ -9969,22 +9969,10 @@ async function _submitSingleOrder(
   // `order_number` no va acá: el número lo pone la RPC, que es la única que lo
   // conoce antes de que exista.
   var esPresupuesto = isPresupuestoMode();
-  var debt = Number(customerProfile.debt || 0);
-  var creditLimit = customerProfile.credit_limit == null ? null : Number(customerProfile.credit_limit);
-
-  // LC: "X" if (debt + order) > creditLimit, else "OK"
-  var lcStatus = "OK";
-  if (creditLimit != null && (debt + finalTotal) > creditLimit) {
-    lcStatus = "X";
-  }
-
-  // D (Deuda): "X" if debt > 0, else "OK"
-  var dStatus = debt > 0 ? "X" : "OK";
-
-  // PP: payment_term value or "Null" (no tiene plazo cargado)
-  var ppStatus = customerProfile.payment_term == null
-    ? "Null"
-    : String(Number(customerProfile.payment_term));
+  // ⚠ Deuda, límite de crédito y las marcas LC / D / PP las calcula el SERVIDOR
+  // (Luis, 07/10/2026): trigger aa_orders_leyenda_servidor en orders y
+  // sheets-proxy v74. El navegador ya no baja debt ni credit_limit; acá van en
+  // null y la base los completa desde customers.
 
   // snake_case para compat con Apps Script + retry
   var sheetsPayload = {
@@ -10006,12 +9994,12 @@ async function _submitSingleOrder(
     // toma nada prestado de submitOrder() (ver tests/payload-scope.cjs).
     tipo_documento: esPresupuesto ? "presupuesto" : "pedido",
     extra_discount: extraRate,
-    deuda: debt,
-    credit_limit: creditLimit,
+    deuda: null,
+    credit_limit: null,
     payment_term: customerProfile.payment_term == null ? null : Number(customerProfile.payment_term),
-    lc: lcStatus,
-    d: dStatus,
-    pp: ppStatus,
+    lc: null,
+    d: null,
+    pp: null,
     order_total: finalTotal,
     source: "Web",
     mode: editOrderId ? "edit" : "new",
@@ -15805,7 +15793,7 @@ async function onLinkedCustomerSelected(opts) {
   var customerId = val;
 
   var result = await _customerSelect(
-    "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,debt,payment_term,credit_limit",
+    "id,business_name,dto_vol,cod_cliente,cuit,direccion_fiscal,localidad,vend,mail,payment_term",
     (q) => q.eq("id", customerId),
   );
 

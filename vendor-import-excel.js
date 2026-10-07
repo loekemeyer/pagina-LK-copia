@@ -168,9 +168,9 @@ window.VendorImportExcel = (function () {
       order_number: String(orderId), pdf_oc: "", cod_cliente: String(order.customer.cod_cliente || ""),
       vend: String(order.customer.vend || ""), condicion_pago: paymentMethodText, condicion_pago_code: 1,
       sucursal_entrega: sucursalEntrega, cliente_nuevo: "", is_promo: false, is_chef: false,
-      target_sheet: "Pedidos Web", empresa: "LK", extra_discount: 0, deuda: Number(order.customer.debt || 0),
+      target_sheet: "Pedidos Web", empresa: "LK", extra_discount: 0, deuda: null,
       payment_term: order.customer.payment_term == null ? null : Number(order.customer.payment_term),
-      credit_limit: order.customer.credit_limit == null ? null : Number(order.customer.credit_limit),
+      credit_limit: null, // deuda / límite: los completa el servidor (trigger + sheets-proxy v74)
       source: "Excel", items: validItems.map(function (it) { return { cod_art: it.codLk, cajas: it.cajas, uxb: it.uxb }; }),
     };
     window.sb.from("orders").update({
@@ -311,7 +311,7 @@ window.VendorImportExcel = (function () {
   async function lookupCustomer(text) {
     var t = String(text || "").trim();
     if (!t) return null;
-    var sel = "id,cod_cliente,business_name,cuit,vend,debt,dto_vol,payment_term,credit_limit";
+    var sel = "id,cod_cliente,business_name,cuit,vend,dto_vol,payment_term";
     if (/^\d+$/.test(t) && t.length <= 8) {
       var r = await window.sb.from("customers").select(sel).eq("cod_cliente", Number(t)).limit(1);
       if (!r.error && r.data && r.data[0]) return r.data[0];

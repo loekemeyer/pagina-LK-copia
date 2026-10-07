@@ -27,6 +27,7 @@ _correr() {
 
 _correr css-balance.cjs
 _correr payload-scope.cjs
+_correr deuda-no-baja.cjs
 _correr solo-agregar.cjs
 _correr estado-gestion.cjs
 _correr expreso-buscador.cjs

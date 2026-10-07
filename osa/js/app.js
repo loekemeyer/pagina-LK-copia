@@ -1521,7 +1521,7 @@
 
       // 2) Perfil del cliente (OSA).
       var prof = (await sb.from('customers')
-        .select('id,business_name,cod_cliente,cuit,vend,dto_vol,debt,credit_limit,payment_term')
+        .select('id,business_name,cod_cliente,cuit,vend,dto_vol,payment_term')
         .eq('auth_user_id', authUserId).maybeSingle()).data;
       if (!prof) { toast('No encontré tu perfil de cliente. Reingresá en la página.', 'danger'); return; }
 
@@ -1567,11 +1567,7 @@
       var orderId = rpc.data;
 
       // 6) Sheets (mismos payloads que el sitio).
-      var debt = Number(prof.debt || 0);
-      var creditLimit = prof.credit_limit == null ? null : Number(prof.credit_limit);
-      var lcStatus = (creditLimit != null && (debt + finalTotal) > creditLimit) ? 'X' : 'OK';
-      var dStatus = debt > 0 ? 'X' : 'OK';
-      var ppStatus = prof.payment_term == null ? 'Null' : String(Number(prof.payment_term));
+      // Deuda / límite / LC / D / PP: los calcula el servidor (trigger aa_orders_leyenda_servidor + sheets-proxy v74).
       var suc = pedido.sucursal || (sucursalLK());
 
       var sheetsPayload = {
@@ -1585,10 +1581,10 @@
         cliente_nuevo: '',
         is_promo: false,
         extra_discount: 0,
-        deuda: debt,
-        credit_limit: creditLimit,
+        deuda: null,
+        credit_limit: null,
         payment_term: prof.payment_term == null ? null : Number(prof.payment_term),
-        lc: lcStatus, d: dStatus, pp: ppStatus,
+        lc: null, d: null, pp: null,
         order_total: finalTotal,
         source: 'Web',
         mode: 'new',
