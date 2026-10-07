@@ -183,6 +183,14 @@ llave **`app_settings.wa_envio_automatico`** del proyecto LK (`0` nada · `prueb
 `wa_outbox`**; nunca un `fetch` directo a `graph.facebook.com`. Detalle y deuda: `CLAUDE.md` y
 `docs/DECISIONES.md` (D006/D007) de `loekemeyer/GestOpClientes`.
 
+## 🟥 REGLA (Luis, 07/10/2026): NO se le muestra deuda ni cuenta corriente al cliente — bajo NINGUNA circunstancia
+
+> Hasta un pedido EXPLÍCITO de Thomas o Luis. Comunicarle mal un dato de esa magnitud a un cliente es inaceptable.
+
+- `MOSTRAR_DEUDA_CLIENTE = false` en `script.js` (25/09) **y** `get_mi_deuda()` de LK **sin `EXECUTE`** para `anon`/`authenticated` (07/10). Rollback sólo con el pedido: `grant execute on function public.get_mi_deuda() to authenticated;`
+- ⚠ En **Chef** `get_mi_deuda()` sigue ejecutable por el cliente logueado (la página no la llama): falta revocarla en ese proyecto.
+- La precisión se valida en **modo sombra** en Gestión Virgilio (`sql/gv_cc_sombra_v2789.sql`, cron `gv-cc-sombra`): cada Excel de deuda se compara contra lo estimado desde el anterior. Con 20 días hábiles seguidos sin diferencia abre una tarea en el Planify de Luis. **Esa tarea no prende nada.**
+
 ## Modos
 
 - **caveman (SIEMPRE activo)**: Cada conversación abre con caveman activo por defecto. Responder en modo caveman — frases cortas, directas, mínimas palabras, sin artículos, sin fluff. Solo aplica al **chat** (no al código, comentarios ni mensajes de commit). **"desactiva caveman"** = responder solo el **próximo mensaje** normal/completo, y después **volver solo** a caveman. **"caveman desactivacion total"** = apagar caveman por completo (queda desactivado hasta que se reactive).
