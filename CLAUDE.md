@@ -364,6 +364,30 @@ viva) y `gv_tablas_viejas_en_uso` (qué objeto sigue leyendo una congelada)— m
 el mismo problema, se copia ese patrón: una tabla `*_Reglas_Centinela` con
 `(objeto, patrón que tiene que estar, regla)` y una vista que lista lo que falta.
 
+## 🟥🟥 REGLA IMPERATIVA (Luis, 07/10/2026): VERIFICAR QUE ALGUIEN USA EL DATO ANTES DE MANDAR A HACER TRABAJO
+
+**Vale para TODOS los repos** (copiar este bloque al `CLAUDE.md` del repo nuevo). Luis, textual:
+*"Eso es imperativo, IMPERATIVO, que no vuelva a pasar. REVISA BIEN ANTES DE MANDAR A HACER LABURO AL PEDO."*
+
+> **Antes de proponer, pedir o hacer un trabajo para mantener vivo un dato, una salida o una
+> integración, se VERIFICA que alguien la usa HOY.** Si no se puede verificar, se PREGUNTA
+> antes de empezar (es un dato que sólo tiene el usuario: excepción (c) de «NO preguntar»).
+
+**El caso que la originó (07/10/2026):** al pasar la leyenda D / LC / PP del pedido al servidor
+se escribió un trigger en LK y en Chef, se parcheó la Edge Function de Chef que manda al Google
+Sheet (`smooth-handler`) y se le pidió a Luis que la deployara, todo para que la columna J de
+«Pedidos LK» / «Pedidos CH» siguiera bien. **Nadie usa ese Sheet** (Luis, D10). Se dio por vivo
+sin preguntar, y encima se le dijo que una fila de prueba podía «terminar en ISIS»: inventado.
+
+**Cómo se verifica, en este orden:**
+1. **Quién lo lee**: grep en los repos (`Gestion-Virgilio`, `pagina-LK-copia`, `paginach`) y en la
+   base (`pg_proc.prosrc`, vistas, crons) por la columna, la clave del JSON o la URL.
+2. **Si el consumidor está afuera** (Google Sheet, Apps Script, ISIS, n8n, una persona): no se
+   asume. Se pregunta *"¿alguien usa X hoy, quién y para qué?"* ANTES de proponer el trabajo.
+3. **Nunca afirmar un efecto que no se midió** («eso termina en ISIS», «eso rompe tal cosa»).
+   Si no está medido va con **[Adivinando]**, o no se dice.
+4. **Lo que NO tiene consumidor no se arregla: se propone sacarlo.**
+
 ## ⚠ REGLA: NO preguntar — razonar primero y resolver
 
 **Dueño (2026-09-11): *"no me tenés que preguntar, tenés que razonar primero"*.** Vale para
