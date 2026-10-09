@@ -52,6 +52,7 @@ _correr lista-super-sin-encabezado.cjs
 _correr cencosud-cliente-chef.cjs
 _correr alta-sin-login-frena.cjs
 _correr reparar-auth-cuit-compartido.cjs
+_correr ean-descarga.cjs
 
 echo "======================================================================"
 if [ ${#ROJOS[@]} -eq 0 ]; then
