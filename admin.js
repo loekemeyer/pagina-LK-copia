@@ -15684,6 +15684,139 @@ function fcAcuDesglose() {
 }
 window.fcAcuDesglose = fcAcuDesglose;
 
+// =====================================================================
+// De donde sale cada dato de la hoja (09/10/2026)
+// ---------------------------------------------------------------------
+// Pedido: tocar una celda (ej. la FC 2024) abre un pop-up que dice de donde
+// toma el dato. FC / Mayor compra / Cant. FC traen ademas el detalle
+// comprobante por comprobante (get_ficha_isis_detalle: el MISMO universo que
+// get_ficha_isis, asi la suma da la celda). El resto dice la tabla y como se
+// carga. Usa el mismo pop-up que el desglose del Acuerdo (fcAcuPop).
+// =====================================================================
+var _fcDetCache = {};
+function fcFuenteTxt(t) { return '<div class="fc-src-txt">' + t + "</div>"; }
+function fcCodsTxt(det) {
+  var lk = _fcData && _fcData.datos ? _fcData.datos.cod_cliente : "";
+  var ch = det && Array.isArray(det.cods_ch) ? det.cods_ch : (_fcData && _fcData.datos && _fcData.datos.chef_cods) || [];
+  return "cliente LK <strong>" + escapeHtml(lk != null ? lk : "") + "</strong>" +
+    (ch.length ? " + Chef <strong>" + escapeHtml(ch.join(", ")) + "</strong> (mismo CUIT o vínculo manual)" : " (no tiene código en Chef)");
+}
+function fcFechaDm(iso) {
+  var p = String(iso || "").slice(0, 10).split("-");
+  return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0].slice(2) : "—";
+}
+function fcDetalleHtml(det, campo, anio) {
+  var rows = Array.isArray(det && det.comprobantes) ? det.comprobantes : [];
+  var y = null;
+  (_fcIsis && Array.isArray(_fcIsis.anios) ? _fcIsis.anios : []).forEach(function (a) {
+    if (Number(a.anio) === Number(anio)) y = a;
+  });
+  var fuente =
+    "Sale de <strong>ISIS</strong>: las facturas, notas de crédito y notas de débito " +
+    "(con IVA) que Gestión Virgilio lee de los PDF de ISIS (isis_lk / isis_ch → " +
+    "virgilio.comprobantes_venta), del " + fcCodsTxt(det) + ".";
+  var cuenta =
+    campo === "mayor" ? "<strong>Mayor compra</strong> = la factura más grande del año (★)."
+    : campo === "nfact" ? "<strong>Cant. FC</strong> = cantidad de facturas del año (las NC y ND no cuentan)."
+    : "<strong>FC</strong> = facturas − notas de crédito + notas de débito.";
+  if (!rows.length) return fcFuenteTxt(fuente) + fcFuenteTxt(cuenta) + fcFuenteTxt("No hay comprobantes en " + anio + ".");
+  var mayor = -1, iMay = -1, tot = 0, nf = 0, tlk = 0, tch = 0;
+  rows.forEach(function (r, i) {
+    var v = Number(r.signo) * Number(r.total || 0);
+    tot += v;
+    if (r.emp === "chef") tch += v; else tlk += v;
+    if (r.familia === "factura_venta") {
+      nf++;
+      if (Number(r.total) > mayor) { mayor = Number(r.total); iMay = i; }
+    }
+  });
+  var hayCh = rows.some(function (r) { return r.emp === "chef"; });
+  var body = rows.map(function (r, i) {
+    var nc = Number(r.signo) < 0;
+    var comp = (r.tipo || r.familia || "") +
+      (r.pv || r.numero ? " " + (r.pv || "") + "-" + (r.numero || "") : "");
+    var cls = (nc ? "fc-src-nc" : "") + (i === iMay && campo === "mayor" ? " fc-src-may" : "");
+    return '<tr class="' + cls + '">' +
+      "<td>" + fcFechaDm(r.fecha) + "</td>" +
+      (hayCh ? "<td>" + (r.emp === "chef" ? "CH" : "LK") + "</td>" : "") +
+      '<td class="fc-src-izq">' + escapeHtml(comp) + (i === iMay ? " ★" : "") + "</td>" +
+      "<td>" + (r.cajas != null ? Number(r.cajas).toLocaleString("es-AR") : "—") + "</td>" +
+      '<td class="fc-src-imp">' + (nc ? "−" : "") + formatMoney(Math.abs(Number(r.total || 0))) + "</td></tr>";
+  }).join("");
+  var nCol = hayCh ? 4 : 3;
+  var pie = '<tr class="fc-src-tot"><td colspan="' + nCol + '">Total ' + anio + " · " + nf + " facturas" +
+    "</td><td class=\"fc-src-imp\">" + formatMoney(Math.round(tot)) + "</td></tr>";
+  if (hayCh)
+    pie += '<tr class="fc-src-sub"><td colspan="' + nCol + '">LK · CH</td><td class="fc-src-imp">' +
+      formatMoney(Math.round(tlk)) + " · " + formatMoney(Math.round(tch)) + "</td></tr>";
+  // Control: la suma tiene que dar la celda. Si no da, se dice.
+  var aviso = "";
+  if (y && Math.abs(Math.round(tot) - Number(y.fc || 0)) > 1)
+    aviso = fcFuenteTxt('<span class="fc-acu-rojo">La suma (' + formatMoney(Math.round(tot)) +
+      ") no coincide con la hoja (" + formatMoney(y.fc) + ").</span>");
+  return fcFuenteTxt(fuente) + fcFuenteTxt(cuenta) + aviso +
+    '<table class="fc-acud-tab fc-src-tab"><thead><tr><th>Fecha</th>' + (hayCh ? "<th>Emp.</th>" : "") +
+    "<th>Comprobante</th><th>Cajas</th><th>Importe $</th></tr></thead><tbody>" + body + pie +
+    "</tbody></table>";
+}
+async function fcFuente(campo, anio) {
+  var d = (_fcData && _fcData.datos) || {};
+  var isis = _fcIsis || {};
+  var T = {
+    cod: ["Códigos", "<strong>Cod LK</strong>: ficha del cliente en la base de la página LK (customers.cod_cliente).<br>" +
+      "<strong>Cod CH</strong>: los códigos de Chef con el <strong>mismo CUIT</strong> (padrón de Chef, chef_padron) " +
+      "o vinculados a mano en ABM Clientes → Clientes vinculados."],
+    rs: ["Razón social", "Ficha del cliente en la base de la página LK (customers.business_name)."],
+    lim: ["Límite de crédito", "Ficha del cliente en la base LK (customers.credit_limit). " +
+      "Se carga desde el admin con el Excel de <strong>Límites de crédito</strong>."],
+    deuda: ["Deuda", "Del <strong>Excel de deuda del ERP</strong> que se sube en Cuarentena de Gestión Virgilio " +
+      "(virgilio.gv_deuda_feed)" + (isis.deuda_at ? ", subido el " + fcFechaDm(isis.deuda_at) : "") +
+      ". Es la deuda del código LK. <strong>No</strong> es customers.debt (el upload «Deuda» del admin, que queda viejo)."],
+    cuit: ["CUIT", "Ficha del cliente en la base LK (customers.cuit)."],
+    plazo: ["Plazo de pago", "Ficha del cliente en la base LK (customers.payment_term). " +
+      "Se carga desde el admin con el Excel de <strong>Plazos de pago</strong>."],
+    dto: ["Dto. de volumen", "Ficha del cliente en la base LK (customers.dto_vol)."],
+    vend: ["Vendedor", "Tabla de comisiones (customer_commissions.vendor_label). " +
+      "Si el cliente no tiene fila ahí, el código de vendedor del ERP (customers.vend)."],
+    prim: ["1° compra", "La primera factura de ISIS del " + fcCodsTxt(null) + ". " +
+      "Las facturas de ISIS están parseadas desde 08/2019: si dice 2019, puede ser anterior."],
+    loc: ["Localidades", "<strong>Loc PDV</strong>: ficha del cliente (customers.localidad); si está vacía, " +
+      "la localidad de su primera sucursal.<br><strong>Loc entrega</strong>: las sucursales de entrega del cliente " +
+      "en la página (customer_delivery_addresses)."],
+    contacto: ["Contacto", "Ficha del cliente en la base LK (customers.whatsapp y customers.mail)."],
+    dtopago: ["Dto pago a ofrecer", "Parámetros del acuerdo (acuerdo_parametros.dto_pago), vía get_acuerdo_cliente."],
+    planilla: ["Sin dato", "Es un dato de la planilla de clientes que <strong>no está en la base</strong>: por eso va «—»."],
+  };
+  if (campo === "fc" || campo === "mayor" || campo === "nfact") {
+    if (!_fcDetCache) _fcDetCache = {};
+    var tit = (campo === "mayor" ? "Mayor compra " : campo === "nfact" ? "Cant. FC " : "FC ") + anio + " — de dónde sale";
+    var cod = d.cod_cliente != null ? String(d.cod_cliente) : String(_fcData && _fcData.cod || "");
+    var key = cod + "|" + anio;
+    if (_fcDetCache[key]) { fcAcuPop(tit, fcDetalleHtml(_fcDetCache[key], campo, anio)); return; }
+    fcAcuPop(tit, fcFuenteTxt("Cargando comprobantes de ISIS…"));
+    try {
+      var r = await sb.rpc("get_ficha_isis_detalle", { p_cod: cod, p_anio: Number(anio) });
+      if (r.error) throw r.error;
+      _fcDetCache[key] = r.data;
+      if (document.getElementById("fcAcuOv")) fcAcuPop(tit, fcDetalleHtml(r.data, campo, anio));
+    } catch (err) {
+      // "No pude leer" no es "no hay": se dice.
+      if (document.getElementById("fcAcuOv"))
+        fcAcuPop(tit, fcFuenteTxt('<span class="fc-acu-rojo">No se pudo leer el detalle de ISIS: ' +
+          escapeHtml(err.message || err) + "</span>"));
+    }
+    return;
+  }
+  var t = T[campo];
+  if (t) fcAcuPop(t[0] + " — de dónde sale", fcFuenteTxt(t[1]));
+}
+window.fcFuente = fcFuente;
+// Atributos para una celda clickeable de la hoja.
+function fcSrc(campo, anio, cls) {
+  return ' class="' + (cls ? cls + " " : "") + 'fc-src" title="Ver de dónde sale" onclick="fcFuente(\'' +
+    campo + "'" + (anio != null ? "," + Number(anio) : "") + ')"';
+}
+
 function fcRender() {
   var cont = document.getElementById("fcContenido");
   if (!cont || !_fcData) return;
@@ -15796,35 +15929,35 @@ function fcRender() {
     "<tr>" + rot("Cod LK") + (hayCh ? rot("Cod CH") : "") +
     rot("Razón Social", ' colspan="' + (hayCh ? 4 : 5) + '"') + "</tr>" +
     '<tr class="fc-h-id">' +
-    dat(escapeHtml(d.cod_cliente != null ? d.cod_cliente : f.cod), ' class="fc-h-cod"') +
-    (hayCh ? dat(escapeHtml(chefCodsH.join(" · ")), ' class="fc-h-cod fc-h-codch"') : "") +
-    dat(escapeHtml(d.business_name || "(sin razón social)"), ' class="fc-h-rs" colspan="' + (hayCh ? 4 : 5) + '"') +
+    dat(escapeHtml(d.cod_cliente != null ? d.cod_cliente : f.cod), fcSrc("cod", null, "fc-h-cod")) +
+    (hayCh ? dat(escapeHtml(chefCodsH.join(" · ")), fcSrc("cod", null, "fc-h-cod fc-h-codch")) : "") +
+    dat(escapeHtml(d.business_name || "(sin razón social)"), fcSrc("rs", null, "fc-h-rs") + ' colspan="' + (hayCh ? 4 : 5) + '"') +
     "</tr></tbody>";
   // Bloque 2: facturacion por anio (ISIS) + cuenta
   html +=
     '<tbody class="fc-h-bloque">' +
     "<tr>" + rot("ISIS<br>($)") + anios.map(function (a) { return rot(a); }).join("") +
     rot("Cuenta", ' colspan="2"') + "</tr>" +
-    "<tr>" + rot("FC") + anios.map(function (a) { return dat(fcCel(a), ' class="fc-h-num"'); }).join("") +
-    rot("Lím.<br>crédito") + dat(d.credit_limit != null ? "$ " + formatMoney(d.credit_limit) : "—", ' class="fc-h-num"') + "</tr>" +
-    "<tr>" + rot("Mayor<br>compra") + anios.map(function (a) { return dat(sinPeso(fcPlata(yv(a, "mayor"))), ' class="fc-h-num"'); }).join("") +
-    rot(deudaLbl) + dat(deudaTxt, ' class="fc-h-num"') + "</tr>" +
+    "<tr>" + rot("FC") + anios.map(function (a) { return dat(fcCel(a), fcSrc("fc", a, "fc-h-num")); }).join("") +
+    rot("Lím.<br>crédito") + dat(d.credit_limit != null ? "$ " + formatMoney(d.credit_limit) : "—", fcSrc("lim", null, "fc-h-num")) + "</tr>" +
+    "<tr>" + rot("Mayor<br>compra") + anios.map(function (a) { return dat(sinPeso(fcPlata(yv(a, "mayor"))), fcSrc("mayor", a, "fc-h-num")); }).join("") +
+    rot(deudaLbl) + dat(deudaTxt, fcSrc("deuda", null, "fc-h-num")) + "</tr>" +
     "<tr>" + rot("Cant.<br>FC") + anios.map(function (a) {
-      return dat(sinIsis ? "s/d" : Number(yv(a, "n_fact") || 0));
+      return dat(sinIsis ? "s/d" : Number(yv(a, "n_fact") || 0), fcSrc("nfact", a));
     }).join("") +
-    rot("CUIT") + dat(cuit) + "</tr></tbody>";
+    rot("CUIT") + dat(cuit, fcSrc("cuit")) + "</tr></tbody>";
   // Bloque 3: condiciones comerciales
   html +=
     '<tbody class="fc-h-bloque">' +
     "<tr>" + rot("Plazo<br>pago") + rot("Dto<br>vol.") + rot("Dto<br>plazo") + rot("Vend.") +
     rot("Tipo<br>cliente") + rot("1° compra") + "</tr>" +
     "<tr>" +
-    dat(d.payment_term != null ? escapeHtml(d.payment_term) : "—") +
-    dat(dtoVolPct) +
-    dat(fcFaltaDato(SD_PLANILLA)) +
-    dat(escapeHtml(d.vendedor || d.vend || "—")) +
-    dat(fcFaltaDato(SD_PLANILLA)) +
-    dat(prim ? escapeHtml(prim) + (prim === "2019" ? '<span class="fc-h-sub">ISIS desde 08/19</span>' : "") : "—") +
+    dat(d.payment_term != null ? escapeHtml(d.payment_term) : "—", fcSrc("plazo")) +
+    dat(dtoVolPct, fcSrc("dto")) +
+    dat(fcFaltaDato(SD_PLANILLA), fcSrc("planilla")) +
+    dat(escapeHtml(d.vendedor || d.vend || "—"), fcSrc("vend")) +
+    dat(fcFaltaDato(SD_PLANILLA), fcSrc("planilla")) +
+    dat(prim ? escapeHtml(prim) + (prim === "2019" ? '<span class="fc-h-sub">ISIS desde 08/19</span>' : "") : "—", fcSrc("prim")) +
     "</tr></tbody>";
   // Bloque 4: pagos (juntos) + localidades. PDV y entrega iguales -> una sola celda.
   var locEntTxt = locEntrega.length ? escapeHtml(locEntrega.join(" · ")) : "—";
@@ -15837,11 +15970,12 @@ function fcRender() {
       : rot("Loc PDV", ' rowspan="2"') +
         rot('Loc entrega<span class="fc-h-sub">(nosotros)</span>', ' colspan="2" rowspan="2"')) + "</tr>" +
     "<tr>" + rot("Último") + rot("Anteúlt.") + rot("Antepenúlt.") + "</tr>" +
-    "<tr>" + dat(fcFaltaDato(SD_PLANILLA)) + dat(fcFaltaDato(SD_PLANILLA)) + dat(fcFaltaDato(SD_PLANILLA)) +
+    "<tr>" + dat(fcFaltaDato(SD_PLANILLA), fcSrc("planilla")) + dat(fcFaltaDato(SD_PLANILLA), fcSrc("planilla")) +
+    dat(fcFaltaDato(SD_PLANILLA), fcSrc("planilla")) +
     (locUna
-      ? dat(locEntTxt, ' colspan="3" class="fc-h-wrap"')
-      : dat(locPtoVenta ? escapeHtml(locPtoVenta) : "—") +
-        dat(locEntTxt, ' colspan="2" class="fc-h-wrap"')) +
+      ? dat(locEntTxt, fcSrc("loc", null, "fc-h-wrap") + ' colspan="3"')
+      : dat(locPtoVenta ? escapeHtml(locPtoVenta) : "—", fcSrc("loc")) +
+        dat(locEntTxt, fcSrc("loc", null, "fc-h-wrap") + ' colspan="2"')) +
     "</tr></tbody>";
   // Bloque 5: contacto, sin rotulo. Si falta uno, el otro ocupa la fila entera.
   var contacto = [];
@@ -15850,8 +15984,8 @@ function fcRender() {
   if (contacto.length) {
     html += '<tbody class="fc-h-bloque"><tr class="fc-h-contacto">' +
       (contacto.length === 2
-        ? dat(contacto[0], ' colspan="2"') + dat(contacto[1], ' colspan="4"')
-        : dat(contacto[0], ' colspan="6"')) +
+        ? dat(contacto[0], fcSrc("contacto") + ' colspan="2"') + dat(contacto[1], fcSrc("contacto") + ' colspan="4"')
+        : dat(contacto[0], fcSrc("contacto") + ' colspan="6"')) +
       "</tr></tbody>";
   }
   html += "</table>";
@@ -15869,14 +16003,14 @@ function fcRender() {
       ? '<td class="fc-h-big fc-acud-click" title="Ver cómo se calcula" onclick="fcAcuDesglose()">' +
         factorCli.toFixed(2).replace(".", ",") + '<span class="fc-acud-fl">›</span></td>'
       : '<td class="fc-h-big">—</td>') + "</tr>" +
-    '<tr><th>Acuerdo<br>Tomado</th><td class="fc-h-big">' +
+    '<tr><th>Acuerdo<br>Tomado</th><td class="fc-h-big' + (factorCli ? ' fc-acud-click" title="Ver cómo se calcula" onclick="fcAcuDesglose()' : "") + '">' +
     (indiceTom ? indiceTom.toFixed(2).replace(".", ",") : "—") + "</td></tr>" +
-    '<tr><th>+-Rent</th><td class="fc-h-big ' +
+    '<tr><th>+-Rent</th><td' + (factorCli ? ' title="Ver cómo se calcula" onclick="fcAcuDesglose()"' : "") + ' class="fc-h-big ' + (factorCli ? "fc-acud-click " : "") +
     (rent == null ? "" : rent < 0 ? "fc-acu-rojo" : "fc-acu-verde") + '">' +
     (rent == null ? "—" : (rent > 0 ? "+" : "") + Math.round(rent) + "%") + "</td></tr>" +
     "</tbody>" +
     '<tbody class="fc-h-bloque">' +
-    "<tr><th>Dto pago<br>a ofrecer</th><td class=\"fc-h-cen\">" +
+    "<tr><th>Dto pago<br>a ofrecer</th><td" + fcSrc("dtopago", null, "fc-h-cen") + ">" +
     (acH ? Number(acH.dto_pago_hoy).toFixed(0) + "%" : "—") + "</td></tr>" +
     "<tr><th>Plazo<br>a ofrecer</th><td class=\"fc-h-cen\">" +
     fcFaltaDato("Dato de la planilla: no está en la base") + "</td></tr>" +
