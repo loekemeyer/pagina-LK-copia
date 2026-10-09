@@ -5511,6 +5511,12 @@ function renderProducts() {
         ? `<div class="pc-count${badgeHtml ? " pc-count-bajo" : ""}" aria-hidden="true"><span class="pc-count-cur">1</span>/${pcUrls.length}</div>`
         : "";
 
+    // Ícono de código de barras debajo del contador (sólo en *.vercel.app; lo arma ean-descarga.js).
+    const pcEanHtml =
+      window.eanDescarga && window.eanDescarga.btnHtml
+        ? window.eanDescarga.btnHtml(p.cod, (pcUrls.length > 1 ? "" : "pc-ean-sola") + (badgeHtml ? " pc-ean-bajo" : ""))
+        : "";
+
     // Flechas: para el que no quiere esperar los 3 s del hover.
     const pcArrowsHtml =
       pcUrls.length > 1
@@ -5528,6 +5534,7 @@ function renderProducts() {
       ${assortmentStarHtml}
         <div class="pc-media${pcBack ? " pc-persiana" : ""}"${pcUrlsAttr} onclick="openProdPreview('${pid}')">
         ${pcCountHtml}
+        ${pcEanHtml}
         ${pcArrowsHtml}
         ${
           pcBack

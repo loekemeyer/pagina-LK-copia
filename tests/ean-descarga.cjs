@@ -2,10 +2,11 @@
 /**
  * tests/ean-descarga.cjs — el botón «EAN» que baja el código de barras de cada producto.
  *
- * POR QUÉ EXISTE (09/10/2026). Pedido: un botón SÓLO en Vercel que baje los EAN de cada
- * producto como imagen. Corre ean-descarga.js en Chromium con la base simulada y verifica:
- *   A. fuera de *.vercel.app NO se dibuja el botón (loekemeyer.com no lo ve).
- *   B. forzado (= en Vercel) el botón aparece y abre la lista con los códigos.
+ * POR QUÉ EXISTE (09/10/2026). Pedido: SÓLO en Vercel, bajar el EAN de cada producto como
+ * imagen. Desde la v2.3.560 es un ícono de código de barras en cada tarjeta, debajo del «1/2»
+ * de las fotos, que al pasar el mouse dice «Descargar EAN». Verifica:
+ *   A. fuera de *.vercel.app el ícono NO se arma (loekemeyer.com no lo ve).
+ *   B. la lista con todos (abrir(), sin puerta hoy) sigue armándose.
  *   C. el PNG dibujado se LEE: se escanean las barras del canvas y se decodifican con un
  *      lector propio del test → tiene que dar el mismo EAN. Prueba el dibujo, no el código.
  *   D. un EAN con el verificador mal NO tiene botón PNG y en el ZIP va a AVISOS.txt.
@@ -29,6 +30,13 @@ const EANS = [
   { cod: "323", ean: "7795587003232" },
   { cod: "323E", ean: "7795587003232" }, // mismo EAN que el 323 (caso real)
   { cod: "999", ean: "7795587009992" },  // verificador mal (debería ser 7)
+];
+
+const PRODS = [
+  { id: "p-1", cod: "026", category: "Coladores", subcategory: null, ranking: 1, orden_catalogo: 1,
+    description: "Colador 8 cm", uxb: 36, images: ["026.webp", "026-2.webp"], badge_status: null, list_price: 1000 },
+  { id: "p-2", cod: "505", category: "Peladores", subcategory: null, ranking: 2, orden_catalogo: 2,
+    description: "Pelador", uxb: 12, images: ["505.webp"], badge_status: null, list_price: 1000 },
 ];
 
 function harness(forzar, falla) {
@@ -74,14 +82,14 @@ function decodificar(m) {
     // A
     let page = await browser.newPage();
     await page.setContent(harness(false));
-    ok(!(await page.$("#eanDescBtn")), "A. sin Vercel no hay botón");
+    ok((await page.evaluate(() => eanDescarga.btnHtml("026"))) === "", "A. sin Vercel no hay ícono");
     await page.close();
 
     // B
     page = await browser.newPage();
     await page.setContent(harness(true));
-    ok(!!(await page.$("#eanDescBtn")), "B. en Vercel aparece el botón");
-    await page.click("#eanDescBtn");
+    ok(!(await page.$("#eanDescBtn")), "B. ya no hay botón flotante");
+    await page.evaluate(() => eanDescarga.abrir());
     await page.waitForSelector(".ean-row");
     const filas = await page.$$eval(".ean-row", (r) => r.length);
     ok(filas === 5, "B. la lista trae los 5 códigos (" + filas + ")");
@@ -126,10 +134,65 @@ function decodificar(m) {
     // E
     page = await browser.newPage();
     await page.setContent(harness(true, true));
-    await page.click("#eanDescBtn");
+    await page.evaluate(() => eanDescarga.abrir());
     await page.waitForFunction(() => /No se pudieron leer/.test(document.querySelector(".ean-msg").textContent));
     ok(true, "E. lectura rota → lo dice");
     await page.close();
+
+    // G. el ícono en las tarjetas reales de mayorista.html
+    for (const forzar of [true, false]) {
+      const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 }, acceptDownloads: true });
+      const FOTO = path.join(__dirname, "..", "img", "no-image.jpg");
+      await ctx.route("**://**", (r) => {
+        const u = r.request().url();
+        if (u.startsWith("file:")) return r.continue();
+        if (r.request().resourceType() === "image" || /\.(webp|jpe?g|png)(\?|$)/i.test(u))
+          return r.fulfill({ status: 200, contentType: "image/jpeg", path: FOTO });
+        return r.fulfill({ status: 200, body: "" });
+      });
+      const pg = await ctx.newPage();
+      pg.on("dialog", (d) => d.dismiss().catch(() => {}));
+      await pg.addInitScript(([prods, eans, forz]) => {
+        if (forz) window.GV_EAN_FORZAR = true;
+        const datos = { item_ean: eans, products: prods.map((p) => ({ cod: p.cod, description: p.description })) };
+        const mk = (t) => { const r = { data: datos[t] || [], error: null }; const q = {
+          select: () => q, eq: () => q, in: () => q, order: () => q, limit: () => q,
+          single: () => Promise.resolve({ data: null, error: null }),
+          insert: () => q, update: () => q, upsert: () => q,
+          then: (f, g) => Promise.resolve(r).then(f, g) }; return q; };
+        window.supabase = { createClient: () => ({
+          from: mk,
+          rpc: (n) => Promise.resolve(n === "get_products_public_sorted" ? { data: prods, error: null } : { data: [], error: null }),
+          auth: { getSession: () => Promise.resolve({ data: { session: null } }), onAuthStateChange: () => {} },
+          storage: { from: () => ({ getPublicUrl: () => ({ data: { publicUrl: "" } }) }) },
+        }) };
+      }, [PRODS, EANS, forzar]);
+      await pg.goto("file://" + path.join(__dirname, "..", "mayorista.html"));
+      await pg.waitForFunction(() => typeof window.loadProductsFromDB === "function", null, { timeout: 15000 });
+      await pg.evaluate(async () => { await window.loadProductsFromDB(); });
+      await pg.waitForSelector("#card-p-1", { timeout: 10000 });
+      const n = await pg.$$eval(".product-card .pc-ean", (b) => b.length);
+      if (!forzar) { ok(n === 0, "G. fuera de Vercel ninguna tarjeta tiene el ícono (" + n + ")"); await ctx.close(); continue; }
+      ok(n === 2, "G. cada tarjeta tiene su ícono (" + n + ")");
+      const geo = await pg.evaluate(() => {
+        const c = document.querySelector("#card-p-1 .pc-count").getBoundingClientRect();
+        const e = document.querySelector("#card-p-1 .pc-ean").getBoundingClientRect();
+        const t = document.querySelector("#card-p-1 .pc-ean-txt").getBoundingClientRect();
+        return { cB: c.bottom, cR: c.right, eT: e.top, eR: e.right, tW: t.width };
+      });
+      ok(geo.eT >= geo.cB && geo.eT - geo.cB <= 8 && Math.abs(geo.eR - geo.cR) <= 2,
+        "G. el ícono va debajo del «1/2», alineado a la derecha (" + JSON.stringify(geo) + ")");
+      ok(geo.tW < 1, "G. sin mouse encima es sólo el ícono (texto " + geo.tW + " px)");
+      await pg.hover("#card-p-1 .pc-ean");
+      await pg.waitForTimeout(350);
+      const tx = await pg.$eval("#card-p-1 .pc-ean-txt", (t) => ({ w: t.getBoundingClientRect().width, txt: t.textContent }));
+      ok(tx.w > 40 && tx.txt === "Descargar EAN", "G. con el mouse encima se estira y dice «Descargar EAN» (" + JSON.stringify(tx) + ")");
+      const [dl] = await Promise.all([pg.waitForEvent("download", { timeout: 8000 }), pg.click("#card-p-1 .pc-ean")]);
+      ok(dl.suggestedFilename() === "EAN_026_7795587000262.png", "G. el click baja el PNG del producto (" + dl.suggestedFilename() + ")");
+      const abierto = await pg.evaluate(() => { const m = document.getElementById("prodPreviewModal"); return !!m && getComputedStyle(m).display !== "none" && !m.hidden && m.classList.contains("open"); });
+      ok(!abierto, "G. el click en el ícono no abre el popup de la foto");
+      await ctx.close();
+    }
   } catch (err) {
     fallas.push("excepción: " + err.message); console.error(err);
   } finally { await browser.close(); }

@@ -1,4 +1,8 @@
-// ean-descarga.js — botón «EAN» para bajar el código de barras de cada producto como imagen.
+// ean-descarga.js — ícono de código de barras en cada tarjeta del catálogo: baja el EAN como imagen.
+//
+// v2.3.560 (pedido 09/10/2026): el ícono va en cada producto, debajo del «1/2» de las fotos, y al
+// pasar el mouse se estira y dice «Descargar EAN». Reemplaza al botón flotante «EAN» (abrir()
+// sigue en el archivo, sin puerta: es la lista con el ZIP de todos).
 //
 // SOLO EN VERCEL (pedido 09/10/2026): el botón aparece únicamente si la página corre en
 // *.vercel.app (la copia de prueba). En loekemeyer.com no se dibuja nada, aunque el
@@ -124,6 +128,31 @@
     return _cache;
   }
 
+  // ---------------- un producto (ícono de la tarjeta) ----------------
+  // El catálogo (script.js, renderProducts) llama a btnHtml() al armar cada card.
+  var SVG_BARRAS = '<svg viewBox="0 0 24 16" aria-hidden="true"><path d="M1 1h1.6v14H1zM4 1h.8v14H4zM6.2 1h2v14h-2zM9.6 1h.8v14h-.8zM11.8 1h1.6v14h-1.6zM14.8 1h.8v14h-.8zM17 1h2.2v14H17zM20.6 1h.8v14h-.8zM22.4 1h.8v14h-.8z" fill="currentColor"/></svg>';
+  function btnHtml(cod, cls) {
+    if (!enVercel() || !cod) return "";
+    var c = String(cod).replace(/[^\w.-]/g, "");
+    return '<button type="button" class="pc-ean' + (cls ? " " + cls : "") + '" title="Descargar EAN" ' +
+      'aria-label="Descargar EAN" onclick="eanDescarga.bajarCod(\'' + c + '\',event)">' +
+      SVG_BARRAS + '<span class="pc-ean-txt">Descargar EAN</span></button>';
+  }
+  async function bajarCod(cod, ev) {
+    if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+    try {
+      var items = await cargar();
+      var k = String(cod).trim().toUpperCase(), it = null;
+      for (var i = 0; i < items.length; i++) if (items[i].cod.toUpperCase() === k) { it = items[i]; break; }
+      if (!it) { alert("El código " + cod + " no tiene EAN cargado."); return; }
+      if (!it.valido) { alert("El EAN del " + cod + " (" + it.ean + ") tiene el dígito verificador mal: no se dibuja."); return; }
+      bajar(await canvasBlob(eanCanvas(it)), nombreArchivo(it));
+    } catch (err) {
+      // "No pude leer" no es "no hay": se dice.
+      alert("No se pudieron leer los EAN: " + err.message);
+    }
+  }
+
   // ---------------- UI ----------------
   function css() {
     if (document.getElementById("eanDescCss")) return;
@@ -144,7 +173,14 @@
       ".ean-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid #eee}" +
       ".ean-row .c{font-weight:bold;text-align:center;min-width:52px}" +
       ".ean-row .d{font-size:12px;line-height:1.25}" +
-      ".ean-row .d i{color:#b00;font-style:normal}";
+      ".ean-row .d i{color:#b00;font-style:normal}" +
+      // Ícono de la tarjeta: debajo del contador de fotos (top 8 + 22), arriba a la derecha.
+      ".pc-ean{position:absolute;right:8px;top:32px;z-index:5;display:inline-flex;align-items:center;gap:0;height:22px;padding:0 6px;border:0;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;cursor:pointer;font:700 11px Arial,sans-serif;line-height:1;width:auto;margin:0;transition:background .15s}" +
+      ".pc-ean.pc-ean-sola{top:8px}.pc-ean.pc-ean-bajo{top:76px}.pc-ean.pc-ean-sola.pc-ean-bajo{top:52px}" +
+      ".pc-ean svg{width:18px;height:12px;flex:0 0 auto}" +
+      ".pc-ean-txt{max-width:0;overflow:hidden;white-space:nowrap;opacity:0;transition:max-width .2s ease,opacity .2s ease,margin .2s ease}" +
+      ".pc-ean:hover,.pc-ean:focus-visible{background:rgba(0,0,0,.85)}" +
+      ".pc-ean:hover .pc-ean-txt,.pc-ean:focus-visible .pc-ean-txt{max-width:110px;opacity:1;margin-left:5px}";
     document.head.appendChild(s);
   }
 
@@ -234,17 +270,13 @@
   }
 
   function init() {
-    if (!enVercel() || document.getElementById("eanDescBtn")) return;
+    if (!enVercel()) return;
     css();
-    var b = document.createElement("button");
-    b.type = "button"; b.id = "eanDescBtn"; b.className = "ean-btn";
-    b.textContent = "EAN";
-    b.title = "Descargar los códigos EAN de cada producto como imagen";
-    b.onclick = abrir;
-    document.body.appendChild(b);
+    // El catálogo pudo dibujarse antes de que cargara este archivo: se redibuja para sumar el ícono.
+    try { if (typeof renderProducts === "function" && typeof products !== "undefined" && products.length) renderProducts(); } catch (e) {}
   }
 
-  window.eanDescarga = { abrir: abrir, eanValido: eanValido, eanModulos: eanModulos, init: init };
+  window.eanDescarga = { abrir: abrir, bajarCod: bajarCod, btnHtml: btnHtml, eanValido: eanValido, eanModulos: eanModulos, init: init };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
